@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import "@patternfly/react-core/dist/styles/base.css";
+import "./styles/cockpit-theme.css";
 import {
   Page,
   Alert,
@@ -135,7 +136,7 @@ export const App: React.FC = () => {
     if (action === "pause") cmd.push("-p");
     cmd.push(poolName);
 
-    const actionText = action === "start" ? "Start Scrub" : action === "pause" ? "Pause Scrub" : "Stop Scrub";
+    const actionText = action === "start" ? "Start scrub" : action === "pause" ? "Pause scrub" : "Stop scrub";
     if (shouldPreview()) {
       setPreviewModalState({
         isOpen: true,
@@ -146,7 +147,7 @@ export const App: React.FC = () => {
       });
     } else {
       executeCmd(cmd, `Scrub action '${action}' completed on ${poolName}`).catch((err) =>
-        addAlert("danger", "Scrub Failed", err.message)
+        addAlert("danger", "Scrub failed", err.message)
       );
     }
   };
@@ -157,7 +158,7 @@ export const App: React.FC = () => {
     if (action === "suspend") cmd.push("-d");
     cmd.push(poolName);
 
-    const actionText = action === "start" ? "Start Trim" : action === "suspend" ? "Suspend Trim" : "Stop Trim";
+    const actionText = action === "start" ? "Start trim" : action === "suspend" ? "Suspend trim" : "Stop trim";
     if (shouldPreview()) {
       setPreviewModalState({
         isOpen: true,
@@ -168,7 +169,7 @@ export const App: React.FC = () => {
       });
     } else {
       executeCmd(cmd, `Trim action '${action}' completed on ${poolName}`).catch((err) =>
-        addAlert("danger", "Trim Failed", err.message)
+        addAlert("danger", "Trim failed", err.message)
       );
     }
   };
@@ -180,13 +181,13 @@ export const App: React.FC = () => {
     if (shouldPreview()) {
       setPreviewModalState({
         isOpen: true,
-        title: `Clear Errors: ${poolName}`,
+        title: `Clear errors: ${poolName}`,
         command: cmd,
         onConfirm: () => executeCmd(cmd, `Cleared error counters on ${poolName}`),
       });
     } else {
       executeCmd(cmd, `Cleared error counters on ${poolName}`).catch((err) =>
-        addAlert("danger", "Clear Errors Failed", err.message)
+        addAlert("danger", "Clear errors failed", err.message)
       );
     }
   };
@@ -195,7 +196,7 @@ export const App: React.FC = () => {
     const cmd = ["zpool", "export", pool.name];
     setPreviewModalState({
       isOpen: true,
-      title: `Export Pool: ${pool.name}`,
+      title: `Export pool: ${pool.name}`,
       command: cmd,
       description: `Exporting pool ${pool.name} will unmount its datasets and release devices for import on another system.`,
       onConfirm: () => executeCmd(cmd, `Pool ${pool.name} exported`),
@@ -213,7 +214,7 @@ export const App: React.FC = () => {
   const handleRunSmartTest = (disk: DiskDevice, testType: "short" | "long") => {
     const cmd = ["smartctl", "-t", testType, disk.path];
     executeCmd(cmd, `Started SMART ${testType} self-test on ${disk.name}`).catch((err) =>
-      addAlert("danger", "SMART Test Failed", err.message)
+      addAlert("danger", "SMART test failed", err.message)
     );
   };
 
@@ -221,7 +222,7 @@ export const App: React.FC = () => {
     const cmd = ["wipefs", "-a", disk.path];
     setPreviewModalState({
       isOpen: true,
-      title: `Wipe Disk Signatures: ${disk.name}`,
+      title: `Wipe disk signatures: ${disk.name}`,
       command: cmd,
       isDestructive: true,
       description: `Wiping disk ${disk.path} will erase all partition tables and filesystem magic signatures.`,
@@ -326,17 +327,17 @@ export const App: React.FC = () => {
               }}
               onOfflineDisk={(pName, dev) => {
                 const cmd = ["zpool", "offline", pName, dev];
-                executeCmd(cmd, `Offlined ${dev}`).catch((err) => addAlert("danger", "Offline Failed", err.message));
+                executeCmd(cmd, `Offlined ${dev}`).catch((err) => addAlert("danger", "Offline failed", err.message));
               }}
               onOnlineDisk={(pName, dev) => {
                 const cmd = ["zpool", "online", pName, dev];
-                executeCmd(cmd, `Onlined ${dev}`).catch((err) => addAlert("danger", "Online Failed", err.message));
+                executeCmd(cmd, `Onlined ${dev}`).catch((err) => addAlert("danger", "Online failed", err.message));
               }}
               onReplaceDisk={(pName, dev) => setReplaceTarget({ poolName: pName, oldDevice: dev })}
               onClearErrors={handleClearErrors}
               onTrimDisk={(pName, dev) => {
                 const cmd = ["zpool", "trim", pName, dev];
-                executeCmd(cmd, `Started trim on ${dev}`).catch((err) => addAlert("danger", "Trim Failed", err.message));
+                executeCmd(cmd, `Started trim on ${dev}`).catch((err) => addAlert("danger", "Trim failed", err.message));
               }}
               onCreateDataset={(p) => setCreateDatasetParent(p || selectedPool.name)}
               onCreateZVol={(p) => setCreateZVolParent(p || selectedPool.name)}
@@ -347,7 +348,7 @@ export const App: React.FC = () => {
                 const newName = prompt(`Enter new path for dataset ${ds.name}:`, ds.name);
                 if (newName && newName !== ds.name) {
                   const cmd = ["zfs", "rename", ds.name, newName.trim()];
-                  executeCmd(cmd, `Renamed dataset to ${newName}`).catch((err) => addAlert("danger", "Rename Failed", err.message));
+                  executeCmd(cmd, `Renamed dataset to ${newName}`).catch((err) => addAlert("danger", "Rename failed", err.message));
                 }
               }}
               onDestroyDataset={(ds) => setDestroyTarget({ type: "dataset", name: ds.name })}
@@ -358,7 +359,7 @@ export const App: React.FC = () => {
                 if (newSnap && newSnap !== s.snapshot_name) {
                   const target = `${s.dataset}@${newSnap.trim()}`;
                   const cmd = ["zfs", "rename", s.name, target];
-                  executeCmd(cmd, `Renamed snapshot to @${newSnap}`).catch((err) => addAlert("danger", "Rename Failed", err.message));
+                  executeCmd(cmd, `Renamed snapshot to @${newSnap}`).catch((err) => addAlert("danger", "Rename failed", err.message));
                 }
               }}
               onDestroySnapshot={(s) => setDestroyTarget({ type: "snapshot", name: s.name })}
@@ -378,12 +379,12 @@ export const App: React.FC = () => {
                 if (shouldPreview()) {
                   setPreviewModalState({
                     isOpen: true,
-                    title: `Update Pool Properties: ${pName}`,
+                    title: `Update pool properties: ${pName}`,
                     command: cmds.map((c) => c.join(" ")),
                     onConfirm: runAll,
                   });
                 } else {
-                  runAll().catch((err) => addAlert("danger", "Update Properties Failed", err.message));
+                  runAll().catch((err) => addAlert("danger", "Update properties failed", err.message));
                 }
               }}
             />
