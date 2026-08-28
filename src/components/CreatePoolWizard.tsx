@@ -1,8 +1,9 @@
 import React, { useState } from "react";
 import {
+  Modal,
+  ModalVariant,
   Wizard,
   WizardStep,
-  WizardFooterWrapper,
   Form,
   FormGroup,
   TextInput,
@@ -10,17 +11,15 @@ import {
   FormSelectOption,
   Checkbox,
   Button,
-  Badge,
   Flex,
   FlexItem,
   Alert,
-  ClipboardCopy,
   Title,
   Card,
   CardBody,
 } from "@patternfly/react-core";
 import { Table, Thead, Tr, Th, Tbody, Td } from "@patternfly/react-table";
-import { PlusCircleIcon, TrashIcon } from "@patternfly/react-icons";
+import { PlusCircleIcon, TrashIcon, CopyIcon, CheckIcon } from "@patternfly/react-icons";
 import { DiskDevice } from "../types";
 import { formatBytes } from "../utils/formatters";
 
@@ -88,6 +87,7 @@ export const CreatePoolWizard: React.FC<CreatePoolWizardProps> = ({
   // Execution
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [copiedCmd, setCopiedCmd] = useState(false);
 
   if (!isOpen) {
     return null;
@@ -99,67 +99,36 @@ export const CreatePoolWizard: React.FC<CreatePoolWizardProps> = ({
     if (force) {
       cmd.push("-f");
     }
-    if (ashift && ashift !== "0") {
-      cmd.push("-o", `ashift=${ashift}`);
-    }
-    if (autoexpand) {
-      cmd.push("-o", "autoexpand=on");
-    }
-    if (autoreplace) {
-      cmd.push("-o", "autoreplace=on");
-    }
-    if (autotrim) {
-      cmd.push("-o", "autotrim=on");
-    }
-    if (failmode !== "wait") {
-      cmd.push("-o", `failmode=${failmode}`);
-    }
+
+    cmd.push("-o", `ashift=${ashift}`);
+    cmd.push("-o", `autoexpand=${autoexpand ? "on" : "off"}`);
+    cmd.push("-o", `autoreplace=${autoreplace ? "on" : "off"}`);
+    cmd.push("-o", `autotrim=${autotrim ? "on" : "off"}`);
+    cmd.push("-o", `failmode=${failmode}`);
+
     if (altroot.trim()) {
       cmd.push("-R", altroot.trim());
     }
     if (mountpoint.trim()) {
       cmd.push("-m", mountpoint.trim());
     }
-    if (compression !== "off") {
-      cmd.push("-O", `compression=${compression}`);
-    }
-    if (dedup !== "off") {
-      cmd.push("-O", `dedup=${dedup}`);
-    }
-    if (!atime) {
-      cmd.push("-O", "atime=off");
-    }
-    if (sync !== "standard") {
-      cmd.push("-O", `sync=${sync}`);
-    }
-    if (recordsize !== "128k") {
-      cmd.push("-O", `recordsize=${recordsize}`);
-    }
 
-    cmd.push(name.trim() || "poolname");
+    cmd.push("-O", `compression=${compression}`);
+    cmd.push("-O", `dedup=${dedup}`);
+    cmd.push("-O", `atime=${atime ? "on" : "off"}`);
+    cmd.push("-O", `sync=${sync}`);
+    cmd.push("-O", `recordsize=${recordsize}`);
 
-    vdevs.forEach((v) => {
-      if (v.devices.length > 0) {
-        if (v.type === "mirror") {
-          cmd.push("mirror");
-        } else if (v.type === "raidz1") {
-          cmd.push("raidz1");
-        } else if (v.type === "raidz2") {
-          cmd.push("raidz2");
-        } else if (v.type === "raidz3") {
-          cmd.push("raidz3");
-        } else if (v.type === "cache") {
-          cmd.push("cache");
-        } else if (v.type === "log") {
-          cmd.push("log");
-        } else if (v.type === "spare") {
-          cmd.push("spare");
-        } else if (v.type === "special") {
-          cmd.push("special");
-        }
-        cmd.push(...v.devices);
+    cmd.push(name.trim() || "tank");
+
+    // Add VDev layout
+    for (const v of vdevs) {
+      if (v.devices.length === 0) continue;
+      if (v.type !== "stripe") {
+        cmd.push(v.type);
       }
-    });
+      cmd.push(...v.devices);
+    }
 
     return cmd;
   };
@@ -169,8 +138,16 @@ export const CreatePoolWizard: React.FC<CreatePoolWizardProps> = ({
       setError("Pool name is required");
       return;
     }
+
+    const assignedDisks = vdevs.flatMap((v) => v.devices);
+    if (assignedDisks.length === 0) {
+      setError("At least one disk must be assigned to a VDev");
+      return;
+    }
+
     setLoading(true);
     setError(null);
+
     try {
       const cmd = buildCommand();
       await onCreatePool({
@@ -191,7 +168,6 @@ export const CreatePoolWizard: React.FC<CreatePoolWizardProps> = ({
         force,
         command: cmd,
       });
-      setLoading(false);
       onClose();
     } catch (err: any) {
       setError(err.message || String(err));
@@ -200,398 +176,445 @@ export const CreatePoolWizard: React.FC<CreatePoolWizardProps> = ({
   };
 
   const addVDev = (type: VDevEntry["type"]) => {
-    setVdevs([
-      ...vdevs,
-      { id: `vdev-${Date.now()}`, type, devices: [] },
+    setVdevs((prev) => [
+      ...prev,
+      { id: `vdev-${Date.now()}-${Math.random()}`, type, devices: [] },
     ]);
   };
 
   const removeVDev = (id: string) => {
-    setVdevs(vdevs.filter((v) => v.id !== id));
+    setVdevs((prev) => prev.filter((v) => v.id !== id));
   };
 
-  const toggleDeviceInVDev = (vdevId: string, devPath: string) => {
-    setVdevs(
-      vdevs.map((v) => {
-        if (v.id !== vdevId) {
-          return v;
+  const toggleDiskInVDev = (vdevId: string, diskPath: string) => {
+    setVdevs((prev) =>
+      prev.map((v) => {
+        if (v.id === vdevId) {
+          const exists = v.devices.includes(diskPath);
+          return {
+            ...v,
+            devices: exists
+              ? v.devices.filter((d) => d !== diskPath)
+              : [...v.devices, diskPath],
+          };
         }
-        const exists = v.devices.includes(devPath);
         return {
           ...v,
-          devices: exists
-            ? v.devices.filter((d) => d !== devPath)
-            : [...v.devices, devPath],
+          devices: v.devices.filter((d) => d !== diskPath),
         };
       })
     );
   };
 
-  const allAssignedDevices = vdevs.flatMap((v) => v.devices);
+  const handleCopyCmd = () => {
+    navigator.clipboard.writeText(buildCommand().join(" "));
+    setCopiedCmd(true);
+    setTimeout(() => setCopiedCmd(false), 2000);
+  };
 
   return (
-    <Wizard
-      title="Create ZFS Storage Pool"
-      description="Configure a new software-defined ZFS storage pool with redundancy, caching, and compression."
+    <Modal
+      variant={ModalVariant.large}
       isOpen={isOpen}
       onClose={onClose}
-      onSave={handleFinish}
-      height={650}
-      width={900}
+      showClose={true}
+      title="Create ZFS Storage Pool"
+      aria-label="Create ZFS Storage Pool Modal"
+      style={{ minHeight: "650px", display: "flex", flexDirection: "column" }}
     >
-      {/* Step 1: Choose Name & Sector Size */}
-      <WizardStep name="Name &amp; Ashift" id="step-1">
-        <Form style={{ maxWidth: "600px" }}>
-          <Title headingLevel="h3" size="lg" style={{ marginBottom: "1rem" }}>
-            Step 1: Pool Name &amp; Base Settings
-          </Title>
+      <Wizard
+        onClose={onClose}
+        style={{ height: "100%", minHeight: "520px" }}
+      >
+        {/* Step 1: Identity & Sector Size */}
+        <WizardStep name="Name &amp; Ashift" id="step-1">
+          <Form style={{ maxWidth: "600px" }}>
+            <Title headingLevel="h3" size="lg" style={{ marginBottom: "1rem" }}>
+              Step 1: Pool Name &amp; Base Settings
+            </Title>
 
-          <FormGroup label="Pool Name" isRequired fieldId="create-name">
-            <TextInput
-              id="create-name"
-              value={name}
-              onChange={(_event, val) => setName(val)}
-              placeholder="e.g. tank, datapool"
-              autoFocus
-            />
-          </FormGroup>
+            <FormGroup label="Pool Name" isRequired fieldId="wizard-pool-name">
+              <TextInput
+                isRequired
+                id="wizard-pool-name"
+                value={name}
+                onChange={(_event, val) => setName(val)}
+                placeholder="e.g. tank, datapool"
+                autoFocus
+              />
+            </FormGroup>
 
-          <FormGroup label="Sector Size (Ashift)" fieldId="create-ashift">
-            <FormSelect
-              id="create-ashift"
-              value={ashift}
-              onChange={(_event, val) => setAshift(val)}
-            >
-              <FormSelectOption value="12" label="12 - 4 KiB sectors (Recommended for most modern HDDs & SSDs)" />
-              <FormSelectOption value="13" label="13 - 8 KiB sectors (High-capacity SSDs / NVMe)" />
-              <FormSelectOption value="14" label="14 - 16 KiB sectors (Specialized NVMe)" />
-              <FormSelectOption value="9" label="9 - 512 Bytes legacy sectors" />
-              <FormSelectOption value="0" label="Auto-detect from drive inquiry" />
-            </FormSelect>
-          </FormGroup>
+            <FormGroup label="Sector Size (Ashift)" fieldId="wizard-ashift">
+              <FormSelect
+                id="wizard-ashift"
+                value={ashift}
+                onChange={(_event, val) => setAshift(val)}
+              >
+                <FormSelectOption value="12" label="ashift=12 (4 KiB - Standard HDD &amp; NVMe/SSD)" />
+                <FormSelectOption value="13" label="ashift=13 (8 KiB - Advanced Flash SSD)" />
+                <FormSelectOption value="14" label="ashift=14 (16 KiB - Enterprise Flash)" />
+                <FormSelectOption value="9" label="ashift=9 (512 Bytes - Legacy Disk)" />
+              </FormSelect>
+            </FormGroup>
 
-          <FormGroup label="Alternate Root (altroot)" fieldId="create-altroot">
-            <TextInput
-              id="create-altroot"
-              value={altroot}
-              onChange={(_event, val) => setAltroot(val)}
-              placeholder="Optional temporary mount root (e.g. /mnt)"
-            />
-          </FormGroup>
+            <FormGroup label="Alternate Root (altroot)" fieldId="wizard-altroot">
+              <TextInput
+                id="wizard-altroot"
+                value={altroot}
+                onChange={(_event, val) => setAltroot(val)}
+                placeholder="Optional, e.g. /mnt"
+              />
+            </FormGroup>
 
-          <FormGroup label="Root Mountpoint" fieldId="create-mountpoint">
-            <TextInput
-              id="create-mountpoint"
-              value={mountpoint}
-              onChange={(_event, val) => setMountpoint(val)}
-              placeholder="Default is /<pool_name>"
-            />
-          </FormGroup>
-        </Form>
-      </WizardStep>
+            <FormGroup label="Mountpoint" fieldId="wizard-mountpoint">
+              <TextInput
+                id="wizard-mountpoint"
+                value={mountpoint}
+                onChange={(_event, val) => setMountpoint(val)}
+                placeholder="Default is /<pool_name>"
+              />
+            </FormGroup>
 
-      {/* Step 2: Select Disks & VDevs */}
-      <WizardStep name="Disks &amp; VDevs" id="step-2">
-        <div>
-          <Flex justifyContent={{ default: "justifyContentSpaceBetween" }} alignItems={{ default: "alignItemsCenter" }} style={{ marginBottom: "1rem" }}>
-            <FlexItem>
-              <Title headingLevel="h3" size="lg">
-                Step 2: Configure VDevs &amp; Select Disks
-              </Title>
-            </FlexItem>
-            <FlexItem>
-              <Flex>
-                <FlexItem>
-                  <Button variant="secondary" icon={<PlusCircleIcon />} onClick={() => addVDev("mirror")}>
-                    Add Mirror
-                  </Button>
-                </FlexItem>
-                <FlexItem>
-                  <Button variant="secondary" icon={<PlusCircleIcon />} onClick={() => addVDev("raidz1")}>
-                    Add RAID-Z1
-                  </Button>
-                </FlexItem>
-                <FlexItem>
-                  <Button variant="secondary" icon={<PlusCircleIcon />} onClick={() => addVDev("raidz2")}>
-                    Add RAID-Z2
-                  </Button>
-                </FlexItem>
-                <FlexItem>
-                  <Button variant="secondary" icon={<PlusCircleIcon />} onClick={() => addVDev("cache")}>
-                    Add Cache (L2ARC)
-                  </Button>
-                </FlexItem>
-                <FlexItem>
-                  <Button variant="secondary" icon={<PlusCircleIcon />} onClick={() => addVDev("log")}>
-                    Add Log (SLOG)
-                  </Button>
-                </FlexItem>
-                <FlexItem>
-                  <Button variant="secondary" icon={<PlusCircleIcon />} onClick={() => addVDev("spare")}>
-                    Add Spare
-                  </Button>
-                </FlexItem>
-              </Flex>
-            </FlexItem>
-          </Flex>
+            <FormGroup fieldId="wizard-force">
+              <Checkbox
+                id="wizard-force"
+                label="Force pool creation (-f, overwrite existing disk labels if necessary)"
+                isChecked={force}
+                onChange={(_event, checked) => setForce(checked)}
+              />
+            </FormGroup>
+          </Form>
+        </WizardStep>
 
-          {vdevs.map((vdev, index) => (
-            <Card key={vdev.id} style={{ marginBottom: "1.5rem" }}>
-              <CardBody>
-                <Flex justifyContent={{ default: "justifyContentSpaceBetween" }} alignItems={{ default: "alignItemsCenter" }} style={{ marginBottom: "0.5rem" }}>
-                  <FlexItem>
-                    <strong>VDev #{index + 1}:</strong>{" "}
-                    <Badge isRead>{vdev.type.toUpperCase()}</Badge> ({vdev.devices.length} disk(s) selected)
-                  </FlexItem>
-                  <FlexItem>
+        {/* Step 2: Topology & Disk Selection */}
+        <WizardStep name="Disks &amp; VDevs" id="step-2">
+          <div>
+            <Title headingLevel="h3" size="lg" style={{ marginBottom: "1rem" }}>
+              Step 2: Virtual Devices &amp; Disk Layout
+            </Title>
+
+            <Flex style={{ marginBottom: "1rem" }} gap={{ default: "gapSm" }}>
+              <FlexItem>
+                <Button variant="secondary" icon={<PlusCircleIcon />} onClick={() => addVDev("mirror")}>
+                  Add Mirror VDev
+                </Button>
+              </FlexItem>
+              <FlexItem>
+                <Button variant="secondary" icon={<PlusCircleIcon />} onClick={() => addVDev("raidz1")}>
+                  Add RAID-Z1
+                </Button>
+              </FlexItem>
+              <FlexItem>
+                <Button variant="secondary" icon={<PlusCircleIcon />} onClick={() => addVDev("raidz2")}>
+                  Add RAID-Z2
+                </Button>
+              </FlexItem>
+              <FlexItem>
+                <Button variant="secondary" icon={<PlusCircleIcon />} onClick={() => addVDev("cache")}>
+                  Add Cache (L2ARC)
+                </Button>
+              </FlexItem>
+              <FlexItem>
+                <Button variant="secondary" icon={<PlusCircleIcon />} onClick={() => addVDev("log")}>
+                  Add Log (SLOG)
+                </Button>
+              </FlexItem>
+              <FlexItem>
+                <Button variant="secondary" icon={<PlusCircleIcon />} onClick={() => addVDev("spare")}>
+                  Add Spare
+                </Button>
+              </FlexItem>
+            </Flex>
+
+            {vdevs.map((vdev, idx) => (
+              <Card key={vdev.id} isPlain style={{ border: "1px solid #333333", marginBottom: "1rem" }}>
+                <CardBody>
+                  <Flex justifyContent={{ default: "justifyContentSpaceBetween" }} style={{ marginBottom: "0.5rem" }}>
+                    <FlexItem>
+                      <strong>VDev #{idx + 1} ({vdev.type.toUpperCase()})</strong>
+                    </FlexItem>
                     {vdevs.length > 1 && (
-                      <Button
-                        variant="plain"
-                        icon={<TrashIcon />}
-                        onClick={() => removeVDev(vdev.id)}
-                        aria-label="Remove VDev"
-                      />
+                      <FlexItem>
+                        <Button
+                          variant="plain"
+                          icon={<TrashIcon />}
+                          onClick={() => removeVDev(vdev.id)}
+                          aria-label="Remove VDev"
+                        />
+                      </FlexItem>
                     )}
-                  </FlexItem>
-                </Flex>
+                  </Flex>
 
-                <Table variant="compact">
-                  <Thead>
-                    <Tr>
-                      <Th style={{ width: "50px" }} />
-                      <Th>Device Path</Th>
-                      <Th>Model / Serial</Th>
-                      <Th>Size</Th>
-                      <Th>SMART Health</Th>
-                    </Tr>
-                  </Thead>
-                  <Tbody>
-                    {availableDisks.map((d) => {
-                      const isAssignedToThis = vdev.devices.includes(d.path);
-                      const isAssignedOther = !isAssignedToThis && allAssignedDevices.includes(d.path);
+                  <Table variant="compact">
+                    <Thead>
+                      <Tr>
+                        <Th width={10}>Assign</Th>
+                        <Th>Device Path</Th>
+                        <Th>Model / Serial</Th>
+                        <Th>Capacity</Th>
+                        <Th>Type</Th>
+                      </Tr>
+                    </Thead>
+                    <Tbody>
+                      {availableDisks.map((disk) => {
+                        const isChecked = vdev.devices.includes(disk.path);
+                        const isUsedElsewhere =
+                          !isChecked && vdevs.some((v) => v.devices.includes(disk.path));
 
-                      return (
-                        <Tr key={d.path} style={{ opacity: isAssignedOther ? 0.4 : 1 }}>
-                          <Td
-                            select={{
-                              rowIndex: 0,
-                              onSelect: () => toggleDeviceInVDev(vdev.id, d.path),
-                              isSelected: isAssignedToThis,
-                              props: { disabled: isAssignedOther },
-                            }}
-                          />
-                          <Td>
-                            <strong>{d.path}</strong> ({d.name})
-                          </Td>
-                          <Td>{d.model || d.serial || "-"}</Td>
-                          <Td>{formatBytes(d.size)}</Td>
-                          <Td>
-                            <Badge isRead>{d.smart_health}</Badge>
-                          </Td>
-                        </Tr>
-                      );
-                    })}
-                  </Tbody>
-                </Table>
+                        return (
+                          <Tr key={disk.name}>
+                            <Td>
+                              <Checkbox
+                                id={`check-${vdev.id}-${disk.name}`}
+                                isChecked={isChecked}
+                                isDisabled={isUsedElsewhere}
+                                onChange={() => toggleDiskInVDev(vdev.id, disk.path)}
+                              />
+                            </Td>
+                            <Td>
+                              <strong>{disk.path}</strong>
+                            </Td>
+                            <Td>{disk.model || disk.name}</Td>
+                            <Td>{formatBytes(disk.size)}</Td>
+                            <Td>{disk.rotational ? "HDD" : "SSD"}</Td>
+                          </Tr>
+                        );
+                      })}
+                    </Tbody>
+                  </Table>
+                </CardBody>
+              </Card>
+            ))}
+          </div>
+        </WizardStep>
+
+        {/* Step 3: Pool Properties */}
+        <WizardStep name="Pool Properties" id="step-3">
+          <Form style={{ maxWidth: "600px" }}>
+            <Title headingLevel="h3" size="lg" style={{ marginBottom: "1rem" }}>
+              Step 3: Pool Properties &amp; Behavior
+            </Title>
+
+            <FormGroup fieldId="create-autoexpand">
+              <Checkbox
+                id="create-autoexpand"
+                label="Autoexpand pool capacity when disks are replaced with larger ones"
+                isChecked={autoexpand}
+                onChange={(_event, checked) => setAutoexpand(checked)}
+              />
+            </FormGroup>
+
+            <FormGroup fieldId="create-autoreplace">
+              <Checkbox
+                id="create-autoreplace"
+                label="Autoreplace failed devices automatically with hot spares"
+                isChecked={autoreplace}
+                onChange={(_event, checked) => setAutoreplace(checked)}
+              />
+            </FormGroup>
+
+            <FormGroup fieldId="create-autotrim">
+              <Checkbox
+                id="create-autotrim"
+                label="Autotrim SSD / NVMe devices in the background"
+                isChecked={autotrim}
+                onChange={(_event, checked) => setAutotrim(checked)}
+              />
+            </FormGroup>
+
+            <FormGroup label="Failure Action (failmode)" fieldId="create-failmode">
+              <FormSelect
+                id="create-failmode"
+                value={failmode}
+                onChange={(_event, val) => setFailmode(val)}
+              >
+                <FormSelectOption value="wait" label="wait (Block I/O until device is restored)" />
+                <FormSelectOption value="continue" label="continue (Return EIO error to applications)" />
+                <FormSelectOption value="panic" label="panic (Reboot system on fatal pool failure)" />
+              </FormSelect>
+            </FormGroup>
+          </Form>
+        </WizardStep>
+
+        {/* Step 4: Root Filesystem Settings */}
+        <WizardStep name="Filesystem Defaults" id="step-4">
+          <Form style={{ maxWidth: "600px" }}>
+            <Title headingLevel="h3" size="lg" style={{ marginBottom: "1rem" }}>
+              Step 4: Root Filesystem Defaults
+            </Title>
+
+            <FormGroup label="Compression" fieldId="create-comp">
+              <FormSelect
+                id="create-comp"
+                value={compression}
+                onChange={(_event, val) => setCompression(val)}
+              >
+                <FormSelectOption value="lz4" label="lz4 (Fast, recommended default)" />
+                <FormSelectOption value="zstd" label="zstd (Higher compression ratio)" />
+                <FormSelectOption value="gzip" label="gzip (Legacy maximum compression)" />
+                <FormSelectOption value="off" label="off (No compression)" />
+              </FormSelect>
+            </FormGroup>
+
+            <FormGroup label="Deduplication" fieldId="create-dedup">
+              <FormSelect
+                id="create-dedup"
+                value={dedup}
+                onChange={(_event, val) => setDedup(val)}
+              >
+                <FormSelectOption value="off" label="off (Recommended unless dedicated RAM available)" />
+                <FormSelectOption value="on" label="on" />
+                <FormSelectOption value="verify" label="verify (Cryptographic verification)" />
+              </FormSelect>
+            </FormGroup>
+
+            <FormGroup label="Recordsize (Block Size)" fieldId="create-recsize">
+              <FormSelect
+                id="create-recsize"
+                value={recordsize}
+                onChange={(_event, val) => setRecordsize(val)}
+              >
+                <FormSelectOption value="128k" label="128 KiB (Standard default)" />
+                <FormSelectOption value="1M" label="1 MiB (Large sequential files &amp; media)" />
+                <FormSelectOption value="64k" label="64 KiB" />
+                <FormSelectOption value="16k" label="16 KiB (Databases)" />
+                <FormSelectOption value="4k" label="4 KiB" />
+              </FormSelect>
+            </FormGroup>
+
+            <FormGroup label="Synchronous I/O (sync)" fieldId="create-sync">
+              <FormSelect
+                id="create-sync"
+                value={sync}
+                onChange={(_event, val) => setSync(val)}
+              >
+                <FormSelectOption value="standard" label="standard" />
+                <FormSelectOption value="always" label="always" />
+                <FormSelectOption value="disabled" label="disabled" />
+              </FormSelect>
+            </FormGroup>
+
+            <FormGroup fieldId="create-atime">
+              <Checkbox
+                id="create-atime"
+                label="Update access times on file reads (atime)"
+                isChecked={atime}
+                onChange={(_event, checked) => setAtime(checked)}
+              />
+            </FormGroup>
+          </Form>
+        </WizardStep>
+
+        {/* Step 5: Review & Command Preview */}
+        <WizardStep
+          name="Review &amp; Create"
+          id="step-5"
+          footer={{
+            isNextDisabled: loading || !name.trim(),
+            nextButtonText: loading ? "Creating Pool..." : "Create Pool",
+            onNext: handleFinish,
+          }}
+        >
+          <div>
+            <Title headingLevel="h3" size="lg" style={{ marginBottom: "1rem" }}>
+              Step 5: Review Configuration &amp; Command Preview
+            </Title>
+
+            <Card style={{ marginBottom: "1.5rem" }}>
+              <CardBody>
+                <p style={{ marginBottom: "0.4rem" }}>
+                  <strong>Pool Name:</strong> {name || "<required>"}
+                </p>
+                <p style={{ marginBottom: "0.4rem" }}>
+                  <strong>Sector Size (Ashift):</strong> {ashift}
+                </p>
+                <p style={{ marginBottom: "0.4rem" }}>
+                  <strong>VDev Layout:</strong>{" "}
+                  {vdevs
+                    .map((v) => `${v.type.toUpperCase()}: ${v.devices.length} disk(s)`)
+                    .join("; ")}
+                </p>
+                <p style={{ marginBottom: "0.4rem" }}>
+                  <strong>Compression:</strong> {compression}
+                </p>
+                <p>
+                  <strong>Deduplication:</strong> {dedup}
+                </p>
               </CardBody>
             </Card>
-          ))}
 
-          <FormGroup fieldId="create-force">
-            <Checkbox
-              id="create-force"
-              label="Force pool creation (-f, bypass disk in-use or partition signature warnings)"
-              isChecked={force}
-              onChange={(_event, checked) => setForce(checked)}
-            />
-          </FormGroup>
-        </div>
-      </WizardStep>
+            <div style={{ marginBottom: "1.5rem" }}>
+              <div style={{ fontSize: "0.85rem", color: "#a0a0a0", marginBottom: "0.4rem", fontWeight: 600 }}>
+                Shell Command Preview:
+              </div>
+              <div
+                style={{
+                  position: "relative",
+                  backgroundColor: "rgb(15, 15, 15)",
+                  border: "1px solid #383838",
+                  borderRadius: "8px",
+                  padding: "10px 42px 10px 14px",
+                  fontFamily: "monospace",
+                  fontSize: "0.9rem",
+                  color: "#92c5f9",
+                  wordBreak: "break-all",
+                  lineHeight: "1.4",
+                }}
+              >
+                <span>{buildCommand().join(" ")}</span>
+                <button
+                  type="button"
+                  onClick={handleCopyCmd}
+                  title={copiedCmd ? "Copied!" : "Copy command"}
+                  style={{
+                    position: "absolute",
+                    right: "8px",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    background: "transparent",
+                    border: "none",
+                    color: copiedCmd ? "#5ba352" : "#a0a0a0",
+                    cursor: "pointer",
+                    padding: "4px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    borderRadius: "4px",
+                  }}
+                >
+                  {copiedCmd ? <CheckIcon style={{ fontSize: "14px" }} /> : <CopyIcon style={{ fontSize: "14px" }} />}
+                </button>
+              </div>
+            </div>
 
-      {/* Step 3: Pool Properties */}
-      <WizardStep name="Pool Properties" id="step-3">
-        <Form style={{ maxWidth: "600px" }}>
-          <Title headingLevel="h3" size="lg" style={{ marginBottom: "1rem" }}>
-            Step 3: Pool Properties
-          </Title>
+            <Flex gap={{ default: "gapMd" }} style={{ marginTop: "1.5rem", marginBottom: "1rem" }}>
+              <FlexItem>
+                <Button
+                  variant="primary"
+                  size="lg"
+                  onClick={handleFinish}
+                  isDisabled={loading || !name.trim()}
+                  isLoading={loading}
+                  id="wizard-create-pool-btn"
+                >
+                  {loading ? "Creating Pool..." : "Create Pool Now"}
+                </Button>
+              </FlexItem>
+              <FlexItem>
+                <Button variant="secondary" size="lg" onClick={onClose} isDisabled={loading}>
+                  Cancel
+                </Button>
+              </FlexItem>
+            </Flex>
 
-          <FormGroup fieldId="create-autoexpand">
-            <Checkbox
-              id="create-autoexpand"
-              label="Autoexpand capacity when disks are replaced"
-              isChecked={autoexpand}
-              onChange={(_event, checked) => setAutoexpand(checked)}
-            />
-          </FormGroup>
-
-          <FormGroup fieldId="create-autoreplace">
-            <Checkbox
-              id="create-autoreplace"
-              label="Autoreplace failed disks using hot spares"
-              isChecked={autoreplace}
-              onChange={(_event, checked) => setAutoreplace(checked)}
-            />
-          </FormGroup>
-
-          <FormGroup fieldId="create-autotrim">
-            <Checkbox
-              id="create-autotrim"
-              label="Autotrim SSD / NVMe devices in background"
-              isChecked={autotrim}
-              onChange={(_event, checked) => setAutotrim(checked)}
-            />
-          </FormGroup>
-
-          <FormGroup label="Failure Mode (failmode)" fieldId="create-failmode">
-            <FormSelect
-              id="create-failmode"
-              value={failmode}
-              onChange={(_event, val) => setFailmode(val)}
-            >
-              <FormSelectOption value="wait" label="wait (Block I/O until device is restored)" />
-              <FormSelectOption value="continue" label="continue (Return EIO error to applications)" />
-              <FormSelectOption value="panic" label="panic (Reboot system on fatal pool failure)" />
-            </FormSelect>
-          </FormGroup>
-        </Form>
-      </WizardStep>
-
-      {/* Step 4: Root Filesystem Settings */}
-      <WizardStep name="Filesystem Defaults" id="step-4">
-        <Form style={{ maxWidth: "600px" }}>
-          <Title headingLevel="h3" size="lg" style={{ marginBottom: "1rem" }}>
-            Step 4: Root Filesystem Defaults
-          </Title>
-
-          <FormGroup label="Compression" fieldId="create-comp">
-            <FormSelect
-              id="create-comp"
-              value={compression}
-              onChange={(_event, val) => setCompression(val)}
-            >
-              <FormSelectOption value="lz4" label="lz4 (Fast, recommended default)" />
-              <FormSelectOption value="zstd" label="zstd (Higher compression ratio)" />
-              <FormSelectOption value="gzip" label="gzip (Legacy maximum compression)" />
-              <FormSelectOption value="off" label="off (No compression)" />
-            </FormSelect>
-          </FormGroup>
-
-          <FormGroup label="Deduplication" fieldId="create-dedup">
-            <FormSelect
-              id="create-dedup"
-              value={dedup}
-              onChange={(_event, val) => setDedup(val)}
-            >
-              <FormSelectOption value="off" label="off (Recommended unless dedicated RAM available)" />
-              <FormSelectOption value="on" label="on" />
-              <FormSelectOption value="verify" label="verify (Cryptographic verification)" />
-            </FormSelect>
-          </FormGroup>
-
-          <FormGroup label="Recordsize (Block Size)" fieldId="create-recsize">
-            <FormSelect
-              id="create-recsize"
-              value={recordsize}
-              onChange={(_event, val) => setRecordsize(val)}
-            >
-              <FormSelectOption value="128k" label="128 KiB (Standard default)" />
-              <FormSelectOption value="1M" label="1 MiB (Large sequential files & media)" />
-              <FormSelectOption value="64k" label="64 KiB" />
-              <FormSelectOption value="16k" label="16 KiB (Databases)" />
-              <FormSelectOption value="4k" label="4 KiB" />
-            </FormSelect>
-          </FormGroup>
-
-          <FormGroup label="Synchronous I/O (sync)" fieldId="create-sync">
-            <FormSelect
-              id="create-sync"
-              value={sync}
-              onChange={(_event, val) => setSync(val)}
-            >
-              <FormSelectOption value="standard" label="standard" />
-              <FormSelectOption value="always" label="always" />
-              <FormSelectOption value="disabled" label="disabled" />
-            </FormSelect>
-          </FormGroup>
-
-          <FormGroup fieldId="create-atime">
-            <Checkbox
-              id="create-atime"
-              label="Update access times on file reads (atime)"
-              isChecked={atime}
-              onChange={(_event, checked) => setAtime(checked)}
-            />
-          </FormGroup>
-        </Form>
-      </WizardStep>
-
-      {/* Step 5: Review & Command Preview */}
-      <WizardStep
-        name="Review &amp; Create"
-        id="step-5"
-        footer={{
-          isNextDisabled: loading || !name.trim(),
-          nextButtonText: loading ? "Creating Pool..." : "Create Pool",
-          onNext: handleFinish,
-        }}
-      >
-        <div>
-          <Title headingLevel="h3" size="lg" style={{ marginBottom: "1rem" }}>
-            Step 5: Review Configuration &amp; Command Preview
-          </Title>
-
-          <Card style={{ marginBottom: "1.5rem" }}>
-            <CardBody>
-              <p>
-                <strong>Pool Name:</strong> {name || "<required>"}
-              </p>
-              <p>
-                <strong>Sector Size (Ashift):</strong> {ashift}
-              </p>
-              <p>
-                <strong>VDev Layout:</strong>{" "}
-                {vdevs
-                  .map((v) => `${v.type.toUpperCase()}: ${v.devices.length} disk(s)`)
-                  .join("; ")}
-              </p>
-              <p>
-                <strong>Compression:</strong> {compression}
-              </p>
-              <p>
-                <strong>Deduplication:</strong> {dedup}
-              </p>
-            </CardBody>
-          </Card>
-
-          <div style={{ marginBottom: "1.5rem" }}>
-            <label style={{ fontWeight: "bold", display: "block", marginBottom: "0.5rem" }}>
-              Shell Command Preview:
-            </label>
-            <ClipboardCopy isReadOnly isCode>
-              {buildCommand().join(" ")}
-            </ClipboardCopy>
+            {error && (
+              <Alert variant="danger" title="Pool Creation Failed" style={{ marginTop: "1rem" }}>
+                {error}
+              </Alert>
+            )}
           </div>
-
-          <div style={{ marginTop: "1.5rem", marginBottom: "1rem" }}>
-            <Button
-              variant="primary"
-              size="lg"
-              onClick={handleFinish}
-              isDisabled={loading || !name.trim()}
-              isLoading={loading}
-              id="wizard-create-pool-btn"
-            >
-              {loading ? "Creating Pool..." : "Create Pool Now"}
-            </Button>
-          </div>
-
-          {error && (
-            <Alert variant="danger" title="Pool Creation Failed" style={{ marginBottom: "1rem" }}>
-              {error}
-            </Alert>
-          )}
-        </div>
-      </WizardStep>
-    </Wizard>
+        </WizardStep>
+      </Wizard>
+    </Modal>
   );
 };

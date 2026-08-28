@@ -179,14 +179,15 @@ export const PoolsView: React.FC<PoolsViewProps> = ({
                           isScrubbing ? (
                             <Label color="orange">Scrubbing {pool.scan?.percentage}%</Label>
                           ) : (
-                            <span style={{ color: "var(--pf-v5-global--Color--200)" }}>Verified</span>
+                            <span style={{ color: "#999999" }}>Verified</span>
                           )
                         ) : (
-                          <span style={{ color: "var(--pf-v5-global--Color--200)" }}>None</span>
+                          <span style={{ color: "#999999" }}>None</span>
                         )}
                       </Td>
                       <Td isActionCell>
                         <Dropdown
+                          popperProps={{ position: "right", preventOverflow: true }}
                           isOpen={openDropdown === pool.name}
                           onSelect={() => setOpenDropdown(null)}
                           onOpenChange={(isOpen) => setOpenDropdown(isOpen ? pool.name : null)}

@@ -130,15 +130,15 @@ export const DatasetsTab: React.FC<DatasetsTabProps> = ({
                     <Flex alignItems={{ default: "alignItemsCenter" }}>
                       <FlexItem>
                         {isFilesystem ? (
-                          <FolderIcon style={{ color: "var(--pf-v5-global--primary-color--100)" }} />
+                          <FolderIcon style={{ color: "rgb(146, 197, 249)" }} />
                         ) : (
-                          <HddIcon style={{ color: "var(--pf-v5-global--info-color--100)" }} />
+                          <HddIcon style={{ color: "#b886f8" }} />
                         )}
                       </FlexItem>
                       <FlexItem>
                         <strong>{displayName}</strong>
                         {depth > 0 && (
-                          <span style={{ color: "var(--pf-v5-global--Color--200)", fontSize: "0.8rem", marginLeft: "0.5rem" }}>
+                          <span style={{ color: "#999999", fontSize: "0.8rem", marginLeft: "0.5rem" }}>
                             ({ds.name})
                           </span>
                         )}
@@ -162,10 +162,10 @@ export const DatasetsTab: React.FC<DatasetsTabProps> = ({
                           </FlexItem>
                         </Flex>
                       ) : (
-                        <span style={{ color: "var(--pf-v5-global--Color--200)" }}>None</span>
+                        <span style={{ color: "#999999" }}>None</span>
                       )
                     ) : (
-                      <span style={{ color: "var(--pf-v5-global--Color--200)" }}>-</span>
+                      <span style={{ color: "#999999" }}>-</span>
                     )}
                   </Td>
                   <Td dataLabel="Compression">
@@ -175,14 +175,14 @@ export const DatasetsTab: React.FC<DatasetsTabProps> = ({
                     {ds.encryption !== "off" ? (
                       <Flex alignItems={{ default: "alignItemsCenter" }}>
                         <FlexItem>
-                          <LockIcon style={{ color: "var(--pf-v5-global--success-color--100)", fontSize: "0.85rem" }} />
+                          <LockIcon style={{ color: "#5ba352", fontSize: "0.85rem" }} />
                         </FlexItem>
                         <FlexItem>
                           <span>{ds.encryption}</span>
                         </FlexItem>
                       </Flex>
                     ) : (
-                      <span style={{ color: "var(--pf-v5-global--Color--200)" }}>off</span>
+                      <span style={{ color: "#999999" }}>off</span>
                     )}
                   </Td>
                   <Td dataLabel="Snapshots">
@@ -190,6 +190,7 @@ export const DatasetsTab: React.FC<DatasetsTabProps> = ({
                   </Td>
                   <Td isActionCell>
                     <Dropdown
+                      popperProps={{ position: "right", preventOverflow: true }}
                       isOpen={openDropdown === ds.name}
                       onSelect={() => setOpenDropdown(null)}
                       onOpenChange={(isOpen) => setOpenDropdown(isOpen ? ds.name : null)}

@@ -33,6 +33,7 @@ import { CloneSnapshotModal } from "./components/Modals/CloneSnapshotModal";
 import { DestroyModal } from "./components/Modals/DestroyModal";
 import { AttachDiskModal } from "./components/Modals/AttachDiskModal";
 import { ReplaceDiskModal } from "./components/Modals/ReplaceDiskModal";
+import { RenameModal } from "./components/Modals/RenameModal";
 import { CommandPreviewModal } from "./components/CommandPreviewModal";
 
 declare const cockpit: any;
@@ -62,6 +63,11 @@ export const App: React.FC = () => {
   const [createSnapshotTarget, setCreateSnapshotTarget] = useState<string | null>(null);
   const [rollbackSnapshotTarget, setRollbackSnapshotTarget] = useState<ZSnapshot | null>(null);
   const [cloneSnapshotTarget, setCloneSnapshotTarget] = useState<ZSnapshot | null>(null);
+  const [renameTarget, setRenameTarget] = useState<{
+    itemType: "dataset" | "volume" | "snapshot";
+    currentName: string;
+    originalSnapshot?: ZSnapshot;
+  } | null>(null);
   const [destroyTarget, setDestroyTarget] = useState<{
     type: "pool" | "dataset" | "snapshot" | "snapshots";
     name: string;
@@ -82,7 +88,7 @@ export const App: React.FC = () => {
   // Parse path segments into route state
   const parseRoute = useCallback((segments: string[]) => {
     if (!segments || segments.length === 0 || segments[0] === "" || segments[0] === "dashboard" || segments[0] === "overview") {
-      setActiveView("dashboard");
+      setActiveView((prev) => (prev === "dashboard" ? prev : "dashboard"));
       setSelectedPoolName(null);
       return;
     }
@@ -136,7 +142,10 @@ export const App: React.FC = () => {
     parseRoute(segments);
 
     const pathStr = segments.join("/");
-    window.location.hash = `#/${pathStr}`;
+    const targetHash = `#/${pathStr}`;
+    if (window.location.hash !== targetHash) {
+      window.location.hash = targetHash;
+    }
 
     if (typeof cockpit !== "undefined" && cockpit.location && cockpit.location.go) {
       cockpit.location.go(segments);
@@ -222,6 +231,7 @@ export const App: React.FC = () => {
 
   const handleSubTabChange = (subTab: string) => {
     if (selectedPoolName) {
+      setCurrentSubTab(subTab);
       navigateTo(["pools", selectedPoolName, subTab]);
     }
   };
@@ -449,22 +459,20 @@ export const App: React.FC = () => {
               onCreateSnapshot={(ds) => setCreateSnapshotTarget(ds ? ds.name : selectedPool.name)}
               onMountToggle={handleMountToggle}
               onRenameDataset={(ds) => {
-                const newName = prompt(`Enter new path for dataset ${ds.name}:`, ds.name);
-                if (newName && newName !== ds.name) {
-                  const cmd = ["zfs", "rename", ds.name, newName.trim()];
-                  executeCmd(cmd, `Renamed dataset to ${newName}`).catch((err) => addAlert("danger", "Rename failed", err.message));
-                }
+                setRenameTarget({
+                  itemType: ds.type === "volume" ? "volume" : "dataset",
+                  currentName: ds.name,
+                });
               }}
               onDestroyDataset={(ds) => setDestroyTarget({ type: "dataset", name: ds.name })}
               onRollbackSnapshot={(s) => setRollbackSnapshotTarget(s)}
               onCloneSnapshot={(s) => setCloneSnapshotTarget(s)}
               onRenameSnapshot={(s) => {
-                const newSnap = prompt(`Enter new snapshot name for ${s.name}:`, s.snapshot_name);
-                if (newSnap && newSnap !== s.snapshot_name) {
-                  const target = `${s.dataset}@${newSnap.trim()}`;
-                  const cmd = ["zfs", "rename", s.name, target];
-                  executeCmd(cmd, `Renamed snapshot to @${newSnap}`).catch((err) => addAlert("danger", "Rename failed", err.message));
-                }
+                setRenameTarget({
+                  itemType: "snapshot",
+                  currentName: s.snapshot_name,
+                  originalSnapshot: s,
+                });
               }}
               onDestroySnapshot={(s) => setDestroyTarget({ type: "snapshot", name: s.name })}
               onBulkDestroySnapshots={(snaps) => {
@@ -571,6 +579,25 @@ export const App: React.FC = () => {
           await executeCmd(command, "Clone created successfully");
         }}
       />
+
+      {renameTarget && (
+        <RenameModal
+          isOpen={true}
+          itemType={renameTarget.itemType}
+          currentName={renameTarget.currentName}
+          onClose={() => setRenameTarget(null)}
+          onRename={async (newName) => {
+            if (renameTarget.itemType === "snapshot" && renameTarget.originalSnapshot) {
+              const target = `${renameTarget.originalSnapshot.dataset}@${newName.trim()}`;
+              const cmd = ["zfs", "rename", renameTarget.originalSnapshot.name, target];
+              await executeCmd(cmd, `Renamed snapshot to @${newName}`);
+            } else {
+              const cmd = ["zfs", "rename", renameTarget.currentName, newName.trim()];
+              await executeCmd(cmd, `Renamed ${renameTarget.itemType} to ${newName}`);
+            }
+          }}
+        />
+      )}
 
       {destroyTarget && (
         <DestroyModal

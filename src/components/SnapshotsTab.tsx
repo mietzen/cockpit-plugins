@@ -174,7 +174,7 @@ export const SnapshotsTab: React.FC<SnapshotsTabProps> = ({
                   <Td dataLabel="Snapshot">
                     <Flex alignItems={{ default: "alignItemsCenter" }}>
                       <FlexItem>
-                        <CameraIcon style={{ color: "var(--pf-v5-global--primary-color--100)" }} />
+                        <CameraIcon style={{ color: "rgb(146, 197, 249)" }} />
                       </FlexItem>
                       <FlexItem>
                         <strong>@{snap.snapshot_name}</strong>
@@ -190,6 +190,7 @@ export const SnapshotsTab: React.FC<SnapshotsTabProps> = ({
                   </Td>
                   <Td isActionCell>
                     <Dropdown
+                      popperProps={{ position: "right", preventOverflow: true }}
                       isOpen={openDropdown === snap.name}
                       onSelect={() => setOpenDropdown(null)}
                       onOpenChange={(isOpen) => setOpenDropdown(isOpen ? snap.name : null)}

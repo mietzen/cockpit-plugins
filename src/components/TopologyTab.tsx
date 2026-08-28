@@ -3,7 +3,6 @@ import {
   Card,
   CardTitle,
   CardBody,
-  Label,
   Button,
   Flex,
   FlexItem,
@@ -58,7 +57,7 @@ export const TopologyTab: React.FC<TopologyTabProps> = ({
     }
 
     return (
-      <Card isPlain style={{ border: "1px solid var(--pf-v5-global--BorderColor--100)", marginBottom: "1.5rem" }}>
+      <Card isPlain style={{ border: "1px solid #333333", marginBottom: "1.5rem" }}>
         <CardTitle>
           <Flex alignItems={{ default: "alignItemsCenter" }}>
             <FlexItem>
@@ -90,7 +89,7 @@ export const TopologyTab: React.FC<TopologyTabProps> = ({
 
                 // Parent group row
                 rows.push(
-                  <Tr key={vdev.name} style={{ backgroundColor: vdev.is_group ? "var(--pf-v5-global--BackgroundColor--200)" : undefined }}>
+                  <Tr key={vdev.name} style={{ backgroundColor: vdev.is_group ? "rgba(255, 255, 255, 0.04)" : undefined }}>
                     <Td dataLabel="Device / Group">
                       <Flex alignItems={{ default: "alignItemsCenter" }}>
                         <FlexItem>
@@ -121,6 +120,7 @@ export const TopologyTab: React.FC<TopologyTabProps> = ({
                     <Td isActionCell>
                       {!vdev.is_group && (
                         <Dropdown
+                          popperProps={{ position: "right", preventOverflow: true }}
                           isOpen={openDropdown === vdev.name}
                           onSelect={() => setOpenDropdown(null)}
                           onOpenChange={(isOpen) => setOpenDropdown(isOpen ? vdev.name : null)}
@@ -200,6 +200,7 @@ export const TopologyTab: React.FC<TopologyTabProps> = ({
                         <Td dataLabel="Checksum errors">{child.cksum}</Td>
                         <Td isActionCell>
                           <Dropdown
+                            popperProps={{ position: "right", preventOverflow: true }}
                             isOpen={openDropdown === child.name}
                             onSelect={() => setOpenDropdown(null)}
                             onOpenChange={(isOpen) => setOpenDropdown(isOpen ? child.name : null)}

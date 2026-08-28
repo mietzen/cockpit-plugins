@@ -96,17 +96,17 @@ export const DisksView: React.FC<DisksViewProps> = ({
                   <Td dataLabel="Device">
                     <Flex alignItems={{ default: "alignItemsCenter" }}>
                       <FlexItem>
-                        <HddIcon style={{ color: "var(--pf-v5-global--primary-color--100)" }} />
+                        <HddIcon style={{ color: "rgb(146, 197, 249)" }} />
                       </FlexItem>
                       <FlexItem>
                         <strong>{disk.name}</strong>
-                        <div style={{ fontSize: "0.8rem", color: "var(--pf-v5-global--Color--200)" }}>{disk.path}</div>
+                        <div style={{ fontSize: "0.8rem", color: "#999999" }}>{disk.path}</div>
                       </FlexItem>
                     </Flex>
                   </Td>
                   <Td dataLabel="Model / Serial">
                     <div>{disk.model || "-"}</div>
-                    <div style={{ fontSize: "0.8rem", color: "var(--pf-v5-global--Color--200)" }}>{disk.serial || "-"}</div>
+                    <div style={{ fontSize: "0.8rem", color: "#999999" }}>{disk.serial || "-"}</div>
                   </Td>
                   <Td dataLabel="Size">{formatBytes(disk.size)}</Td>
                   <Td dataLabel="Type">
@@ -123,7 +123,7 @@ export const DisksView: React.FC<DisksViewProps> = ({
                         ) : isSmartFailed ? (
                           <ExclamationCircleIcon style={{ color: "var(--pf-v5-global--danger-color--100)" }} />
                         ) : (
-                          <span style={{ color: "var(--pf-v5-global--Color--200)" }}>-</span>
+                          <span style={{ color: "#999999" }}>-</span>
                         )}
                       </FlexItem>
                       <FlexItem>
@@ -140,11 +140,12 @@ export const DisksView: React.FC<DisksViewProps> = ({
                     {disk.pool ? (
                       <Label color="blue">{disk.pool}</Label>
                     ) : (
-                      <span style={{ color: "var(--pf-v5-global--Color--200)" }}>Unallocated</span>
+                      <span style={{ color: "#999999" }}>Unallocated</span>
                     )}
                   </Td>
                   <Td isActionCell>
                     <Dropdown
+                      popperProps={{ position: "right", preventOverflow: true }}
                       isOpen={openDropdown === disk.name}
                       onSelect={() => setOpenDropdown(null)}
                       onOpenChange={(isOpen) => setOpenDropdown(isOpen ? disk.name : null)}
@@ -256,7 +257,7 @@ export const DisksView: React.FC<DisksViewProps> = ({
               </Tbody>
             </Table>
           ) : (
-            <p style={{ color: "var(--pf-v5-global--Color--200)" }}>No partitions found on this device.</p>
+            <p style={{ color: "#a0a0a0" }}>No partitions found on this device.</p>
           )}
         </Modal>
       )}

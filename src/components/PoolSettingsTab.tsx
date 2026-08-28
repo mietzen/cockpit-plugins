@@ -83,10 +83,10 @@ export const PoolSettingsTab: React.FC<PoolSettingsTabProps> = ({
         Pool Properties &amp; Settings
       </Title>
 
-      <Card isPlain style={{ border: "1px solid var(--pf-v5-global--BorderColor--100)" }}>
+      <Card isPlain style={{ border: "1px solid #333333", maxWidth: "650px" }}>
         <CardTitle>Configuration</CardTitle>
         <CardBody>
-          <Form onSubmit={handleSubmit} style={{ maxWidth: "600px" }}>
+          <Form onSubmit={handleSubmit}>
             <FormGroup label="Pool name" fieldId="pool-name">
               <TextInput id="pool-name" value={pool.name} isReadOnly />
             </FormGroup>
