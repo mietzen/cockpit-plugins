@@ -25,13 +25,7 @@ export const Navigation: React.FC<NavigationProps> = ({
   const currentTab = activeView === "pool-details" ? "pools" : activeView;
 
   return (
-    <div
-      style={{
-        borderBottom: "1px solid var(--pf-v5-global--BorderColor--100)",
-        backgroundColor: "var(--pf-v5-global--BackgroundColor--100)",
-        padding: "0 1.5rem",
-      }}
-    >
+    <div className="cockpit-top-nav-bar">
       <Flex justifyContent={{ default: "justifyContentSpaceBetween" }} alignItems={{ default: "alignItemsCenter" }}>
         <FlexItem>
           <Tabs
