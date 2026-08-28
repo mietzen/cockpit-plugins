@@ -1,8 +1,8 @@
 import React from "react";
 import {
-  Nav,
-  NavItem,
-  NavList,
+  Tabs,
+  Tab,
+  TabTitleText,
   Flex,
   FlexItem,
   Button,
@@ -22,6 +22,8 @@ export const Navigation: React.FC<NavigationProps> = ({
   onRefresh,
   isLoading,
 }) => {
+  const currentTab = activeView === "pool-details" ? "pools" : activeView;
+
   return (
     <div
       style={{
@@ -32,34 +34,16 @@ export const Navigation: React.FC<NavigationProps> = ({
     >
       <Flex justifyContent={{ default: "justifyContentSpaceBetween" }} alignItems={{ default: "alignItemsCenter" }}>
         <FlexItem>
-          <Nav variant="horizontal">
-            <NavList>
-              <NavItem
-                isActive={activeView === "dashboard"}
-                onClick={() => onSelectView("dashboard")}
-              >
-                Dashboard
-              </NavItem>
-              <NavItem
-                isActive={activeView === "pools" || activeView === "pool-details"}
-                onClick={() => onSelectView("pools")}
-              >
-                Pools
-              </NavItem>
-              <NavItem
-                isActive={activeView === "disks"}
-                onClick={() => onSelectView("disks")}
-              >
-                Disks
-              </NavItem>
-              <NavItem
-                isActive={activeView === "settings"}
-                onClick={() => onSelectView("settings")}
-              >
-                Settings
-              </NavItem>
-            </NavList>
-          </Nav>
+          <Tabs
+            activeKey={currentTab}
+            onSelect={(_event, tabKey) => onSelectView(String(tabKey))}
+            isBox={false}
+          >
+            <Tab eventKey="dashboard" title={<TabTitleText>Overview</TabTitleText>} />
+            <Tab eventKey="pools" title={<TabTitleText>Pools</TabTitleText>} />
+            <Tab eventKey="disks" title={<TabTitleText>Disks &amp; SMART</TabTitleText>} />
+            <Tab eventKey="settings" title={<TabTitleText>Settings</TabTitleText>} />
+          </Tabs>
         </FlexItem>
 
         <FlexItem>

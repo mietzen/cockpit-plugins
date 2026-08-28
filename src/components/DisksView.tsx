@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import {
   PageSection,
   Title,
-  Badge,
+  Label,
   Button,
   Flex,
   FlexItem,
@@ -13,11 +13,16 @@ import {
   MenuToggleElement,
   Modal,
   ModalVariant,
+  SearchInput,
+  DescriptionList,
+  DescriptionListGroup,
+  DescriptionListTerm,
+  DescriptionListDescription,
 } from "@patternfly/react-core";
 import { Table, Thead, Tr, Th, Tbody, Td } from "@patternfly/react-table";
-import { HddIcon, EllipsisVIcon, ShieldAltIcon } from "@patternfly/react-icons";
+import { HddIcon, EllipsisVIcon, CheckCircleIcon, ExclamationCircleIcon } from "@patternfly/react-icons";
 import { DiskDevice } from "../types";
-import { formatBytes, getHealthBadgeColor } from "../utils/formatters";
+import { formatBytes } from "../utils/formatters";
 
 interface DisksViewProps {
   disks: DiskDevice[];
@@ -32,24 +37,41 @@ export const DisksView: React.FC<DisksViewProps> = ({
 }) => {
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [selectedDiskForSmart, setSelectedDiskForSmart] = useState<DiskDevice | null>(null);
+  const [searchValue, setSearchValue] = useState("");
 
   const toggleDropdown = (diskName: string) => {
     setOpenDropdown(openDropdown === diskName ? null : diskName);
   };
 
+  const filteredDisks = disks.filter(
+    (d) =>
+      d.name.toLowerCase().includes(searchValue.toLowerCase()) ||
+      d.path.toLowerCase().includes(searchValue.toLowerCase()) ||
+      d.model.toLowerCase().includes(searchValue.toLowerCase())
+  );
+
   return (
     <>
-      <PageSection variant="light">
+      <PageSection variant="light" style={{ paddingBottom: "1rem" }}>
         <Flex justifyContent={{ default: "justifyContentSpaceBetween" }} alignItems={{ default: "alignItemsCenter" }}>
           <FlexItem>
-            <Title headingLevel="h1" size="2xl">
-              Host Disks &amp; S.M.A.R.T.
+            <Title headingLevel="h1" size="2xl" style={{ fontWeight: 600 }}>
+              Disks &amp; S.M.A.R.T.
             </Title>
           </FlexItem>
         </Flex>
       </PageSection>
 
-      <PageSection>
+      <PageSection style={{ paddingTop: "1.5rem" }}>
+        <div style={{ maxWidth: "350px", marginBottom: "1rem" }}>
+          <SearchInput
+            placeholder="Filter disks by name or model..."
+            value={searchValue}
+            onChange={(_event, value) => setSearchValue(value)}
+            onClear={() => setSearchValue("")}
+          />
+        </div>
+
         <Table aria-label="Disks Table" variant="compact">
           <Thead>
             <Tr>
@@ -58,101 +80,107 @@ export const DisksView: React.FC<DisksViewProps> = ({
               <Th>Size</Th>
               <Th>Type</Th>
               <Th>Transport</Th>
-              <Th>SMART Health</Th>
-              <Th>Temp</Th>
-              <Th>Pool Assignment</Th>
+              <Th>SMART status</Th>
+              <Th>Temperature</Th>
+              <Th>Pool assignment</Th>
               <Th aria-label="Actions" />
             </Tr>
           </Thead>
           <Tbody>
-            {disks.map((disk) => (
-              <Tr key={disk.name}>
-                <Td dataLabel="Device">
-                  <Flex alignItems={{ default: "alignItemsCenter" }}>
-                    <FlexItem>
-                      <HddIcon style={{ color: "var(--pf-v5-global--primary-color--100)" }} />
-                    </FlexItem>
-                    <FlexItem>
-                      <strong>{disk.name}</strong>
-                      <div style={{ fontSize: "0.8rem", color: "gray" }}>{disk.path}</div>
-                    </FlexItem>
-                  </Flex>
-                </Td>
-                <Td dataLabel="Model / Serial">
-                  <div>{disk.model || "-"}</div>
-                  <div style={{ fontSize: "0.8rem", color: "gray" }}>{disk.serial || "-"}</div>
-                </Td>
-                <Td dataLabel="Size">{formatBytes(disk.size)}</Td>
-                <Td dataLabel="Type">
-                  <Badge isRead>{disk.rotational ? "HDD" : "SSD / NVMe"}</Badge>
-                </Td>
-                <Td dataLabel="Transport">
-                  {disk.transport ? disk.transport.toUpperCase() : "-"}
-                </Td>
-                <Td dataLabel="SMART Health">
-                  <Badge
-                    style={{
-                      backgroundColor:
-                        getHealthBadgeColor(disk.smart_health) === "success"
-                          ? "var(--pf-v5-global--success-color--100)"
-                          : getHealthBadgeColor(disk.smart_health) === "danger"
-                          ? "var(--pf-v5-global--danger-color--100)"
-                          : "gray",
-                      color: "white",
-                    }}
-                  >
-                    {disk.smart_health}
-                  </Badge>
-                </Td>
-                <Td dataLabel="Temp">
-                  {disk.temperature !== null && disk.temperature !== undefined
-                    ? `${disk.temperature} °C`
-                    : "-"}
-                </Td>
-                <Td dataLabel="Pool Assignment">
-                  {disk.pool ? (
-                    <Badge isRead>{disk.pool}</Badge>
-                  ) : (
-                    <span style={{ color: "gray" }}>Unallocated</span>
-                  )}
-                </Td>
-                <Td isActionCell>
-                  <Dropdown
-                    isOpen={openDropdown === disk.name}
-                    onSelect={() => setOpenDropdown(null)}
-                    onOpenChange={(isOpen) => setOpenDropdown(isOpen ? disk.name : null)}
-                    toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
-                      <MenuToggle
-                        ref={toggleRef}
-                        aria-label="Disk actions"
-                        variant="plain"
-                        onClick={() => toggleDropdown(disk.name)}
-                        isExpanded={openDropdown === disk.name}
-                      >
-                        <EllipsisVIcon />
-                      </MenuToggle>
+            {filteredDisks.map((disk) => {
+              const isSmartPassed = disk.smart_health === "PASSED";
+              const isSmartFailed = disk.smart_health === "FAILED";
+
+              return (
+                <Tr key={disk.name}>
+                  <Td dataLabel="Device">
+                    <Flex alignItems={{ default: "alignItemsCenter" }}>
+                      <FlexItem>
+                        <HddIcon style={{ color: "var(--pf-v5-global--primary-color--100)" }} />
+                      </FlexItem>
+                      <FlexItem>
+                        <strong>{disk.name}</strong>
+                        <div style={{ fontSize: "0.8rem", color: "var(--pf-v5-global--Color--200)" }}>{disk.path}</div>
+                      </FlexItem>
+                    </Flex>
+                  </Td>
+                  <Td dataLabel="Model / Serial">
+                    <div>{disk.model || "-"}</div>
+                    <div style={{ fontSize: "0.8rem", color: "var(--pf-v5-global--Color--200)" }}>{disk.serial || "-"}</div>
+                  </Td>
+                  <Td dataLabel="Size">{formatBytes(disk.size)}</Td>
+                  <Td dataLabel="Type">
+                    <Label color="grey">{disk.rotational ? "HDD" : "SSD / NVMe"}</Label>
+                  </Td>
+                  <Td dataLabel="Transport">
+                    {disk.transport ? disk.transport.toUpperCase() : "-"}
+                  </Td>
+                  <Td dataLabel="SMART status">
+                    <Flex alignItems={{ default: "alignItemsCenter" }}>
+                      <FlexItem>
+                        {isSmartPassed ? (
+                          <CheckCircleIcon style={{ color: "var(--pf-v5-global--success-color--100)" }} />
+                        ) : isSmartFailed ? (
+                          <ExclamationCircleIcon style={{ color: "var(--pf-v5-global--danger-color--100)" }} />
+                        ) : (
+                          <span style={{ color: "var(--pf-v5-global--Color--200)" }}>-</span>
+                        )}
+                      </FlexItem>
+                      <FlexItem>
+                        <span style={{ marginLeft: "0.25rem" }}>{disk.smart_health}</span>
+                      </FlexItem>
+                    </Flex>
+                  </Td>
+                  <Td dataLabel="Temperature">
+                    {disk.temperature !== null && disk.temperature !== undefined
+                      ? `${disk.temperature} °C`
+                      : "-"}
+                  </Td>
+                  <Td dataLabel="Pool assignment">
+                    {disk.pool ? (
+                      <Label color="blue">{disk.pool}</Label>
+                    ) : (
+                      <span style={{ color: "var(--pf-v5-global--Color--200)" }}>Unallocated</span>
                     )}
-                  >
-                    <DropdownList>
-                      <DropdownItem key="smart-view" onClick={() => setSelectedDiskForSmart(disk)}>
-                        View SMART Details
-                      </DropdownItem>
-                      <DropdownItem key="smart-short" onClick={() => onRunSmartTest(disk, "short")}>
-                        Run Short Self-Test
-                      </DropdownItem>
-                      <DropdownItem key="smart-long" onClick={() => onRunSmartTest(disk, "long")}>
-                        Run Extended Self-Test
-                      </DropdownItem>
-                      {!disk.pool && (
-                        <DropdownItem key="wipe" style={{ color: "red" }} onClick={() => onWipeDisk(disk)}>
-                          Wipe Disk Signatures
-                        </DropdownItem>
+                  </Td>
+                  <Td isActionCell>
+                    <Dropdown
+                      isOpen={openDropdown === disk.name}
+                      onSelect={() => setOpenDropdown(null)}
+                      onOpenChange={(isOpen) => setOpenDropdown(isOpen ? disk.name : null)}
+                      toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
+                        <MenuToggle
+                          ref={toggleRef}
+                          aria-label="Disk actions"
+                          variant="plain"
+                          onClick={() => toggleDropdown(disk.name)}
+                          isExpanded={openDropdown === disk.name}
+                        >
+                          <EllipsisVIcon />
+                        </MenuToggle>
                       )}
-                    </DropdownList>
-                  </Dropdown>
-                </Td>
-              </Tr>
-            ))}
+                    >
+                      <DropdownList>
+                        <DropdownItem key="smart-view" onClick={() => setSelectedDiskForSmart(disk)}>
+                          View SMART details
+                        </DropdownItem>
+                        <DropdownItem key="smart-short" onClick={() => onRunSmartTest(disk, "short")}>
+                          Run short self-test
+                        </DropdownItem>
+                        <DropdownItem key="smart-long" onClick={() => onRunSmartTest(disk, "long")}>
+                          Run extended self-test
+                        </DropdownItem>
+                        {!disk.pool && (
+                          <DropdownItem key="wipe" style={{ color: "red" }} onClick={() => onWipeDisk(disk)}>
+                            Wipe disk signatures
+                          </DropdownItem>
+                        )}
+                      </DropdownList>
+                    </Dropdown>
+                  </Td>
+                </Tr>
+              );
+            })}
           </Tbody>
         </Table>
       </PageSection>
@@ -161,7 +189,7 @@ export const DisksView: React.FC<DisksViewProps> = ({
       {selectedDiskForSmart && (
         <Modal
           variant={ModalVariant.medium}
-          title={`SMART Details: ${selectedDiskForSmart.name} (${selectedDiskForSmart.model})`}
+          title={`SMART Details: ${selectedDiskForSmart.name}`}
           isOpen={true}
           onClose={() => setSelectedDiskForSmart(null)}
           actions={[
@@ -170,37 +198,40 @@ export const DisksView: React.FC<DisksViewProps> = ({
             </Button>,
           ]}
         >
-          <div style={{ marginBottom: "1rem" }}>
-            <p>
-              <strong>Device Path:</strong> {selectedDiskForSmart.path}
-            </p>
-            <p>
-              <strong>Serial Number:</strong> {selectedDiskForSmart.serial || "N/A"}
-            </p>
-            <p>
-              <strong>WWN:</strong> {selectedDiskForSmart.wwn || "N/A"}
-            </p>
-            <p>
-              <strong>Overall Health Assessment:</strong>{" "}
-              <Badge
-                style={{
-                  backgroundColor:
-                    getHealthBadgeColor(selectedDiskForSmart.smart_health) === "success"
-                      ? "var(--pf-v5-global--success-color--100)"
-                      : "var(--pf-v5-global--danger-color--100)",
-                  color: "white",
-                }}
-              >
-                {selectedDiskForSmart.smart_health}
-              </Badge>
-            </p>
-            <p>
-              <strong>Current Temperature:</strong>{" "}
-              {selectedDiskForSmart.temperature !== null ? `${selectedDiskForSmart.temperature} °C` : "N/A"}
-            </p>
-          </div>
+          <DescriptionList isHorizontal style={{ marginBottom: "1.5rem" }}>
+            <DescriptionListGroup>
+              <DescriptionListTerm>Device path</DescriptionListTerm>
+              <DescriptionListDescription>{selectedDiskForSmart.path}</DescriptionListDescription>
+            </DescriptionListGroup>
+            <DescriptionListGroup>
+              <DescriptionListTerm>Model</DescriptionListTerm>
+              <DescriptionListDescription>{selectedDiskForSmart.model || "-"}</DescriptionListDescription>
+            </DescriptionListGroup>
+            <DescriptionListGroup>
+              <DescriptionListTerm>Serial number</DescriptionListTerm>
+              <DescriptionListDescription>{selectedDiskForSmart.serial || "-"}</DescriptionListDescription>
+            </DescriptionListGroup>
+            <DescriptionListGroup>
+              <DescriptionListTerm>WWN</DescriptionListTerm>
+              <DescriptionListDescription>{selectedDiskForSmart.wwn || "-"}</DescriptionListDescription>
+            </DescriptionListGroup>
+            <DescriptionListGroup>
+              <DescriptionListTerm>SMART overall health</DescriptionListTerm>
+              <DescriptionListDescription>
+                <Label color={selectedDiskForSmart.smart_health === "PASSED" ? "green" : "red"}>
+                  {selectedDiskForSmart.smart_health}
+                </Label>
+              </DescriptionListDescription>
+            </DescriptionListGroup>
+            <DescriptionListGroup>
+              <DescriptionListTerm>Temperature</DescriptionListTerm>
+              <DescriptionListDescription>
+                {selectedDiskForSmart.temperature !== null ? `${selectedDiskForSmart.temperature} °C` : "-"}
+              </DescriptionListDescription>
+            </DescriptionListGroup>
+          </DescriptionList>
 
-          <Title headingLevel="h4" size="md" style={{ marginBottom: "0.5rem" }}>
+          <Title headingLevel="h4" size="md" style={{ marginBottom: "0.5rem", fontWeight: 600 }}>
             Partitions &amp; Filesystem Signatures
           </Title>
           {selectedDiskForSmart.partitions && selectedDiskForSmart.partitions.length > 0 ? (
@@ -225,7 +256,7 @@ export const DisksView: React.FC<DisksViewProps> = ({
               </Tbody>
             </Table>
           ) : (
-            <p style={{ color: "gray" }}>No partitions found on this device.</p>
+            <p style={{ color: "var(--pf-v5-global--Color--200)" }}>No partitions found on this device.</p>
           )}
         </Modal>
       )}

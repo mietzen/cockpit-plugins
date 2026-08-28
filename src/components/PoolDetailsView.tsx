@@ -7,14 +7,19 @@ import {
   Tabs,
   Tab,
   TabTitleText,
-  Badge,
+  Label,
   Flex,
   FlexItem,
   Button,
 } from "@patternfly/react-core";
-import { ArrowLeftIcon } from "@patternfly/react-icons";
+import {
+  ArrowLeftIcon,
+  CheckCircleIcon,
+  ExclamationTriangleIcon,
+  ExclamationCircleIcon,
+} from "@patternfly/react-icons";
 import { ZPool, ZDataset, ZSnapshot } from "../types";
-import { formatBytes, getHealthBadgeColor } from "../utils/formatters";
+import { formatBytes } from "../utils/formatters";
 import { TopologyTab } from "./TopologyTab";
 import { DatasetsTab } from "./DatasetsTab";
 import { SnapshotsTab } from "./SnapshotsTab";
@@ -81,11 +86,12 @@ export const PoolDetailsView: React.FC<PoolDetailsViewProps> = ({
   onSaveProperties,
 }) => {
   const [activeTab, setActiveTab] = useState<string>(initialTab);
+  const isOnline = pool.health === "ONLINE";
 
   return (
     <>
-      <PageSection variant="light">
-        <Breadcrumb style={{ marginBottom: "0.5rem" }}>
+      <PageSection variant="light" style={{ paddingBottom: 0 }}>
+        <Breadcrumb style={{ marginBottom: "0.75rem" }}>
           <BreadcrumbItem>
             <Button variant="link" isInline icon={<ArrowLeftIcon />} onClick={onBack}>
               Pools
@@ -98,32 +104,27 @@ export const PoolDetailsView: React.FC<PoolDetailsViewProps> = ({
           <FlexItem>
             <Flex alignItems={{ default: "alignItemsCenter" }}>
               <FlexItem>
-                <Title headingLevel="h1" size="2xl">
+                {isOnline ? (
+                  <CheckCircleIcon style={{ color: "var(--pf-v5-global--success-color--100)", fontSize: "1.5rem" }} />
+                ) : (
+                  <ExclamationTriangleIcon style={{ color: "var(--pf-v5-global--warning-color--100)", fontSize: "1.5rem" }} />
+                )}
+              </FlexItem>
+              <FlexItem>
+                <Title headingLevel="h1" size="2xl" style={{ fontWeight: 600 }}>
                   {pool.name}
                 </Title>
               </FlexItem>
               <FlexItem>
-                <Badge
-                  style={{
-                    backgroundColor:
-                      getHealthBadgeColor(pool.health) === "success"
-                        ? "var(--pf-v5-global--success-color--100)"
-                        : getHealthBadgeColor(pool.health) === "warning"
-                        ? "var(--pf-v5-global--warning-color--100)"
-                        : "var(--pf-v5-global--danger-color--100)",
-                    color: "white",
-                  }}
-                >
-                  {pool.health}
-                </Badge>
+                <Label color={isOnline ? "green" : "red"}>{pool.health}</Label>
               </FlexItem>
             </Flex>
           </FlexItem>
           <FlexItem>
-            <span style={{ marginRight: "1rem" }}>
+            <span style={{ color: "var(--pf-v5-global--Color--200)", marginRight: "1rem" }}>
               <strong>Allocated:</strong> {formatBytes(pool.alloc)} / {formatBytes(pool.size)}
             </span>
-            <span>
+            <span style={{ color: "var(--pf-v5-global--Color--200)" }}>
               <strong>Free:</strong> {formatBytes(pool.free)}
             </span>
           </FlexItem>
@@ -133,16 +134,17 @@ export const PoolDetailsView: React.FC<PoolDetailsViewProps> = ({
           activeKey={activeTab}
           onSelect={(_event, tabKey) => setActiveTab(String(tabKey))}
           style={{ marginTop: "1rem" }}
+          isBox={false}
         >
           <Tab eventKey="topology" title={<TabTitleText>Topology</TabTitleText>} />
-          <Tab eventKey="datasets" title={<TabTitleText>Datasets &amp; ZVols</TabTitleText>} />
+          <Tab eventKey="datasets" title={<TabTitleText>Datasets &amp; Volumes</TabTitleText>} />
           <Tab eventKey="snapshots" title={<TabTitleText>Snapshots</TabTitleText>} />
           <Tab eventKey="maintenance" title={<TabTitleText>Maintenance</TabTitleText>} />
-          <Tab eventKey="settings" title={<TabTitleText>Settings</TabTitleText>} />
+          <Tab eventKey="settings" title={<TabTitleText>Properties</TabTitleText>} />
         </Tabs>
       </PageSection>
 
-      <PageSection>
+      <PageSection style={{ paddingTop: "1.5rem" }}>
         {activeTab === "topology" && (
           <TopologyTab
             pool={pool}

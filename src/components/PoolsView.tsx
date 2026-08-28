@@ -7,17 +7,31 @@ import {
   FlexItem,
   Progress,
   ProgressMeasureLocation,
-  Badge,
+  Label,
   Dropdown,
   DropdownItem,
   DropdownList,
   MenuToggle,
   MenuToggleElement,
+  SearchInput,
+  EmptyState,
+  EmptyStateHeader,
+  EmptyStateIcon,
+  EmptyStateBody,
+  EmptyStateFooter,
+  EmptyStateActions,
 } from "@patternfly/react-core";
 import { Table, Thead, Tr, Th, Tbody, Td } from "@patternfly/react-table";
-import { PlusCircleIcon, DownloadIcon, EllipsisVIcon } from "@patternfly/react-icons";
+import {
+  PlusCircleIcon,
+  DownloadIcon,
+  EllipsisVIcon,
+  CheckCircleIcon,
+  ExclamationTriangleIcon,
+  DatabaseIcon,
+} from "@patternfly/react-icons";
 import { ZPool } from "../types";
-import { formatBytes, getHealthBadgeColor } from "../utils/formatters";
+import { formatBytes } from "../utils/formatters";
 
 interface PoolsViewProps {
   pools: ZPool[];
@@ -41,30 +55,35 @@ export const PoolsView: React.FC<PoolsViewProps> = ({
   onTrimPool,
 }) => {
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const [searchValue, setSearchValue] = useState("");
 
   const toggleDropdown = (poolName: string) => {
     setOpenDropdown(openDropdown === poolName ? null : poolName);
   };
 
+  const filteredPools = pools.filter((p) =>
+    p.name.toLowerCase().includes(searchValue.toLowerCase())
+  );
+
   return (
     <>
-      <PageSection variant="light">
+      <PageSection variant="light" style={{ paddingBottom: "1rem" }}>
         <Flex justifyContent={{ default: "justifyContentSpaceBetween" }} alignItems={{ default: "alignItemsCenter" }}>
           <FlexItem>
-            <Title headingLevel="h1" size="2xl">
-              ZFS Pools
+            <Title headingLevel="h1" size="2xl" style={{ fontWeight: 600 }}>
+              Pools
             </Title>
           </FlexItem>
           <FlexItem>
             <Flex>
               <FlexItem>
                 <Button variant="primary" icon={<PlusCircleIcon />} onClick={onCreatePool}>
-                  Create Pool
+                  Create pool
                 </Button>
               </FlexItem>
               <FlexItem>
                 <Button variant="secondary" icon={<DownloadIcon />} onClick={onImportPool}>
-                  Import Pool
+                  Import pool
                 </Button>
               </FlexItem>
             </Flex>
@@ -72,121 +91,155 @@ export const PoolsView: React.FC<PoolsViewProps> = ({
         </Flex>
       </PageSection>
 
-      <PageSection>
-        <Table aria-label="ZFS Pools Table" variant="compact">
-          <Thead>
-            <Tr>
-              <Th>Pool Name</Th>
-              <Th>Health</Th>
-              <Th style={{ width: "250px" }}>Capacity Usage</Th>
-              <Th>Free</Th>
-              <Th>Frag</Th>
-              <Th>Dedup</Th>
-              <Th>Scrub Status</Th>
-              <Th aria-label="Actions" />
-            </Tr>
-          </Thead>
-          <Tbody>
-            {pools.map((pool) => {
-              const usagePct = pool.size > 0 ? (pool.alloc / pool.size) * 100 : 0;
-              const isScrubbing = pool.scan?.function === "scrub" && pool.scan?.state === "in_progress";
+      <PageSection style={{ paddingTop: "1.5rem" }}>
+        {pools.length === 0 ? (
+          <EmptyState>
+            <EmptyStateHeader
+              titleText="No ZFS storage pools configured"
+              icon={<EmptyStateIcon icon={DatabaseIcon} />}
+              headingLevel="h4"
+            />
+            <EmptyStateBody>
+              You don't have any OpenZFS storage pools active on this system. Create a new pool using available host disks or import an existing pool.
+            </EmptyStateBody>
+            <EmptyStateFooter>
+              <EmptyStateActions>
+                <Button variant="primary" icon={<PlusCircleIcon />} onClick={onCreatePool}>
+                  Create pool
+                </Button>
+                <Button variant="link" icon={<DownloadIcon />} onClick={onImportPool}>
+                  Import pool
+                </Button>
+              </EmptyStateActions>
+            </EmptyStateFooter>
+          </EmptyState>
+        ) : (
+          <>
+            <div style={{ maxWidth: "350px", marginBottom: "1rem" }}>
+              <SearchInput
+                placeholder="Filter pools by name..."
+                value={searchValue}
+                onChange={(_event, value) => setSearchValue(value)}
+                onClear={() => setSearchValue("")}
+              />
+            </div>
 
-              return (
-                <Tr key={pool.name}>
-                  <Td dataLabel="Pool Name">
-                    <Button variant="link" isInline onClick={() => onSelectPool(pool.name)}>
-                      <strong>{pool.name}</strong>
-                    </Button>
-                  </Td>
-                  <Td dataLabel="Health">
-                    <Badge
-                      style={{
-                        backgroundColor:
-                          getHealthBadgeColor(pool.health) === "success"
-                            ? "var(--pf-v5-global--success-color--100)"
-                            : getHealthBadgeColor(pool.health) === "warning"
-                            ? "var(--pf-v5-global--warning-color--100)"
-                            : "var(--pf-v5-global--danger-color--100)",
-                        color: "white",
-                      }}
-                    >
-                      {pool.health}
-                    </Badge>
-                  </Td>
-                  <Td dataLabel="Capacity Usage">
-                    <Progress
-                      value={usagePct}
-                      title={`${formatBytes(pool.alloc)} / ${formatBytes(pool.size)}`}
-                      measureLocation={ProgressMeasureLocation.top}
-                    />
-                  </Td>
-                  <Td dataLabel="Free">{formatBytes(pool.free)}</Td>
-                  <Td dataLabel="Frag">{pool.frag}%</Td>
-                  <Td dataLabel="Dedup">{pool.dedup}x</Td>
-                  <Td dataLabel="Scrub Status">
-                    {pool.scan?.function === "scrub" ? (
-                      isScrubbing ? (
-                        <span style={{ color: "orange" }}>Scrubbing ({pool.scan?.percentage}%)</span>
-                      ) : (
-                        <span>Completed</span>
-                      )
-                    ) : (
-                      <span style={{ color: "gray" }}>None</span>
-                    )}
-                  </Td>
-                  <Td isActionCell>
-                    <Dropdown
-                      isOpen={openDropdown === pool.name}
-                      onSelect={() => setOpenDropdown(null)}
-                      onOpenChange={(isOpen) => setOpenDropdown(isOpen ? pool.name : null)}
-                      toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
-                        <MenuToggle
-                          ref={toggleRef}
-                          aria-label="Pool actions"
-                          variant="plain"
-                          onClick={() => toggleDropdown(pool.name)}
-                          isExpanded={openDropdown === pool.name}
-                        >
-                          <EllipsisVIcon />
-                        </MenuToggle>
-                      )}
-                    >
-                      <DropdownList>
-                        <DropdownItem key="topo" onClick={() => onSelectPool(pool.name, "topology")}>
-                          View Topology
-                        </DropdownItem>
-                        <DropdownItem key="datasets" onClick={() => onSelectPool(pool.name, "datasets")}>
-                          View Datasets
-                        </DropdownItem>
-                        <DropdownItem key="snaps" onClick={() => onSelectPool(pool.name, "snapshots")}>
-                          View Snapshots
-                        </DropdownItem>
-                        <DropdownItem
-                          key="scrub"
-                          onClick={() => onScrubPool(pool, isScrubbing ? "stop" : "start")}
-                        >
-                          {isScrubbing ? "Stop Scrub" : "Start Scrub"}
-                        </DropdownItem>
-                        <DropdownItem key="trim" onClick={() => onTrimPool(pool, "start")}>
-                          Start Trim
-                        </DropdownItem>
-                        <DropdownItem key="settings" onClick={() => onSelectPool(pool.name, "settings")}>
-                          Pool Settings
-                        </DropdownItem>
-                        <DropdownItem key="export" onClick={() => onExportPool(pool)}>
-                          Export Pool
-                        </DropdownItem>
-                        <DropdownItem key="destroy" style={{ color: "red" }} onClick={() => onDestroyPool(pool)}>
-                          Destroy Pool
-                        </DropdownItem>
-                      </DropdownList>
-                    </Dropdown>
-                  </Td>
+            <Table aria-label="ZFS Pools Table" variant="compact">
+              <Thead>
+                <Tr>
+                  <Th width={20}>Name</Th>
+                  <Th width={15}>Health</Th>
+                  <Th width={30}>Capacity usage</Th>
+                  <Th width={10}>Free</Th>
+                  <Th width={10}>Fragmentation</Th>
+                  <Th width={10}>Deduplication</Th>
+                  <Th width={10}>Maintenance</Th>
+                  <Th width={10} aria-label="Actions" />
                 </Tr>
-              );
-            })}
-          </Tbody>
-        </Table>
+              </Thead>
+              <Tbody>
+                {filteredPools.map((pool) => {
+                  const usagePct = pool.size > 0 ? (pool.alloc / pool.size) * 100 : 0;
+                  const isScrubbing = pool.scan?.function === "scrub" && pool.scan?.state === "in_progress";
+                  const isOnline = pool.health === "ONLINE";
+
+                  return (
+                    <Tr key={pool.name}>
+                      <Td dataLabel="Name">
+                        <Button variant="link" isInline onClick={() => onSelectPool(pool.name)}>
+                          <strong>{pool.name}</strong>
+                        </Button>
+                      </Td>
+                      <Td dataLabel="Health">
+                        <Flex alignItems={{ default: "alignItemsCenter" }}>
+                          <FlexItem>
+                            {isOnline ? (
+                              <CheckCircleIcon style={{ color: "var(--pf-v5-global--success-color--100)" }} />
+                            ) : (
+                              <ExclamationTriangleIcon style={{ color: "var(--pf-v5-global--warning-color--100)" }} />
+                            )}
+                          </FlexItem>
+                          <FlexItem>
+                            <span style={{ marginLeft: "0.25rem" }}>{pool.health}</span>
+                          </FlexItem>
+                        </Flex>
+                      </Td>
+                      <Td dataLabel="Capacity usage" style={{ minWidth: "220px" }}>
+                        <Progress
+                          value={usagePct}
+                          title={`${formatBytes(pool.alloc)} of ${formatBytes(pool.size)}`}
+                          measureLocation={ProgressMeasureLocation.top}
+                        />
+                      </Td>
+                      <Td dataLabel="Free">{formatBytes(pool.free)}</Td>
+                      <Td dataLabel="Fragmentation">{pool.frag}%</Td>
+                      <Td dataLabel="Deduplication">{pool.dedup}x</Td>
+                      <Td dataLabel="Maintenance">
+                        {pool.scan?.function === "scrub" ? (
+                          isScrubbing ? (
+                            <Label color="orange">Scrubbing {pool.scan?.percentage}%</Label>
+                          ) : (
+                            <span style={{ color: "var(--pf-v5-global--Color--200)" }}>Verified</span>
+                          )
+                        ) : (
+                          <span style={{ color: "var(--pf-v5-global--Color--200)" }}>None</span>
+                        )}
+                      </Td>
+                      <Td isActionCell>
+                        <Dropdown
+                          isOpen={openDropdown === pool.name}
+                          onSelect={() => setOpenDropdown(null)}
+                          onOpenChange={(isOpen) => setOpenDropdown(isOpen ? pool.name : null)}
+                          toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
+                            <MenuToggle
+                              ref={toggleRef}
+                              aria-label="Pool actions"
+                              variant="plain"
+                              onClick={() => toggleDropdown(pool.name)}
+                              isExpanded={openDropdown === pool.name}
+                            >
+                              <EllipsisVIcon />
+                            </MenuToggle>
+                          )}
+                        >
+                          <DropdownList>
+                            <DropdownItem key="topo" onClick={() => onSelectPool(pool.name, "topology")}>
+                              View topology
+                            </DropdownItem>
+                            <DropdownItem key="datasets" onClick={() => onSelectPool(pool.name, "datasets")}>
+                              View datasets &amp; volumes
+                            </DropdownItem>
+                            <DropdownItem key="snaps" onClick={() => onSelectPool(pool.name, "snapshots")}>
+                              View snapshots
+                            </DropdownItem>
+                            <DropdownItem
+                              key="scrub"
+                              onClick={() => onScrubPool(pool, isScrubbing ? "stop" : "start")}
+                            >
+                              {isScrubbing ? "Stop scrub" : "Start scrub"}
+                            </DropdownItem>
+                            <DropdownItem key="trim" onClick={() => onTrimPool(pool, "start")}>
+                              Start trim
+                            </DropdownItem>
+                            <DropdownItem key="settings" onClick={() => onSelectPool(pool.name, "settings")}>
+                              Pool properties
+                            </DropdownItem>
+                            <DropdownItem key="export" onClick={() => onExportPool(pool)}>
+                              Export pool
+                            </DropdownItem>
+                            <DropdownItem key="destroy" style={{ color: "red" }} onClick={() => onDestroyPool(pool)}>
+                              Destroy pool
+                            </DropdownItem>
+                          </DropdownList>
+                        </Dropdown>
+                      </Td>
+                    </Tr>
+                  );
+                })}
+              </Tbody>
+            </Table>
+          </>
+        )}
       </PageSection>
     </>
   );

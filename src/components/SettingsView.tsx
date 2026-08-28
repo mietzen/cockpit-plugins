@@ -30,7 +30,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ systemInfo }) => {
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    // Apply theme
     let isDark = false;
     if (theme === "dark") {
       isDark = true;
@@ -61,37 +60,37 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ systemInfo }) => {
 
   return (
     <>
-      <PageSection variant="light">
-        <Title headingLevel="h1" size="2xl">
-          Plugin Preferences &amp; Settings
+      <PageSection variant="light" style={{ paddingBottom: "1rem" }}>
+        <Title headingLevel="h1" size="2xl" style={{ fontWeight: 600 }}>
+          Plugin Settings
         </Title>
       </PageSection>
 
-      <PageSection>
+      <PageSection style={{ paddingTop: "1.5rem" }}>
         {saved && (
-          <Alert variant="success" title="Preferences Saved" style={{ marginBottom: "1rem" }} />
+          <Alert variant="success" isInline title="Preferences saved" style={{ marginBottom: "1.5rem" }} />
         )}
 
-        <Card style={{ maxWidth: "650px", marginBottom: "1.5rem" }}>
+        <Card isPlain style={{ border: "1px solid var(--pf-v5-global--BorderColor--100)", maxWidth: "650px", marginBottom: "1.5rem" }}>
           <CardTitle>Appearance &amp; Behavior</CardTitle>
           <CardBody>
             <Form onSubmit={handleSave}>
-              <FormGroup label="Theme Preference" fieldId="theme-pref">
+              <FormGroup label="Theme" fieldId="theme-pref">
                 <FormSelect
                   id="theme-pref"
                   value={theme}
                   onChange={(_event, val) => setTheme(val)}
                 >
-                  <FormSelectOption value="auto" label="Auto (Follow Cockpit Shell Theme)" />
-                  <FormSelectOption value="light" label="Light Theme" />
-                  <FormSelectOption value="dark" label="Dark Theme" />
+                  <FormSelectOption value="auto" label="Follow Cockpit shell style" />
+                  <FormSelectOption value="light" label="Light" />
+                  <FormSelectOption value="dark" label="Dark" />
                 </FormSelect>
               </FormGroup>
 
               <FormGroup fieldId="enable-preview">
                 <Checkbox
                   id="enable-preview"
-                  label="Always show Shell Command Preview modal before executing commands"
+                  label="Show command preview modal before executing changes"
                   isChecked={enablePreview}
                   onChange={(_event, checked) => setEnablePreview(checked)}
                 />
@@ -99,14 +98,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ systemInfo }) => {
 
               <ActionGroup>
                 <Button variant="primary" type="submit">
-                  Save Preferences
+                  Save preferences
                 </Button>
               </ActionGroup>
             </Form>
           </CardBody>
         </Card>
 
-        <Card style={{ maxWidth: "650px" }}>
+        <Card isPlain style={{ border: "1px solid var(--pf-v5-global--BorderColor--100)", maxWidth: "650px" }}>
           <CardTitle>About Cockpit ZFS</CardTitle>
           <CardBody>
             <p style={{ marginBottom: "0.5rem" }}>
@@ -116,9 +115,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ systemInfo }) => {
               <strong>License:</strong> MIT / Free Software
             </p>
             <p style={{ marginBottom: "0.5rem" }}>
-              <strong>Host ZFS Version:</strong>{" "}
+              <strong>Host OpenZFS:</strong>{" "}
               <span style={{ fontFamily: "monospace" }}>
-                {systemInfo?.version || "Unknown"}
+                {systemInfo?.version ? systemInfo.version.split("\n")[0] : "zfs"}
               </span>
             </p>
           </CardBody>

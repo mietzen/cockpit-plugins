@@ -4,29 +4,28 @@ import {
   Card,
   CardTitle,
   CardBody,
-  CardFooter,
-  Gallery,
-  GalleryItem,
+  Grid,
+  GridItem,
   Progress,
   ProgressMeasureLocation,
-  Badge,
   Button,
   Flex,
   FlexItem,
   Alert,
   Title,
+  Label,
   Divider,
 } from "@patternfly/react-core";
 import {
-  ServerIcon,
-  DatabaseIcon,
   CheckCircleIcon,
   ExclamationTriangleIcon,
+  ExclamationCircleIcon,
   PlusCircleIcon,
   DownloadIcon,
+  ArrowRightIcon,
 } from "@patternfly/react-icons";
 import { ZPool, SystemInfo } from "../types";
-import { formatBytes, formatPercentage, getHealthBadgeColor } from "../utils/formatters";
+import { formatBytes, formatPercentage } from "../utils/formatters";
 
 interface DashboardViewProps {
   systemInfo: SystemInfo | null;
@@ -48,27 +47,38 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const totalFree = pools.reduce((acc, p) => acc + p.free, 0);
   const totalUsagePct = totalSize > 0 ? (totalAlloc / totalSize) * 100 : 0;
 
+  const allHealthy = pools.length > 0 && pools.every((p) => p.health === "ONLINE");
   const faultedPools = pools.filter((p) => p.health !== "ONLINE");
 
   return (
     <>
-      <PageSection variant="light">
+      {/* Top Header matching Cockpit Overview */}
+      <PageSection variant="light" style={{ paddingBottom: "1rem" }}>
         <Flex justifyContent={{ default: "justifyContentSpaceBetween" }} alignItems={{ default: "alignItemsCenter" }}>
           <FlexItem>
-            <Title headingLevel="h1" size="2xl">
-              ZFS Storage Dashboard
-            </Title>
+            <Flex alignItems={{ default: "alignItemsBaseline" }}>
+              <FlexItem>
+                <Title headingLevel="h1" size="2xl" style={{ fontWeight: 600 }}>
+                  ZFS Storage
+                </Title>
+              </FlexItem>
+              <FlexItem>
+                <span style={{ color: "var(--pf-v5-global--Color--200)", marginLeft: "0.5rem" }}>
+                  {systemInfo?.version ? systemInfo.version.split("\n")[0] : "OpenZFS"}
+                </span>
+              </FlexItem>
+            </Flex>
           </FlexItem>
           <FlexItem>
             <Flex>
               <FlexItem>
                 <Button variant="primary" icon={<PlusCircleIcon />} onClick={onCreatePool}>
-                  Create Pool
+                  Create pool
                 </Button>
               </FlexItem>
               <FlexItem>
                 <Button variant="secondary" icon={<DownloadIcon />} onClick={onImportPool}>
-                  Import Pool
+                  Import pool
                 </Button>
               </FlexItem>
             </Flex>
@@ -76,190 +86,202 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </Flex>
       </PageSection>
 
-      <PageSection>
+      <PageSection style={{ paddingTop: "1.5rem" }}>
         {faultedPools.length > 0 && (
           <Alert
             variant="warning"
-            title={`Attention: ${faultedPools.length} pool(s) require attention`}
+            isInline
+            title={`${faultedPools.length} pool(s) require attention`}
             style={{ marginBottom: "1.5rem" }}
           >
-            {faultedPools.map((p) => `${p.name} is ${p.health}`).join(", ")}
+            {faultedPools.map((p) => `${p.name} (${p.health})`).join(", ")}
           </Alert>
         )}
 
-        <Gallery hasGutter minWidths={{ default: "320px" }} style={{ marginBottom: "1.5rem" }}>
-          {/* Total Storage Card */}
-          <GalleryItem>
-            <Card isFullHeight>
-              <CardTitle>
-                <Flex alignItems={{ default: "alignItemsCenter" }}>
-                  <FlexItem>
-                    <DatabaseIcon style={{ marginRight: "0.5rem" }} />
-                  </FlexItem>
-                  <FlexItem>Storage Capacity</FlexItem>
-                </Flex>
-              </CardTitle>
+        {/* 4 Overview Metric Cards matching Cockpit Overview Layout */}
+        <Grid hasGutter style={{ marginBottom: "1.5rem" }}>
+          {/* Card 1: Health */}
+          <GridItem span={6} md={3}>
+            <Card isFullHeight isPlain style={{ border: "1px solid var(--pf-v5-global--BorderColor--100)" }}>
+              <CardTitle>Health</CardTitle>
               <CardBody>
-                <Title headingLevel="h2" size="3xl" style={{ marginBottom: "0.5rem" }}>
-                  {formatBytes(totalAlloc)} <span style={{ fontSize: "1rem", color: "gray" }}>/ {formatBytes(totalSize)}</span>
+                <Flex alignItems={{ default: "alignItemsCenter" }} style={{ marginBottom: "0.75rem" }}>
+                  <FlexItem>
+                    {allHealthy ? (
+                      <CheckCircleIcon style={{ color: "var(--pf-v5-global--success-color--100)", fontSize: "1.5rem" }} />
+                    ) : pools.length === 0 ? (
+                      <CheckCircleIcon style={{ color: "var(--pf-v5-global--Color--200)", fontSize: "1.5rem" }} />
+                    ) : (
+                      <ExclamationTriangleIcon style={{ color: "var(--pf-v5-global--warning-color--100)", fontSize: "1.5rem" }} />
+                    )}
+                  </FlexItem>
+                  <FlexItem>
+                    <Title headingLevel="h3" size="lg">
+                      {pools.length === 0 ? "No pools configured" : allHealthy ? "All pools online" : "Degraded pools"}
+                    </Title>
+                  </FlexItem>
+                </Flex>
+                <div style={{ color: "var(--pf-v5-global--Color--200)", fontSize: "0.875rem" }}>
+                  {pools.length} active pool(s) configured
+                </div>
+              </CardBody>
+            </Card>
+          </GridItem>
+
+          {/* Card 2: Storage Usage */}
+          <GridItem span={6} md={3}>
+            <Card isFullHeight isPlain style={{ border: "1px solid var(--pf-v5-global--BorderColor--100)" }}>
+              <CardTitle>Storage usage</CardTitle>
+              <CardBody>
+                <Title headingLevel="h3" size="xl" style={{ marginBottom: "0.5rem" }}>
+                  {formatBytes(totalAlloc)} <span style={{ fontSize: "0.875rem", color: "var(--pf-v5-global--Color--200)" }}>of {formatBytes(totalSize)}</span>
                 </Title>
                 <Progress
                   value={totalUsagePct}
-                  title="Allocated Space"
-                  measureLocation={ProgressMeasureLocation.top}
-                  style={{ marginBottom: "1rem" }}
+                  title="Allocated space"
+                  measureLocation={ProgressMeasureLocation.none}
+                  style={{ marginBottom: "0.5rem" }}
                 />
-                <Flex justifyContent={{ default: "justifyContentSpaceBetween" }}>
-                  <FlexItem>
-                    <strong>Free:</strong> {formatBytes(totalFree)}
-                  </FlexItem>
-                  <FlexItem>
-                    <strong>Pools:</strong> {pools.length}
-                  </FlexItem>
-                </Flex>
+                <div style={{ fontSize: "0.875rem", color: "var(--pf-v5-global--Color--200)" }}>
+                  {formatBytes(totalFree)} available
+                </div>
               </CardBody>
             </Card>
-          </GalleryItem>
+          </GridItem>
 
-          {/* ARC Memory & Cache Card */}
-          <GalleryItem>
-            <Card isFullHeight>
-              <CardTitle>
-                <Flex alignItems={{ default: "alignItemsCenter" }}>
-                  <FlexItem>
-                    <ServerIcon style={{ marginRight: "0.5rem" }} />
-                  </FlexItem>
-                  <FlexItem>ARC Memory Cache</FlexItem>
-                </Flex>
-              </CardTitle>
+          {/* Card 3: ARC Memory Cache */}
+          <GridItem span={6} md={3}>
+            <Card isFullHeight isPlain style={{ border: "1px solid var(--pf-v5-global--BorderColor--100)" }}>
+              <CardTitle>ARC Cache</CardTitle>
               <CardBody>
                 {systemInfo?.arc ? (
                   <>
-                    <Title headingLevel="h2" size="3xl" style={{ marginBottom: "0.5rem" }}>
+                    <Title headingLevel="h3" size="xl" style={{ marginBottom: "0.5rem" }}>
                       {formatBytes(systemInfo.arc.size)}{" "}
-                      <span style={{ fontSize: "1rem", color: "gray" }}>/ {formatBytes(systemInfo.arc.target_size)}</span>
+                      <span style={{ fontSize: "0.875rem", color: "var(--pf-v5-global--Color--200)" }}>
+                        / {formatBytes(systemInfo.arc.target_size)}
+                      </span>
                     </Title>
                     <Progress
                       value={(systemInfo.arc.hit_ratio || 0) * 100}
-                      title={`Hit Rate (${formatPercentage((systemInfo.arc.hit_ratio || 0) * 100)})`}
-                      measureLocation={ProgressMeasureLocation.top}
-                      style={{ marginBottom: "1rem" }}
+                      title="Hit rate"
+                      measureLocation={ProgressMeasureLocation.none}
+                      style={{ marginBottom: "0.5rem" }}
                     />
-                    <Flex justifyContent={{ default: "justifyContentSpaceBetween" }}>
-                      <FlexItem>
-                        <strong>Hits:</strong> {systemInfo.arc.hits?.toLocaleString() || 0}
-                      </FlexItem>
-                      <FlexItem>
-                        <strong>Misses:</strong> {systemInfo.arc.misses?.toLocaleString() || 0}
-                      </FlexItem>
-                    </Flex>
+                    <div style={{ fontSize: "0.875rem", color: "var(--pf-v5-global--Color--200)" }}>
+                      {formatPercentage((systemInfo.arc.hit_ratio || 0) * 100)} hit rate ({systemInfo.arc.hits?.toLocaleString() || 0} hits)
+                    </div>
                   </>
                 ) : (
-                  <p>ARC cache stats not available</p>
+                  <div style={{ color: "var(--pf-v5-global--Color--200)", fontSize: "0.875rem" }}>
+                    ARC statistics not available
+                  </div>
                 )}
               </CardBody>
             </Card>
-          </GalleryItem>
+          </GridItem>
 
-          {/* ZFS System Info Card */}
-          <GalleryItem>
-            <Card isFullHeight>
-              <CardTitle>
-                <Flex alignItems={{ default: "alignItemsCenter" }}>
-                  <FlexItem>
-                    <CheckCircleIcon style={{ color: "green", marginRight: "0.5rem" }} />
-                  </FlexItem>
-                  <FlexItem>System Health</FlexItem>
-                </Flex>
-              </CardTitle>
+          {/* Card 4: System Information */}
+          <GridItem span={6} md={3}>
+            <Card isFullHeight isPlain style={{ border: "1px solid var(--pf-v5-global--BorderColor--100)" }}>
+              <CardTitle>ZFS Subsystem</CardTitle>
               <CardBody>
-                <div style={{ marginBottom: "0.75rem" }}>
-                  <strong>ZFS Module:</strong>{" "}
-                  <Badge isRead={!systemInfo?.kernel_module_loaded}>
-                    {systemInfo?.kernel_module_loaded ? "Loaded" : "Not Loaded"}
-                  </Badge>
+                <div style={{ marginBottom: "0.5rem" }}>
+                  <Label color={systemInfo?.kernel_module_loaded ? "green" : "grey"}>
+                    {systemInfo?.kernel_module_loaded ? "Kernel module loaded" : "Module not loaded"}
+                  </Label>
                 </div>
-                <div style={{ marginBottom: "0.75rem" }}>
-                  <strong>Version:</strong>
-                  <div style={{ fontFamily: "monospace", fontSize: "0.85rem", whiteSpace: "pre-line" }}>
-                    {systemInfo?.version || "Unknown"}
-                  </div>
+                <div style={{ fontSize: "0.875rem", color: "var(--pf-v5-global--Color--200)" }}>
+                  Native OpenZFS kernel driver active
                 </div>
               </CardBody>
             </Card>
-          </GalleryItem>
-        </Gallery>
+          </GridItem>
+        </Grid>
 
-        {/* Pools Summary Section */}
-        <Title headingLevel="h2" size="xl" style={{ marginBottom: "1rem" }}>
-          Active Pools
+        {/* Active Pools Section */}
+        <Title headingLevel="h2" size="xl" style={{ marginBottom: "1rem", fontWeight: 600 }}>
+          Storage Pools
         </Title>
-        <Gallery hasGutter minWidths={{ default: "340px" }}>
+
+        <Grid hasGutter>
           {pools.map((pool) => {
             const usagePct = pool.size > 0 ? (pool.alloc / pool.size) * 100 : 0;
+            const isOnline = pool.health === "ONLINE";
+
             return (
-              <GalleryItem key={pool.name}>
-                <Card isHoverable onClick={() => onSelectPool(pool.name)} style={{ cursor: "pointer" }}>
+              <GridItem key={pool.name} span={12} md={6}>
+                <Card
+                  isHoverable
+                  isPlain
+                  onClick={() => onSelectPool(pool.name)}
+                  style={{
+                    border: "1px solid var(--pf-v5-global--BorderColor--100)",
+                    cursor: "pointer",
+                  }}
+                >
                   <CardTitle>
                     <Flex justifyContent={{ default: "justifyContentSpaceBetween" }} alignItems={{ default: "alignItemsCenter" }}>
                       <FlexItem>
-                        <Title headingLevel="h3" size="lg">
-                          {pool.name}
-                        </Title>
+                        <Flex alignItems={{ default: "alignItemsCenter" }}>
+                          <FlexItem>
+                            {isOnline ? (
+                              <CheckCircleIcon style={{ color: "var(--pf-v5-global--success-color--100)", marginRight: "0.5rem" }} />
+                            ) : (
+                              <ExclamationCircleIcon style={{ color: "var(--pf-v5-global--danger-color--100)", marginRight: "0.5rem" }} />
+                            )}
+                          </FlexItem>
+                          <FlexItem>
+                            <Title headingLevel="h3" size="lg" style={{ fontWeight: 600 }}>
+                              {pool.name}
+                            </Title>
+                          </FlexItem>
+                        </Flex>
                       </FlexItem>
                       <FlexItem>
-                        <Badge
-                          style={{
-                            backgroundColor:
-                              getHealthBadgeColor(pool.health) === "success"
-                                ? "var(--pf-v5-global--success-color--100)"
-                                : getHealthBadgeColor(pool.health) === "warning"
-                                ? "var(--pf-v5-global--warning-color--100)"
-                                : "var(--pf-v5-global--danger-color--100)",
-                            color: "white",
-                          }}
-                        >
-                          {pool.health}
-                        </Badge>
+                        <Label color={isOnline ? "green" : "red"}>{pool.health}</Label>
                       </FlexItem>
                     </Flex>
                   </CardTitle>
                   <CardBody>
                     <Progress
                       value={usagePct}
-                      title={`Usage: ${formatBytes(pool.alloc)} of ${formatBytes(pool.size)}`}
+                      title={`${formatBytes(pool.alloc)} of ${formatBytes(pool.size)} used`}
                       measureLocation={ProgressMeasureLocation.top}
                       style={{ marginBottom: "1rem" }}
                     />
-                    <Flex justifyContent={{ default: "justifyContentSpaceBetween" }}>
-                      <FlexItem>
-                        <strong>Free:</strong> {formatBytes(pool.free)}
-                      </FlexItem>
-                      <FlexItem>
-                        <strong>Frag:</strong> {pool.frag}%
-                      </FlexItem>
-                      <FlexItem>
-                        <strong>Dedup:</strong> {pool.dedup}x
-                      </FlexItem>
-                    </Flex>
+                    <Grid hasGutter style={{ fontSize: "0.875rem" }}>
+                      <GridItem span={4}>
+                        <span style={{ color: "var(--pf-v5-global--Color--200)" }}>Free:</span>{" "}
+                        <strong>{formatBytes(pool.free)}</strong>
+                      </GridItem>
+                      <GridItem span={4}>
+                        <span style={{ color: "var(--pf-v5-global--Color--200)" }}>Fragmentation:</span>{" "}
+                        <strong>{pool.frag}%</strong>
+                      </GridItem>
+                      <GridItem span={4}>
+                        <span style={{ color: "var(--pf-v5-global--Color--200)" }}>Deduplication:</span>{" "}
+                        <strong>{pool.dedup}x</strong>
+                      </GridItem>
+                    </Grid>
+
                     {pool.scan && pool.scan.function !== "none" && (
-                      <div style={{ marginTop: "0.75rem", fontSize: "0.85rem", color: "gray" }}>
+                      <div style={{ marginTop: "0.75rem", fontSize: "0.85rem", color: "var(--pf-v5-global--Color--200)" }}>
                         <strong>{pool.scan.function === "scrub" ? "Scrub" : "Resilver"}:</strong>{" "}
                         {pool.scan.state === "in_progress" ? `In progress (${pool.scan.percentage}%)` : "Completed"}
                       </div>
                     )}
-                  </CardBody>
-                  <Divider />
-                  <CardFooter>
-                    <Button variant="link" isInline onClick={() => onSelectPool(pool.name)}>
-                      Manage Pool &rarr;
+
+                    <Divider style={{ marginTop: "1rem", marginBottom: "0.75rem" }} />
+                    <Button variant="link" isInline icon={<ArrowRightIcon />} iconPosition="end">
+                      Configure pool
                     </Button>
-                  </CardFooter>
+                  </CardBody>
                 </Card>
-              </GalleryItem>
+              </GridItem>
             );
           })}
-        </Gallery>
+        </Grid>
       </PageSection>
     </>
   );

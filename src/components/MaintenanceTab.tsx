@@ -30,24 +30,28 @@ export const MaintenanceTab: React.FC<MaintenanceTabProps> = ({
 
   return (
     <div>
-      <Title headingLevel="h2" size="xl" style={{ marginBottom: "1rem" }}>
-        Pool Maintenance (Scrub &amp; Trim)
+      <Title headingLevel="h2" size="xl" style={{ marginBottom: "1.5rem", fontWeight: 600 }}>
+        Maintenance (Scrub &amp; Trim)
       </Title>
 
       {/* Scrub Section */}
-      <Card style={{ marginBottom: "1.5rem" }}>
+      <Card isPlain style={{ border: "1px solid var(--pf-v5-global--BorderColor--100)", marginBottom: "1.5rem" }}>
         <CardTitle>
           <Flex alignItems={{ default: "alignItemsCenter" }}>
             <FlexItem>
               <SyncAltIcon style={{ marginRight: "0.5rem" }} />
             </FlexItem>
-            <FlexItem>Data Integrity Check (Scrub)</FlexItem>
+            <FlexItem>
+              <Title headingLevel="h3" size="lg" style={{ fontWeight: 600 }}>
+                Data Integrity Check (Scrub)
+              </Title>
+            </FlexItem>
           </Flex>
         </CardTitle>
         <CardBody>
-          <p style={{ marginBottom: "1rem" }}>
+          <p style={{ marginBottom: "1rem", color: "var(--pf-v5-global--Color--200)" }}>
             A ZFS scrub reads all data blocks across the pool, verifies checksums, and automatically
-            repairs detected bit-rot from redundant mirror/RAID-Z copies.
+            repairs detected bit rot from redundant copies.
           </p>
 
           {isScrubbing && (
@@ -61,7 +65,7 @@ export const MaintenanceTab: React.FC<MaintenanceTabProps> = ({
           )}
 
           {pool.scan?.raw && !isScrubbing && (
-            <Alert variant="info" isInline title="Last Scan Info" style={{ marginBottom: "1.5rem" }}>
+            <Alert variant="info" isInline title="Last verification" style={{ marginBottom: "1.5rem" }}>
               {pool.scan.raw}
             </Alert>
           )}
@@ -74,7 +78,7 @@ export const MaintenanceTab: React.FC<MaintenanceTabProps> = ({
                 onClick={() => onScrubAction(pool.name, "start")}
                 isDisabled={isScrubbing || isResilvering}
               >
-                Start Scrub
+                Start scrub
               </Button>
             </FlexItem>
             {isScrubbing && (
@@ -85,7 +89,7 @@ export const MaintenanceTab: React.FC<MaintenanceTabProps> = ({
                     icon={<PauseIcon />}
                     onClick={() => onScrubAction(pool.name, "pause")}
                   >
-                    Pause Scrub
+                    Pause scrub
                   </Button>
                 </FlexItem>
                 <FlexItem>
@@ -94,7 +98,7 @@ export const MaintenanceTab: React.FC<MaintenanceTabProps> = ({
                     icon={<StopIcon />}
                     onClick={() => onScrubAction(pool.name, "stop")}
                   >
-                    Stop Scrub
+                    Stop scrub
                   </Button>
                 </FlexItem>
               </>
@@ -104,19 +108,23 @@ export const MaintenanceTab: React.FC<MaintenanceTabProps> = ({
       </Card>
 
       {/* Trim Section */}
-      <Card style={{ marginBottom: "1.5rem" }}>
+      <Card isPlain style={{ border: "1px solid var(--pf-v5-global--BorderColor--100)" }}>
         <CardTitle>
           <Flex alignItems={{ default: "alignItemsCenter" }}>
             <FlexItem>
               <SyncAltIcon style={{ marginRight: "0.5rem" }} />
             </FlexItem>
-            <FlexItem>SSD Space Reclamation (Trim)</FlexItem>
+            <FlexItem>
+              <Title headingLevel="h3" size="lg" style={{ fontWeight: 600 }}>
+                Space Reclamation (Trim)
+              </Title>
+            </FlexItem>
           </Flex>
         </CardTitle>
         <CardBody>
-          <p style={{ marginBottom: "1rem" }}>
-            Trimming notifies SSD devices about unallocated LBA sectors so the flash controller can
-            perform wear leveling and garbage collection efficiently.
+          <p style={{ marginBottom: "1rem", color: "var(--pf-v5-global--Color--200)" }}>
+            Trimming notifies SSD / NVMe devices about unallocated sectors so the flash controller can
+            perform wear leveling and garbage collection.
           </p>
 
           <Flex>
@@ -126,7 +134,7 @@ export const MaintenanceTab: React.FC<MaintenanceTabProps> = ({
                 icon={<PlayIcon />}
                 onClick={() => onTrimAction(pool.name, "start")}
               >
-                Start Pool Trim
+                Start trim
               </Button>
             </FlexItem>
             <FlexItem>
@@ -135,7 +143,7 @@ export const MaintenanceTab: React.FC<MaintenanceTabProps> = ({
                 icon={<PauseIcon />}
                 onClick={() => onTrimAction(pool.name, "suspend")}
               >
-                Suspend Trim
+                Suspend trim
               </Button>
             </FlexItem>
             <FlexItem>
@@ -144,7 +152,7 @@ export const MaintenanceTab: React.FC<MaintenanceTabProps> = ({
                 icon={<StopIcon />}
                 onClick={() => onTrimAction(pool.name, "stop")}
               >
-                Stop Trim
+                Stop trim
               </Button>
             </FlexItem>
           </Flex>

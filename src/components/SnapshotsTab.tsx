@@ -10,6 +10,12 @@ import {
   MenuToggle,
   MenuToggleElement,
   Title,
+  EmptyState,
+  EmptyStateHeader,
+  EmptyStateIcon,
+  EmptyStateBody,
+  EmptyStateFooter,
+  EmptyStateActions,
 } from "@patternfly/react-core";
 import { Table, Thead, Tr, Th, Tbody, Td } from "@patternfly/react-table";
 import {
@@ -80,9 +86,9 @@ export const SnapshotsTab: React.FC<SnapshotsTabProps> = ({
 
   return (
     <div>
-      <Flex justifyContent={{ default: "justifyContentSpaceBetween" }} alignItems={{ default: "alignItemsCenter" }} style={{ marginBottom: "1rem" }}>
+      <Flex justifyContent={{ default: "justifyContentSpaceBetween" }} alignItems={{ default: "alignItemsCenter" }} style={{ marginBottom: "1.5rem" }}>
         <FlexItem>
-          <Title headingLevel="h2" size="xl">
+          <Title headingLevel="h2" size="xl" style={{ fontWeight: 600 }}>
             Snapshots ({poolSnaps.length})
           </Title>
         </FlexItem>
@@ -95,110 +101,132 @@ export const SnapshotsTab: React.FC<SnapshotsTabProps> = ({
                   icon={<TrashIcon />}
                   onClick={() => onBulkDestroySnapshots(selectedObjects)}
                 >
-                  Delete Selected ({selectedSnaps.length})
+                  Delete selected ({selectedSnaps.length})
                 </Button>
               </FlexItem>
             )}
             <FlexItem>
               <Button variant="primary" icon={<PlusCircleIcon />} onClick={onCreateSnapshot}>
-                Create Snapshot
+                Create snapshot
               </Button>
             </FlexItem>
           </Flex>
         </FlexItem>
       </Flex>
 
-      <div style={{ maxWidth: "400px", marginBottom: "1rem" }}>
-        <SearchInput
-          placeholder="Filter snapshots by name..."
-          value={searchValue}
-          onChange={(_event, value) => setSearchValue(value)}
-          onClear={() => setSearchValue("")}
-        />
-      </div>
-
-      <Table aria-label="Snapshots Table" variant="compact">
-        <Thead>
-          <Tr>
-            <Th
-              select={{
-                onSelect: (_event, isSelecting) => handleSelectAll(isSelecting),
-                isSelected: selectedSnaps.length > 0 && selectedSnaps.length === filteredSnaps.length,
-              }}
+      {poolSnaps.length === 0 ? (
+        <EmptyState>
+          <EmptyStateHeader
+            titleText="No snapshots taken"
+            icon={<EmptyStateIcon icon={CameraIcon} />}
+            headingLevel="h4"
+          />
+          <EmptyStateBody>
+            Snapshots are point-in-time read-only copies of your datasets. They take no initial space until data blocks change.
+          </EmptyStateBody>
+          <EmptyStateFooter>
+            <EmptyStateActions>
+              <Button variant="primary" icon={<PlusCircleIcon />} onClick={onCreateSnapshot}>
+                Create snapshot
+              </Button>
+            </EmptyStateActions>
+          </EmptyStateFooter>
+        </EmptyState>
+      ) : (
+        <>
+          <div style={{ maxWidth: "350px", marginBottom: "1rem" }}>
+            <SearchInput
+              placeholder="Filter snapshots by name..."
+              value={searchValue}
+              onChange={(_event, value) => setSearchValue(value)}
+              onClear={() => setSearchValue("")}
             />
-            <Th>Snapshot</Th>
-            <Th>Dataset</Th>
-            <Th>Creation Date</Th>
-            <Th>Used</Th>
-            <Th>Referenced</Th>
-            <Th>Clones</Th>
-            <Th aria-label="Actions" />
-          </Tr>
-        </Thead>
-        <Tbody>
-          {filteredSnaps.map((snap) => (
-            <Tr key={snap.name}>
-              <Td
-                select={{
-                  rowIndex: 0,
-                  onSelect: (_event, isSelecting) => handleSelectRow(snap.name, isSelecting),
-                  isSelected: selectedSnaps.includes(snap.name),
-                }}
-              />
-              <Td dataLabel="Snapshot">
-                <Flex alignItems={{ default: "alignItemsCenter" }}>
-                  <FlexItem>
-                    <CameraIcon style={{ color: "var(--pf-v5-global--primary-color--100)" }} />
-                  </FlexItem>
-                  <FlexItem>
-                    <strong>@{snap.snapshot_name}</strong>
-                  </FlexItem>
-                </Flex>
-              </Td>
-              <Td dataLabel="Dataset">{snap.dataset}</Td>
-              <Td dataLabel="Creation Date">{formatDate(snap.creation)}</Td>
-              <Td dataLabel="Used">{formatBytes(snap.used)}</Td>
-              <Td dataLabel="Referenced">{formatBytes(snap.refer)}</Td>
-              <Td dataLabel="Clones">
-                {snap.clones && snap.clones.length > 0 ? snap.clones.join(", ") : "-"}
-              </Td>
-              <Td isActionCell>
-                <Dropdown
-                  isOpen={openDropdown === snap.name}
-                  onSelect={() => setOpenDropdown(null)}
-                  onOpenChange={(isOpen) => setOpenDropdown(isOpen ? snap.name : null)}
-                  toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
-                    <MenuToggle
-                      ref={toggleRef}
-                      aria-label="Snapshot actions"
-                      variant="plain"
-                      onClick={() => toggleDropdown(snap.name)}
-                      isExpanded={openDropdown === snap.name}
+          </div>
+
+          <Table aria-label="Snapshots Table" variant="compact">
+            <Thead>
+              <Tr>
+                <Th
+                  select={{
+                    onSelect: (_event, isSelecting) => handleSelectAll(isSelecting),
+                    isSelected: selectedSnaps.length > 0 && selectedSnaps.length === filteredSnaps.length,
+                  }}
+                />
+                <Th>Snapshot</Th>
+                <Th>Dataset</Th>
+                <Th>Creation date</Th>
+                <Th>Used</Th>
+                <Th>Referenced</Th>
+                <Th>Clones</Th>
+                <Th aria-label="Actions" />
+              </Tr>
+            </Thead>
+            <Tbody>
+              {filteredSnaps.map((snap) => (
+                <Tr key={snap.name}>
+                  <Td
+                    select={{
+                      rowIndex: 0,
+                      onSelect: (_event, isSelecting) => handleSelectRow(snap.name, isSelecting),
+                      isSelected: selectedSnaps.includes(snap.name),
+                    }}
+                  />
+                  <Td dataLabel="Snapshot">
+                    <Flex alignItems={{ default: "alignItemsCenter" }}>
+                      <FlexItem>
+                        <CameraIcon style={{ color: "var(--pf-v5-global--primary-color--100)" }} />
+                      </FlexItem>
+                      <FlexItem>
+                        <strong>@{snap.snapshot_name}</strong>
+                      </FlexItem>
+                    </Flex>
+                  </Td>
+                  <Td dataLabel="Dataset">{snap.dataset}</Td>
+                  <Td dataLabel="Creation date">{formatDate(snap.creation)}</Td>
+                  <Td dataLabel="Used">{formatBytes(snap.used)}</Td>
+                  <Td dataLabel="Referenced">{formatBytes(snap.refer)}</Td>
+                  <Td dataLabel="Clones">
+                    {snap.clones && snap.clones.length > 0 ? snap.clones.join(", ") : "-"}
+                  </Td>
+                  <Td isActionCell>
+                    <Dropdown
+                      isOpen={openDropdown === snap.name}
+                      onSelect={() => setOpenDropdown(null)}
+                      onOpenChange={(isOpen) => setOpenDropdown(isOpen ? snap.name : null)}
+                      toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
+                        <MenuToggle
+                          ref={toggleRef}
+                          aria-label="Snapshot actions"
+                          variant="plain"
+                          onClick={() => toggleDropdown(snap.name)}
+                          isExpanded={openDropdown === snap.name}
+                        >
+                          <EllipsisVIcon />
+                        </MenuToggle>
+                      )}
                     >
-                      <EllipsisVIcon />
-                    </MenuToggle>
-                  )}
-                >
-                  <DropdownList>
-                    <DropdownItem key="rollback" onClick={() => onRollbackSnapshot(snap)}>
-                      Rollback Dataset
-                    </DropdownItem>
-                    <DropdownItem key="clone" onClick={() => onCloneSnapshot(snap)}>
-                      Clone to New Dataset
-                    </DropdownItem>
-                    <DropdownItem key="rename" onClick={() => onRenameSnapshot(snap)}>
-                      Rename Snapshot
-                    </DropdownItem>
-                    <DropdownItem key="destroy" style={{ color: "red" }} onClick={() => onDestroySnapshot(snap)}>
-                      Destroy Snapshot
-                    </DropdownItem>
-                  </DropdownList>
-                </Dropdown>
-              </Td>
-            </Tr>
-          ))}
-        </Tbody>
-      </Table>
+                      <DropdownList>
+                        <DropdownItem key="rollback" onClick={() => onRollbackSnapshot(snap)}>
+                          Rollback dataset
+                        </DropdownItem>
+                        <DropdownItem key="clone" onClick={() => onCloneSnapshot(snap)}>
+                          Clone to new dataset
+                        </DropdownItem>
+                        <DropdownItem key="rename" onClick={() => onRenameSnapshot(snap)}>
+                          Rename snapshot
+                        </DropdownItem>
+                        <DropdownItem key="destroy" style={{ color: "red" }} onClick={() => onDestroySnapshot(snap)}>
+                          Destroy snapshot
+                        </DropdownItem>
+                      </DropdownList>
+                    </Dropdown>
+                  </Td>
+                </Tr>
+              ))}
+            </Tbody>
+          </Table>
+        </>
+      )}
     </div>
   );
 };

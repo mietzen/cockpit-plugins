@@ -79,15 +79,15 @@ export const PoolSettingsTab: React.FC<PoolSettingsTabProps> = ({
 
   return (
     <div>
-      <Title headingLevel="h2" size="xl" style={{ marginBottom: "1rem" }}>
+      <Title headingLevel="h2" size="xl" style={{ marginBottom: "1.5rem", fontWeight: 600 }}>
         Pool Properties &amp; Settings
       </Title>
 
-      <Card>
-        <CardTitle>Configurable Properties</CardTitle>
+      <Card isPlain style={{ border: "1px solid var(--pf-v5-global--BorderColor--100)" }}>
+        <CardTitle>Configuration</CardTitle>
         <CardBody>
           <Form onSubmit={handleSubmit} style={{ maxWidth: "600px" }}>
-            <FormGroup label="Pool Name" fieldId="pool-name">
+            <FormGroup label="Pool name" fieldId="pool-name">
               <TextInput id="pool-name" value={pool.name} isReadOnly />
             </FormGroup>
 
@@ -95,14 +95,14 @@ export const PoolSettingsTab: React.FC<PoolSettingsTabProps> = ({
               <TextInput id="pool-guid" value={pool.guid || "-"} isReadOnly />
             </FormGroup>
 
-            <FormGroup label="Ashift (Sector Size)" fieldId="pool-ashift">
+            <FormGroup label="Sector size (ashift)" fieldId="pool-ashift">
               <TextInput id="pool-ashift" value={properties["ashift"] || "Auto"} isReadOnly />
             </FormGroup>
 
             <FormGroup fieldId="pool-autoexpand">
               <Checkbox
                 id="pool-autoexpand"
-                label="Autoexpand (automatically expand pool capacity when disks are replaced with larger ones)"
+                label="Autoexpand capacity when disks are replaced with larger ones"
                 isChecked={autoexpand}
                 onChange={(_event, checked) => setAutoexpand(checked)}
               />
@@ -111,7 +111,7 @@ export const PoolSettingsTab: React.FC<PoolSettingsTabProps> = ({
             <FormGroup fieldId="pool-autoreplace">
               <Checkbox
                 id="pool-autoreplace"
-                label="Autoreplace (automatically replace failed device with hot spare if available)"
+                label="Autoreplace failed devices using hot spares"
                 isChecked={autoreplace}
                 onChange={(_event, checked) => setAutoreplace(checked)}
               />
@@ -120,13 +120,13 @@ export const PoolSettingsTab: React.FC<PoolSettingsTabProps> = ({
             <FormGroup fieldId="pool-autotrim">
               <Checkbox
                 id="pool-autotrim"
-                label="Autotrim (automatically issue TRIM commands to SSDs in background)"
+                label="Autotrim SSD devices in background"
                 isChecked={autotrim}
                 onChange={(_event, checked) => setAutotrim(checked)}
               />
             </FormGroup>
 
-            <FormGroup label="Failure Mode (failmode)" fieldId="pool-failmode">
+            <FormGroup label="Failure mode (failmode)" fieldId="pool-failmode">
               <FormSelect
                 id="pool-failmode"
                 value={failmode}
@@ -138,18 +138,18 @@ export const PoolSettingsTab: React.FC<PoolSettingsTabProps> = ({
               </FormSelect>
             </FormGroup>
 
-            <FormGroup label="Comment / Description" fieldId="pool-comment">
+            <FormGroup label="Administrative comment" fieldId="pool-comment">
               <TextInput
                 id="pool-comment"
                 value={comment}
                 onChange={(_event, val) => setComment(val)}
-                placeholder="Optional administrative comment"
+                placeholder="Optional description"
               />
             </FormGroup>
 
             <ActionGroup>
               <Button variant="primary" type="submit">
-                Save Properties
+                Save properties
               </Button>
             </ActionGroup>
           </Form>

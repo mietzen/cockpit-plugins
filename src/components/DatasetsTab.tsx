@@ -3,13 +3,19 @@ import {
   Button,
   Flex,
   FlexItem,
-  Badge,
+  Label,
   Dropdown,
   DropdownItem,
   DropdownList,
   MenuToggle,
   MenuToggleElement,
   Title,
+  EmptyState,
+  EmptyStateHeader,
+  EmptyStateIcon,
+  EmptyStateBody,
+  EmptyStateFooter,
+  EmptyStateActions,
 } from "@patternfly/react-core";
 import { Table, Thead, Tr, Th, Tbody, Td } from "@patternfly/react-table";
 import {
@@ -57,9 +63,9 @@ export const DatasetsTab: React.FC<DatasetsTabProps> = ({
 
   return (
     <div>
-      <Flex justifyContent={{ default: "justifyContentSpaceBetween" }} alignItems={{ default: "alignItemsCenter" }} style={{ marginBottom: "1rem" }}>
+      <Flex justifyContent={{ default: "justifyContentSpaceBetween" }} alignItems={{ default: "alignItemsCenter" }} style={{ marginBottom: "1.5rem" }}>
         <FlexItem>
-          <Title headingLevel="h2" size="xl">
+          <Title headingLevel="h2" size="xl" style={{ fontWeight: 600 }}>
             Datasets &amp; Volumes ({poolDatasets.length})
           </Title>
         </FlexItem>
@@ -67,152 +73,175 @@ export const DatasetsTab: React.FC<DatasetsTabProps> = ({
           <Flex>
             <FlexItem>
               <Button variant="primary" icon={<PlusCircleIcon />} onClick={() => onCreateDataset(poolName)}>
-                Create Dataset
+                Create dataset
               </Button>
             </FlexItem>
             <FlexItem>
               <Button variant="secondary" icon={<PlusCircleIcon />} onClick={() => onCreateZVol(poolName)}>
-                Create ZVol
+                Create volume
               </Button>
             </FlexItem>
           </Flex>
         </FlexItem>
       </Flex>
 
-      <Table aria-label="Datasets Table" variant="compact">
-        <Thead>
-          <Tr>
-            <Th>Name</Th>
-            <Th>Type</Th>
-            <Th>Used</Th>
-            <Th>Available</Th>
-            <Th>Mountpoint</Th>
-            <Th>Compression</Th>
-            <Th>Encryption</Th>
-            <Th>Snapshots</Th>
-            <Th aria-label="Actions" />
-          </Tr>
-        </Thead>
-        <Tbody>
-          {poolDatasets.map((ds) => {
-            const depth = (ds.name.match(/\//g) || []).length;
-            const displayName = depth > 0 ? ds.name.split("/").pop() : ds.name;
-            const isFilesystem = ds.type === "filesystem";
+      {poolDatasets.length === 0 ? (
+        <EmptyState>
+          <EmptyStateHeader
+            titleText="No datasets found"
+            icon={<EmptyStateIcon icon={FolderIcon} />}
+            headingLevel="h4"
+          />
+          <EmptyStateBody>
+            No datasets or volumes have been created under pool {poolName}.
+          </EmptyStateBody>
+          <EmptyStateFooter>
+            <EmptyStateActions>
+              <Button variant="primary" icon={<PlusCircleIcon />} onClick={() => onCreateDataset(poolName)}>
+                Create dataset
+              </Button>
+            </EmptyStateActions>
+          </EmptyStateFooter>
+        </EmptyState>
+      ) : (
+        <Table aria-label="Datasets Table" variant="compact">
+          <Thead>
+            <Tr>
+              <Th>Name</Th>
+              <Th>Type</Th>
+              <Th>Used</Th>
+              <Th>Available</Th>
+              <Th>Mountpoint</Th>
+              <Th>Compression</Th>
+              <Th>Encryption</Th>
+              <Th>Snapshots</Th>
+              <Th aria-label="Actions" />
+            </Tr>
+          </Thead>
+          <Tbody>
+            {poolDatasets.map((ds) => {
+              const depth = (ds.name.match(/\//g) || []).length;
+              const displayName = depth > 0 ? ds.name.split("/").pop() : ds.name;
+              const isFilesystem = ds.type === "filesystem";
 
-            return (
-              <Tr key={ds.name}>
-                <Td dataLabel="Name" style={{ paddingLeft: `${depth * 1.5 + 0.5}rem` }}>
-                  <Flex alignItems={{ default: "alignItemsCenter" }}>
-                    <FlexItem>
-                      {isFilesystem ? <FolderIcon style={{ color: "var(--pf-v5-global--primary-color--100)" }} /> : <HddIcon style={{ color: "var(--pf-v5-global--info-color--100)" }} />}
-                    </FlexItem>
-                    <FlexItem>
-                      <strong>{displayName}</strong>
-                      {depth > 0 && <span style={{ color: "gray", fontSize: "0.8rem", marginLeft: "0.5rem" }}>({ds.name})</span>}
-                    </FlexItem>
-                  </Flex>
-                </Td>
-                <Td dataLabel="Type">
-                  <Badge isRead>{isFilesystem ? "Filesystem" : "Volume"}</Badge>
-                </Td>
-                <Td dataLabel="Used">{formatBytes(ds.used)}</Td>
-                <Td dataLabel="Available">{formatBytes(ds.avail)}</Td>
-                <Td dataLabel="Mountpoint">
-                  {isFilesystem ? (
-                    ds.mountpoint ? (
-                      <span>
-                        {ds.mountpoint}{" "}
-                        <Badge
-                          style={{
-                            backgroundColor: ds.mounted
-                              ? "var(--pf-v5-global--success-color--100)"
-                              : "var(--pf-v5-global--warning-color--100)",
-                            color: "white",
-                          }}
-                        >
-                          {ds.mounted ? "Mounted" : "Unmounted"}
-                        </Badge>
-                      </span>
-                    ) : (
-                      <span style={{ color: "gray" }}>None</span>
-                    )
-                  ) : (
-                    <span style={{ color: "gray" }}>-</span>
-                  )}
-                </Td>
-                <Td dataLabel="Compression">
-                  {ds.compression !== "off" ? `${ds.compression} (${ds.compressratio}x)` : "off"}
-                </Td>
-                <Td dataLabel="Encryption">
-                  {ds.encryption !== "off" ? (
+              return (
+                <Tr key={ds.name}>
+                  <Td dataLabel="Name" style={{ paddingLeft: `${depth * 1.5 + 0.5}rem` }}>
                     <Flex alignItems={{ default: "alignItemsCenter" }}>
                       <FlexItem>
-                        <LockIcon style={{ color: "green", fontSize: "0.85rem" }} />
+                        {isFilesystem ? (
+                          <FolderIcon style={{ color: "var(--pf-v5-global--primary-color--100)" }} />
+                        ) : (
+                          <HddIcon style={{ color: "var(--pf-v5-global--info-color--100)" }} />
+                        )}
                       </FlexItem>
                       <FlexItem>
-                        <span>{ds.encryption}</span>
+                        <strong>{displayName}</strong>
+                        {depth > 0 && (
+                          <span style={{ color: "var(--pf-v5-global--Color--200)", fontSize: "0.8rem", marginLeft: "0.5rem" }}>
+                            ({ds.name})
+                          </span>
+                        )}
                       </FlexItem>
                     </Flex>
-                  ) : (
-                    <span style={{ color: "gray" }}>off</span>
-                  )}
-                </Td>
-                <Td dataLabel="Snapshots">
-                  <Badge isRead>{ds.snapshot_count}</Badge>
-                </Td>
-                <Td isActionCell>
-                  <Dropdown
-                    isOpen={openDropdown === ds.name}
-                    onSelect={() => setOpenDropdown(null)}
-                    onOpenChange={(isOpen) => setOpenDropdown(isOpen ? ds.name : null)}
-                    toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
-                      <MenuToggle
-                        ref={toggleRef}
-                        aria-label="Dataset actions"
-                        variant="plain"
-                        onClick={() => toggleDropdown(ds.name)}
-                        isExpanded={openDropdown === ds.name}
-                      >
-                        <EllipsisVIcon />
-                      </MenuToggle>
+                  </Td>
+                  <Td dataLabel="Type">
+                    <Label color={isFilesystem ? "blue" : "purple"}>{isFilesystem ? "Filesystem" : "Volume"}</Label>
+                  </Td>
+                  <Td dataLabel="Used">{formatBytes(ds.used)}</Td>
+                  <Td dataLabel="Available">{formatBytes(ds.avail)}</Td>
+                  <Td dataLabel="Mountpoint">
+                    {isFilesystem ? (
+                      ds.mountpoint ? (
+                        <Flex alignItems={{ default: "alignItemsCenter" }}>
+                          <FlexItem>{ds.mountpoint}</FlexItem>
+                          <FlexItem>
+                            <Label color={ds.mounted ? "green" : "orange"} style={{ marginLeft: "0.5rem" }}>
+                              {ds.mounted ? "Mounted" : "Unmounted"}
+                            </Label>
+                          </FlexItem>
+                        </Flex>
+                      ) : (
+                        <span style={{ color: "var(--pf-v5-global--Color--200)" }}>None</span>
+                      )
+                    ) : (
+                      <span style={{ color: "var(--pf-v5-global--Color--200)" }}>-</span>
                     )}
-                  >
-                    <DropdownList>
-                      {isFilesystem && (
-                        <DropdownItem key="new-child-ds" onClick={() => onCreateDataset(ds.name)}>
-                          Create Child Dataset
-                        </DropdownItem>
+                  </Td>
+                  <Td dataLabel="Compression">
+                    {ds.compression !== "off" ? `${ds.compression} (${ds.compressratio}x)` : "off"}
+                  </Td>
+                  <Td dataLabel="Encryption">
+                    {ds.encryption !== "off" ? (
+                      <Flex alignItems={{ default: "alignItemsCenter" }}>
+                        <FlexItem>
+                          <LockIcon style={{ color: "var(--pf-v5-global--success-color--100)", fontSize: "0.85rem" }} />
+                        </FlexItem>
+                        <FlexItem>
+                          <span>{ds.encryption}</span>
+                        </FlexItem>
+                      </Flex>
+                    ) : (
+                      <span style={{ color: "var(--pf-v5-global--Color--200)" }}>off</span>
+                    )}
+                  </Td>
+                  <Td dataLabel="Snapshots">
+                    <Label color="grey">{ds.snapshot_count}</Label>
+                  </Td>
+                  <Td isActionCell>
+                    <Dropdown
+                      isOpen={openDropdown === ds.name}
+                      onSelect={() => setOpenDropdown(null)}
+                      onOpenChange={(isOpen) => setOpenDropdown(isOpen ? ds.name : null)}
+                      toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
+                        <MenuToggle
+                          ref={toggleRef}
+                          aria-label="Dataset actions"
+                          variant="plain"
+                          onClick={() => toggleDropdown(ds.name)}
+                          isExpanded={openDropdown === ds.name}
+                        >
+                          <EllipsisVIcon />
+                        </MenuToggle>
                       )}
-                      {isFilesystem && (
-                        <DropdownItem key="new-child-zvol" onClick={() => onCreateZVol(ds.name)}>
-                          Create Child ZVol
+                    >
+                      <DropdownList>
+                        {isFilesystem && (
+                          <DropdownItem key="new-child-ds" onClick={() => onCreateDataset(ds.name)}>
+                            Create child dataset
+                          </DropdownItem>
+                        )}
+                        {isFilesystem && (
+                          <DropdownItem key="new-child-zvol" onClick={() => onCreateZVol(ds.name)}>
+                            Create child volume
+                          </DropdownItem>
+                        )}
+                        <DropdownItem key="snap" onClick={() => onCreateSnapshot(ds)}>
+                          Create snapshot
                         </DropdownItem>
-                      )}
-                      <DropdownItem key="snap" onClick={() => onCreateSnapshot(ds)}>
-                        Create Snapshot
-                      </DropdownItem>
-                      <DropdownItem key="props" onClick={() => onEditProperties(ds)}>
-                        Edit Properties
-                      </DropdownItem>
-                      {isFilesystem && ds.mountpoint && (
-                        <DropdownItem key="mount" onClick={() => onMountToggle(ds)}>
-                          {ds.mounted ? "Unmount" : "Mount"}
+                        <DropdownItem key="props" onClick={() => onEditProperties(ds)}>
+                          Edit properties
                         </DropdownItem>
-                      )}
-                      <DropdownItem key="rename" onClick={() => onRenameDataset(ds)}>
-                        Rename
-                      </DropdownItem>
-                      <DropdownItem key="destroy" style={{ color: "red" }} onClick={() => onDestroyDataset(ds)}>
-                        Destroy
-                      </DropdownItem>
-                    </DropdownList>
-                  </Dropdown>
-                </Td>
-              </Tr>
-            );
-          })}
-        </Tbody>
-      </Table>
+                        {isFilesystem && ds.mountpoint && (
+                          <DropdownItem key="mount" onClick={() => onMountToggle(ds)}>
+                            {ds.mounted ? "Unmount" : "Mount"}
+                          </DropdownItem>
+                        )}
+                        <DropdownItem key="rename" onClick={() => onRenameDataset(ds)}>
+                          Rename
+                        </DropdownItem>
+                        <DropdownItem key="destroy" style={{ color: "red" }} onClick={() => onDestroyDataset(ds)}>
+                          Destroy
+                        </DropdownItem>
+                      </DropdownList>
+                    </Dropdown>
+                  </Td>
+                </Tr>
+              );
+            })}
+          </Tbody>
+        </Table>
+      )}
     </div>
   );
 };

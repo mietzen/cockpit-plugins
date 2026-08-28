@@ -3,7 +3,7 @@ import {
   Card,
   CardTitle,
   CardBody,
-  Badge,
+  Label,
   Button,
   Flex,
   FlexItem,
@@ -13,7 +13,6 @@ import {
   MenuToggle,
   MenuToggleElement,
   Title,
-  Divider,
 } from "@patternfly/react-core";
 import { Table, Thead, Tr, Th, Tbody, Td } from "@patternfly/react-table";
 import {
@@ -21,10 +20,10 @@ import {
   HddIcon,
   EllipsisVIcon,
   SyncAltIcon,
-  ExclamationCircleIcon,
+  CheckCircleIcon,
+  ExclamationTriangleIcon,
 } from "@patternfly/react-icons";
 import { ZPool, VDevItem } from "../types";
-import { getHealthBadgeColor } from "../utils/formatters";
 
 interface TopologyTabProps {
   pool: ZPool;
@@ -59,14 +58,14 @@ export const TopologyTab: React.FC<TopologyTabProps> = ({
     }
 
     return (
-      <Card style={{ marginBottom: "1.5rem" }}>
+      <Card isPlain style={{ border: "1px solid var(--pf-v5-global--BorderColor--100)", marginBottom: "1.5rem" }}>
         <CardTitle>
           <Flex alignItems={{ default: "alignItemsCenter" }}>
             <FlexItem>
               <ServerIcon style={{ marginRight: "0.5rem" }} />
             </FlexItem>
             <FlexItem>
-              <Title headingLevel="h3" size="lg">
+              <Title headingLevel="h3" size="lg" style={{ fontWeight: 600 }}>
                 {title} ({vdevList.length})
               </Title>
             </FlexItem>
@@ -78,15 +77,16 @@ export const TopologyTab: React.FC<TopologyTabProps> = ({
               <Tr>
                 <Th>Device / Group</Th>
                 <Th>Status</Th>
-                <Th>Read Errors</Th>
-                <Th>Write Errors</Th>
-                <Th>Checksum Errors</Th>
+                <Th>Read errors</Th>
+                <Th>Write errors</Th>
+                <Th>Checksum errors</Th>
                 <Th aria-label="Actions" />
               </Tr>
             </Thead>
             <Tbody>
               {vdevList.map((vdev) => {
                 const rows = [];
+                const isOnline = vdev.state === "ONLINE";
 
                 // Parent group row
                 rows.push(
@@ -102,21 +102,22 @@ export const TopologyTab: React.FC<TopologyTabProps> = ({
                       </Flex>
                     </Td>
                     <Td dataLabel="Status">
-                      <Badge
-                        style={{
-                          backgroundColor:
-                            getHealthBadgeColor(vdev.state) === "success"
-                              ? "var(--pf-v5-global--success-color--100)"
-                              : "var(--pf-v5-global--danger-color--100)",
-                          color: "white",
-                        }}
-                      >
-                        {vdev.state}
-                      </Badge>
+                      <Flex alignItems={{ default: "alignItemsCenter" }}>
+                        <FlexItem>
+                          {isOnline ? (
+                            <CheckCircleIcon style={{ color: "var(--pf-v5-global--success-color--100)" }} />
+                          ) : (
+                            <ExclamationTriangleIcon style={{ color: "var(--pf-v5-global--warning-color--100)" }} />
+                          )}
+                        </FlexItem>
+                        <FlexItem>
+                          <span style={{ marginLeft: "0.25rem" }}>{vdev.state}</span>
+                        </FlexItem>
+                      </Flex>
                     </Td>
-                    <Td dataLabel="Read Errors">{vdev.read}</Td>
-                    <Td dataLabel="Write Errors">{vdev.write}</Td>
-                    <Td dataLabel="Checksum Errors">{vdev.cksum}</Td>
+                    <Td dataLabel="Read errors">{vdev.read}</Td>
+                    <Td dataLabel="Write errors">{vdev.write}</Td>
+                    <Td dataLabel="Checksum errors">{vdev.cksum}</Td>
                     <Td isActionCell>
                       {!vdev.is_group && (
                         <Dropdown
@@ -138,26 +139,26 @@ export const TopologyTab: React.FC<TopologyTabProps> = ({
                           <DropdownList>
                             {isData && (
                               <DropdownItem key="attach" onClick={() => onAttachDisk(pool.name, vdev.name)}>
-                                Attach Mirror Device
+                                Attach mirror device
                               </DropdownItem>
                             )}
                             <DropdownItem key="replace" onClick={() => onReplaceDisk(pool.name, vdev.name)}>
-                              Replace Device
+                              Replace device
                             </DropdownItem>
                             {vdev.state === "ONLINE" ? (
                               <DropdownItem key="offline" onClick={() => onOfflineDisk(pool.name, vdev.name)}>
-                                Offline Device
+                                Offline device
                               </DropdownItem>
                             ) : (
                               <DropdownItem key="online" onClick={() => onOnlineDisk(pool.name, vdev.name)}>
-                                Online Device
+                                Online device
                               </DropdownItem>
                             )}
                             <DropdownItem key="trim" onClick={() => onTrimDisk(pool.name, vdev.name)}>
-                              Trim Device
+                              Trim device
                             </DropdownItem>
                             <DropdownItem key="detach" onClick={() => onDetachDisk(pool.name, vdev.name)}>
-                              Detach Device
+                              Detach device
                             </DropdownItem>
                           </DropdownList>
                         </Dropdown>
@@ -169,6 +170,7 @@ export const TopologyTab: React.FC<TopologyTabProps> = ({
                 // Children rows
                 if (vdev.children) {
                   vdev.children.forEach((child) => {
+                    const childOnline = child.state === "ONLINE";
                     rows.push(
                       <Tr key={child.name}>
                         <Td dataLabel="Device / Group" style={{ paddingLeft: "2.5rem" }}>
@@ -180,21 +182,22 @@ export const TopologyTab: React.FC<TopologyTabProps> = ({
                           </Flex>
                         </Td>
                         <Td dataLabel="Status">
-                          <Badge
-                            style={{
-                              backgroundColor:
-                                getHealthBadgeColor(child.state) === "success"
-                                  ? "var(--pf-v5-global--success-color--100)"
-                                  : "var(--pf-v5-global--danger-color--100)",
-                              color: "white",
-                            }}
-                          >
-                            {child.state}
-                          </Badge>
+                          <Flex alignItems={{ default: "alignItemsCenter" }}>
+                            <FlexItem>
+                              {childOnline ? (
+                                <CheckCircleIcon style={{ color: "var(--pf-v5-global--success-color--100)" }} />
+                              ) : (
+                                <ExclamationTriangleIcon style={{ color: "var(--pf-v5-global--warning-color--100)" }} />
+                              )}
+                            </FlexItem>
+                            <FlexItem>
+                              <span style={{ marginLeft: "0.25rem" }}>{child.state}</span>
+                            </FlexItem>
+                          </Flex>
                         </Td>
-                        <Td dataLabel="Read Errors">{child.read}</Td>
-                        <Td dataLabel="Write Errors">{child.write}</Td>
-                        <Td dataLabel="Checksum Errors">{child.cksum}</Td>
+                        <Td dataLabel="Read errors">{child.read}</Td>
+                        <Td dataLabel="Write errors">{child.write}</Td>
+                        <Td dataLabel="Checksum errors">{child.cksum}</Td>
                         <Td isActionCell>
                           <Dropdown
                             isOpen={openDropdown === child.name}
@@ -215,26 +218,26 @@ export const TopologyTab: React.FC<TopologyTabProps> = ({
                             <DropdownList>
                               {isData && (
                                 <DropdownItem key="attach" onClick={() => onAttachDisk(pool.name, child.name)}>
-                                  Attach Mirror Device
+                                  Attach mirror device
                                 </DropdownItem>
                               )}
                               <DropdownItem key="replace" onClick={() => onReplaceDisk(pool.name, child.name)}>
-                                Replace Device
+                                Replace device
                               </DropdownItem>
                               {child.state === "ONLINE" ? (
                                 <DropdownItem key="offline" onClick={() => onOfflineDisk(pool.name, child.name)}>
-                                  Offline Device
+                                  Offline device
                                 </DropdownItem>
                               ) : (
                                 <DropdownItem key="online" onClick={() => onOnlineDisk(pool.name, child.name)}>
-                                  Online Device
+                                  Online device
                                 </DropdownItem>
                               )}
                               <DropdownItem key="trim" onClick={() => onTrimDisk(pool.name, child.name)}>
-                                Trim Device
+                                Trim device
                               </DropdownItem>
                               <DropdownItem key="detach" onClick={() => onDetachDisk(pool.name, child.name)}>
-                                Detach Device
+                                Detach device
                               </DropdownItem>
                             </DropdownList>
                           </Dropdown>
@@ -255,15 +258,15 @@ export const TopologyTab: React.FC<TopologyTabProps> = ({
 
   return (
     <div>
-      <Flex justifyContent={{ default: "justifyContentSpaceBetween" }} style={{ marginBottom: "1rem" }}>
+      <Flex justifyContent={{ default: "justifyContentSpaceBetween" }} style={{ marginBottom: "1.5rem" }}>
         <FlexItem>
-          <Title headingLevel="h2" size="xl">
-            VDev Hierarchy & Device Topology
+          <Title headingLevel="h2" size="xl" style={{ fontWeight: 600 }}>
+            Topology &amp; Devices
           </Title>
         </FlexItem>
         <FlexItem>
           <Button variant="secondary" icon={<SyncAltIcon />} onClick={() => onClearErrors(pool.name)}>
-            Clear Pool Errors
+            Clear pool errors
           </Button>
         </FlexItem>
       </Flex>
@@ -271,9 +274,9 @@ export const TopologyTab: React.FC<TopologyTabProps> = ({
       {renderVDevTable("Data VDevs", pool.vdevs, true)}
       {renderVDevTable("Special / Metadata VDevs", pool.special)}
       {renderVDevTable("Dedup VDevs", pool.dedup_vdevs)}
-      {renderVDevTable("Cache Devices (L2ARC)", pool.cache)}
-      {renderVDevTable("Log Devices (SLOG)", pool.logs)}
-      {renderVDevTable("Spare Devices", pool.spares)}
+      {renderVDevTable("Cache devices (L2ARC)", pool.cache)}
+      {renderVDevTable("Log devices (SLOG)", pool.logs)}
+      {renderVDevTable("Spare devices", pool.spares)}
     </div>
   );
 };
