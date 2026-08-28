@@ -35,10 +35,12 @@ import { AttachDiskModal } from "./components/Modals/AttachDiskModal";
 import { ReplaceDiskModal } from "./components/Modals/ReplaceDiskModal";
 import { CommandPreviewModal } from "./components/CommandPreviewModal";
 
+declare const cockpit: any;
+
 export const App: React.FC = () => {
   const [activeView, setActiveView] = useState<string>("dashboard");
   const [selectedPoolName, setSelectedPoolName] = useState<string | null>(null);
-  const [initialSubTab, setInitialSubTab] = useState<string>("topology");
+  const [currentSubTab, setCurrentSubTab] = useState<string>("topology");
 
   const [systemInfo, setSystemInfo] = useState<SystemInfo | null>(null);
   const [pools, setPools] = useState<ZPool[]>([]);
@@ -76,6 +78,99 @@ export const App: React.FC = () => {
     isDestructive?: boolean;
     onConfirm: () => Promise<void>;
   } | null>(null);
+
+  // Parse path segments into route state
+  const parseRoute = useCallback((segments: string[]) => {
+    if (!segments || segments.length === 0 || segments[0] === "" || segments[0] === "dashboard" || segments[0] === "overview") {
+      setActiveView("dashboard");
+      setSelectedPoolName(null);
+      return;
+    }
+
+    const root = segments[0];
+    if (root === "pools") {
+      if (segments.length >= 2 && segments[1]) {
+        setActiveView("pool-details");
+        setSelectedPoolName(segments[1]);
+        if (segments.length >= 3 && segments[2]) {
+          setCurrentSubTab(segments[2]);
+        } else {
+          setCurrentSubTab("topology");
+        }
+      } else {
+        setActiveView("pools");
+        setSelectedPoolName(null);
+      }
+    } else if (root === "disks") {
+      setActiveView("disks");
+      setSelectedPoolName(null);
+    } else if (root === "settings") {
+      setActiveView("settings");
+      setSelectedPoolName(null);
+    } else {
+      setActiveView("dashboard");
+      setSelectedPoolName(null);
+    }
+  }, []);
+
+  // Synchronize state from cockpit.location or window.location.hash
+  const syncFromUrl = useCallback(() => {
+    let segments: string[] = [];
+
+    if (typeof cockpit !== "undefined" && cockpit.location && cockpit.location.path) {
+      segments = cockpit.location.path;
+    }
+
+    if (segments.length === 0) {
+      const hash = window.location.hash.replace(/^#\/?/, "");
+      if (hash) {
+        segments = hash.split("/").filter(Boolean);
+      }
+    }
+
+    parseRoute(segments);
+  }, [parseRoute]);
+
+  // Navigate to a new route and update URL
+  const navigateTo = useCallback((segments: string[]) => {
+    parseRoute(segments);
+
+    const pathStr = segments.join("/");
+    window.location.hash = `#/${pathStr}`;
+
+    if (typeof cockpit !== "undefined" && cockpit.location && cockpit.location.go) {
+      cockpit.location.go(segments);
+    }
+  }, [parseRoute]);
+
+  // Listen to URL changes for browser Back / Forward buttons
+  useEffect(() => {
+    syncFromUrl();
+
+    const handleHashChange = () => syncFromUrl();
+    const handlePopState = () => syncFromUrl();
+
+    window.addEventListener("hashchange", handleHashChange);
+    window.addEventListener("popstate", handlePopState);
+
+    let removeCockpitListener: (() => void) | null = null;
+    if (typeof cockpit !== "undefined" && cockpit.location && cockpit.location.on) {
+      cockpit.location.on("changed", syncFromUrl);
+      removeCockpitListener = () => {
+        if (cockpit.location.off) {
+          cockpit.location.off("changed", syncFromUrl);
+        }
+      };
+    }
+
+    return () => {
+      window.removeEventListener("hashchange", handleHashChange);
+      window.removeEventListener("popstate", handlePopState);
+      if (removeCockpitListener) {
+        removeCockpitListener();
+      }
+    };
+  }, [syncFromUrl]);
 
   const addAlert = (variant: "success" | "danger" | "warning" | "info", title: string, message?: string) => {
     const id = `alert-${Date.now()}-${Math.random()}`;
@@ -122,9 +217,13 @@ export const App: React.FC = () => {
   };
 
   const handleSelectPool = (poolName: string, subTab: string = "topology") => {
-    setSelectedPoolName(poolName);
-    setInitialSubTab(subTab);
-    setActiveView("pool-details");
+    navigateTo(["pools", poolName, subTab]);
+  };
+
+  const handleSubTabChange = (subTab: string) => {
+    if (selectedPoolName) {
+      navigateTo(["pools", selectedPoolName, subTab]);
+    }
   };
 
   // Mutating Actions with Command Preview check
@@ -237,8 +336,13 @@ export const App: React.FC = () => {
       <Navigation
         activeView={activeView}
         onSelectView={(v) => {
-          setActiveView(v);
-          if (v === "pools") setSelectedPoolName(null);
+          if (v === "pools") {
+            navigateTo(["pools"]);
+          } else if (v === "dashboard") {
+            navigateTo([]);
+          } else {
+            navigateTo([v]);
+          }
         }}
         onRefresh={loadData}
         isLoading={isLoading}
@@ -309,10 +413,10 @@ export const App: React.FC = () => {
               pool={selectedPool}
               datasets={datasets}
               snapshots={snapshots}
-              initialTab={initialSubTab}
+              activeTab={currentSubTab}
+              onTabChange={handleSubTabChange}
               onBack={() => {
-                setSelectedPoolName(null);
-                setActiveView("pools");
+                navigateTo(["pools"]);
               }}
               onAttachDisk={(pName, dev) => setAttachTarget({ poolName: pName, existingDevice: dev })}
               onDetachDisk={(pName, dev) => {

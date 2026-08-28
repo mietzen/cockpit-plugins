@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import {
   PageSection,
   Title,
@@ -16,7 +16,6 @@ import {
   ArrowLeftIcon,
   CheckCircleIcon,
   ExclamationTriangleIcon,
-  ExclamationCircleIcon,
 } from "@patternfly/react-icons";
 import { ZPool, ZDataset, ZSnapshot } from "../types";
 import { formatBytes } from "../utils/formatters";
@@ -30,7 +29,8 @@ interface PoolDetailsViewProps {
   pool: ZPool;
   datasets: ZDataset[];
   snapshots: ZSnapshot[];
-  initialTab?: string;
+  activeTab?: string;
+  onTabChange?: (tab: string) => void;
   onBack: () => void;
   onAttachDisk: (poolName: string, existingDevice: string) => void;
   onDetachDisk: (poolName: string, device: string) => void;
@@ -60,7 +60,8 @@ export const PoolDetailsView: React.FC<PoolDetailsViewProps> = ({
   pool,
   datasets,
   snapshots,
-  initialTab = "topology",
+  activeTab = "topology",
+  onTabChange,
   onBack,
   onAttachDisk,
   onDetachDisk,
@@ -85,8 +86,13 @@ export const PoolDetailsView: React.FC<PoolDetailsViewProps> = ({
   onTrimAction,
   onSaveProperties,
 }) => {
-  const [activeTab, setActiveTab] = useState<string>(initialTab);
   const isOnline = pool.health === "ONLINE";
+
+  const handleSelectTab = (_event: any, tabKey: string | number) => {
+    if (onTabChange) {
+      onTabChange(String(tabKey));
+    }
+  };
 
   return (
     <>
@@ -132,7 +138,7 @@ export const PoolDetailsView: React.FC<PoolDetailsViewProps> = ({
 
         <Tabs
           activeKey={activeTab}
-          onSelect={(_event, tabKey) => setActiveTab(String(tabKey))}
+          onSelect={handleSelectTab}
           style={{ marginTop: "1rem" }}
           isBox={false}
         >
