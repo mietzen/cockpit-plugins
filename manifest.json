@@ -1,0 +1,11 @@
+{
+  "name": "zfs-storage",
+  "version": 1,
+  "menu": {
+    "index": {
+      "label": "ZFS storage",
+      "order": 33
+    }
+  },
+  "content-security-policy": "connect-src 'self'; default-src 'self' 'unsafe-inline' 'unsafe-eval'"
+}
