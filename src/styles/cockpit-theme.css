@@ -284,20 +284,28 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* =========================================================
-   Search & Form Inputs: Dark Theme with Rounded Corners
+   Search & Form Inputs: No Squared Pseudo-Boxes
    ========================================================= */
-.pf-v5-c-search-input {
+.pf-v5-c-search-input,
+.pf-v5-c-search-input::after,
+.pf-v5-c-search-input__text-input,
+.pf-v5-c-search-input__text-input::after {
   border-radius: 999px !important;
   background-color: rgb(28, 28, 28) !important;
   border: 1px solid #383838 !important;
 }
 
+.pf-v5-c-search-input::after,
+.pf-v5-c-search-input__text-input::after {
+  border: none !important;
+}
+
 .pf-v5-c-search-input__text-input {
-  border-radius: 999px !important;
   background-color: transparent !important;
   color: #ffffff !important;
 }
 
+.pf-v5-c-form-control,
 .pf-v5-c-form-control input,
 .pf-v5-c-form-control select,
 select.pf-v5-c-form-control,
@@ -306,6 +314,22 @@ select.pf-v5-c-form-control,
   background-color: rgb(35, 35, 35) !important;
   border: 1px solid #444444 !important;
   color: #ffffff !important;
+  box-shadow: none !important;
+}
+
+.pf-v5-c-form-control::after {
+  border: none !important;
+  border-radius: 8px !important;
+}
+
+.pf-v5-c-form-control:focus,
+.pf-v5-c-form-control:focus-within,
+.pf-v5-c-form-control input:focus,
+.pf-v5-c-form-control select:focus,
+.pf-v5-c-form-control textarea:focus {
+  border-color: rgb(146, 197, 249) !important;
+  box-shadow: 0 0 0 1px rgb(146, 197, 249) !important;
+  outline: none !important;
 }
 
 /* =========================================================
@@ -355,7 +379,7 @@ select.pf-v5-c-form-control,
 }
 
 /* =========================================================
-   Modals, Dropdowns & Alerts
+   Wizard & Modals: Seamless 16px Rounded Styling
    ========================================================= */
 .pf-v5-c-modal-box {
   border-radius: 16px !important;
@@ -365,8 +389,65 @@ select.pf-v5-c-form-control,
   overflow: hidden !important;
 }
 
+.pf-v5-c-modal-box::after {
+  border: none !important;
+}
+
 .pf-v5-c-modal-box__title-text {
   color: #ffffff !important;
+}
+
+.pf-v5-c-wizard,
+.pf-v5-c-wizard__outer-wrap {
+  border-radius: 16px !important;
+  background-color: rgb(28, 28, 28) !important;
+  border: 1px solid #383838 !important;
+  color: #f0f0f0 !important;
+  overflow: hidden !important;
+}
+
+.pf-v5-c-wizard::after,
+.pf-v5-c-wizard__outer-wrap::after {
+  border: none !important;
+}
+
+.pf-v5-c-wizard__header {
+  background-color: rgb(32, 32, 32) !important;
+  border-bottom: 1px solid #383838 !important;
+}
+
+.pf-v5-c-wizard__nav {
+  background-color: rgb(25, 25, 25) !important;
+  border-right: 1px solid #383838 !important;
+}
+
+.pf-v5-c-wizard__nav-link {
+  color: #a0a0a0 !important;
+  border-radius: 8px !important;
+}
+
+.pf-v5-c-wizard__nav-link::after {
+  border: none !important;
+}
+
+.pf-v5-c-wizard__nav-item.pf-m-current .pf-v5-c-wizard__nav-link {
+  color: rgb(146, 197, 249) !important;
+  font-weight: 600 !important;
+}
+
+.pf-v5-c-wizard__main {
+  background-color: rgb(21, 21, 21) !important;
+  color: #f0f0f0 !important;
+}
+
+.pf-v5-c-wizard__footer {
+  background-color: rgb(28, 28, 28) !important;
+  border-top: 1px solid #383838 !important;
+  border-radius: 0 0 16px 16px !important;
+}
+
+.pf-v5-c-wizard__footer::after {
+  border: none !important;
 }
 
 .pf-v5-c-menu {
@@ -374,6 +455,10 @@ select.pf-v5-c-form-control,
   background-color: rgb(32, 32, 32) !important;
   border: 1px solid #383838 !important;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5) !important;
+}
+
+.pf-v5-c-menu::after {
+  border: none !important;
 }
 
 .pf-v5-c-menu__item {
