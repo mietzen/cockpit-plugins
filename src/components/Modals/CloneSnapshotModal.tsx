@@ -6,17 +6,17 @@ import {
   FormGroup,
   TextInput,
   Button,
-  ClipboardCopy,
   Alert,
 } from "@patternfly/react-core";
 import { ZSnapshot } from "../../types";
+import { CommandBox } from "../CommandBox";
 
 interface CloneSnapshotModalProps {
   isOpen: boolean;
   snapshot: ZSnapshot | null;
   onClose: () => void;
   onSubmit: (args: {
-    snapshot: ZSnapshot;
+    snapshotName: string;
     clonePath: string;
     command: string[];
   }) => Promise<void>;
@@ -39,19 +39,19 @@ export const CloneSnapshotModal: React.FC<CloneSnapshotModalProps> = ({
   }
 
   const buildCommand = (): string[] => {
-    return ["zfs", "clone", snapshot.name, clonePath.trim() || "pool/clone"];
+    return ["zfs", "clone", snapshot.name, clonePath.trim() || "pool/dataset-clone"];
   };
 
   const handleClone = async () => {
     if (!clonePath.trim()) {
-      setError("Clone path is required");
+      setError("Clone target path is required");
       return;
     }
     setLoading(true);
     setError(null);
     try {
       await onSubmit({
-        snapshot,
+        snapshotName: snapshot.name,
         clonePath: clonePath.trim(),
         command: buildCommand(),
       });
@@ -66,7 +66,7 @@ export const CloneSnapshotModal: React.FC<CloneSnapshotModalProps> = ({
   return (
     <Modal
       variant={ModalVariant.small}
-      title="Clone Snapshot to New Dataset"
+      title="Clone ZFS Snapshot"
       isOpen={isOpen}
       onClose={onClose}
       actions={[
@@ -77,36 +77,29 @@ export const CloneSnapshotModal: React.FC<CloneSnapshotModalProps> = ({
           isDisabled={loading || !clonePath.trim()}
           isLoading={loading}
         >
-          Create Clone
+          Clone Snapshot
         </Button>,
-        <Button key="cancel" variant="link" onClick={onClose} isDisabled={loading}>
+        <Button key="cancel" variant="secondary" onClick={onClose} isDisabled={loading}>
           Cancel
         </Button>,
       ]}
     >
-      <Form style={{ maxWidth: "550px" }}>
-        <FormGroup label="Source Snapshot" fieldId="clone-source">
-          <TextInput id="clone-source" value={snapshot.name} isReadOnly />
+      <Form>
+        <FormGroup label="Source Snapshot" fieldId="cl-src">
+          <TextInput id="cl-src" value={snapshot.name} isReadOnly />
         </FormGroup>
 
-        <FormGroup label="Target Clone Dataset Path" isRequired fieldId="clone-target">
+        <FormGroup label="Target Clone Path" isRequired fieldId="cl-target">
           <TextInput
-            id="clone-target"
+            id="cl-target"
             value={clonePath}
             onChange={(_event, val) => setClonePath(val)}
-            placeholder="e.g. tank/data-restore"
+            placeholder="e.g. pool/dataset-clone"
             autoFocus
           />
         </FormGroup>
 
-        <div style={{ marginTop: "1rem" }}>
-          <label style={{ fontWeight: "bold", display: "block", marginBottom: "0.5rem" }}>
-            Shell Command Preview:
-          </label>
-          <ClipboardCopy isReadOnly isCode>
-            {buildCommand().join(" ")}
-          </ClipboardCopy>
-        </div>
+        <CommandBox command={buildCommand()} />
 
         {error && (
           <Alert variant="danger" title="Error" style={{ marginTop: "1rem" }}>

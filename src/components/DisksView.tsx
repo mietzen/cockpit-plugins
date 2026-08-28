@@ -3,7 +3,6 @@ import {
   PageSection,
   Title,
   Label,
-  Button,
   Flex,
   FlexItem,
   Dropdown,
@@ -11,29 +10,27 @@ import {
   DropdownList,
   MenuToggle,
   MenuToggleElement,
-  Modal,
-  ModalVariant,
   SearchInput,
-  DescriptionList,
-  DescriptionListGroup,
-  DescriptionListTerm,
-  DescriptionListDescription,
+  Button,
 } from "@patternfly/react-core";
 import { Table, Thead, Tr, Th, Tbody, Td } from "@patternfly/react-table";
 import { HddIcon, EllipsisVIcon, CheckCircleIcon, ExclamationCircleIcon } from "@patternfly/react-icons";
 import { DiskDevice } from "../types";
 import { formatBytes } from "../utils/formatters";
+import { SmartDetailsModal } from "./Modals/SmartDetailsModal";
 
 interface DisksViewProps {
   disks: DiskDevice[];
   onWipeDisk: (disk: DiskDevice) => void;
   onRunSmartTest: (disk: DiskDevice, testType: "short" | "long") => void;
+  onViewSmartDetails?: (disk: DiskDevice) => void;
 }
 
 export const DisksView: React.FC<DisksViewProps> = ({
   disks,
   onWipeDisk,
   onRunSmartTest,
+  onViewSmartDetails,
 }) => {
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [selectedDiskForSmart, setSelectedDiskForSmart] = useState<DiskDevice | null>(null);
@@ -41,6 +38,14 @@ export const DisksView: React.FC<DisksViewProps> = ({
 
   const toggleDropdown = (diskName: string) => {
     setOpenDropdown(openDropdown === diskName ? null : diskName);
+  };
+
+  const handleShowSmart = (disk: DiskDevice) => {
+    if (onViewSmartDetails) {
+      onViewSmartDetails(disk);
+    } else {
+      setSelectedDiskForSmart(disk);
+    }
   };
 
   const filteredDisks = disks.filter(
@@ -94,15 +99,22 @@ export const DisksView: React.FC<DisksViewProps> = ({
               return (
                 <Tr key={disk.name}>
                   <Td dataLabel="Device">
-                    <Flex alignItems={{ default: "alignItemsCenter" }}>
-                      <FlexItem>
-                        <HddIcon style={{ color: "rgb(146, 197, 249)" }} />
-                      </FlexItem>
-                      <FlexItem>
-                        <strong>{disk.name}</strong>
-                        <div style={{ fontSize: "0.8rem", color: "#999999" }}>{disk.path}</div>
-                      </FlexItem>
-                    </Flex>
+                    <Button
+                      variant="link"
+                      isInline
+                      onClick={() => handleShowSmart(disk)}
+                      style={{ textAlign: "left" }}
+                    >
+                      <Flex alignItems={{ default: "alignItemsCenter" }}>
+                        <FlexItem>
+                          <HddIcon style={{ color: "rgb(146, 197, 249)" }} />
+                        </FlexItem>
+                        <FlexItem>
+                          <strong>{disk.name}</strong>
+                          <div style={{ fontSize: "0.8rem", color: "#999999" }}>{disk.path}</div>
+                        </FlexItem>
+                      </Flex>
+                    </Button>
                   </Td>
                   <Td dataLabel="Model / Serial">
                     <div>{disk.model || "-"}</div>
@@ -162,7 +174,7 @@ export const DisksView: React.FC<DisksViewProps> = ({
                       )}
                     >
                       <DropdownList>
-                        <DropdownItem key="smart-view" onClick={() => setSelectedDiskForSmart(disk)}>
+                        <DropdownItem key="smart-view" onClick={() => handleShowSmart(disk)}>
                           View SMART details
                         </DropdownItem>
                         <DropdownItem key="smart-short" onClick={() => onRunSmartTest(disk, "short")}>
@@ -186,81 +198,11 @@ export const DisksView: React.FC<DisksViewProps> = ({
         </Table>
       </PageSection>
 
-      {/* SMART Details Modal */}
-      {selectedDiskForSmart && (
-        <Modal
-          variant={ModalVariant.medium}
-          title={`SMART Details: ${selectedDiskForSmart.name}`}
-          isOpen={true}
-          onClose={() => setSelectedDiskForSmart(null)}
-          actions={[
-            <Button key="close" variant="primary" onClick={() => setSelectedDiskForSmart(null)}>
-              Close
-            </Button>,
-          ]}
-        >
-          <DescriptionList isHorizontal style={{ marginBottom: "1.5rem" }}>
-            <DescriptionListGroup>
-              <DescriptionListTerm>Device path</DescriptionListTerm>
-              <DescriptionListDescription>{selectedDiskForSmart.path}</DescriptionListDescription>
-            </DescriptionListGroup>
-            <DescriptionListGroup>
-              <DescriptionListTerm>Model</DescriptionListTerm>
-              <DescriptionListDescription>{selectedDiskForSmart.model || "-"}</DescriptionListDescription>
-            </DescriptionListGroup>
-            <DescriptionListGroup>
-              <DescriptionListTerm>Serial number</DescriptionListTerm>
-              <DescriptionListDescription>{selectedDiskForSmart.serial || "-"}</DescriptionListDescription>
-            </DescriptionListGroup>
-            <DescriptionListGroup>
-              <DescriptionListTerm>WWN</DescriptionListTerm>
-              <DescriptionListDescription>{selectedDiskForSmart.wwn || "-"}</DescriptionListDescription>
-            </DescriptionListGroup>
-            <DescriptionListGroup>
-              <DescriptionListTerm>SMART overall health</DescriptionListTerm>
-              <DescriptionListDescription>
-                <Label color={selectedDiskForSmart.smart_health === "PASSED" ? "green" : "red"}>
-                  {selectedDiskForSmart.smart_health}
-                </Label>
-              </DescriptionListDescription>
-            </DescriptionListGroup>
-            <DescriptionListGroup>
-              <DescriptionListTerm>Temperature</DescriptionListTerm>
-              <DescriptionListDescription>
-                {selectedDiskForSmart.temperature !== null ? `${selectedDiskForSmart.temperature} °C` : "-"}
-              </DescriptionListDescription>
-            </DescriptionListGroup>
-          </DescriptionList>
-
-          <Title headingLevel="h4" size="md" style={{ marginBottom: "0.5rem", fontWeight: 600 }}>
-            Partitions &amp; Filesystem Signatures
-          </Title>
-          {selectedDiskForSmart.partitions && selectedDiskForSmart.partitions.length > 0 ? (
-            <Table variant="compact">
-              <Thead>
-                <Tr>
-                  <Th>Partition</Th>
-                  <Th>Size</Th>
-                  <Th>FSType</Th>
-                  <Th>Mountpoint</Th>
-                </Tr>
-              </Thead>
-              <Tbody>
-                {selectedDiskForSmart.partitions.map((p) => (
-                  <Tr key={p.name}>
-                    <Td>{p.name}</Td>
-                    <Td>{formatBytes(p.size)}</Td>
-                    <Td>{p.fstype || "-"}</Td>
-                    <Td>{p.mountpoint || "-"}</Td>
-                  </Tr>
-                ))}
-              </Tbody>
-            </Table>
-          ) : (
-            <p style={{ color: "#a0a0a0" }}>No partitions found on this device.</p>
-          )}
-        </Modal>
-      )}
+      <SmartDetailsModal
+        isOpen={!!selectedDiskForSmart}
+        disk={selectedDiskForSmart}
+        onClose={() => setSelectedDiskForSmart(null)}
+      />
     </>
   );
 };

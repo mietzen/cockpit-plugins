@@ -7,13 +7,13 @@ import {
   TextInput,
   Checkbox,
   Button,
-  ClipboardCopy,
   Alert,
 } from "@patternfly/react-core";
+import { CommandBox } from "../CommandBox";
 
 interface CreateSnapshotModalProps {
   isOpen: boolean;
-  defaultDataset?: string;
+  defaultDataset: string;
   onClose: () => void;
   onSubmit: (args: {
     dataset: string;
@@ -25,13 +25,13 @@ interface CreateSnapshotModalProps {
 
 export const CreateSnapshotModal: React.FC<CreateSnapshotModalProps> = ({
   isOpen,
-  defaultDataset = "",
+  defaultDataset,
   onClose,
   onSubmit,
 }) => {
-  const defaultSnapName = `auto-${new Date().toISOString().replace(/[:.]/g, "-")}`;
-  const [dataset, setDataset] = useState(defaultDataset);
-  const [snapshotName, setSnapshotName] = useState(defaultSnapName);
+  const [snapshotName, setSnapshotName] = useState(
+    `snap-${new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19)}`
+  );
   const [recursive, setRecursive] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,22 +40,16 @@ export const CreateSnapshotModal: React.FC<CreateSnapshotModalProps> = ({
     return null;
   }
 
-  const fullSnapPath = `${dataset.trim()}@${snapshotName.trim()}`;
-
   const buildCommand = (): string[] => {
     const cmd = ["zfs", "snapshot"];
     if (recursive) {
       cmd.push("-r");
     }
-    cmd.push(fullSnapPath || "pool/dataset@snapshot");
+    cmd.push(`${defaultDataset}@${snapshotName.trim() || "snap"}`);
     return cmd;
   };
 
   const handleSave = async () => {
-    if (!dataset.trim()) {
-      setError("Dataset is required");
-      return;
-    }
     if (!snapshotName.trim()) {
       setError("Snapshot name is required");
       return;
@@ -64,7 +58,7 @@ export const CreateSnapshotModal: React.FC<CreateSnapshotModalProps> = ({
     setError(null);
     try {
       await onSubmit({
-        dataset: dataset.trim(),
+        dataset: defaultDataset,
         snapshotName: snapshotName.trim(),
         recursive,
         command: buildCommand(),
@@ -79,7 +73,7 @@ export const CreateSnapshotModal: React.FC<CreateSnapshotModalProps> = ({
 
   return (
     <Modal
-      variant={ModalVariant.medium}
+      variant={ModalVariant.small}
       title="Create ZFS Snapshot"
       isOpen={isOpen}
       onClose={onClose}
@@ -88,52 +82,41 @@ export const CreateSnapshotModal: React.FC<CreateSnapshotModalProps> = ({
           key="create"
           variant="primary"
           onClick={handleSave}
-          isDisabled={loading || !dataset.trim() || !snapshotName.trim()}
+          isDisabled={loading || !snapshotName.trim()}
           isLoading={loading}
         >
           Create Snapshot
         </Button>,
-        <Button key="cancel" variant="link" onClick={onClose} isDisabled={loading}>
+        <Button key="cancel" variant="secondary" onClick={onClose} isDisabled={loading}>
           Cancel
         </Button>,
       ]}
     >
-      <Form style={{ maxWidth: "550px" }}>
-        <FormGroup label="Target Dataset" isRequired fieldId="snap-ds">
-          <TextInput
-            id="snap-ds"
-            value={dataset}
-            onChange={(_event, val) => setDataset(val)}
-            placeholder="e.g. tank/data"
-          />
+      <Form>
+        <FormGroup label="Target Dataset" fieldId="snap-dataset">
+          <TextInput id="snap-dataset" value={defaultDataset} isReadOnly />
         </FormGroup>
 
-        <FormGroup label="Snapshot Name" isRequired fieldId="snap-name">
+        <FormGroup label="Snapshot Name (Tag)" isRequired fieldId="snap-name">
           <TextInput
             id="snap-name"
             value={snapshotName}
             onChange={(_event, val) => setSnapshotName(val)}
-            placeholder="e.g. backup-2026-08-28"
+            placeholder="e.g. backup-daily, before-upgrade"
+            autoFocus
           />
         </FormGroup>
 
         <FormGroup fieldId="snap-recursive">
           <Checkbox
             id="snap-recursive"
-            label="Recursive snapshot (-r, create snapshots of all child datasets too)"
+            label="Recursive (-r, snapshot all child datasets & volumes)"
             isChecked={recursive}
             onChange={(_event, checked) => setRecursive(checked)}
           />
         </FormGroup>
 
-        <div style={{ marginTop: "1rem" }}>
-          <label style={{ fontWeight: "bold", display: "block", marginBottom: "0.5rem" }}>
-            Shell Command Preview:
-          </label>
-          <ClipboardCopy isReadOnly isCode>
-            {buildCommand().join(" ")}
-          </ClipboardCopy>
-        </div>
+        <CommandBox command={buildCommand()} />
 
         {error && (
           <Alert variant="danger" title="Error" style={{ marginTop: "1rem" }}>

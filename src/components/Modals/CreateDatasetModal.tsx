@@ -9,9 +9,9 @@ import {
   FormSelectOption,
   Checkbox,
   Button,
-  ClipboardCopy,
   Alert,
 } from "@patternfly/react-core";
+import { CommandBox } from "../CommandBox";
 
 interface CreateDatasetModalProps {
   isOpen: boolean;
@@ -123,7 +123,7 @@ export const CreateDatasetModal: React.FC<CreateDatasetModalProps> = ({
         >
           Create Dataset
         </Button>,
-        <Button key="cancel" variant="link" onClick={onClose} isDisabled={loading}>
+        <Button key="cancel" variant="secondary" onClick={onClose} isDisabled={loading}>
           Cancel
         </Button>,
       ]}
@@ -184,7 +184,7 @@ export const CreateDatasetModal: React.FC<CreateDatasetModalProps> = ({
             onChange={(_event, val) => setRecordsize(val)}
           >
             <FormSelectOption value="128k" label="128 KiB (Default)" />
-            <FormSelectOption value="1M" label="1 MiB (Large files & media)" />
+            <FormSelectOption value="1M" label="1 MiB (Large files &amp; media)" />
             <FormSelectOption value="64k" label="64 KiB" />
             <FormSelectOption value="16k" label="16 KiB (Databases)" />
             <FormSelectOption value="4k" label="4 KiB" />
@@ -209,14 +209,7 @@ export const CreateDatasetModal: React.FC<CreateDatasetModalProps> = ({
           />
         </FormGroup>
 
-        <div style={{ marginTop: "1rem" }}>
-          <label style={{ fontWeight: "bold", display: "block", marginBottom: "0.5rem" }}>
-            Shell Command Preview:
-          </label>
-          <ClipboardCopy isReadOnly isCode>
-            {buildCommand().join(" ")}
-          </ClipboardCopy>
-        </div>
+        <CommandBox command={buildCommand()} />
 
         {error && (
           <Alert variant="danger" title="Error" style={{ marginTop: "1rem" }}>

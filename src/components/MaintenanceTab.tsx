@@ -35,7 +35,7 @@ export const MaintenanceTab: React.FC<MaintenanceTabProps> = ({
       </Title>
 
       {/* Scrub Section */}
-      <Card isPlain style={{ border: "1px solid var(--pf-v5-global--BorderColor--100)", marginBottom: "1.5rem" }}>
+      <Card isPlain style={{ border: "1px solid #333333", maxWidth: "650px", marginBottom: "1.5rem" }}>
         <CardTitle>
           <Flex alignItems={{ default: "alignItemsCenter" }}>
             <FlexItem>
@@ -70,7 +70,7 @@ export const MaintenanceTab: React.FC<MaintenanceTabProps> = ({
             </Alert>
           )}
 
-          <Flex>
+          <Flex gap={{ default: "gapSm" }}>
             <FlexItem>
               <Button
                 variant={isScrubbing ? "secondary" : "primary"}
@@ -108,7 +108,7 @@ export const MaintenanceTab: React.FC<MaintenanceTabProps> = ({
       </Card>
 
       {/* Trim Section */}
-      <Card isPlain style={{ border: "1px solid var(--pf-v5-global--BorderColor--100)" }}>
+      <Card isPlain style={{ border: "1px solid #333333", maxWidth: "650px" }}>
         <CardTitle>
           <Flex alignItems={{ default: "alignItemsCenter" }}>
             <FlexItem>
@@ -127,7 +127,7 @@ export const MaintenanceTab: React.FC<MaintenanceTabProps> = ({
             perform wear leveling and garbage collection.
           </p>
 
-          <Flex>
+          <Flex gap={{ default: "gapSm" }}>
             <FlexItem>
               <Button
                 variant="primary"

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import "@patternfly/react-core/dist/styles/base.css";
 import "./styles/cockpit-theme.css";
 import {
@@ -34,14 +34,24 @@ import { DestroyModal } from "./components/Modals/DestroyModal";
 import { AttachDiskModal } from "./components/Modals/AttachDiskModal";
 import { ReplaceDiskModal } from "./components/Modals/ReplaceDiskModal";
 import { RenameModal } from "./components/Modals/RenameModal";
+import { ArcDetailsModal } from "./components/Modals/ArcDetailsModal";
+import { SmartDetailsModal } from "./components/Modals/SmartDetailsModal";
 import { CommandPreviewModal } from "./components/CommandPreviewModal";
 
 declare const cockpit: any;
 
+interface AppRoute {
+  view: "dashboard" | "pools" | "pool-details" | "disks" | "settings";
+  poolName: string | null;
+  subTab: string;
+}
+
 export const App: React.FC = () => {
-  const [activeView, setActiveView] = useState<string>("dashboard");
-  const [selectedPoolName, setSelectedPoolName] = useState<string | null>(null);
-  const [currentSubTab, setCurrentSubTab] = useState<string>("topology");
+  const [route, setRoute] = useState<AppRoute>({
+    view: "dashboard",
+    poolName: null,
+    subTab: "topology",
+  });
 
   const [systemInfo, setSystemInfo] = useState<SystemInfo | null>(null);
   const [pools, setPools] = useState<ZPool[]>([]);
@@ -57,6 +67,8 @@ export const App: React.FC = () => {
 
   // Modals state
   const [isCreatePoolOpen, setIsCreatePoolOpen] = useState(false);
+  const [isArcModalOpen, setIsArcModalOpen] = useState(false);
+  const [smartModalDisk, setSmartModalDisk] = useState<DiskDevice | null>(null);
   const [createDatasetParent, setCreateDatasetParent] = useState<string | null>(null);
   const [createZVolParent, setCreateZVolParent] = useState<string | null>(null);
   const [editPropertiesTarget, setEditPropertiesTarget] = useState<ZDataset | null>(null);
@@ -85,38 +97,29 @@ export const App: React.FC = () => {
     onConfirm: () => Promise<void>;
   } | null>(null);
 
-  // Parse path segments into route state
-  const parseRoute = useCallback((segments: string[]) => {
+  const lastNavigatedPathRef = useRef<string>("");
+
+  // Parse path segments into route state atomically
+  const parseRoute = useCallback((segments: string[]): AppRoute => {
     if (!segments || segments.length === 0 || segments[0] === "" || segments[0] === "dashboard" || segments[0] === "overview") {
-      setActiveView((prev) => (prev === "dashboard" ? prev : "dashboard"));
-      setSelectedPoolName(null);
-      return;
+      return { view: "dashboard", poolName: null, subTab: "topology" };
     }
 
     const root = segments[0];
     if (root === "pools") {
       if (segments.length >= 2 && segments[1]) {
-        setActiveView("pool-details");
-        setSelectedPoolName(segments[1]);
-        if (segments.length >= 3 && segments[2]) {
-          setCurrentSubTab(segments[2]);
-        } else {
-          setCurrentSubTab("topology");
-        }
-      } else {
-        setActiveView("pools");
-        setSelectedPoolName(null);
+        const subTab = segments.length >= 3 && segments[2] ? segments[2] : "topology";
+        return { view: "pool-details", poolName: segments[1], subTab };
       }
-    } else if (root === "disks") {
-      setActiveView("disks");
-      setSelectedPoolName(null);
-    } else if (root === "settings") {
-      setActiveView("settings");
-      setSelectedPoolName(null);
-    } else {
-      setActiveView("dashboard");
-      setSelectedPoolName(null);
+      return { view: "pools", poolName: null, subTab: "topology" };
     }
+    if (root === "disks") {
+      return { view: "disks", poolName: null, subTab: "topology" };
+    }
+    if (root === "settings") {
+      return { view: "settings", poolName: null, subTab: "topology" };
+    }
+    return { view: "dashboard", poolName: null, subTab: "topology" };
   }, []);
 
   // Synchronize state from cockpit.location or window.location.hash
@@ -134,15 +137,46 @@ export const App: React.FC = () => {
       }
     }
 
-    parseRoute(segments);
+    const pathKey = segments.join("/");
+    if (lastNavigatedPathRef.current === pathKey) {
+      return;
+    }
+    lastNavigatedPathRef.current = pathKey;
+
+    const newRoute = parseRoute(segments);
+    setRoute((prev) => {
+      if (
+        prev.view === newRoute.view &&
+        prev.poolName === newRoute.poolName &&
+        prev.subTab === newRoute.subTab
+      ) {
+        return prev;
+      }
+      return newRoute;
+    });
   }, [parseRoute]);
 
   // Navigate to a new route and update URL
   const navigateTo = useCallback((segments: string[]) => {
-    parseRoute(segments);
+    const pathKey = segments.join("/");
+    if (lastNavigatedPathRef.current === pathKey) {
+      return;
+    }
+    lastNavigatedPathRef.current = pathKey;
 
-    const pathStr = segments.join("/");
-    const targetHash = `#/${pathStr}`;
+    const newRoute = parseRoute(segments);
+    setRoute((prev) => {
+      if (
+        prev.view === newRoute.view &&
+        prev.poolName === newRoute.poolName &&
+        prev.subTab === newRoute.subTab
+      ) {
+        return prev;
+      }
+      return newRoute;
+    });
+
+    const targetHash = `#/${pathKey}`;
     if (window.location.hash !== targetHash) {
       window.location.hash = targetHash;
     }
@@ -230,9 +264,37 @@ export const App: React.FC = () => {
   };
 
   const handleSubTabChange = (subTab: string) => {
-    if (selectedPoolName) {
-      setCurrentSubTab(subTab);
-      navigateTo(["pools", selectedPoolName, subTab]);
+    if (route.poolName) {
+      navigateTo(["pools", route.poolName, subTab]);
+    }
+  };
+
+  const handleViewSmartDetails = (device: DiskDevice | string) => {
+    if (typeof device === "string") {
+      const baseName = device.replace(/^\/dev\//, "");
+      const found = disks.find(
+        (d) => d.name === baseName || d.path === device || d.path === `/dev/${baseName}`
+      );
+      if (found) {
+        setSmartModalDisk(found);
+      } else {
+        setSmartModalDisk({
+          name: baseName,
+          path: device.startsWith("/dev/") ? device : `/dev/${device}`,
+          size: 0,
+          model: "Generic Disk",
+          serial: "-",
+          wwn: "-",
+          rotational: false,
+          smart_health: "UNKNOWN",
+          temperature: null,
+          transport: "sata",
+          pool: null,
+          partitions: [],
+        });
+      }
+    } else {
+      setSmartModalDisk(device);
     }
   };
 
@@ -339,12 +401,12 @@ export const App: React.FC = () => {
     });
   };
 
-  const selectedPool = pools.find((p) => p.name === selectedPoolName) || pools[0] || null;
+  const selectedPool = pools.find((p) => p.name === route.poolName) || pools[0] || null;
 
   return (
     <Page>
       <Navigation
-        activeView={activeView}
+        activeView={route.view}
         onSelectView={(v) => {
           if (v === "pools") {
             navigateTo(["pools"]);
@@ -377,10 +439,11 @@ export const App: React.FC = () => {
         </PageSection>
       ) : (
         <>
-          {activeView === "dashboard" && (
+          {route.view === "dashboard" && (
             <DashboardView
               systemInfo={systemInfo}
               pools={pools}
+              disks={disks}
               onSelectPool={handleSelectPool}
               onCreatePool={() => setIsCreatePoolOpen(true)}
               onImportPool={() => {
@@ -393,10 +456,12 @@ export const App: React.FC = () => {
                   onConfirm: () => executeCmd(cmd, "Import scan executed"),
                 });
               }}
+              onViewArcDetails={() => setIsArcModalOpen(true)}
+              onViewSmartDetails={handleViewSmartDetails}
             />
           )}
 
-          {activeView === "pools" && (
+          {route.view === "pools" && (
             <PoolsView
               pools={pools}
               onSelectPool={handleSelectPool}
@@ -418,12 +483,12 @@ export const App: React.FC = () => {
             />
           )}
 
-          {activeView === "pool-details" && selectedPool && (
+          {route.view === "pool-details" && selectedPool && (
             <PoolDetailsView
               pool={selectedPool}
               datasets={datasets}
               snapshots={snapshots}
-              activeTab={currentSubTab}
+              activeTab={route.subTab}
               onTabChange={handleSubTabChange}
               onBack={() => {
                 navigateTo(["pools"]);
@@ -499,10 +564,11 @@ export const App: React.FC = () => {
                   runAll().catch((err) => addAlert("danger", "Update properties failed", err.message));
                 }
               }}
+              onViewSmartDetails={handleViewSmartDetails}
             />
           )}
 
-          {activeView === "disks" && (
+          {route.view === "disks" && (
             <DisksView
               disks={disks}
               onWipeDisk={handleWipeDisk}
@@ -510,7 +576,7 @@ export const App: React.FC = () => {
             />
           )}
 
-          {activeView === "settings" && <SettingsView systemInfo={systemInfo} />}
+          {route.view === "settings" && <SettingsView systemInfo={systemInfo} />}
         </>
       )}
 
@@ -522,6 +588,12 @@ export const App: React.FC = () => {
         onCreatePool={async ({ command }) => {
           await executeCmd(command, "Pool created successfully");
         }}
+      />
+
+      <ArcDetailsModal
+        isOpen={isArcModalOpen}
+        arcStats={systemInfo?.arc}
+        onClose={() => setIsArcModalOpen(false)}
       />
 
       <CreateDatasetModal
@@ -636,6 +708,13 @@ export const App: React.FC = () => {
           }}
         />
       )}
+
+      {/* Global SMART Details Modal for direct clicking from any view */}
+      <SmartDetailsModal
+        isOpen={!!smartModalDisk}
+        disk={smartModalDisk}
+        onClose={() => setSmartModalDisk(null)}
+      />
 
       {previewModalState && (
         <CommandPreviewModal

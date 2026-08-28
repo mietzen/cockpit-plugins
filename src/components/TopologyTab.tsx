@@ -33,6 +33,7 @@ interface TopologyTabProps {
   onReplaceDisk: (poolName: string, device: string) => void;
   onClearErrors: (poolName: string, device?: string) => void;
   onTrimDisk: (poolName: string, device: string) => void;
+  onViewSmartDetails?: (deviceName: string) => void;
 }
 
 export const TopologyTab: React.FC<TopologyTabProps> = ({
@@ -44,6 +45,7 @@ export const TopologyTab: React.FC<TopologyTabProps> = ({
   onReplaceDisk,
   onClearErrors,
   onTrimDisk,
+  onViewSmartDetails,
 }) => {
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
 
@@ -96,7 +98,17 @@ export const TopologyTab: React.FC<TopologyTabProps> = ({
                           {vdev.is_group ? <ServerIcon /> : <HddIcon />}
                         </FlexItem>
                         <FlexItem>
-                          <strong>{vdev.name}</strong>
+                          {!vdev.is_group && onViewSmartDetails ? (
+                            <Button
+                              variant="link"
+                              isInline
+                              onClick={() => onViewSmartDetails(vdev.name)}
+                            >
+                              <strong>{vdev.name}</strong>
+                            </Button>
+                          ) : (
+                            <strong>{vdev.name}</strong>
+                          )}
                         </FlexItem>
                       </Flex>
                     </Td>
@@ -137,6 +149,11 @@ export const TopologyTab: React.FC<TopologyTabProps> = ({
                           )}
                         >
                           <DropdownList>
+                            {onViewSmartDetails && (
+                              <DropdownItem key="smart" onClick={() => onViewSmartDetails(vdev.name)}>
+                                View SMART details
+                              </DropdownItem>
+                            )}
                             {isData && (
                               <DropdownItem key="attach" onClick={() => onAttachDisk(pool.name, vdev.name)}>
                                 Attach mirror device
@@ -178,7 +195,19 @@ export const TopologyTab: React.FC<TopologyTabProps> = ({
                             <FlexItem>
                               <HddIcon />
                             </FlexItem>
-                            <FlexItem>{child.name}</FlexItem>
+                            <FlexItem>
+                              {onViewSmartDetails ? (
+                                <Button
+                                  variant="link"
+                                  isInline
+                                  onClick={() => onViewSmartDetails(child.name)}
+                                >
+                                  {child.name}
+                                </Button>
+                              ) : (
+                                <span>{child.name}</span>
+                              )}
+                            </FlexItem>
                           </Flex>
                         </Td>
                         <Td dataLabel="Status">
@@ -217,6 +246,11 @@ export const TopologyTab: React.FC<TopologyTabProps> = ({
                             )}
                           >
                             <DropdownList>
+                              {onViewSmartDetails && (
+                                <DropdownItem key="smart" onClick={() => onViewSmartDetails(child.name)}>
+                                  View SMART details
+                                </DropdownItem>
+                              )}
                               {isData && (
                                 <DropdownItem key="attach" onClick={() => onAttachDisk(pool.name, child.name)}>
                                   Attach mirror device

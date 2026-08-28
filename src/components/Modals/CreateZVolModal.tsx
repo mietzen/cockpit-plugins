@@ -7,11 +7,10 @@ import {
   TextInput,
   FormSelect,
   FormSelectOption,
-  Checkbox,
   Button,
-  ClipboardCopy,
   Alert,
 } from "@patternfly/react-core";
+import { CommandBox } from "../CommandBox";
 
 interface CreateZVolModalProps {
   isOpen: boolean;
@@ -21,9 +20,10 @@ interface CreateZVolModalProps {
     path: string;
     size: string;
     volblocksize: string;
-    sparse: boolean;
     compression: string;
     dedup: string;
+    sync: string;
+    sparse: boolean;
     command: string[];
   }) => Promise<void>;
 }
@@ -35,11 +35,12 @@ export const CreateZVolModal: React.FC<CreateZVolModalProps> = ({
   onSubmit,
 }) => {
   const [name, setName] = useState("");
-  const [size, setSize] = useState("20G");
+  const [size, setSize] = useState("10G");
   const [volblocksize, setVolblocksize] = useState("16k");
-  const [sparse, setSparse] = useState(true);
   const [compression, setCompression] = useState("lz4");
   const [dedup, setDedup] = useState("off");
+  const [sync, setSync] = useState("standard");
+  const [sparse, setSparse] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -54,8 +55,8 @@ export const CreateZVolModal: React.FC<CreateZVolModalProps> = ({
     if (sparse) {
       cmd.push("-s");
     }
-    cmd.push("-V", size.trim() || "20G");
-    if (volblocksize) {
+    cmd.push("-V", size.trim() || "10G");
+    if (volblocksize !== "8k") {
       cmd.push("-b", volblocksize);
     }
     if (compression !== "off") {
@@ -64,17 +65,16 @@ export const CreateZVolModal: React.FC<CreateZVolModalProps> = ({
     if (dedup !== "off") {
       cmd.push("-o", `dedup=${dedup}`);
     }
+    if (sync !== "standard") {
+      cmd.push("-o", `sync=${sync}`);
+    }
     cmd.push(fullPath || "pool/zvol");
     return cmd;
   };
 
   const handleSave = async () => {
-    if (!name.trim()) {
-      setError("Volume name is required");
-      return;
-    }
-    if (!size.trim()) {
-      setError("Volume size is required (e.g. 20G)");
+    if (!name.trim() || !size.trim()) {
+      setError("Volume name and size are required");
       return;
     }
     setLoading(true);
@@ -82,11 +82,12 @@ export const CreateZVolModal: React.FC<CreateZVolModalProps> = ({
     try {
       await onSubmit({
         path: fullPath,
-        size: size.trim(),
+        size,
         volblocksize,
-        sparse,
         compression,
         dedup,
+        sync,
+        sparse,
         command: buildCommand(),
       });
       setLoading(false);
@@ -100,7 +101,7 @@ export const CreateZVolModal: React.FC<CreateZVolModalProps> = ({
   return (
     <Modal
       variant={ModalVariant.medium}
-      title="Create ZFS Block Volume (ZVol)"
+      title="Create ZFS Block Volume (zvol)"
       isOpen={isOpen}
       onClose={onClose}
       actions={[
@@ -108,12 +109,12 @@ export const CreateZVolModal: React.FC<CreateZVolModalProps> = ({
           key="create"
           variant="primary"
           onClick={handleSave}
-          isDisabled={loading || !name.trim()}
+          isDisabled={loading || !name.trim() || !size.trim()}
           isLoading={loading}
         >
-          Create ZVol
+          Create Volume
         </Button>,
-        <Button key="cancel" variant="link" onClick={onClose} isDisabled={loading}>
+        <Button key="cancel" variant="secondary" onClick={onClose} isDisabled={loading}>
           Cancel
         </Button>,
       ]}
@@ -128,41 +129,43 @@ export const CreateZVolModal: React.FC<CreateZVolModalProps> = ({
             id="zvol-name"
             value={name}
             onChange={(_event, val) => setName(val)}
-            placeholder="e.g. vm-100-disk0"
+            placeholder="e.g. vm-disk0, iscsi-lun1"
             autoFocus
           />
         </FormGroup>
 
-        <FormGroup label="Volume Size" isRequired fieldId="zvol-size">
+        <FormGroup label="Volume Size (e.g. 20G, 500M, 1T)" isRequired fieldId="zvol-size">
           <TextInput
             id="zvol-size"
             value={size}
             onChange={(_event, val) => setSize(val)}
-            placeholder="e.g. 10G, 50G, 1T"
+            placeholder="10G"
           />
         </FormGroup>
 
-        <FormGroup label="Volume Block Size (volblocksize)" fieldId="zvol-blocksize">
+        <FormGroup label="Block Size (volblocksize)" fieldId="zvol-blocksize">
           <FormSelect
             id="zvol-blocksize"
             value={volblocksize}
             onChange={(_event, val) => setVolblocksize(val)}
           >
-            <FormSelectOption value="8k" label="8 KiB" />
-            <FormSelectOption value="16k" label="16 KiB (Recommended for VMs)" />
-            <FormSelectOption value="32k" label="32 KiB" />
+            <FormSelectOption value="16k" label="16 KiB (Recommended for VM disks &amp; databases)" />
+            <FormSelectOption value="8k" label="8 KiB (Standard default)" />
             <FormSelectOption value="64k" label="64 KiB" />
             <FormSelectOption value="128k" label="128 KiB" />
+            <FormSelectOption value="4k" label="4 KiB" />
           </FormSelect>
         </FormGroup>
 
-        <FormGroup fieldId="zvol-sparse">
-          <Checkbox
+        <FormGroup label="Allocation (Thin Provisioning)" fieldId="zvol-sparse">
+          <FormSelect
             id="zvol-sparse"
-            label="Sparse Volume (-s, thin provisioning / allocate space on demand)"
-            isChecked={sparse}
-            onChange={(_event, checked) => setSparse(checked)}
-          />
+            value={sparse ? "sparse" : "dense"}
+            onChange={(_event, val) => setSparse(val === "sparse")}
+          >
+            <FormSelectOption value="sparse" label="Sparse (Thin Provisioning - Allocate space on demand)" />
+            <FormSelectOption value="dense" label="Thick Provisioning (Reserve all space immediately)" />
+          </FormSelect>
         </FormGroup>
 
         <FormGroup label="Compression" fieldId="zvol-comp">
@@ -173,7 +176,6 @@ export const CreateZVolModal: React.FC<CreateZVolModalProps> = ({
           >
             <FormSelectOption value="lz4" label="lz4 (Fast, recommended)" />
             <FormSelectOption value="zstd" label="zstd (High ratio)" />
-            <FormSelectOption value="gzip" label="gzip" />
             <FormSelectOption value="off" label="off" />
           </FormSelect>
         </FormGroup>
@@ -184,20 +186,12 @@ export const CreateZVolModal: React.FC<CreateZVolModalProps> = ({
             value={dedup}
             onChange={(_event, val) => setDedup(val)}
           >
-            <FormSelectOption value="off" label="off" />
+            <FormSelectOption value="off" label="off (Recommended)" />
             <FormSelectOption value="on" label="on" />
-            <FormSelectOption value="verify" label="verify" />
           </FormSelect>
         </FormGroup>
 
-        <div style={{ marginTop: "1rem" }}>
-          <label style={{ fontWeight: "bold", display: "block", marginBottom: "0.5rem" }}>
-            Shell Command Preview:
-          </label>
-          <ClipboardCopy isReadOnly isCode>
-            {buildCommand().join(" ")}
-          </ClipboardCopy>
-        </div>
+        <CommandBox command={buildCommand()} />
 
         {error && (
           <Alert variant="danger" title="Error" style={{ marginTop: "1rem" }}>

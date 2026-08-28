@@ -54,6 +54,7 @@ interface PoolDetailsViewProps {
   onScrubAction: (poolName: string, action: "start" | "pause" | "stop") => void;
   onTrimAction: (poolName: string, action: "start" | "suspend" | "stop") => void;
   onSaveProperties: (poolName: string, properties: Record<string, string>) => void;
+  onViewSmartDetails?: (deviceName: string) => void;
 }
 
 export const PoolDetailsView: React.FC<PoolDetailsViewProps> = ({
@@ -85,6 +86,7 @@ export const PoolDetailsView: React.FC<PoolDetailsViewProps> = ({
   onScrubAction,
   onTrimAction,
   onSaveProperties,
+  onViewSmartDetails,
 }) => {
   const isOnline = pool.health === "ONLINE";
 
@@ -161,6 +163,7 @@ export const PoolDetailsView: React.FC<PoolDetailsViewProps> = ({
             onReplaceDisk={onReplaceDisk}
             onClearErrors={onClearErrors}
             onTrimDisk={onTrimDisk}
+            onViewSmartDetails={onViewSmartDetails}
           />
         )}
         {activeTab === "datasets" && (

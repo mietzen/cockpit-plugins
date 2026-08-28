@@ -16,6 +16,7 @@ import {
   Label,
   Divider,
 } from "@patternfly/react-core";
+import { Table, Thead, Tr, Th, Tbody, Td } from "@patternfly/react-table";
 import {
   CheckCircleIcon,
   ExclamationTriangleIcon,
@@ -23,24 +24,32 @@ import {
   PlusCircleIcon,
   DownloadIcon,
   ArrowRightIcon,
+  HddIcon,
+  InfoCircleIcon,
 } from "@patternfly/react-icons";
-import { ZPool, SystemInfo } from "../types";
+import { ZPool, SystemInfo, DiskDevice } from "../types";
 import { formatBytes, formatPercentage } from "../utils/formatters";
 
 interface DashboardViewProps {
   systemInfo: SystemInfo | null;
   pools: ZPool[];
+  disks: DiskDevice[];
   onSelectPool: (poolName: string) => void;
   onCreatePool: () => void;
   onImportPool: () => void;
+  onViewArcDetails: () => void;
+  onViewSmartDetails: (disk: DiskDevice) => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
   systemInfo,
   pools,
+  disks,
   onSelectPool,
   onCreatePool,
   onImportPool,
+  onViewArcDetails,
+  onViewSmartDetails,
 }) => {
   const totalSize = pools.reduce((acc, p) => acc + p.size, 0);
   const totalAlloc = pools.reduce((acc, p) => acc + p.alloc, 0);
@@ -52,7 +61,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   return (
     <>
-      {/* Top Header matching Cockpit Overview */}
+      {/* Top Header */}
       <PageSection variant="light" style={{ paddingBottom: "1rem" }}>
         <Flex justifyContent={{ default: "justifyContentSpaceBetween" }} alignItems={{ default: "alignItemsCenter" }}>
           <FlexItem>
@@ -98,11 +107,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </Alert>
         )}
 
-        {/* 4 Overview Metric Cards matching Cockpit Overview Layout */}
-        <Grid hasGutter style={{ marginBottom: "1.5rem" }}>
+        {/* 4 Overview Metric Cards */}
+        <Grid hasGutter style={{ marginBottom: "2rem" }}>
           {/* Card 1: Health */}
           <GridItem span={6} md={3}>
-            <Card isFullHeight isPlain style={{ border: "1px solid var(--pf-v5-global--BorderColor--100)" }}>
+            <Card isFullHeight isPlain style={{ border: "1px solid #333333" }}>
               <CardTitle>Health</CardTitle>
               <CardBody>
                 <Flex alignItems={{ default: "alignItemsCenter" }} style={{ marginBottom: "0.75rem" }}>
@@ -130,7 +139,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
           {/* Card 2: Storage Usage */}
           <GridItem span={6} md={3}>
-            <Card isFullHeight isPlain style={{ border: "1px solid var(--pf-v5-global--BorderColor--100)" }}>
+            <Card isFullHeight isPlain style={{ border: "1px solid #333333" }}>
               <CardTitle>Storage usage</CardTitle>
               <CardBody>
                 <Title headingLevel="h3" size="xl" style={{ marginBottom: "0.5rem" }}>
@@ -149,10 +158,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </Card>
           </GridItem>
 
-          {/* Card 3: ARC Memory Cache */}
+          {/* Card 3: ARC Memory Cache (Clickable) */}
           <GridItem span={6} md={3}>
-            <Card isFullHeight isPlain style={{ border: "1px solid var(--pf-v5-global--BorderColor--100)" }}>
-              <CardTitle>ARC Cache</CardTitle>
+            <Card
+              isFullHeight
+              isPlain
+              isHoverable
+              onClick={onViewArcDetails}
+              style={{ border: "1px solid #333333", cursor: "pointer" }}
+            >
+              <CardTitle>
+                <Flex justifyContent={{ default: "justifyContentSpaceBetween" }}>
+                  <FlexItem>ARC Cache</FlexItem>
+                  <FlexItem>
+                    <InfoCircleIcon style={{ color: "rgb(146, 197, 249)" }} />
+                  </FlexItem>
+                </Flex>
+              </CardTitle>
               <CardBody>
                 {systemInfo?.arc ? (
                   <>
@@ -183,7 +205,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
           {/* Card 4: System Information */}
           <GridItem span={6} md={3}>
-            <Card isFullHeight isPlain style={{ border: "1px solid var(--pf-v5-global--BorderColor--100)" }}>
+            <Card isFullHeight isPlain style={{ border: "1px solid #333333" }}>
               <CardTitle>ZFS Subsystem</CardTitle>
               <CardBody>
                 <div style={{ marginBottom: "0.5rem" }}>
@@ -204,7 +226,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           Storage Pools
         </Title>
 
-        <Grid hasGutter>
+        <Grid hasGutter style={{ marginBottom: "2rem" }}>
           {pools.map((pool) => {
             const usagePct = pool.size > 0 ? (pool.alloc / pool.size) * 100 : 0;
             const isOnline = pool.health === "ONLINE";
@@ -216,7 +238,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   isPlain
                   onClick={() => onSelectPool(pool.name)}
                   style={{
-                    border: "1px solid var(--pf-v5-global--BorderColor--100)",
+                    border: "1px solid #333333",
                     cursor: "pointer",
                   }}
                 >
@@ -282,6 +304,89 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             );
           })}
         </Grid>
+
+        {/* Host Disks Overview Section */}
+        <Title headingLevel="h2" size="xl" style={{ marginBottom: "1rem", fontWeight: 600 }}>
+          Host Disks Overview
+        </Title>
+
+        <Card isPlain style={{ border: "1px solid #333333" }}>
+          <CardBody style={{ padding: 0 }}>
+            <Table aria-label="Dashboard Disks Table" variant="compact">
+              <Thead>
+                <Tr>
+                  <Th>Device</Th>
+                  <Th>Model / Serial</Th>
+                  <Th>Capacity</Th>
+                  <Th>Type</Th>
+                  <Th>SMART Health</Th>
+                  <Th>Temp</Th>
+                  <Th>Pool Assignment</Th>
+                </Tr>
+              </Thead>
+              <Tbody>
+                {disks.map((disk) => {
+                  const isSmartPassed = disk.smart_health === "PASSED";
+                  const isSmartFailed = disk.smart_health === "FAILED";
+
+                  return (
+                    <Tr key={disk.name}>
+                      <Td dataLabel="Device">
+                        <Button
+                          variant="link"
+                          isInline
+                          onClick={() => onViewSmartDetails(disk)}
+                          style={{ textAlign: "left" }}
+                        >
+                          <Flex alignItems={{ default: "alignItemsCenter" }}>
+                            <FlexItem>
+                              <HddIcon style={{ color: "rgb(146, 197, 249)" }} />
+                            </FlexItem>
+                            <FlexItem>
+                              <strong>{disk.name}</strong>
+                              <span style={{ fontSize: "0.8rem", color: "#999999", marginLeft: "0.4rem" }}>
+                                ({disk.path})
+                              </span>
+                            </FlexItem>
+                          </Flex>
+                        </Button>
+                      </Td>
+                      <Td dataLabel="Model">{disk.model || disk.serial || "-"}</Td>
+                      <Td dataLabel="Capacity">{formatBytes(disk.size)}</Td>
+                      <Td dataLabel="Type">
+                        <Label color="grey">{disk.rotational ? "HDD" : "SSD"}</Label>
+                      </Td>
+                      <Td dataLabel="SMART Health">
+                        <Flex alignItems={{ default: "alignItemsCenter" }}>
+                          <FlexItem>
+                            {isSmartPassed ? (
+                              <CheckCircleIcon style={{ color: "var(--pf-v5-global--success-color--100)" }} />
+                            ) : isSmartFailed ? (
+                              <ExclamationCircleIcon style={{ color: "var(--pf-v5-global--danger-color--100)" }} />
+                            ) : (
+                              <span style={{ color: "#999999" }}>-</span>
+                            )}
+                          </FlexItem>
+                          <FlexItem>
+                            <span style={{ marginLeft: "0.25rem" }}>{disk.smart_health || "Unknown"}</span>
+                          </FlexItem>
+                        </Flex>
+                      </Td>
+                      <Td dataLabel="Temp">{disk.temperature !== null && disk.temperature !== undefined ? `${disk.temperature} °C` : "-"}</Td>
+                      <Td dataLabel="Pool Assignment">
+                        {disk.pool ? (
+                          <Label color="blue">{disk.pool}</Label>
+                        ) : (
+                          <span style={{ color: "#999999" }}>Unallocated</span>
+                        )}
+                      </Td>
+                    </Tr>
+                  );
+                })}
+              </Tbody>
+            </Table>
+          </CardBody>
+        </Card>
       </PageSection>
     </>
   );

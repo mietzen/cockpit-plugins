@@ -2,21 +2,23 @@ import React, { useState } from "react";
 import {
   Modal,
   ModalVariant,
+  Form,
+  FormGroup,
+  TextInput,
   Checkbox,
   Button,
-  ClipboardCopy,
   Alert,
 } from "@patternfly/react-core";
 import { ZSnapshot } from "../../types";
+import { CommandBox } from "../CommandBox";
 
 interface RollbackSnapshotModalProps {
   isOpen: boolean;
   snapshot: ZSnapshot | null;
   onClose: () => void;
   onSubmit: (args: {
-    snapshot: ZSnapshot;
-    destroyIntermediate: boolean;
-    force: boolean;
+    snapshotName: string;
+    destroyMoreRecent: boolean;
     command: string[];
   }) => Promise<void>;
 }
@@ -27,8 +29,7 @@ export const RollbackSnapshotModal: React.FC<RollbackSnapshotModalProps> = ({
   onClose,
   onSubmit,
 }) => {
-  const [destroyIntermediate, setDestroyIntermediate] = useState(true);
-  const [force, setForce] = useState(false);
+  const [destroyMoreRecent, setDestroyMoreRecent] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -38,11 +39,8 @@ export const RollbackSnapshotModal: React.FC<RollbackSnapshotModalProps> = ({
 
   const buildCommand = (): string[] => {
     const cmd = ["zfs", "rollback"];
-    if (destroyIntermediate) {
+    if (destroyMoreRecent) {
       cmd.push("-r");
-    }
-    if (force) {
-      cmd.push("-f");
     }
     cmd.push(snapshot.name);
     return cmd;
@@ -53,9 +51,8 @@ export const RollbackSnapshotModal: React.FC<RollbackSnapshotModalProps> = ({
     setError(null);
     try {
       await onSubmit({
-        snapshot,
-        destroyIntermediate,
-        force,
+        snapshotName: snapshot.name,
+        destroyMoreRecent,
         command: buildCommand(),
       });
       setLoading(false);
@@ -80,9 +77,9 @@ export const RollbackSnapshotModal: React.FC<RollbackSnapshotModalProps> = ({
           isDisabled={loading}
           isLoading={loading}
         >
-          Rollback
+          Rollback Dataset
         </Button>,
-        <Button key="cancel" variant="link" onClick={onClose} isDisabled={loading}>
+        <Button key="cancel" variant="secondary" onClick={onClose} isDisabled={loading}>
           Cancel
         </Button>,
       ]}
@@ -90,44 +87,35 @@ export const RollbackSnapshotModal: React.FC<RollbackSnapshotModalProps> = ({
       <Alert
         variant="warning"
         isInline
-        title="Warning: Data Modified After Snapshot Will Be Lost"
+        title="Warning: Data Loss"
         style={{ marginBottom: "1rem" }}
       >
-        Rolling back will revert dataset <strong>{snapshot.dataset}</strong> to the exact state captured in snapshot <strong>@{snapshot.snapshot_name}</strong>.
+        Rolling back will revert all data in <strong>{snapshot.dataset}</strong> to the exact state
+        captured at snapshot <strong>@{snapshot.snapshot_name}</strong>.
       </Alert>
 
-      <div style={{ marginBottom: "1rem" }}>
-        <Checkbox
-          id="rb-destroy-more-recent"
-          label="Destroy any snapshots and bookmarks created more recently than this one (-r)"
-          isChecked={destroyIntermediate}
-          onChange={(_event, checked) => setDestroyIntermediate(checked)}
-        />
-      </div>
+      <Form>
+        <FormGroup label="Target Snapshot" fieldId="rb-snap">
+          <TextInput id="rb-snap" value={snapshot.name} isReadOnly />
+        </FormGroup>
 
-      <div style={{ marginBottom: "1rem" }}>
-        <Checkbox
-          id="rb-force"
-          label="Force unmount if dataset is busy (-f)"
-          isChecked={force}
-          onChange={(_event, checked) => setForce(checked)}
-        />
-      </div>
+        <FormGroup fieldId="rb-recent">
+          <Checkbox
+            id="rb-recent"
+            label="Destroy snapshots and bookmarks more recent than this one (-r)"
+            isChecked={destroyMoreRecent}
+            onChange={(_event, checked) => setDestroyMoreRecent(checked)}
+          />
+        </FormGroup>
 
-      <div style={{ marginTop: "1rem" }}>
-        <label style={{ fontWeight: "bold", display: "block", marginBottom: "0.5rem" }}>
-          Shell Command Preview:
-        </label>
-        <ClipboardCopy isReadOnly isCode>
-          {buildCommand().join(" ")}
-        </ClipboardCopy>
-      </div>
+        <CommandBox command={buildCommand()} />
 
-      {error && (
-        <Alert variant="danger" title="Error" style={{ marginTop: "1rem" }}>
-          {error}
-        </Alert>
-      )}
+        {error && (
+          <Alert variant="danger" title="Error" style={{ marginTop: "1rem" }}>
+            {error}
+          </Alert>
+        )}
+      </Form>
     </Modal>
   );
 };
