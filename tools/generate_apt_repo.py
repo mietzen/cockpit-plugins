@@ -403,6 +403,13 @@ echo "==> Installation complete! Access Cockpit at https://<server-ip>:9090 and 
         a.download-link:hover {{
             text-decoration: underline;
         }}
+        .logo-icon {{
+            width: 22px;
+            height: 22px;
+            vertical-align: -3px;
+            margin-right: 8px;
+            display: inline-block;
+        }}
         .footer {{
             text-align: center;
             color: var(--text-secondary);
@@ -419,7 +426,7 @@ echo "==> Installation complete! Access Cockpit at https://<server-ip>:9090 and 
         </div>
 
         <div class="card">
-            <h2>🚀 Debian, Ubuntu & Proxmox (APT)</h2>
+            <h2><img src="https://upload.wikimedia.org/wikipedia/commons/6/66/Openlogo-debianV2.svg" alt="Debian" class="logo-icon"> Debian, Ubuntu & Proxmox (APT)</h2>
             <p>One-line automated installation with GPG verification:</p>
             <pre><code>curl -fsSL https://{owner}.github.io/{repo}/install.sh | sudo bash</code></pre>
             <p style="margin-top: 1rem; color: var(--text-secondary); font-size: 0.9rem;">Manual setup (DEB822 format):</p>
@@ -438,7 +445,7 @@ sudo apt update && sudo apt install cockpit-zfs-storage</code></pre>
         </div>
 
         <div class="card">
-            <h2>🎩 Rocky Linux, RHEL & Fedora (DNF / YUM)</h2>
+            <h2><img src="https://upload.wikimedia.org/wikipedia/commons/0/00/RPM_Logo.svg" alt="RPM" class="logo-icon"> Rocky Linux, RHEL & Fedora (DNF / YUM)</h2>
             <p>One-line automated installation:</p>
             <pre><code>curl -fsSL https://{owner}.github.io/{repo}/install-rpm.sh | sudo bash</code></pre>
             <p style="margin-top: 1rem; color: var(--text-secondary); font-size: 0.9rem;">Manual setup:</p>
