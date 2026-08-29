@@ -642,13 +642,16 @@ select:focus-visible {
   background-color: var(--zfs-card-bg) !important;
   border: 1px solid var(--zfs-card-border) !important;
   color: var(--zfs-text-primary) !important;
-  height: 640px !important;
-  min-height: 640px !important;
   max-height: 90vh !important;
   display: flex !important;
   flex-direction: column !important;
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5) !important;
   overflow: hidden !important;
+}
+
+.pf-v5-c-modal-box:has(.pf-v5-c-wizard) {
+  height: 640px !important;
+  min-height: 640px !important;
 }
 
 .pf-v5-c-modal-box__body {

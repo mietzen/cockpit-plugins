@@ -11,44 +11,59 @@
     <script type="text/javascript">
         (function () {
             function updateTheme(forcedTheme) {
-                const preference = localStorage.getItem('cockpit_zfs_theme') || localStorage.getItem('cockpit_filesharing_theme') || 'auto';
-                let isDark = false;
-                if (preference === 'dark') {
+                var shellStyle = forcedTheme;
+                if (typeof shellStyle !== 'string') {
+                    try {
+                        shellStyle = localStorage.getItem('shell:style') || localStorage.getItem('cockpit_zfs_theme') || localStorage.getItem('cockpit_filesharing_theme');
+                    } catch (e) {}
+                }
+                if (!shellStyle) {
+                    shellStyle = 'auto';
+                }
+
+                var isDark = false;
+                var isExplicitLight = false;
+
+                if (shellStyle === 'dark') {
                     isDark = true;
-                } else if (preference === 'light') {
-                    isDark = false;
+                } else if (shellStyle === 'light') {
+                    isExplicitLight = true;
                 } else {
-                    const shellTheme = forcedTheme || localStorage.getItem('shell:style') || 'auto';
-                    if (shellTheme === 'dark') {
-                        isDark = true;
-                    } else if (shellTheme === 'light') {
-                        isDark = false;
-                    } else {
-                        // "auto" mode: check parent document class or prefers-color-scheme
+                    // "auto" mode: check parent document class first, then prefers-color-scheme
+                    try {
+                        if (window.parent && window.parent !== window && window.parent.document && window.parent.document.documentElement) {
+                            var pCls = window.parent.document.documentElement.classList;
+                            if (pCls.contains('pf-v6-theme-dark') || pCls.contains('pf-v5-theme-dark') || pCls.contains('theme-dark')) {
+                                isDark = true;
+                            }
+                        }
+                    } catch (e) {}
+
+                    if (!isDark && window.matchMedia) {
                         try {
-                            if (window.parent && window.parent.document && window.parent.document.documentElement) {
-                                const pCls = window.parent.document.documentElement.classList;
-                                if (pCls.contains('pf-v6-theme-dark') || pCls.contains('pf-v5-theme-dark') || pCls.contains('theme-dark')) {
-                                    isDark = true;
-                                }
+                            if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                                isDark = true;
                             }
                         } catch (e) {}
-                        if (!isDark && window.matchMedia) {
-                            isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                        }
                     }
                 }
 
+                var docEl = document.documentElement;
                 if (isDark) {
-                    document.documentElement.classList.add('pf-v5-theme-dark');
-                    document.documentElement.classList.add('pf-v6-theme-dark');
-                    document.documentElement.classList.remove('pf-v5-theme-light');
-                    document.documentElement.classList.remove('pf-v6-theme-light');
+                    docEl.classList.add('pf-v5-theme-dark');
+                    docEl.classList.add('pf-v6-theme-dark');
+                    docEl.classList.remove('theme-light');
+                    docEl.classList.remove('pf-m-light');
+                } else if (isExplicitLight) {
+                    docEl.classList.remove('pf-v5-theme-dark');
+                    docEl.classList.remove('pf-v6-theme-dark');
+                    docEl.classList.add('theme-light');
+                    docEl.classList.add('pf-m-light');
                 } else {
-                    document.documentElement.classList.remove('pf-v5-theme-dark');
-                    document.documentElement.classList.remove('pf-v6-theme-dark');
-                    document.documentElement.classList.add('pf-v5-theme-light');
-                    document.documentElement.classList.add('pf-v6-theme-light');
+                    docEl.classList.remove('pf-v5-theme-dark');
+                    docEl.classList.remove('pf-v6-theme-dark');
+                    docEl.classList.remove('theme-light');
+                    docEl.classList.remove('pf-m-light');
                 }
             }
 
@@ -67,20 +82,28 @@
             });
 
             if (window.matchMedia) {
-                window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function () {
-                    updateTheme();
-                });
+                try {
+                    var mq = window.matchMedia('(prefers-color-scheme: dark)');
+                    if (mq.addEventListener) {
+                        mq.addEventListener('change', function () { updateTheme(); });
+                    } else if (mq.addListener) {
+                        mq.addListener(function () { updateTheme(); });
+                    }
+                } catch (e) {}
             }
 
             // Sync parent frame DOM class changes in real time
             try {
-                if (window.parent && window.parent.document && window.parent.document.documentElement) {
-                    const observer = new MutationObserver(function () {
+                if (window.parent && window.parent !== window && window.parent.document && window.parent.document.documentElement) {
+                    var observer = new MutationObserver(function () {
                         updateTheme();
                     });
                     observer.observe(window.parent.document.documentElement, { attributes: true, attributeFilter: ['class'] });
                 }
             } catch (e) {}
+
+            // Periodic polling fallback for cross-browser isolation (Firefox)
+            setInterval(updateTheme, 1000);
 
             updateTheme();
         })();

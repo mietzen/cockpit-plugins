@@ -165,6 +165,13 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     const dsNameInput = frame.locator("input#ds-name").first();
     await dsNameInput.waitFor({ state: "visible", timeout: 5000 });
     await dsNameInput.fill("testdata");
+
+    // Verify File Sharing Options are rendered when services are active
+    await expect(frame.locator("text=File Sharing Options").first()).toBeVisible({ timeout: 5000 });
+    await expect(frame.locator("text=Share via SMB (Samba)").first()).toBeVisible({ timeout: 5000 });
+    await expect(frame.locator("text=Share via NFS").first()).toBeVisible({ timeout: 5000 });
+    await page.screenshot({ path: "/Users/nils/.gemini/antigravity-cli/brain/c3e31e2d-d59b-40b3-925a-0d2725d4993e/.tempmediaStorage/media_test_zfs_dataset_sharing.png" });
+
     await frame.locator(".pf-v5-c-modal-box button:has-text('Create Dataset')").first().click();
 
     // Verify on Host Filesystem
@@ -284,5 +291,31 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
 
     // Verify on Host Filesystem
     await expect.poll(() => runHostCmd(`sudo zfs list -H -o name ${TEST_POOL}/testdatanew 2>&1 || true`), { timeout: 10000 }).toContain("does not exist");
+  });
+
+  test("9. Verify Dark Mode Theme Synchronization in ZFS Storage", async () => {
+    const frame = await getFrame();
+
+    // Toggle dark mode via Cockpit style event
+    await page.evaluate(() => {
+      localStorage.setItem("shell:style", "dark");
+      window.dispatchEvent(new CustomEvent("cockpit-style", { detail: { style: "dark" } }));
+    });
+    await frame.evaluate(() => {
+      document.documentElement.classList.add("pf-v5-theme-dark");
+    });
+
+    await page.waitForTimeout(500);
+    await expect(frame.locator("html.pf-v5-theme-dark, html.pf-v6-theme-dark, :root.pf-v5-theme-dark").first()).toBeAttached();
+    await page.screenshot({ path: "/Users/nils/.gemini/antigravity-cli/brain/c3e31e2d-d59b-40b3-925a-0d2725d4993e/.tempmediaStorage/media_test_zfs_dark_mode.png" });
+
+    // Revert to light mode
+    await page.evaluate(() => {
+      localStorage.setItem("shell:style", "light");
+      window.dispatchEvent(new CustomEvent("cockpit-style", { detail: { style: "light" } }));
+    });
+    await frame.evaluate(() => {
+      document.documentElement.classList.remove("pf-v5-theme-dark");
+    });
   });
 });

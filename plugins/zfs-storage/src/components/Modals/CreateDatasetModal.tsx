@@ -10,6 +10,7 @@ import {
   Checkbox,
   Button,
   Alert,
+  ExpandableSection,
 } from "@patternfly/react-core";
 import { CommandBox } from "../CommandBox";
 import { zfsApi } from "../../api/zfsClient";
@@ -48,6 +49,7 @@ export const CreateDatasetModal: React.FC<CreateDatasetModalProps> = ({
   const [shareSmb, setShareSmb] = useState(false);
   const [shareNfs, setShareNfs] = useState(false);
   const [services, setServices] = useState<{ smb: boolean; nfs: boolean }>({ smb: false, nfs: false });
+  const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -172,59 +174,6 @@ export const CreateDatasetModal: React.FC<CreateDatasetModalProps> = ({
           </FormSelect>
         </FormGroup>
 
-        <FormGroup label="Deduplication" fieldId="ds-dedup">
-          <FormSelect
-            id="ds-dedup"
-            value={dedup}
-            onChange={(_event, val) => setDedup(val)}
-          >
-            <FormSelectOption value="off" label="off (Recommended)" />
-            <FormSelectOption value="on" label="on" />
-            <FormSelectOption value="verify" label="verify" />
-          </FormSelect>
-        </FormGroup>
-
-        <FormGroup label="Quota (Limit Space)" fieldId="ds-quota">
-          <TextInput
-            id="ds-quota"
-            value={quota}
-            onChange={(_event, val) => setQuota(val)}
-            placeholder="e.g. 50G, 1T, none"
-          />
-        </FormGroup>
-
-        <FormGroup label="Recordsize (Block Size)" fieldId="ds-recsize">
-          <FormSelect
-            id="ds-recsize"
-            value={recordsize}
-            onChange={(_event, val) => setRecordsize(val)}
-          >
-            <FormSelectOption value="128k" label="128 KiB (Default)" />
-            <FormSelectOption value="1M" label="1 MiB (Large files &amp; media)" />
-            <FormSelectOption value="64k" label="64 KiB" />
-            <FormSelectOption value="16k" label="16 KiB (Databases)" />
-            <FormSelectOption value="4k" label="4 KiB" />
-          </FormSelect>
-        </FormGroup>
-
-        <FormGroup label="Custom Mountpoint" fieldId="ds-mount">
-          <TextInput
-            id="ds-mount"
-            value={mountpoint}
-            onChange={(_event, val) => setMountpoint(val)}
-            placeholder="Default is inherited from parent"
-          />
-        </FormGroup>
-
-        <FormGroup fieldId="ds-atime">
-          <Checkbox
-            id="ds-atime"
-            label="Enable atime (update access time on read)"
-            isChecked={atime}
-            onChange={(_event, checked) => setAtime(checked)}
-          />
-        </FormGroup>
-
         {(services.smb || services.nfs) && (
           <FormGroup label="File Sharing Options" fieldId="ds-sharing">
             {services.smb && (
@@ -246,6 +195,65 @@ export const CreateDatasetModal: React.FC<CreateDatasetModalProps> = ({
             )}
           </FormGroup>
         )}
+
+        <ExpandableSection
+          toggleText={isAdvancedOpen ? "Hide Advanced Options" : "Show Advanced Options (Quota, Recordsize, Dedup)"}
+          onToggle={(_event, isExpanded) => setIsAdvancedOpen(isExpanded)}
+          isExpanded={isAdvancedOpen}
+        >
+          <FormGroup label="Deduplication" fieldId="ds-dedup" style={{ marginTop: "0.75rem" }}>
+            <FormSelect
+              id="ds-dedup"
+              value={dedup}
+              onChange={(_event, val) => setDedup(val)}
+            >
+              <FormSelectOption value="off" label="off (Recommended)" />
+              <FormSelectOption value="on" label="on" />
+              <FormSelectOption value="verify" label="verify" />
+            </FormSelect>
+          </FormGroup>
+
+          <FormGroup label="Quota (Limit Space)" fieldId="ds-quota" style={{ marginTop: "0.75rem" }}>
+            <TextInput
+              id="ds-quota"
+              value={quota}
+              onChange={(_event, val) => setQuota(val)}
+              placeholder="e.g. 50G, 1T, none"
+            />
+          </FormGroup>
+
+          <FormGroup label="Recordsize (Block Size)" fieldId="ds-recsize" style={{ marginTop: "0.75rem" }}>
+            <FormSelect
+              id="ds-recsize"
+              value={recordsize}
+              onChange={(_event, val) => setRecordsize(val)}
+            >
+              <FormSelectOption value="128k" label="128 KiB (Default)" />
+              <FormSelectOption value="1M" label="1 MiB (Large files &amp; media)" />
+              <FormSelectOption value="64k" label="64 KiB" />
+              <FormSelectOption value="16k" label="16 KiB (Databases)" />
+              <FormSelectOption value="4k" label="4 KiB" />
+            </FormSelect>
+          </FormGroup>
+
+          <FormGroup label="Custom Mountpoint" fieldId="ds-mount" style={{ marginTop: "0.75rem" }}>
+            <TextInput
+              id="ds-mount"
+              value={mountpoint}
+              onChange={(_event, val) => setMountpoint(val)}
+              placeholder="Default is inherited from parent"
+            />
+          </FormGroup>
+
+          <FormGroup fieldId="ds-atime" style={{ marginTop: "0.75rem" }}>
+            <Checkbox
+              id="ds-atime"
+              label="Enable atime (update access time on read)"
+              isChecked={atime}
+              onChange={(_event, checked) => setAtime(checked)}
+            />
+          </FormGroup>
+        </ExpandableSection>
 
         <CommandBox command={buildCommand()} />
 
