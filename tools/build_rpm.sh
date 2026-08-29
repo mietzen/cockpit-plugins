@@ -54,7 +54,11 @@ if command -v rpmbuild >/dev/null 2>&1; then
 %define _buildhost localhost
 %define _build_id_links none
 %define _clamp_mtime 1
+%define _build_time ${SOURCE_DATE_EPOCH}
+%define _buildtime ${SOURCE_DATE_EPOCH}
+%define _source_date_epoch ${SOURCE_DATE_EPOCH}
 %define _binary_payload w9.gzdio
+%define _source_payload w9.gzdio
 
 Name:           ${PKG_NAME}
 Version:        ${VERSION}
@@ -114,9 +118,12 @@ SPEC_EOF
         --define "_topdir ${PWD}/${RPMBUILD_DIR}" \
         --define "_buildhost localhost" \
         --define "_clamp_mtime 1" \
+        --define "_build_time ${SOURCE_DATE_EPOCH}" \
+        --define "_buildtime ${SOURCE_DATE_EPOCH}" \
         --define "_source_date_epoch ${SOURCE_DATE_EPOCH}" \
-        --define "_source_date_epoch_from_changelog 1" \
+        --define "_source_date_epoch_from_changelog 0" \
         --define "_binary_payload w9.gzdio" \
+        --define "_source_payload w9.gzdio" \
         --define "_build_id_links none" \
         -bb "$SPEC_FILE"
     find "$RPMBUILD_DIR/RPMS" -name "*.rpm" -exec cp {} "$OUTPUT_DIR/" \;
