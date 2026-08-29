@@ -503,7 +503,7 @@ export const App: React.FC = () => {
             onCreateDataset={(p) => setCreateDatasetParent(p || selectedPool.name)}
             onCreateZVol={(p) => setCreateZVolParent(p || selectedPool.name)}
             onEditProperties={(ds) => setEditPropertiesTarget(ds)}
-            onCreateSnapshot={(ds) => setCreateSnapshotTarget(ds ? ds.name : selectedPool.name)}
+            onCreateSnapshot={(ds) => setCreateSnapshotTarget(typeof ds === "string" ? ds : (ds ? ds.name : selectedPool.name))}
             onMountToggle={handleMountToggle}
             onRenameDataset={(ds) => {
               setRenameTarget({
@@ -612,6 +612,16 @@ export const App: React.FC = () => {
       <CreateSnapshotModal
         isOpen={!!createSnapshotTarget}
         defaultDataset={createSnapshotTarget || ""}
+        availableDatasets={
+          selectedPool
+            ? [
+                selectedPool.name,
+                ...datasets
+                  .filter((d) => d.pool === selectedPool.name || d.name.startsWith(`${selectedPool.name}/`))
+                  .map((d) => d.name),
+              ]
+            : datasets.map((d) => d.name)
+        }
         onClose={() => setCreateSnapshotTarget(null)}
         onSubmit={async ({ command }) => {
           await executeCmd(command, "Snapshot created successfully");

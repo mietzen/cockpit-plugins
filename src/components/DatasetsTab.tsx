@@ -36,6 +36,7 @@ interface DatasetsTabProps {
   onCreateZVol: (parentDataset?: string) => void;
   onEditProperties: (dataset: ZDataset) => void;
   onCreateSnapshot: (dataset: ZDataset) => void;
+  onViewSnapshots?: (datasetName: string) => void;
   onMountToggle: (dataset: ZDataset) => void;
   onRenameDataset: (dataset: ZDataset) => void;
   onDestroyDataset: (dataset: ZDataset) => void;
@@ -49,6 +50,7 @@ export const DatasetsTab: React.FC<DatasetsTabProps> = ({
   onCreateZVol,
   onEditProperties,
   onCreateSnapshot,
+  onViewSnapshots,
   onMountToggle,
   onRenameDataset,
   onDestroyDataset,
@@ -118,7 +120,7 @@ export const DatasetsTab: React.FC<DatasetsTabProps> = ({
               <Th>Mountpoint</Th>
               <Th>Compression</Th>
               <Th>Encryption</Th>
-              <Th>Snapshots</Th>
+              <Th style={{ textAlign: "center" }}>Snapshots</Th>
               <Th aria-label="Actions" />
             </Tr>
           </Thead>
@@ -195,7 +197,24 @@ export const DatasetsTab: React.FC<DatasetsTabProps> = ({
                       <span style={{ color: "#999999" }}>off</span>
                     )}
                   </Td>
-                  <Td dataLabel="Snapshots">{ds.snapshot_count}</Td>
+                  <Td dataLabel="Snapshots" style={{ textAlign: "center" }}>
+                    {ds.snapshot_count > 0 ? (
+                      <Button
+                        variant="link"
+                        isInline
+                        onClick={() => {
+                          if (onViewSnapshots) {
+                            onViewSnapshots(ds.name);
+                          }
+                        }}
+                        style={{ fontWeight: 600, color: "var(--zfs-tab-active-color)" }}
+                      >
+                        {ds.snapshot_count}
+                      </Button>
+                    ) : (
+                      <span style={{ color: "#999999" }}>0</span>
+                    )}
+                  </Td>
                   <Td isActionCell>
                     <Dropdown
                       popperProps={{ position: "right", preventOverflow: true }}

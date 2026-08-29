@@ -43,7 +43,7 @@ interface PoolDetailsViewProps {
   onCreateDataset: (parentDataset?: string) => void;
   onCreateZVol: (parentDataset?: string) => void;
   onEditProperties: (dataset: ZDataset) => void;
-  onCreateSnapshot: (dataset?: ZDataset) => void;
+  onCreateSnapshot: (dataset?: ZDataset | string) => void;
   onMountToggle: (dataset: ZDataset) => void;
   onRenameDataset: (dataset: ZDataset) => void;
   onDestroyDataset: (dataset: ZDataset) => void;
@@ -177,6 +177,11 @@ export const PoolDetailsView: React.FC<PoolDetailsViewProps> = ({
             onCreateZVol={onCreateZVol}
             onEditProperties={onEditProperties}
             onCreateSnapshot={onCreateSnapshot}
+            onViewSnapshots={(_dsName) => {
+              if (onTabChange) {
+                onTabChange("snapshots");
+              }
+            }}
             onMountToggle={onMountToggle}
             onRenameDataset={onRenameDataset}
             onDestroyDataset={onDestroyDataset}
@@ -187,7 +192,7 @@ export const PoolDetailsView: React.FC<PoolDetailsViewProps> = ({
             poolName={pool.name}
             snapshots={snapshots}
             isLoading={isLoading}
-            onCreateSnapshot={() => onCreateSnapshot()}
+            onCreateSnapshot={(targetDs) => onCreateSnapshot(targetDs || pool.name)}
             onRollbackSnapshot={onRollbackSnapshot}
             onCloneSnapshot={onCloneSnapshot}
             onRenameSnapshot={onRenameSnapshot}
