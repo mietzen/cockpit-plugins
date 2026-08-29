@@ -680,6 +680,17 @@ select:focus-visible {
   z-index: 9999 !important;
 }
 
+/* Toast & Notification Alerts */
+.pf-v5-c-alert {
+  border-radius: 12px !important;
+  overflow: hidden !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25) !important;
+}
+
+.pf-v5-c-alert__title .pf-v5-screen-reader {
+  display: none !important;
+}
+
 .pf-v5-c-menu::after {
   border: none !important;
 }

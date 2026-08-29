@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Button,
   Flex,
@@ -40,6 +40,7 @@ interface SnapshotsTabProps {
   poolName: string;
   snapshots: ZSnapshot[];
   isLoading?: boolean;
+  focusedDataset?: string | null;
   onCreateSnapshot: (targetDataset?: string) => void;
   onRollbackSnapshot: (snapshot: ZSnapshot) => void;
   onCloneSnapshot: (snapshot: ZSnapshot) => void;
@@ -52,6 +53,7 @@ export const SnapshotsTab: React.FC<SnapshotsTabProps> = ({
   poolName,
   snapshots,
   isLoading = false,
+  focusedDataset,
   onCreateSnapshot,
   onRollbackSnapshot,
   onCloneSnapshot,
@@ -62,7 +64,20 @@ export const SnapshotsTab: React.FC<SnapshotsTabProps> = ({
   const [searchValue, setSearchValue] = useState("");
   const [selectedSnaps, setSelectedSnaps] = useState<string[]>([]);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
-  const [collapsedDatasets, setCollapsedDatasets] = useState<Set<string>>(new Set());
+  const [uncollapsedDatasets, setUncollapsedDatasets] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (focusedDataset) {
+      setUncollapsedDatasets((prev) => new Set([...prev, focusedDataset]));
+      setTimeout(() => {
+        const id = `snapshot-group-${focusedDataset.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
+        const el = document.getElementById(id);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }, 150);
+    }
+  }, [focusedDataset]);
 
   const poolSnaps = snapshots.filter(
     (s) => s.dataset === poolName || s.dataset.startsWith(`${poolName}/`)
@@ -100,7 +115,7 @@ export const SnapshotsTab: React.FC<SnapshotsTabProps> = ({
   }
 
   const toggleDatasetCollapse = (dsName: string) => {
-    setCollapsedDatasets((prev) => {
+    setUncollapsedDatasets((prev) => {
       const next = new Set(prev);
       if (next.has(dsName)) {
         next.delete(dsName);
@@ -112,11 +127,11 @@ export const SnapshotsTab: React.FC<SnapshotsTabProps> = ({
   };
 
   const handleExpandAll = () => {
-    setCollapsedDatasets(new Set());
+    setUncollapsedDatasets(new Set(sortedDatasets));
   };
 
   const handleCollapseAll = () => {
-    setCollapsedDatasets(new Set(sortedDatasets));
+    setUncollapsedDatasets(new Set());
   };
 
   const handleSelectAll = (checked: boolean) => {
@@ -249,19 +264,33 @@ export const SnapshotsTab: React.FC<SnapshotsTabProps> = ({
 
           <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
             {datasetGroups.map((group) => {
-              const isCollapsed = collapsedDatasets.has(group.dataset);
+              const isExpanded = uncollapsedDatasets.has(group.dataset);
+              const isFocused = focusedDataset === group.dataset;
+              const groupId = `snapshot-group-${group.dataset.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
               const groupSnapNames = group.snapshots.map((s) => s.name);
               const isGroupAllSelected =
                 groupSnapNames.length > 0 &&
                 groupSnapNames.every((name) => selectedSnaps.includes(name));
 
               return (
-                <Card key={group.dataset} isCompact style={{ overflow: "hidden" }}>
+                <Card
+                  key={group.dataset}
+                  id={groupId}
+                  isCompact
+                  style={{
+                    overflow: "hidden",
+                    border: isFocused
+                      ? "2px solid var(--zfs-tab-active-color)"
+                      : "1px solid var(--zfs-card-border)",
+                    boxShadow: isFocused ? "0 0 12px rgba(0, 102, 204, 0.25)" : "none",
+                    transition: "border-color 0.3s ease, box-shadow 0.3s ease",
+                  }}
+                >
                   <CardHeader
                     style={{
                       cursor: "pointer",
                       backgroundColor: "var(--zfs-card-bg)",
-                      borderBottom: isCollapsed ? "none" : "1px solid var(--zfs-card-border)",
+                      borderBottom: isExpanded ? "1px solid var(--zfs-card-border)" : "none",
                     }}
                     onClick={() => toggleDatasetCollapse(group.dataset)}
                   >
@@ -273,7 +302,7 @@ export const SnapshotsTab: React.FC<SnapshotsTabProps> = ({
                       <FlexItem>
                         <Flex alignItems={{ default: "alignItemsCenter" }} gap={{ default: "gapSm" }}>
                           <FlexItem>
-                            {isCollapsed ? <AngleRightIcon /> : <AngleDownIcon />}
+                            {isExpanded ? <AngleDownIcon /> : <AngleRightIcon />}
                           </FlexItem>
                           <FlexItem>
                             <FolderIcon style={{ color: "rgb(146, 197, 249)" }} />
@@ -301,7 +330,7 @@ export const SnapshotsTab: React.FC<SnapshotsTabProps> = ({
                     </Flex>
                   </CardHeader>
 
-                  {!isCollapsed && (
+                  {isExpanded && (
                     <CardBody style={{ padding: 0 }}>
                       <Table aria-label={`Snapshots for ${group.dataset}`} variant="compact">
                         <Thead>

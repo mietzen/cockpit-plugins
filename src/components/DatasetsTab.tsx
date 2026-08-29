@@ -199,20 +199,52 @@ export const DatasetsTab: React.FC<DatasetsTabProps> = ({
                   </Td>
                   <Td dataLabel="Snapshots" style={{ textAlign: "center" }}>
                     {ds.snapshot_count > 0 ? (
-                      <Button
-                        variant="link"
-                        isInline
+                      <button
+                        type="button"
                         onClick={() => {
                           if (onViewSnapshots) {
                             onViewSnapshots(ds.name);
                           }
                         }}
-                        style={{ fontWeight: 600, color: "var(--zfs-tab-active-color)" }}
+                        aria-label={`View ${ds.snapshot_count} snapshots for ${ds.name}`}
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          borderRadius: "999px",
+                          backgroundColor: "rgba(146, 197, 249, 0.2)",
+                          color: "var(--zfs-tab-active-color)",
+                          padding: "2px 12px",
+                          fontSize: "0.85rem",
+                          fontWeight: 600,
+                          minWidth: "32px",
+                          height: "24px",
+                          cursor: "pointer",
+                          textDecoration: "none",
+                          border: "1px solid rgba(146, 197, 249, 0.4)",
+                          transition: "all 0.15s ease",
+                        }}
                       >
                         {ds.snapshot_count}
-                      </Button>
+                      </button>
                     ) : (
-                      <span style={{ color: "#999999" }}>0</span>
+                      <span
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          borderRadius: "999px",
+                          backgroundColor: "var(--zfs-card-bg)",
+                          color: "var(--zfs-text-secondary)",
+                          padding: "2px 12px",
+                          fontSize: "0.85rem",
+                          border: "1px solid var(--zfs-card-border)",
+                          minWidth: "32px",
+                          height: "24px",
+                        }}
+                      >
+                        0
+                      </span>
                     )}
                   </Td>
                   <Td isActionCell>

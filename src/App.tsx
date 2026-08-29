@@ -405,16 +405,32 @@ export const App: React.FC = () => {
       />
 
       <AlertGroup isToast isLiveRegion style={{ position: "fixed", top: "1rem", right: "1rem", zIndex: 9999 }}>
-        {alerts.map((a) => (
-          <Alert
-            key={a.id}
-            variant={a.variant}
-            title={a.title}
-            actionClose={<AlertActionCloseButton onClose={() => setAlerts((prev) => prev.filter((x) => x.id !== a.id))} />}
-          >
-            {a.message}
-          </Alert>
-        ))}
+        {alerts.map((a) => {
+          const prefixMap: Record<string, string> = {
+            success: "Success: ",
+            danger: "Failed: ",
+            warning: "Warning: ",
+            info: "Info: ",
+          };
+          const prefix = prefixMap[a.variant] || "";
+          const cleanTitle = a.title.replace(/^(success|danger|warning|info)\s+alert:\s*/i, "");
+          const displayTitle = cleanTitle.startsWith(prefix) ? cleanTitle : `${prefix}${cleanTitle}`;
+
+          return (
+            <Alert
+              key={a.id}
+              variant={a.variant}
+              title={displayTitle}
+              actionClose={
+                <AlertActionCloseButton
+                  onClose={() => setAlerts((prev) => prev.filter((x) => x.id !== a.id))}
+                />
+              }
+            >
+              {a.message}
+            </Alert>
+          );
+        })}
       </AlertGroup>
 
       {/* Pure In-Memory Persistent Views for True 0ms Redraw */}

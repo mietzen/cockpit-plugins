@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   PageSection,
   Title,
@@ -91,6 +91,7 @@ export const PoolDetailsView: React.FC<PoolDetailsViewProps> = ({
   onViewSmartDetails,
 }) => {
   const isOnline = pool.health === "ONLINE";
+  const [focusedDataset, setFocusedDataset] = useState<string | null>(null);
 
   const handleSelectTab = (_event: any, tabKey: string | number) => {
     if (onTabChange) {
@@ -177,7 +178,8 @@ export const PoolDetailsView: React.FC<PoolDetailsViewProps> = ({
             onCreateZVol={onCreateZVol}
             onEditProperties={onEditProperties}
             onCreateSnapshot={onCreateSnapshot}
-            onViewSnapshots={(_dsName) => {
+            onViewSnapshots={(dsName) => {
+              setFocusedDataset(dsName);
               if (onTabChange) {
                 onTabChange("snapshots");
               }
@@ -192,6 +194,7 @@ export const PoolDetailsView: React.FC<PoolDetailsViewProps> = ({
             poolName={pool.name}
             snapshots={snapshots}
             isLoading={isLoading}
+            focusedDataset={focusedDataset}
             onCreateSnapshot={(targetDs) => onCreateSnapshot(targetDs || pool.name)}
             onRollbackSnapshot={onRollbackSnapshot}
             onCloneSnapshot={onCloneSnapshot}

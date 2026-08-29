@@ -35,7 +35,7 @@ export const MaintenanceTab: React.FC<MaintenanceTabProps> = ({
       </Title>
 
       {/* Scrub Section */}
-      <Card isPlain style={{ border: "1px solid #333333", maxWidth: "650px", marginBottom: "1.5rem" }}>
+      <Card style={{ borderRadius: "16px", border: "1px solid var(--zfs-card-border)", backgroundColor: "var(--zfs-card-bg)", maxWidth: "650px", marginBottom: "1.5rem", overflow: "hidden" }}>
         <CardTitle>
           <Flex alignItems={{ default: "alignItemsCenter" }}>
             <FlexItem>
@@ -65,7 +65,7 @@ export const MaintenanceTab: React.FC<MaintenanceTabProps> = ({
           )}
 
           {pool.scan?.raw && !isScrubbing && (
-            <Alert variant="info" isInline title="Last verification" style={{ marginBottom: "1.5rem" }}>
+            <Alert variant="info" isInline title="Last verification" style={{ marginBottom: "1.5rem", borderRadius: "12px" }}>
               {pool.scan.raw}
             </Alert>
           )}
@@ -108,7 +108,7 @@ export const MaintenanceTab: React.FC<MaintenanceTabProps> = ({
       </Card>
 
       {/* Trim Section */}
-      <Card isPlain style={{ border: "1px solid #333333", maxWidth: "650px" }}>
+      <Card style={{ borderRadius: "16px", border: "1px solid var(--zfs-card-border)", backgroundColor: "var(--zfs-card-bg)", maxWidth: "650px", overflow: "hidden" }}>
         <CardTitle>
           <Flex alignItems={{ default: "alignItemsCenter" }}>
             <FlexItem>
