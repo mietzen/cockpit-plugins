@@ -31,7 +31,10 @@ VERSION="${VERSION#v}"
 
 # Set SOURCE_DATE_EPOCH for reproducible builds
 if [ -z "${SOURCE_DATE_EPOCH:-}" ]; then
-    SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct "$PLUGIN_DIR" 2>/dev/null || date +%s)
+    SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct "$PLUGIN_DIR" 2>/dev/null || true)
+    if [ -z "$SOURCE_DATE_EPOCH" ]; then
+        SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct 2>/dev/null || date +%s)
+    fi
     export SOURCE_DATE_EPOCH
 fi
 
