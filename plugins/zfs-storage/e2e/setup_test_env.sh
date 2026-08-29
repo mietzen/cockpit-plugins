@@ -103,6 +103,11 @@ sudo mkdir -p /srv/samba/test /srv/nfs/test /tank/ansible
 if [ -f /etc/samba/smb.conf ]; then
     sudo bash -c 'cat << "EOF" >> /etc/samba/smb.conf
 
+[testshare]
+   path = /srv/samba/test
+   read only = no
+   guest ok = yes
+
 # <-- BEGIN ANSIBLE MANAGED storage_cluster CONFIG -->
 [ansible_locked_share]
    path = /tank/ansible

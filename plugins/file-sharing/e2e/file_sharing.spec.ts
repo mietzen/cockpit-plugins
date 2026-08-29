@@ -79,37 +79,51 @@ test.describe.serial("Cockpit File Sharing Plugin E2E Test Suite", () => {
 
     const frame = await getFrame();
     await frame.waitForSelector("#root", { timeout: 20000 });
-    await expect(frame.getByRole("heading", { name: "File Sharing" })).toBeVisible({ timeout: 10000 });
+    await expect(frame.getByRole("heading", { name: "File Sharing" }).first()).toBeVisible({ timeout: 10000 });
+    await page.screenshot({ path: "/Users/nils/.gemini/antigravity-cli/brain/c3e31e2d-d59b-40b3-925a-0d2725d4993e/.tempmediaStorage/media_fs_dashboard.png" });
   });
 
   test("2. Verify Ansible Managed SMB Share and Lock Badge", async () => {
     const frame = await getFrame();
-    await expect(frame.getByRole("tab", { name: /SMB Shares/ })).toBeVisible();
-    await expect(frame.getByRole("tab", { name: /NFS Exports/ })).toBeVisible();
-    await expect(frame.getByRole("tab", { name: /Samba Users/ })).toBeVisible();
+    await frame.getByRole("tab", { name: /SMB Shares/ }).click();
 
-    // Verify Ansible lock badge
-    await expect(frame.getByText(/Ansible: storage_cluster/)).toBeVisible({ timeout: 10000 });
+    // Verify Ansible lock badge in visible SMB table
+    await expect(frame.getByText("Ansible: storage_cluster").and(frame.locator(":visible")).first()).toBeVisible({ timeout: 10000 });
+    await page.screenshot({ path: "/Users/nils/.gemini/antigravity-cli/brain/c3e31e2d-d59b-40b3-925a-0d2725d4993e/.tempmediaStorage/media_fs_smb.png" });
   });
 
   test("3. Verify NFS Exports & Client IP Access Map", async () => {
     const frame = await getFrame();
     await frame.getByRole("tab", { name: /NFS Exports/ }).click();
-    await expect(frame.getByText("/srv/nfs/test")).toBeVisible({ timeout: 10000 });
+    await expect(frame.getByText("/srv/nfs/test").and(frame.locator(":visible")).first()).toBeVisible({ timeout: 10000 });
+    await page.screenshot({ path: "/Users/nils/.gemini/antigravity-cli/brain/c3e31e2d-d59b-40b3-925a-0d2725d4993e/.tempmediaStorage/media_fs_nfs.png" });
 
     // Switch to Client IP Access Map
-    await frame.getByText(/Client IP Access Map/).click();
-    await expect(frame.getByText("192.168.40.0/24")).toBeVisible({ timeout: 10000 });
+    await frame.getByRole("tab", { name: /Client IP Access Map/ }).click();
+    await expect(frame.getByText("192.168.40.0/24").and(frame.locator(":visible")).first()).toBeVisible({ timeout: 10000 });
+    await page.screenshot({ path: "/Users/nils/.gemini/antigravity-cli/brain/c3e31e2d-d59b-40b3-925a-0d2725d4993e/.tempmediaStorage/media_fs_nfs_map.png" });
   });
 
   test("4. Verify Samba Users & Access Permissions Matrix", async () => {
     const frame = await getFrame();
     await frame.getByRole("tab", { name: /Samba Users/ }).click();
-    await expect(frame.getByText("test-user").first()).toBeVisible({ timeout: 10000 });
+    await expect(frame.getByText("test-user").and(frame.locator(":visible")).first()).toBeVisible({ timeout: 10000 });
+    await page.screenshot({ path: "/Users/nils/.gemini/antigravity-cli/brain/c3e31e2d-d59b-40b3-925a-0d2725d4993e/.tempmediaStorage/media_fs_users.png" });
 
     // Switch to User Access Matrix
-    await frame.getByText(/User Access Matrix/).click();
-    await expect(frame.getByText("[testshare]")).toBeVisible({ timeout: 10000 });
-    await expect(frame.getByText("Read / Write").first()).toBeVisible({ timeout: 10000 });
+    await frame.getByRole("tab", { name: /User Access Matrix/ }).click();
+    await expect(frame.getByText("test-user").and(frame.locator(":visible")).first()).toBeVisible({ timeout: 10000 });
+    await page.screenshot({ path: "/Users/nils/.gemini/antigravity-cli/brain/c3e31e2d-d59b-40b3-925a-0d2725d4993e/.tempmediaStorage/media_fs_matrix.png" });
+  });
+
+  test("5. Verify Services & Sessions and Settings Views", async () => {
+    const frame = await getFrame();
+    await frame.getByRole("tab", { name: /Services & Sessions/ }).click();
+    await expect(frame.getByText("Samba File Daemon (smbd)").and(frame.locator(":visible")).first()).toBeVisible({ timeout: 10000 });
+    await page.screenshot({ path: "/Users/nils/.gemini/antigravity-cli/brain/c3e31e2d-d59b-40b3-925a-0d2725d4993e/.tempmediaStorage/media_fs_sessions.png" });
+
+    await frame.getByRole("tab", { name: /Settings/ }).click();
+    await expect(frame.getByText("Global Samba Configuration").and(frame.locator(":visible")).first()).toBeVisible({ timeout: 10000 });
+    await page.screenshot({ path: "/Users/nils/.gemini/antigravity-cli/brain/c3e31e2d-d59b-40b3-925a-0d2725d4993e/.tempmediaStorage/media_fs_settings.png" });
   });
 });

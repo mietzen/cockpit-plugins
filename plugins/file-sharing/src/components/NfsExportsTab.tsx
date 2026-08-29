@@ -1,37 +1,50 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
+  PageSection,
+  Title,
   Button,
-  Card,
-  CardBody,
-  CardHeader,
-  CardTitle,
   Flex,
   FlexItem,
-  Form,
-  FormGroup,
-  FormSelect,
-  FormSelectOption,
+  Card,
+  CardBody,
   Label,
-  Modal,
-  ModalVariant,
-  Switch,
+  SearchInput,
+  EmptyState,
+  EmptyStateHeader,
+  EmptyStateIcon,
+  EmptyStateBody,
+  EmptyStateFooter,
+  EmptyStateActions,
   Tabs,
   Tab,
   TabTitleText,
+  Dropdown,
+  DropdownItem,
+  DropdownList,
+  MenuToggle,
+  MenuToggleElement,
+  Modal,
+  ModalVariant,
+  Form,
+  FormGroup,
   TextInput,
-  Tooltip
-} from '@patternfly/react-core';
-import { Table, Thead, Tbody, Tr, Th, Td } from '@patternfly/react-table';
+  FormSelect,
+  FormSelectOption,
+  Switch,
+  Tooltip,
+  Alert,
+} from "@patternfly/react-core";
+import { Table, Thead, Tbody, Tr, Th, Td } from "@patternfly/react-table";
 import {
-  GlobeIcon,
   PlusCircleIcon,
-  TrashIcon,
-  PencilAltIcon,
+  GlobeIcon,
+  NetworkIcon,
   LockIcon,
-  ServerIcon,
-  NetworkIcon
-} from '@patternfly/react-icons';
-import { NfsExport, NfsClientMapItem, ZfsMount } from '../types';
+  EllipsisVIcon,
+  PencilAltIcon,
+  TrashIcon,
+} from "@patternfly/react-icons";
+import { NfsExport, NfsClientMapItem, ZfsMount } from "../types";
 
 interface NfsExportsTabProps {
   exports: NfsExport[];
@@ -46,28 +59,34 @@ export const NfsExportsTab: React.FC<NfsExportsTabProps> = ({
   clientMap,
   zfsMounts,
   onSaveExport,
-  onDeleteExport
+  onDeleteExport,
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'exports' | 'clients'>('exports');
+  const [activeSubTab, setActiveSubTab] = useState<"exports" | "clients">("exports");
+  const [searchValue, setSearchValue] = useState("");
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [editingExport, setEditingExport] = useState<NfsExport | null>(null);
-  const [deletingPath, setDeletingPath] = useState<string>('');
+  const [deletingPath, setDeletingPath] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Form fields
-  const [path, setPath] = useState('');
-  const [clientHost, setClientHost] = useState('*');
+  const [path, setPath] = useState("");
+  const [clientHost, setClientHost] = useState("*");
   const [readOnly, setReadOnly] = useState(false);
   const [sync, setSync] = useState(true);
   const [rootSquash, setRootSquash] = useState(true);
   const [noSubtreeCheck, setNoSubtreeCheck] = useState(true);
 
+  const toggleDropdown = (exportPath: string) => {
+    setOpenDropdown(openDropdown === exportPath ? null : exportPath);
+  };
+
   const handleOpenCreate = () => {
     setEditingExport(null);
-    setPath(zfsMounts.length > 0 ? zfsMounts[0].mountpoint : '/srv/nfs/share');
-    setClientHost('*');
+    setPath(zfsMounts.length > 0 ? zfsMounts[0].mountpoint : "/srv/nfs/share");
+    setClientHost("*");
     setReadOnly(false);
     setSync(true);
     setRootSquash(true);
@@ -80,7 +99,7 @@ export const NfsExportsTab: React.FC<NfsExportsTabProps> = ({
     if (exp.is_managed) return;
     setEditingExport(exp);
     setPath(exp.path);
-    const firstClient = exp.clients[0] || { host: '*' };
+    const firstClient = exp.clients[0] || { host: "*", read_only: false, sync: true, root_squash: true, no_subtree_check: true };
     setClientHost(firstClient.host);
     setReadOnly(firstClient.read_only);
     setSync(firstClient.sync);
@@ -92,7 +111,7 @@ export const NfsExportsTab: React.FC<NfsExportsTabProps> = ({
 
   const handleSave = async () => {
     if (!path.trim()) {
-      setError('Export path is required');
+      setError("Export path is required");
       return;
     }
     setLoading(true);
@@ -102,18 +121,17 @@ export const NfsExportsTab: React.FC<NfsExportsTabProps> = ({
         path: path.trim(),
         clients: [
           {
-            host: clientHost.trim() || '*',
+            host: clientHost.trim() || "*",
             read_only: readOnly,
             sync: sync,
             root_squash: rootSquash,
-            all_squash: false,
-            no_subtree_check: noSubtreeCheck
-          }
-        ]
+            no_subtree_check: noSubtreeCheck,
+          },
+        ],
       });
       setIsModalOpen(false);
     } catch (err: any) {
-      setError(err.message || 'Failed to save NFS export');
+      setError(err.message || "Failed to save export");
     } finally {
       setLoading(false);
     }
@@ -126,316 +144,352 @@ export const NfsExportsTab: React.FC<NfsExportsTabProps> = ({
       await onDeleteExport(deletingPath);
       setIsDeleteModalOpen(false);
     } catch (err: any) {
-      setError(err.message || 'Failed to delete NFS export');
+      setError(err.message || "Failed to delete export");
     } finally {
       setLoading(false);
     }
   };
 
+  const filteredExports = exports.filter((e) =>
+    e.path.toLowerCase().includes(searchValue.toLowerCase()) ||
+    e.clients.some((c) => c.host.toLowerCase().includes(searchValue.toLowerCase()))
+  );
+
+  const filteredClientMap = clientMap.filter((c) =>
+    c.client.toLowerCase().includes(searchValue.toLowerCase()) ||
+    c.exports.some((e) => e.path.toLowerCase().includes(searchValue.toLowerCase()))
+  );
+
   return (
     <>
-      <Card>
-        <CardHeader>
-          <Flex justifyContent={{ default: 'justifyContentSpaceBetween' }} alignItems={{ default: 'alignItemsCenter' }} style={{ width: '100%' }}>
-            <FlexItem>
-              <CardTitle>
-                <GlobeIcon style={{ marginRight: 8 }} />
-                NFS Exports & Access Management
-              </CardTitle>
-            </FlexItem>
-            <FlexItem>
-              <Button variant="primary" icon={<PlusCircleIcon />} onClick={handleOpenCreate}>
-                Create NFS Export
-              </Button>
-            </FlexItem>
-          </Flex>
-        </CardHeader>
-        <CardBody>
-          <Tabs
-            activeKey={activeSubTab}
-            onSelect={(_e, key) => setActiveSubTab(key as any)}
-            style={{ marginBottom: '1.5rem' }}
-          >
-            <Tab eventKey="exports" title={<TabTitleText><ServerIcon style={{ marginRight: 6 }} />Export Paths ({exports.length})</TabTitleText>} />
-            <Tab eventKey="clients" title={<TabTitleText><NetworkIcon style={{ marginRight: 6 }} />Client IP Access Map ({clientMap.length})</TabTitleText>} />
-          </Tabs>
+      <PageSection variant="light" style={{ paddingBottom: "1rem" }}>
+        <Flex justifyContent={{ default: "justifyContentSpaceBetween" }} alignItems={{ default: "alignItemsCenter" }}>
+          <FlexItem>
+            <Title headingLevel="h1" size="2xl" style={{ fontWeight: 600, margin: 0, lineHeight: 1.2 }}>
+              NFS Exports
+            </Title>
+          </FlexItem>
+          <FlexItem>
+            <Flex alignItems={{ default: "alignItemsCenter" }} gap={{ default: "gapSm" }}>
+              <FlexItem>
+                <SearchInput
+                  placeholder="Search NFS exports..."
+                  value={searchValue}
+                  onChange={(_event, value) => setSearchValue(value)}
+                  onClear={() => setSearchValue("")}
+                  style={{ width: 260 }}
+                />
+              </FlexItem>
+              <FlexItem>
+                <Button variant="primary" icon={<PlusCircleIcon />} onClick={handleOpenCreate}>
+                  Create NFS export
+                </Button>
+              </FlexItem>
+            </Flex>
+          </FlexItem>
+        </Flex>
+      </PageSection>
 
-          {activeSubTab === 'exports' && (
-            <Table aria-label="NFS Exports Table" variant="compact">
-              <Thead>
-                <Tr>
-                  <Th>Export Path</Th>
-                  <Th>Allowed Clients</Th>
-                  <Th>Options</Th>
-                  <Th>Config File</Th>
-                  <Th style={{ textAlign: 'right' }}>Actions</Th>
-                </Tr>
-              </Thead>
-              <Tbody>
-                {exports.map((exp) => (
-                  <Tr key={exp.path}>
-                    <Td dataLabel="Export Path">
-                      <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }}>
-                        <FlexItem>
-                          <strong><code>{exp.path}</code></strong>
-                        </FlexItem>
-                        {exp.is_managed && (
-                          <FlexItem>
-                            <Tooltip content={`Managed by Ansible (${exp.managed_by || 'config block'}). Read-only in Cockpit.`}>
-                              <Label color="blue" icon={<LockIcon />}>
-                                Ansible: {exp.managed_by || 'managed'}
-                              </Label>
+      <PageSection style={{ paddingTop: "1rem" }}>
+        <Tabs
+          activeKey={activeSubTab}
+          onSelect={(_event, tabKey) => setActiveSubTab(tabKey as "exports" | "clients")}
+          style={{ marginBottom: "1.5rem" }}
+        >
+          <Tab eventKey="exports" title={<TabTitleText>Export Paths ({exports.length})</TabTitleText>} />
+          <Tab eventKey="clients" title={<TabTitleText>Client IP Access Map ({clientMap.length})</TabTitleText>} />
+        </Tabs>
+
+        {activeSubTab === "exports" ? (
+          exports.length === 0 ? (
+            <EmptyState>
+              <EmptyStateHeader
+                titleText="No NFS exports configured"
+                icon={<EmptyStateIcon icon={GlobeIcon} />}
+                headingLevel="h4"
+              />
+              <EmptyStateBody>
+                Export filesystems and ZFS datasets to network clients using NFS.
+              </EmptyStateBody>
+              <EmptyStateFooter>
+                <EmptyStateActions>
+                  <Button variant="primary" icon={<PlusCircleIcon />} onClick={handleOpenCreate}>
+                    Create NFS export
+                  </Button>
+                </EmptyStateActions>
+              </EmptyStateFooter>
+            </EmptyState>
+          ) : (
+            <Card>
+              <CardBody style={{ padding: 0 }}>
+                <Table aria-label="NFS Exports Table">
+                  <Thead>
+                    <Tr>
+                      <Th>Export path</Th>
+                      <Th>Allowed clients &amp; networks</Th>
+                      <Th>Configuration file</Th>
+                      <Th>Status</Th>
+                      <Th style={{ textAlign: "right", width: "80px" }}></Th>
+                    </Tr>
+                  </Thead>
+                  <Tbody>
+                    {filteredExports.map((exp) => (
+                      <Tr key={exp.path}>
+                        <Td data-label="Export path">
+                          <Flex alignItems={{ default: "alignItemsCenter" }} gap={{ default: "gapSm" }}>
+                            <FlexItem>
+                              <strong><code>{exp.path}</code></strong>
+                            </FlexItem>
+                            {exp.is_managed && (
+                              <FlexItem>
+                                <Tooltip content={`Managed by Ansible (${exp.managed_by || "block"}). Read-only.`}>
+                                  <Label color="blue" icon={<LockIcon />}>
+                                    Ansible: {exp.managed_by || "managed"}
+                                  </Label>
+                                </Tooltip>
+                              </FlexItem>
+                            )}
+                          </Flex>
+                        </Td>
+                        <Td data-label="Allowed clients">
+                          <Flex wrap={{ default: "wrap" }} gap={{ default: "gapSm" }}>
+                            {exp.clients.map((c, i) => (
+                              <FlexItem key={i}>
+                                <Label color={c.read_only ? "blue" : "green"}>
+                                  {c.host} ({c.read_only ? "ro" : "rw"})
+                                </Label>
+                              </FlexItem>
+                            ))}
+                          </Flex>
+                        </Td>
+                        <Td data-label="Configuration file">
+                          <span style={{ fontSize: "0.85rem", color: "var(--zfs-text-secondary)" }}>
+                            {exp.file || "/etc/exports.d/cockpit.exports"}
+                          </span>
+                        </Td>
+                        <Td data-label="Status">
+                          <Label color="green">Active</Label>
+                        </Td>
+                        <Td data-label="Actions" style={{ textAlign: "right" }}>
+                          {exp.is_managed ? (
+                            <Tooltip content="Ansible managed exports cannot be modified directly">
+                              <Button variant="plain" isDisabled icon={<LockIcon />} />
                             </Tooltip>
-                          </FlexItem>
-                        )}
-                      </Flex>
-                    </Td>
-                    <Td dataLabel="Allowed Clients">
-                      <Flex spaceItems={{ default: 'spaceItemsXs' }}>
-                        {exp.clients.map((c, idx) => (
-                          <FlexItem key={idx}>
-                            <Label color={c.host === '*' ? 'grey' : 'cyan'}>
-                              {c.host} ({c.read_only ? 'ro' : 'rw'})
-                            </Label>
-                          </FlexItem>
-                        ))}
-                      </Flex>
-                    </Td>
-                    <Td dataLabel="Options">
-                      {exp.clients[0]?.sync ? <Label color="green">sync</Label> : <Label color="orange">async</Label>}
-                      {exp.clients[0]?.root_squash ? (
-                        <Label color="blue" style={{ marginLeft: 4 }}>root_squash</Label>
-                      ) : (
-                        <Label color="red" style={{ marginLeft: 4 }}>no_root_squash</Label>
-                      )}
-                    </Td>
-                    <Td dataLabel="Config File">
-                      <code style={{ fontSize: '0.85rem' }}>{exp.file || '/etc/exports'}</code>
-                    </Td>
-                    <Td dataLabel="Actions" style={{ textAlign: 'right' }}>
-                      {exp.is_managed ? (
-                        <Tooltip content="Ansible managed exports cannot be modified through Cockpit">
-                          <Button variant="plain" isDisabled icon={<LockIcon />} />
-                        </Tooltip>
-                      ) : (
-                        <>
-                          <Button
-                            variant="plain"
-                            icon={<PencilAltIcon />}
-                            onClick={() => handleOpenEdit(exp)}
-                            title="Edit NFS export"
-                          />
-                          <Button
-                            variant="plain"
-                            icon={<TrashIcon />}
-                            onClick={() => {
-                              setDeletingPath(exp.path);
-                              setIsDeleteModalOpen(true);
-                            }}
-                            title="Delete NFS export"
-                          />
-                        </>
-                      )}
-                    </Td>
-                  </Tr>
-                ))}
-                {exports.length === 0 && (
+                          ) : (
+                            <Dropdown
+                              popperProps={{ appendTo: () => document.body }}
+                              isOpen={openDropdown === exp.path}
+                              onSelect={() => setOpenDropdown(null)}
+                              onOpenChange={(isOpen) => setOpenDropdown(isOpen ? exp.path : null)}
+                              toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
+                                <MenuToggle
+                                  ref={toggleRef}
+                                  aria-label="Export actions"
+                                  variant="plain"
+                                  onClick={() => toggleDropdown(exp.path)}
+                                  isExpanded={openDropdown === exp.path}
+                                >
+                                  <EllipsisVIcon />
+                                </MenuToggle>
+                              )}
+                            >
+                              <DropdownList>
+                                <DropdownItem
+                                  key="edit"
+                                  icon={<PencilAltIcon />}
+                                  onClick={() => handleOpenEdit(exp)}
+                                >
+                                  Edit export
+                                </DropdownItem>
+                                <DropdownItem
+                                  key="delete"
+                                  icon={<TrashIcon />}
+                                  onClick={() => {
+                                    setDeletingPath(exp.path);
+                                    setIsDeleteModalOpen(true);
+                                  }}
+                                  style={{ color: "var(--pf-v5-global--danger-color--100)" }}
+                                >
+                                  Delete export
+                                </DropdownItem>
+                              </DropdownList>
+                            </Dropdown>
+                          )}
+                        </Td>
+                      </Tr>
+                    ))}
+                  </Tbody>
+                </Table>
+              </CardBody>
+            </Card>
+          )
+        ) : (
+          <Card>
+            <CardBody style={{ padding: 0 }}>
+              <Table aria-label="Client IP Access Map Table">
+                <Thead>
                   <Tr>
-                    <Td colSpan={5} style={{ textAlign: 'center', padding: '2rem' }}>
-                      No NFS exports found. Click "Create NFS Export" to define an export.
-                    </Td>
+                    <Th>Client Host / Network Subnet</Th>
+                    <Th>Accessible Exports</Th>
+                    <Th>Mount Options</Th>
                   </Tr>
-                )}
-              </Tbody>
-            </Table>
-          )}
-
-          {activeSubTab === 'clients' && (
-            <Table aria-label="NFS Client Access Map" variant="compact">
-              <Thead>
-                <Tr>
-                  <Th>Client / Subnet</Th>
-                  <Th>Accessible Exports</Th>
-                  <Th>Mount Permissions</Th>
-                  <Th>Flags</Th>
-                </Tr>
-              </Thead>
-              <Tbody>
-                {clientMap.map((cm) => (
-                  <Tr key={cm.client}>
-                    <Td dataLabel="Client / Subnet">
-                      <strong>
-                        <Label color={cm.client === '*' ? 'grey' : 'cyan'}>
-                          <NetworkIcon style={{ marginRight: 4 }} />
-                          {cm.client === '*' ? 'Any Host (*)' : cm.client}
-                        </Label>
-                      </strong>
-                    </Td>
-                    <Td dataLabel="Accessible Exports">
-                      <Flex direction={{ default: 'column' }} spaceItems={{ default: 'spaceItemsXs' }}>
-                        {cm.exports.map((e, idx) => (
-                          <FlexItem key={idx}>
-                            <code>{e.path}</code>
-                            {e.is_managed && (
-                              <Label color="blue" icon={<LockIcon />} style={{ marginLeft: 6, fontSize: '0.75rem' }}>
-                                {e.managed_by || 'Ansible'}
+                </Thead>
+                <Tbody>
+                  {filteredClientMap.map((cm) => (
+                    <Tr key={cm.client}>
+                      <Td data-label="Client Host / Subnet">
+                        <strong><NetworkIcon style={{ marginRight: 8, color: "var(--zfs-tab-active-color)" }} />{cm.client}</strong>
+                      </Td>
+                      <Td data-label="Accessible Exports">
+                        <Flex direction={{ default: "column" }} gap={{ default: "gapXs" }}>
+                          {cm.exports.map((e, idx) => (
+                            <FlexItem key={idx}>
+                              <code>{e.path}</code>
+                              <Label color={e.read_only ? "blue" : "green"} style={{ marginLeft: 8 }}>
+                                {e.read_only ? "Read-Only" : "Read / Write"}
                               </Label>
-                            )}
-                          </FlexItem>
-                        ))}
-                      </Flex>
-                    </Td>
-                    <Td dataLabel="Mount Permissions">
-                      <Flex direction={{ default: 'column' }} spaceItems={{ default: 'spaceItemsXs' }}>
-                        {cm.exports.map((e, idx) => (
-                          <FlexItem key={idx}>
-                            {e.read_only ? (
-                              <Label color="orange">Read Only (ro)</Label>
-                            ) : (
-                              <Label color="green">Read / Write (rw)</Label>
-                            )}
-                          </FlexItem>
-                        ))}
-                      </Flex>
-                    </Td>
-                    <Td dataLabel="Flags">
-                      <Flex direction={{ default: 'column' }} spaceItems={{ default: 'spaceItemsXs' }}>
-                        {cm.exports.map((e, idx) => (
-                          <FlexItem key={idx}>
-                            <Label color="grey" style={{ fontSize: '0.75rem' }}>
-                              {e.options.join(', ')}
-                            </Label>
-                          </FlexItem>
-                        ))}
-                      </Flex>
-                    </Td>
-                  </Tr>
-                ))}
-                {clientMap.length === 0 && (
-                  <Tr>
-                    <Td colSpan={4} style={{ textAlign: 'center', padding: '2rem' }}>
-                      No client access mappings available.
-                    </Td>
-                  </Tr>
-                )}
-              </Tbody>
-            </Table>
-          )}
-        </CardBody>
-      </Card>
+                            </FlexItem>
+                          ))}
+                        </Flex>
+                      </Td>
+                      <Td data-label="Mount Options">
+                        <span style={{ fontSize: "0.85rem", color: "var(--zfs-text-secondary)" }}>
+                          {cm.exports.map((e) => (e.options || []).join(", ")).join("; ")}
+                        </span>
+                      </Td>
+                    </Tr>
+                  ))}
+                  {filteredClientMap.length === 0 && (
+                    <Tr>
+                      <Td colSpan={3} style={{ textAlign: "center", padding: "2rem", color: "var(--zfs-text-secondary)" }}>
+                        No client networks matching search criteria.
+                      </Td>
+                    </Tr>
+                  )}
+                </Tbody>
+              </Table>
+            </CardBody>
+          </Card>
+        )}
+      </PageSection>
 
       {/* Create / Edit Export Modal */}
       <Modal
         variant={ModalVariant.medium}
-        title={editingExport ? `Edit NFS Export: ${editingExport.path}` : 'Create NFS Export'}
+        title={editingExport ? `Edit NFS Export for ${editingExport.path}` : "Create NFS Export"}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         actions={[
-          <Button key="save" variant="primary" onClick={handleSave} isLoading={loading}>
-            Save Export
+          <Button
+            key="save"
+            variant="primary"
+            onClick={handleSave}
+            isDisabled={loading || !path.trim()}
+            isLoading={loading}
+          >
+            {editingExport ? "Save changes" : "Create export"}
           </Button>,
-          <Button key="cancel" variant="link" onClick={() => setIsModalOpen(false)}>
+          <Button key="cancel" variant="secondary" onClick={() => setIsModalOpen(false)} isDisabled={loading}>
             Cancel
-          </Button>
+          </Button>,
         ]}
       >
         <Form>
-          {error && <div style={{ color: 'var(--pf-v5-global--danger-color--100)', marginBottom: 10 }}>{error}</div>}
-          <FormGroup label="Export Directory Path" isRequired fieldId="nfs-path">
+          <FormGroup label="Export Path" isRequired fieldId="nfs-path">
             <TextInput
               id="nfs-path"
               value={path}
-              onChange={(_e, val) => setPath(val)}
+              onChange={(_event, val) => setPath(val)}
+              placeholder="/srv/nfs/data"
               isDisabled={!!editingExport}
-              placeholder="/srv/nfs/share or /tank/dataset"
+              autoFocus
             />
-            {zfsMounts.length > 0 && (
-              <div style={{ marginTop: 6 }}>
-                <span style={{ fontSize: '0.85rem', color: 'var(--pf-v5-global--Color--200)', marginRight: 6 }}>
-                  Quick-pick ZFS Dataset:
-                </span>
-                <FormSelect
-                  value=""
-                  onChange={(_e, val) => {
-                    if (val) setPath(val);
-                  }}
-                  aria-label="Select ZFS Dataset"
-                  style={{ width: 'auto', display: 'inline-block' }}
-                >
-                  <FormSelectOption key="none" value="" label="-- Choose ZFS Mountpoint --" />
-                  {zfsMounts.map((z) => (
-                    <FormSelectOption key={z.dataset} value={z.mountpoint} label={`${z.dataset} (${z.mountpoint})`} />
-                  ))}
-                </FormSelect>
-              </div>
-            )}
           </FormGroup>
 
-          <FormGroup label="Allowed Client(s) or Subnet" isRequired fieldId="nfs-client">
+          {zfsMounts.length > 0 && !editingExport && (
+            <FormGroup label="Quick Pick ZFS Dataset Mount" fieldId="nfs-zfs-mount">
+              <FormSelect
+                id="nfs-zfs-mount"
+                value={path}
+                onChange={(_event, val) => val && setPath(val)}
+              >
+                <FormSelectOption value="" label="-- Choose ZFS dataset mountpoint --" />
+                {zfsMounts.map((zm) => (
+                  <FormSelectOption key={zm.mountpoint} value={zm.mountpoint} label={`${zm.dataset} (${zm.mountpoint})`} />
+                ))}
+              </FormSelect>
+            </FormGroup>
+          )}
+
+          <FormGroup label="Allowed Client / IP Subnet" isRequired fieldId="nfs-client">
             <TextInput
               id="nfs-client"
               value={clientHost}
-              onChange={(_e, val) => setClientHost(val)}
-              placeholder="* or 192.168.1.0/24 or 10.0.0.5"
+              onChange={(_event, val) => setClientHost(val)}
+              placeholder="e.g. 192.168.1.0/24, 10.0.0.5, or * for all"
             />
-            <div style={{ fontSize: '0.85rem', color: 'var(--pf-v5-global--Color--200)', marginTop: 4 }}>
-              Use <code>*</code> for all clients, or an IP / CIDR network address.
-            </div>
           </FormGroup>
 
-          <Flex spaceItems={{ default: 'spaceItemsLg' }}>
+          <Flex justifyContent={{ default: "justifyContentSpaceBetween" }} style={{ marginTop: "1rem" }}>
             <FlexItem>
               <Switch
-                id="nfs-read-only"
-                label="Read Only (ro)"
+                id="nfs-readonly"
+                label="Read-Only (ro)"
                 isChecked={readOnly}
-                onChange={(_e, checked) => setReadOnly(checked)}
+                onChange={(_event, checked) => setReadOnly(checked)}
               />
             </FlexItem>
             <FlexItem>
               <Switch
                 id="nfs-sync"
-                label="Synchronous Write (sync)"
+                label="Synchronous Writes (sync)"
                 isChecked={sync}
-                onChange={(_e, checked) => setSync(checked)}
+                onChange={(_event, checked) => setSync(checked)}
               />
             </FlexItem>
             <FlexItem>
               <Switch
-                id="nfs-root-squash"
-                label="Root Squash (Map root to nobody)"
+                id="nfs-squash"
+                label="Root Squash (root_squash)"
                 isChecked={rootSquash}
-                onChange={(_e, checked) => setRootSquash(checked)}
+                onChange={(_event, checked) => setRootSquash(checked)}
               />
             </FlexItem>
             <FlexItem>
               <Switch
-                id="nfs-no-subtree"
+                id="nfs-subtree"
                 label="No Subtree Check"
                 isChecked={noSubtreeCheck}
-                onChange={(_e, checked) => setNoSubtreeCheck(checked)}
+                onChange={(_event, checked) => setNoSubtreeCheck(checked)}
               />
             </FlexItem>
           </Flex>
+
+          {error && (
+            <Alert variant="danger" title="Error" style={{ marginTop: "1rem" }}>
+              {error}
+            </Alert>
+          )}
         </Form>
       </Modal>
 
       {/* Delete Confirmation Modal */}
       <Modal
         variant={ModalVariant.small}
-        title="Delete NFS Export?"
+        title="Delete NFS Export"
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
         actions={[
-          <Button key="del" variant="danger" onClick={handleDelete} isLoading={loading}>
-            Delete Export
+          <Button key="delete" variant="danger" onClick={handleDelete} isLoading={loading}>
+            Delete export
           </Button>,
-          <Button key="cancel" variant="link" onClick={() => setIsDeleteModalOpen(false)}>
+          <Button key="cancel" variant="secondary" onClick={() => setIsDeleteModalOpen(false)}>
             Cancel
-          </Button>
+          </Button>,
         ]}
       >
-        Are you sure you want to delete the NFS export for <code>{deletingPath}</code> from <code>/etc/exports.d/cockpit.exports</code>?
+        Are you sure you want to remove the NFS export for <code>{deletingPath}</code>?
+        The directory contents on the server will not be deleted.
       </Modal>
     </>
   );
