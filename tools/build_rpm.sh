@@ -2,7 +2,7 @@
 set -e
 
 PLUGIN_DIR="${1:-plugins/zfs-storage}"
-VERSION="${2:-1.0.0}"
+RAW_VERSION="${2:-auto}"
 OUTPUT_DIR="${3:-dist-rpms}"
 
 if [ ! -d "$PLUGIN_DIR" ]; then
@@ -12,6 +12,22 @@ fi
 
 PLUGIN_NAME=$(basename "$PLUGIN_DIR")
 PKG_NAME="cockpit-${PLUGIN_NAME}"
+
+# Determine version from tag, argument, or package.json
+VERSION="$RAW_VERSION"
+if [ "$VERSION" = "auto" ] || [ -z "$VERSION" ]; then
+    GIT_TAG="${GITHUB_REF_NAME:-$(git describe --tags --exact-match 2>/dev/null || true)}"
+    if [[ "$GIT_TAG" =~ ^${PLUGIN_NAME}-v?([0-9]+\.[0-9]+\.[0-9]+.*)$ ]]; then
+        VERSION="${BASH_REMATCH[1]}"
+    elif [[ "$GIT_TAG" =~ ^v?([0-9]+\.[0-9]+\.[0-9]+.*)$ ]]; then
+        VERSION="${BASH_REMATCH[1]}"
+    elif [ -f "${PLUGIN_DIR}/package.json" ]; then
+        VERSION=$(python3 -c "import json; print(json.load(open('${PLUGIN_DIR}/package.json')).get('version', '1.0.0'))" 2>/dev/null || echo "1.0.0")
+    else
+        VERSION="1.0.0"
+    fi
+fi
+VERSION="${VERSION#v}"
 
 echo "==> Packaging RPM for ${PKG_NAME} (version ${VERSION})..."
 mkdir -p "$OUTPUT_DIR"

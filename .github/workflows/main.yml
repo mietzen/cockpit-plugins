@@ -49,25 +49,23 @@ jobs:
         run: |
           PYTHONPATH=plugins/zfs-storage pytest plugins/zfs-storage/backend/tests
 
-      - name: Build zfs-storage Frontend
-        run: |
-          npm --prefix plugins/zfs-storage install
-          npm --prefix plugins/zfs-storage run build
-
       - name: Install Packaging Tools (RPM & DPKG)
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq rpm dpkg-dev
 
-      - name: Build Debian Packages (.deb)
+      - name: Build Plugins & Packages (.deb & .rpm)
         run: |
-          mkdir -p dist-debs
-          ./tools/build_deb.sh plugins/zfs-storage 1.0.0 dist-debs
-
-      - name: Build RPM Packages (.rpm)
-        run: |
-          mkdir -p dist-rpms
-          ./tools/build_rpm.sh plugins/zfs-storage 1.0.0 dist-rpms
+          mkdir -p dist-debs dist-rpms
+          for plugin in plugins/*; do
+            if [ -d "$plugin" ] && [ -f "$plugin/package.json" ]; then
+              echo "==> Building and packaging plugin: $plugin"
+              npm --prefix "$plugin" install
+              npm --prefix "$plugin" run build
+              ./tools/build_deb.sh "$plugin" auto dist-debs
+              ./tools/build_rpm.sh "$plugin" auto dist-rpms
+            fi
+          done
 
       - name: Upload Debian Packages
         uses: actions/upload-artifact@v7
