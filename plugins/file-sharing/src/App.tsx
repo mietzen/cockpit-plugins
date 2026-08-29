@@ -55,36 +55,68 @@ export const App: React.FC = () => {
 
   // Sync theme with Cockpit shell
   useEffect(() => {
-    const applyTheme = () => {
-      const themePref = localStorage.getItem("cockpit_filesharing_theme") || localStorage.getItem("cockpit_zfs_theme") || "auto";
+    const applyTheme = (forcedTheme?: any) => {
+      const shellStyle = (typeof forcedTheme === "string" ? forcedTheme : null) || localStorage.getItem("shell:style") || localStorage.getItem("cockpit_filesharing_theme") || "auto";
       let isDark = false;
-      if (themePref === "dark") {
+
+      if (shellStyle === "dark") {
         isDark = true;
-      } else if (themePref === "light") {
+      } else if (shellStyle === "light") {
         isDark = false;
       } else {
-        const shellDark = document.documentElement.classList.contains("pf-v5-theme-dark");
-        const sysDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-        isDark = shellDark || sysDark;
+        // "auto" mode: check parent frame class list first, then OS prefers-color-scheme
+        try {
+          if (window.parent && window.parent.document && window.parent.document.documentElement) {
+            const pCls = window.parent.document.documentElement.classList;
+            if (pCls.contains("pf-v6-theme-dark") || pCls.contains("pf-v5-theme-dark") || pCls.contains("theme-dark")) {
+              isDark = true;
+            }
+          }
+        } catch (e) {}
+
+        if (!isDark && window.matchMedia) {
+          isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        }
       }
 
       if (isDark) {
         document.documentElement.classList.add("pf-v5-theme-dark");
+        document.documentElement.classList.add("pf-v6-theme-dark");
+        document.documentElement.classList.remove("pf-v5-theme-light");
+        document.documentElement.classList.remove("pf-v6-theme-light");
       } else {
         document.documentElement.classList.remove("pf-v5-theme-dark");
+        document.documentElement.classList.remove("pf-v6-theme-dark");
+        document.documentElement.classList.add("pf-v5-theme-light");
+        document.documentElement.classList.add("pf-v6-theme-light");
       }
     };
 
     applyTheme();
-    window.addEventListener("cockpit-style", applyTheme);
+
+    const handleCockpitStyle = (e: any) => {
+      applyTheme(e.detail?.style || e.detail?.theme);
+    };
+
+    window.addEventListener("cockpit-style", handleCockpitStyle);
     window.addEventListener("storage", applyTheme);
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
     mediaQuery.addEventListener("change", applyTheme);
 
+    // Observe parent frame class changes in real time
+    let observer: MutationObserver | null = null;
+    try {
+      if (window.parent && window.parent.document && window.parent.document.documentElement) {
+        observer = new MutationObserver(() => applyTheme());
+        observer.observe(window.parent.document.documentElement, { attributes: true, attributeFilter: ["class"] });
+      }
+    } catch (e) {}
+
     return () => {
-      window.removeEventListener("cockpit-style", applyTheme);
+      window.removeEventListener("cockpit-style", handleCockpitStyle);
       window.removeEventListener("storage", applyTheme);
       mediaQuery.removeEventListener("change", applyTheme);
+      if (observer) observer.disconnect();
     };
   }, []);
 
