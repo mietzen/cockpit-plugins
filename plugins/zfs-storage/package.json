@@ -1,6 +1,6 @@
 {
   "name": "cockpit-zfs",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Open-source Cockpit plugin for OpenZFS storage management",
   "main": "dist/index.html",
   "scripts": {
