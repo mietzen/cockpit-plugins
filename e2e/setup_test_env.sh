@@ -37,6 +37,7 @@ if ! id "test-user" &>/dev/null; then
 fi
 PASS_HASH=$(openssl passwd -6 "password")
 sudo usermod -p "$PASS_HASH" test-user || true
+echo "test-user:password" | sudo chpasswd || true
 sudo passwd -u test-user || true
 sudo usermod -aG sudo,adm test-user || true
 sudo chage -d 20000 -m 0 -M 99999 -I -1 -E -1 test-user || true
@@ -45,6 +46,7 @@ echo "test-user ALL=(ALL) NOPASSWD:ALL" | sudo tee /etc/sudoers.d/test-user
 # Also ensure runner user has known password
 if id "runner" &>/dev/null; then
     sudo usermod -p "$PASS_HASH" runner || true
+    echo "runner:password" | sudo chpasswd || true
     sudo passwd -u runner || true
     sudo usermod -aG sudo,adm runner || true
     sudo chage -d 20000 -m 0 -M 99999 -I -1 -E -1 runner || true
