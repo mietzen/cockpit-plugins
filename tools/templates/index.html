@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cockpit Plugins Repository</title>
+    <style>
+        :root {
+            --bg: #0f141c;
+            --card-bg: #1a2230;
+            --text: #e1e7f0;
+            --text-secondary: #94a3b8;
+            --accent: #38bdf8;
+            --accent-hover: #0284c7;
+            --border: #334155;
+            --code-bg: #0b0f17;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            margin: 0;
+            padding: 2rem 1rem;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 2.5rem;
+        }
+        .header h1 {
+            font-size: 2.2rem;
+            margin-bottom: 0.5rem;
+            color: #ffffff;
+        }
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+        }
+        .card h2 {
+            margin-top: 0;
+            color: var(--accent);
+            font-size: 1.4rem;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 0.5rem;
+        }
+        pre {
+            background: var(--code-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            overflow-x: auto;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 0.9rem;
+            color: #38bdf8;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+        th, td {
+            text-align: left;
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--border);
+        }
+        th {
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+        a.download-link {
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 600;
+        }
+        a.download-link:hover {
+            text-decoration: underline;
+        }
+        .card-header-with-logo {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid var(--border);
+        }
+        .app-icon-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 45px;
+            height: 45px;
+            background: #ffffff;
+            border-radius: 11px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.15);
+            flex-shrink: 0;
+            padding: 7px;
+            box-sizing: border-box;
+        }
+        .app-icon-badge img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+        }
+        .card-header-with-logo h2 {
+            margin: 0;
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+        .footer {
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-top: 3rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📦 Cockpit Plugins Repository</h1>
+            <p>Official repository for Cockpit extensions by <a href="https://github.com/{{OWNER}}" style="color: var(--accent); text-decoration: none;">{{OWNER}}</a></p>
+        </div>
+
+        <div class="card">
+            <div class="card-header-with-logo">
+                <div class="app-icon-badge">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/6/66/Openlogo-debianV2.svg" alt="Debian">
+                </div>
+                <div>
+                    <h2>Debian, Ubuntu & Proxmox (APT)</h2>
+                    <p style="margin: 0.25rem 0 0 0; color: var(--text-secondary); font-size: 0.95rem;">Automated DEB822 repository setup & GPG package validation</p>
+                </div>
+            </div>
+            <p>One-line automated installation with GPG verification:</p>
+            <pre><code>curl -fsSL https://{{OWNER}}.github.io/{{REPO}}/install.sh | sudo bash</code></pre>
+            <p style="margin-top: 1rem; color: var(--text-secondary); font-size: 0.9rem;">Manual setup (DEB822 format):</p>
+            <pre><code>sudo install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://{{OWNER}}.github.io/{{REPO}}/cockpit-plugins.gpg | sudo tee /etc/apt/keyrings/cockpit-plugins.gpg > /dev/null
+
+sudo tee /etc/apt/sources.list.d/cockpit-plugins.sources << 'EOF'
+Types: deb
+URIs: https://{{OWNER}}.github.io/{{REPO}}/
+Suites: {{DIST_NAME}}
+Components: {{COMPONENT}}
+Signed-By: /etc/apt/keyrings/cockpit-plugins.gpg
+EOF
+
+sudo apt update && sudo apt install cockpit-zfs-storage</code></pre>
+        </div>
+
+        <div class="card">
+            <div class="card-header-with-logo">
+                <div class="app-icon-badge">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/0/00/RPM_Logo.svg" alt="RPM">
+                </div>
+                <div>
+                    <h2>Rocky Linux, RHEL & Fedora (DNF / YUM)</h2>
+                    <p style="margin: 0.25rem 0 0 0; color: var(--text-secondary); font-size: 0.95rem;">Automated YUM/DNF repository setup & GPG signature verification</p>
+                </div>
+            </div>
+            <p>One-line automated installation:</p>
+            <pre><code>curl -fsSL https://{{OWNER}}.github.io/{{REPO}}/install-rpm.sh | sudo bash</code></pre>
+            <p style="margin-top: 1rem; color: var(--text-secondary); font-size: 0.9rem;">Manual setup:</p>
+            <pre><code>sudo rpm --import https://{{OWNER}}.github.io/{{REPO}}/key.gpg
+
+sudo tee /etc/yum.repos.d/cockpit-plugins.repo << 'EOF'
+[cockpit-plugins]
+name=Cockpit Plugins Repository
+baseurl=https://{{OWNER}}.github.io/{{REPO}}/rpm/
+enabled=1
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=https://{{OWNER}}.github.io/{{REPO}}/key.gpg
+EOF
+
+sudo dnf install cockpit-zfs-storage</code></pre>
+        </div>
+
+        <div class="card">
+            <h2>Available Packages</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Package</th>
+                        <th>Format</th>
+                        <th>Direct Download</th>
+                        <th>Size</th>
+                        <th>SHA256 Checksum</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{PACKAGES_TABLE_ROWS}}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="footer">
+            <p>Managed via <a href="https://github.com/{{OWNER}}/{{REPO}}" style="color: var(--accent); text-decoration: none;">GitHub Actions</a> • Signed with GPG</p>
+        </div>
+    </div>
+</body>
+</html>

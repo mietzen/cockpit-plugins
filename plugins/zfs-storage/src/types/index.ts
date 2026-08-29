@@ -122,3 +122,41 @@ export interface CommandResult {
   stderr: string;
   command: string;
 }
+
+export interface VDevSpec {
+  type: "stripe" | "mirror" | "raidz1" | "raidz2" | "raidz3" | "log" | "cache" | "spare" | "special" | "dedup";
+  devices: string[];
+}
+
+export interface PoolCreateSpec {
+  name: string;
+  vdevs: VDevSpec[];
+  ashift?: number;
+  compression?: string;
+  altroot?: string;
+  mountpoint?: string;
+  properties?: Record<string, string>;
+  force?: boolean;
+}
+
+export interface DatasetCreateSpec {
+  path: string;
+  type?: "filesystem" | "volume";
+  size?: string;
+  volblocksize?: string;
+  sparse?: boolean;
+  properties?: Record<string, string>;
+}
+
+export interface SnapshotCreateSpec {
+  path: string;
+  name: string;
+  recursive?: boolean;
+}
+
+export interface SnapshotCloneSpec {
+  snapshot: string;
+  clone_path: string;
+  properties?: Record<string, string>;
+}
+

@@ -5,6 +5,10 @@ import {
   ZSnapshot,
   DiskDevice,
   CommandResult,
+  PoolCreateSpec,
+  DatasetCreateSpec,
+  SnapshotCreateSpec,
+  SnapshotCloneSpec,
 } from "../types";
 
 const HELPER_PATHS = [
@@ -22,7 +26,7 @@ export class ZfsApiClient {
 
   private async runHelper(subcommand: string, ...args: string[]): Promise<any> {
     if (!this.hasCockpit()) {
-      return this.getMockData(subcommand, args);
+      return { success: true, returncode: 0, stdout: "", stderr: "" };
     }
 
     const cockpit = (window as any).cockpit;
@@ -30,9 +34,12 @@ export class ZfsApiClient {
 
     try {
       const output = await cockpit.spawn(cmd, { superuser: "require", err: "message" });
-      return JSON.parse(output.trim() || "{}");
+      const parsed = JSON.parse(output.trim() || "{}");
+      if (parsed.error) {
+        throw new Error(parsed.error);
+      }
+      return parsed;
     } catch (err: any) {
-      // If primary path failed, try fallback
       for (const fallback of HELPER_PATHS) {
         if (fallback === this.helperPath) {
           continue;
@@ -41,12 +48,16 @@ export class ZfsApiClient {
           const fallbackCmd = ["python3", fallback, subcommand, ...args];
           const out = await cockpit.spawn(fallbackCmd, { superuser: "require", err: "message" });
           this.helperPath = fallback;
-          return JSON.parse(out.trim() || "{}");
+          const parsed = JSON.parse(out.trim() || "{}");
+          if (parsed.error) {
+            throw new Error(parsed.error);
+          }
+          return parsed;
         } catch {
-          // continue
+          // continue fallback search
         }
       }
-      throw new Error(`ZFS Helper failed: ${err.message || err}`);
+      throw new Error(`ZFS Helper failed [${subcommand}]: ${err.message || err}`);
     }
   }
 
@@ -78,142 +89,84 @@ export class ZfsApiClient {
     return this.runHelper("disks-list");
   }
 
-  public async executeCommand(cmdArgs: string[]): Promise<CommandResult> {
-    if (!this.hasCockpit()) {
-      return {
-        success: true,
-        returncode: 0,
-        stdout: "Command executed (simulated)",
-        stderr: "",
-        command: cmdArgs.join(" "),
-      };
-    }
-
-    try {
-      const res = await this.runHelper("exec", JSON.stringify(cmdArgs));
-      return {
-        success: res.success ?? (res.returncode === 0),
-        returncode: res.returncode ?? 0,
-        stdout: res.stdout || "",
-        stderr: res.stderr || "",
-        command: cmdArgs.join(" "),
-      };
-    } catch (helperErr: any) {
-      const cockpit = (window as any).cockpit;
-      try {
-        const output = await cockpit.spawn(cmdArgs, { superuser: "require", err: "message" });
-        return {
-          success: true,
-          returncode: 0,
-          stdout: output,
-          stderr: "",
-          command: cmdArgs.join(" "),
-        };
-      } catch (err: any) {
-        return {
-          success: false,
-          returncode: 1,
-          stdout: "",
-          stderr: err.message || helperErr.message || String(err),
-          command: cmdArgs.join(" "),
-        };
-      }
-    }
+  public async createPool(payload: PoolCreateSpec): Promise<CommandResult> {
+    return this.runHelper("pool-create", JSON.stringify(payload));
   }
 
-  private getMockData(subcommand: string, _args: string[]): any {
-    if (subcommand === "system-info") {
-      return {
-        kernel_module_loaded: true,
-        version: "zfs-2.4.3-2\nzfs-kmod-2.4.3-2",
-        arc: {
-          size: 4294967296,
-          target_size: 8589934592,
-          min_size: 1073741824,
-          max_size: 17179869184,
-          hits: 450000,
-          misses: 25000,
-          hit_ratio: 0.947,
-          data_hits: 300000,
-          data_misses: 20000,
-          metadata_hits: 150000,
-          metadata_misses: 5000,
-        },
-      };
-    }
+  public async destroyPool(poolName: string): Promise<CommandResult> {
+    return this.runHelper("pool-destroy", poolName);
+  }
 
-    if (subcommand === "pools-list") {
-      return [
-        {
-          name: "tank",
-          size: 1073741824000,
-          alloc: 214748364800,
-          free: 858993459200,
-          frag: 12,
-          cap: 20,
-          dedup: 1.25,
-          health: "ONLINE",
-          guid: "1234567890123456",
-          scan: {
-            function: "scrub",
-            state: "finished",
-            percentage: 100,
-            raw: "scrub repaired 0B in 00:15:20 with 0 errors on Fri Aug 28 12:00:00 2026",
-          },
-          vdevs: [
-            {
-              name: "mirror-0",
-              state: "ONLINE",
-              read: 0,
-              write: 0,
-              cksum: 0,
-              is_group: true,
-              children: [
-                { name: "/dev/sdb", state: "ONLINE", read: 0, write: 0, cksum: 0 },
-                { name: "/dev/sdc", state: "ONLINE", read: 0, write: 0, cksum: 0 },
-              ],
-            },
-          ],
-          cache: [{ name: "/dev/sdd", state: "ONLINE", read: 0, write: 0, cksum: 0 }],
-          logs: [{ name: "/dev/sde", state: "ONLINE", read: 0, write: 0, cksum: 0 }],
-          spares: [{ name: "/dev/sdf", state: "AVAIL", read: 0, write: 0, cksum: 0 }],
-        },
-      ];
-    }
+  public async exportPool(poolName: string): Promise<CommandResult> {
+    return this.runHelper("pool-export", poolName);
+  }
 
-    if (subcommand === "datasets-list") {
-      return [
-        {
-          name: "tank",
-          type: "filesystem",
-          used: 214748364800,
-          avail: 858993459200,
-          refer: 1048576,
-          mountpoint: "/tank",
-          mounted: true,
-          compression: "lz4",
-          compressratio: 1.45,
-          dedup: "off",
-          encryption: "off",
-          atime: true,
-          sync: "standard",
-          quota: 0,
-          reservation: 0,
-          recordsize: 131072,
-          snapshot_count: 3,
-        },
-      ];
-    }
+  public async importPool(payload: { name?: string; force?: boolean; altroot?: string } = {}): Promise<CommandResult> {
+    return this.runHelper("pool-import", JSON.stringify(payload));
+  }
 
-    if (subcommand === "snapshots-list") {
-      return [];
-    }
+  public async scrubPool(poolName: string, action: "start" | "pause" | "stop"): Promise<CommandResult> {
+    return this.runHelper("pool-scrub", poolName, action);
+  }
 
-    if (subcommand === "disks-list") {
-      return [];
-    }
+  public async trimPool(poolName: string, action: "start" | "suspend" | "stop", device?: string): Promise<CommandResult> {
+    return this.runHelper("pool-trim", poolName, action, ...(device ? [device] : []));
+  }
 
-    return {};
+  public async clearPool(poolName: string, device?: string): Promise<CommandResult> {
+    return this.runHelper("pool-clear", poolName, ...(device ? [device] : []));
+  }
+
+  public async setPoolProperty(poolName: string, prop: string, value: string): Promise<CommandResult> {
+    return this.runHelper("pool-set-property", poolName, prop, value);
+  }
+
+  public async createDataset(payload: DatasetCreateSpec): Promise<CommandResult> {
+    return this.runHelper("dataset-create", JSON.stringify(payload));
+  }
+
+  public async destroyDataset(path: string, recursive: boolean = true): Promise<CommandResult> {
+    return this.runHelper("dataset-destroy", path, String(recursive));
+  }
+
+  public async renameDataset(oldPath: string, newPath: string): Promise<CommandResult> {
+    return this.runHelper("dataset-rename", oldPath, newPath);
+  }
+
+  public async mountDataset(path: string): Promise<CommandResult> {
+    return this.runHelper("dataset-mount", path);
+  }
+
+  public async unmountDataset(path: string, force: boolean = false): Promise<CommandResult> {
+    return this.runHelper("dataset-unmount", path, String(force));
+  }
+
+  public async setDatasetProperty(path: string, prop: string, value: string): Promise<CommandResult> {
+    return this.runHelper("dataset-set-property", path, prop, value);
+  }
+
+  public async inheritDatasetProperty(path: string, prop: string): Promise<CommandResult> {
+    return this.runHelper("dataset-inherit-property", path, prop);
+  }
+
+  public async createSnapshot(payload: SnapshotCreateSpec): Promise<CommandResult> {
+    return this.runHelper("snapshot-create", JSON.stringify(payload));
+  }
+
+  public async destroySnapshot(path: string, recursive: boolean = false): Promise<CommandResult> {
+    return this.runHelper("snapshot-destroy", path, String(recursive));
+  }
+
+  public async rollbackSnapshot(path: string, destroyIntermediate: boolean = true): Promise<CommandResult> {
+    return this.runHelper("snapshot-rollback", path, String(destroyIntermediate));
+  }
+
+  public async cloneSnapshot(payload: SnapshotCloneSpec): Promise<CommandResult> {
+    return this.runHelper("snapshot-clone", JSON.stringify(payload));
+  }
+
+  public async diskAction(action: string, pool: string, device: string, newDevice?: string): Promise<CommandResult> {
+    return this.runHelper("disk-action", action, pool, device, ...(newDevice ? [newDevice] : []));
   }
 }
 
