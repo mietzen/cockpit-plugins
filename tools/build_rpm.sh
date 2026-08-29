@@ -47,11 +47,22 @@ if command -v rpmbuild >/dev/null 2>&1; then
     rm -rf "$RPMBUILD_DIR"
     mkdir -p "$RPMBUILD_DIR"/{BUILD,RPMS,SOURCES,SPECS,SRPMS,BUILDROOT}
 
+    CHANGELOG_DATE=$(date -u -d "@$SOURCE_DATE_EPOCH" "+%a %b %d %Y" 2>/dev/null || date -u -r "$SOURCE_DATE_EPOCH" "+%a %b %d %Y" 2>/dev/null || date "+%a %b %d %Y")
+
     SPEC_FILE="$RPMBUILD_DIR/SPECS/${PKG_NAME}.spec"
     cat << SPEC_EOF > "$SPEC_FILE"
+%define _buildhost localhost
+%define _build_id_links none
+%define _clamp_mtime 1
+%define _build_time ${SOURCE_DATE_EPOCH}
+%define _buildtime ${SOURCE_DATE_EPOCH}
+%define _source_date_epoch ${SOURCE_DATE_EPOCH}
+%define _binary_payload w9.gzdio
+%define _source_payload w9.gzdio
+
 Name:           ${PKG_NAME}
 Version:        ${VERSION}
-Release:        1%{?dist}
+Release:        1
 Summary:        Advanced OpenZFS storage manager for Cockpit
 BuildArch:      noarch
 License:        MIT
@@ -82,7 +93,12 @@ fi
 if [ -d "${PWD}/${PLUGIN_DIR}/backend" ]; then
     cp -r "${PWD}/${PLUGIN_DIR}/backend/"* %{buildroot}/usr/libexec/cockpit-zfs/
 fi
+rm -rf %{buildroot}/usr/libexec/cockpit-zfs/tests
+find %{buildroot} -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
+find %{buildroot} -name "*.pyc" -delete 2>/dev/null || true
+find %{buildroot} -name "*.pyo" -delete 2>/dev/null || true
 chmod 755 %{buildroot}/usr/libexec/cockpit-zfs/zfs_helper.py 2>/dev/null || true
+find %{buildroot} -exec touch -d "@${SOURCE_DATE_EPOCH}" {} + 2>/dev/null || true
 
 %clean
 rm -rf %{buildroot}
@@ -92,13 +108,23 @@ rm -rf %{buildroot}
 /usr/share/cockpit/${PLUGIN_NAME}
 /usr/libexec/cockpit-zfs
 
+%changelog
+* ${CHANGELOG_DATE} Nils Stein <nils@mietzen.de> - ${VERSION}-1
+- Release ${VERSION}
+
 SPEC_EOF
 
     rpmbuild \
         --define "_topdir ${PWD}/${RPMBUILD_DIR}" \
         --define "_buildhost localhost" \
-        --define "clamp_mtime 1" \
-        --define "source_date_epoch_from_changelog 0" \
+        --define "_clamp_mtime 1" \
+        --define "_build_time ${SOURCE_DATE_EPOCH}" \
+        --define "_buildtime ${SOURCE_DATE_EPOCH}" \
+        --define "_source_date_epoch ${SOURCE_DATE_EPOCH}" \
+        --define "_source_date_epoch_from_changelog 0" \
+        --define "_binary_payload w9.gzdio" \
+        --define "_source_payload w9.gzdio" \
+        --define "_build_id_links none" \
         -bb "$SPEC_FILE"
     find "$RPMBUILD_DIR/RPMS" -name "*.rpm" -exec cp {} "$OUTPUT_DIR/" \;
     echo "Created RPM package in $OUTPUT_DIR"
