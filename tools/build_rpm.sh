@@ -29,6 +29,12 @@ if [ "$VERSION" = "auto" ] || [ -z "$VERSION" ]; then
 fi
 VERSION="${VERSION#v}"
 
+# Set SOURCE_DATE_EPOCH for reproducible builds
+if [ -z "${SOURCE_DATE_EPOCH:-}" ]; then
+    SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct "$PLUGIN_DIR" 2>/dev/null || date +%s)
+    export SOURCE_DATE_EPOCH
+fi
+
 echo "==> Packaging RPM for ${PKG_NAME} (version ${VERSION})..."
 mkdir -p "$OUTPUT_DIR"
 
@@ -85,7 +91,12 @@ rm -rf %{buildroot}
 
 SPEC_EOF
 
-    rpmbuild --define "_topdir ${PWD}/${RPMBUILD_DIR}" -bb "$SPEC_FILE"
+    rpmbuild \
+        --define "_topdir ${PWD}/${RPMBUILD_DIR}" \
+        --define "_buildhost localhost" \
+        --define "clamp_mtime 1" \
+        --define "source_date_epoch_from_changelog 0" \
+        -bb "$SPEC_FILE"
     find "$RPMBUILD_DIR/RPMS" -name "*.rpm" -exec cp {} "$OUTPUT_DIR/" \;
     echo "Created RPM package in $OUTPUT_DIR"
 else

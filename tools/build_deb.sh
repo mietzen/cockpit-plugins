@@ -32,6 +32,12 @@ if [ "$VERSION" = "auto" ] || [ -z "$VERSION" ]; then
 fi
 VERSION="${VERSION#v}"
 
+# Set SOURCE_DATE_EPOCH for reproducible builds
+if [ -z "${SOURCE_DATE_EPOCH:-}" ]; then
+    SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct "$PLUGIN_DIR" 2>/dev/null || date +%s)
+    export SOURCE_DATE_EPOCH
+fi
+
 # Locate dpkg-deb
 DPKG_DEB=""
 if command -v dpkg-deb >/dev/null 2>&1; then
@@ -98,15 +104,16 @@ PRERM_EOF
         cp -r "${PLUGIN_DIR}/backend/"* "$STAGE_DIR/usr/libexec/cockpit-zfs/"
     fi
 
-    # Fix permissions
-    find "$STAGE_DIR/usr" -type d -exec chmod 755 {} +
+    # Fix permissions and timestamps for reproducible builds
+    find "$STAGE_DIR" -type d -exec chmod 755 {} +
     find "$STAGE_DIR/usr" -type f -exec chmod 644 {} +
     if [ -f "$STAGE_DIR/usr/libexec/cockpit-zfs/zfs_helper.py" ]; then
         chmod 755 "$STAGE_DIR/usr/libexec/cockpit-zfs/zfs_helper.py"
     fi
+    find "$STAGE_DIR" -exec touch -d "@$SOURCE_DATE_EPOCH" {} + 2>/dev/null || find "$STAGE_DIR" -exec touch -t "$(date -r "$SOURCE_DATE_EPOCH" +%Y%m%d%H%M.%S 2>/dev/null || date -u -d "@$SOURCE_DATE_EPOCH" +%Y%m%d%H%M.%S)" {} + 2>/dev/null || true
 
     DEB_FILE="${OUTPUT_DIR}/${PKG_NAME}_${VERSION}_all.deb"
-    "$DPKG_DEB" -Zgzip --build --root-owner-group "$STAGE_DIR" "$DEB_FILE"
+    "$DPKG_DEB" -Zgzip --uniform-compression --build --root-owner-group "$STAGE_DIR" "$DEB_FILE" 2>/dev/null || "$DPKG_DEB" -Zgzip --build --root-owner-group "$STAGE_DIR" "$DEB_FILE"
     echo "Created Debian package: $DEB_FILE"
 else
     echo "==> dpkg-deb not found on host, using python fallback..."
