@@ -16,7 +16,15 @@ PKG_NAME="cockpit-${PLUGIN_NAME}"
 # Determine version from tag, argument, or package.json
 VERSION="$RAW_VERSION"
 if [ "$VERSION" = "auto" ] || [ -z "$VERSION" ]; then
-    GIT_TAG="${GITHUB_REF_NAME:-$(git describe --tags --exact-match 2>/dev/null || true)}"
+    GIT_TAG=""
+    if [ "${GITHUB_REF_TYPE:-}" = "tag" ]; then
+        GIT_TAG="${GITHUB_REF_NAME:-}"
+    elif [ -n "${GITHUB_REF_NAME:-}" ] && [[ "${GITHUB_REF_NAME:-}" =~ ^(${PLUGIN_NAME}-)?v?[0-9] ]]; then
+        GIT_TAG="${GITHUB_REF_NAME}"
+    else
+        GIT_TAG="$(git describe --tags --exact-match 2>/dev/null || true)"
+    fi
+
     if [[ "$GIT_TAG" =~ ^${PLUGIN_NAME}-v?([0-9]+\.[0-9]+\.[0-9]+.*)$ ]]; then
         VERSION="${BASH_REMATCH[1]}"
     elif [[ "$GIT_TAG" =~ ^v?([0-9]+\.[0-9]+\.[0-9]+.*)$ ]]; then
@@ -32,12 +40,12 @@ VERSION="${VERSION#v}"
 # Set SOURCE_DATE_EPOCH for reproducible builds
 if [ -z "${SOURCE_DATE_EPOCH:-}" ]; then
     git fetch --tags origin 2>/dev/null || true
-    if [ -n "$GIT_TAG" ] && git rev-parse "$GIT_TAG" >/dev/null 2>&1; then
-        SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct "$GIT_TAG" -- "$PLUGIN_DIR" 2>/dev/null || true)
-    elif git rev-parse "${PLUGIN_NAME}-v${VERSION}" >/dev/null 2>&1; then
-        SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct "${PLUGIN_NAME}-v${VERSION}" -- "$PLUGIN_DIR" 2>/dev/null || true)
-    elif git rev-parse "v${VERSION}" >/dev/null 2>&1; then
-        SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct "v${VERSION}" -- "$PLUGIN_DIR" 2>/dev/null || true)
+    if [ -n "${GIT_TAG:-}" ] && git rev-parse "refs/tags/$GIT_TAG" >/dev/null 2>&1; then
+        SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct "refs/tags/$GIT_TAG" -- "$PLUGIN_DIR" 2>/dev/null || true)
+    elif git rev-parse "refs/tags/${PLUGIN_NAME}-v${VERSION}" >/dev/null 2>&1; then
+        SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct "refs/tags/${PLUGIN_NAME}-v${VERSION}" -- "$PLUGIN_DIR" 2>/dev/null || true)
+    elif git rev-parse "refs/tags/v${VERSION}" >/dev/null 2>&1; then
+        SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct "refs/tags/v${VERSION}" -- "$PLUGIN_DIR" 2>/dev/null || true)
     fi
 
     if [ -z "$SOURCE_DATE_EPOCH" ]; then
