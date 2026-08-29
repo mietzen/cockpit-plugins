@@ -1,31 +1,51 @@
 version: 2
 updates:
-  # Maintain GitHub Actions dependencies
   - package-ecosystem: "github-actions"
-    directory: "/"
+    directory: "/.github/workflows"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
+    cooldown:
+      default-days: 7
+    groups:
+      actions:
+        patterns: ["*"]
 
-  # Maintain Root npm dependencies (Playwright)
-  - package-ecosystem: "npm"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-
-  # Maintain zfs-storage plugin npm dependencies
-  - package-ecosystem: "npm"
-    directory: "/plugins/zfs-storage"
-    schedule:
-      interval: "weekly"
-
-  # Maintain Python dependencies
   - package-ecosystem: "pip"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
+    cooldown:
+      default-days: 7
+    groups:
+      python:
+        patterns: ["*"]
 
-  # Maintain DevContainer dependencies
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    cooldown:
+      default-days: 7
+    groups:
+      npm-root:
+        patterns: ["*"]
+
+  - package-ecosystem: "npm"
+    directory: "/plugins/zfs-storage"
+    schedule:
+      interval: "monthly"
+    cooldown:
+      default-days: 7
+    groups:
+      npm-zfs:
+        patterns: ["*"]
+
   - package-ecosystem: "devcontainers"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
+    cooldown:
+      default-days: 7
+    groups:
+      devcontainers:
+        patterns: ["*"]
