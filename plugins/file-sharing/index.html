@@ -11,7 +11,7 @@
     <script type="text/javascript">
         (function () {
             function updateTheme(theme) {
-                const preference = localStorage.getItem('cockpit_filesharing_theme') || 'auto';
+                const preference = localStorage.getItem('cockpit_filesharing_theme') || localStorage.getItem('cockpit_zfs_theme') || 'auto';
                 let isDark = false;
                 if (preference === 'dark') {
                     isDark = true;
@@ -28,7 +28,19 @@
                 }
             }
 
-            updateTheme();
+            window.addEventListener('storage', function (e) {
+                if (e.key === 'shell:style' || e.key === 'cockpit_filesharing_theme' || e.key === 'cockpit_zfs_theme') {
+                    updateTheme();
+                }
+            });
+
+            window.addEventListener('cockpit-style', function (e) {
+                if (e instanceof CustomEvent) {
+                    updateTheme(e.detail.style);
+                } else {
+                    updateTheme();
+                }
+            });
 
             if (window.matchMedia) {
                 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function () {
@@ -36,11 +48,7 @@
                 });
             }
 
-            if (window.cockpit) {
-                cockpit.addEventListener("themechanged", function (event, data) {
-                    updateTheme(data);
-                });
-            }
+            updateTheme();
         })();
     </script>
 </head>

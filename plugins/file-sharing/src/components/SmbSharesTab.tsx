@@ -280,7 +280,11 @@ export const SmbSharesTab: React.FC<SmbSharesTabProps> = ({
                           </Tooltip>
                         ) : (
                           <Dropdown
-                            popperProps={{ appendTo: () => document.body }}
+                            popperProps={{
+                              position: "right",
+                              preventOverflow: true,
+                              appendTo: () => document.body,
+                            }}
                             isOpen={openDropdown === s.name}
                             onSelect={() => setOpenDropdown(null)}
                             onOpenChange={(isOpen) => setOpenDropdown(isOpen ? s.name : null)}

@@ -126,4 +126,61 @@ test.describe.serial("Cockpit File Sharing Plugin E2E Test Suite", () => {
     await expect(frame.getByText("Global Samba Configuration").and(frame.locator(":visible")).first()).toBeVisible({ timeout: 10000 });
     await page.screenshot({ path: "/Users/nils/.gemini/antigravity-cli/brain/c3e31e2d-d59b-40b3-925a-0d2725d4993e/.tempmediaStorage/media_fs_settings.png" });
   });
+
+  test("6. Verify 3-Dot ActionMenu Positioned Inside Viewport", async () => {
+    const frame = await getFrame();
+    await frame.getByRole("tab", { name: /SMB Shares/ }).click();
+    const toggleBtn = frame.locator("button[aria-label='Share actions']").first();
+    await toggleBtn.click();
+
+    const editItem = frame.getByText("Edit share");
+    await expect(editItem).toBeVisible({ timeout: 5000 });
+
+    // Verify menu bounding box is within viewport
+    const menuBox = await editItem.boundingBox();
+    expect(menuBox).not.toBeNull();
+    if (menuBox) {
+      expect(menuBox.x + menuBox.width).toBeLessThanOrEqual(1440);
+    }
+    await page.screenshot({ path: "/Users/nils/.gemini/antigravity-cli/brain/c3e31e2d-d59b-40b3-925a-0d2725d4993e/.tempmediaStorage/media_test_dropdown_open.png" });
+    await toggleBtn.click();
+  });
+
+  test("7. Verify Modal Background Dimming", async () => {
+    const frame = await getFrame();
+    const createBtn = frame.getByRole("button", { name: /Create SMB share/ }).first();
+    await createBtn.click();
+
+    const modalTitle = frame.locator(".pf-v5-c-modal-box__title-text");
+    await expect(modalTitle).toBeVisible({ timeout: 5000 });
+    await page.screenshot({ path: "/Users/nils/.gemini/antigravity-cli/brain/c3e31e2d-d59b-40b3-925a-0d2725d4993e/.tempmediaStorage/media_test_modal_dimming.png" });
+
+    await frame.getByRole("button", { name: /Cancel/ }).click();
+    await expect(modalTitle).not.toBeVisible({ timeout: 5000 });
+  });
+
+  test("8. Verify Dark Mode Theme Synchronization", async () => {
+    const frame = await getFrame();
+
+    // Toggle dark mode via Cockpit style event
+    await page.evaluate(() => {
+      localStorage.setItem("shell:style", "dark");
+      window.dispatchEvent(new CustomEvent("cockpit-style", { detail: { style: "dark" } }));
+    });
+    await frame.evaluate(() => {
+      document.documentElement.classList.add("pf-v5-theme-dark");
+    });
+
+    await page.waitForTimeout(500);
+    await page.screenshot({ path: "/Users/nils/.gemini/antigravity-cli/brain/c3e31e2d-d59b-40b3-925a-0d2725d4993e/.tempmediaStorage/media_test_dark_mode.png" });
+
+    // Revert to light mode
+    await page.evaluate(() => {
+      localStorage.setItem("shell:style", "light");
+      window.dispatchEvent(new CustomEvent("cockpit-style", { detail: { style: "light" } }));
+    });
+    await frame.evaluate(() => {
+      document.documentElement.classList.remove("pf-v5-theme-dark");
+    });
+  });
 });

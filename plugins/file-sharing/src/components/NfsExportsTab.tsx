@@ -277,7 +277,11 @@ export const NfsExportsTab: React.FC<NfsExportsTabProps> = ({
                             </Tooltip>
                           ) : (
                             <Dropdown
-                              popperProps={{ appendTo: () => document.body }}
+                              popperProps={{
+                                position: "right",
+                                preventOverflow: true,
+                                appendTo: () => document.body,
+                              }}
                               isOpen={openDropdown === exp.path}
                               onSelect={() => setOpenDropdown(null)}
                               onOpenChange={(isOpen) => setOpenDropdown(isOpen ? exp.path : null)}

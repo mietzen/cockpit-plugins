@@ -261,7 +261,11 @@ export const UsersTab: React.FC<UsersTabProps> = ({
                         </Td>
                         <Td data-label="Actions" style={{ textAlign: "right" }}>
                           <Dropdown
-                            popperProps={{ appendTo: () => document.body }}
+                            popperProps={{
+                              position: "right",
+                              preventOverflow: true,
+                              appendTo: () => document.body,
+                            }}
                             isOpen={openDropdown === u.username}
                             onSelect={() => setOpenDropdown(null)}
                             onOpenChange={(isOpen) => setOpenDropdown(isOpen ? u.username : null)}

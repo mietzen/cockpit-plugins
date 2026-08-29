@@ -53,6 +53,41 @@ export const App: React.FC = () => {
     }
   }, [ansibleBegin, ansibleEnd]);
 
+  // Sync theme with Cockpit shell
+  useEffect(() => {
+    const applyTheme = () => {
+      const themePref = localStorage.getItem("cockpit_filesharing_theme") || localStorage.getItem("cockpit_zfs_theme") || "auto";
+      let isDark = false;
+      if (themePref === "dark") {
+        isDark = true;
+      } else if (themePref === "light") {
+        isDark = false;
+      } else {
+        const shellDark = document.documentElement.classList.contains("pf-v5-theme-dark");
+        const sysDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        isDark = shellDark || sysDark;
+      }
+
+      if (isDark) {
+        document.documentElement.classList.add("pf-v5-theme-dark");
+      } else {
+        document.documentElement.classList.remove("pf-v5-theme-dark");
+      }
+    };
+
+    applyTheme();
+    window.addEventListener("cockpit-style", applyTheme);
+    window.addEventListener("storage", applyTheme);
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    mediaQuery.addEventListener("change", applyTheme);
+
+    return () => {
+      window.removeEventListener("cockpit-style", applyTheme);
+      window.removeEventListener("storage", applyTheme);
+      mediaQuery.removeEventListener("change", applyTheme);
+    };
+  }, []);
+
   useEffect(() => {
     loadData();
   }, [loadData]);
