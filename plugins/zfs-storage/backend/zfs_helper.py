@@ -54,7 +54,7 @@ except ImportError:
         parse_arcstats,
     )
 
-SAFE_NAME_RE = re.compile(r"^[a-zA-Z0-9_\-\.\:\/]+$")
+SAFE_NAME_RE = re.compile(r"^[a-zA-Z0-9_\-\.\:\/\@\#\%\=\+]+$")
 
 
 def validate_name(name: str, field_name: str = "Name") -> str:
