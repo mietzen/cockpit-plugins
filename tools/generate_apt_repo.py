@@ -291,7 +291,7 @@ echo "==> Installation complete! Access Cockpit at https://<server-ip>:9090 and 
         rpm_sha = f'<br><code title="{rpm_info["sha256"]}">{rpm_info["sha256"][:12]}...</code>' if rpm_info else ""
         return f"""<tr>
             <td><strong><code>{p['name']}</code></strong></td>
-            <td><span class="badge">{p['version']}</span></td>
+            <td><code>{p['version']}</code></td>
             <td>{p['description']}</td>
             <td>{deb_link}{rpm_link}</td>
             <td>{deb_sha}{rpm_sha}</td>
