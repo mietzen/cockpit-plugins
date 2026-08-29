@@ -407,7 +407,7 @@ echo "==> Installation complete! Access Cockpit at https://<server-ip>:9090 and 
         .card-header-with-logo {{
             display: flex;
             align-items: center;
-            gap: 1.25rem;
+            gap: 1rem;
             margin-bottom: 1rem;
             padding-bottom: 0.75rem;
             border-bottom: 1px solid var(--border);
@@ -416,13 +416,13 @@ echo "==> Installation complete! Access Cockpit at https://<server-ip>:9090 and 
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 64px;
-            height: 64px;
+            width: 45px;
+            height: 45px;
             background: #ffffff;
-            border-radius: 16px;
-            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.15);
+            border-radius: 11px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.15);
             flex-shrink: 0;
-            padding: 10px;
+            padding: 7px;
             box-sizing: border-box;
         }}
         .app-icon-badge img {{
