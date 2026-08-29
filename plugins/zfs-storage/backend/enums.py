@@ -12,6 +12,7 @@ class ZPoolHealth(str, Enum):
 
 class VDevType(str, Enum):
     DATA = "data"
+    STRIPE = "stripe"
     MIRROR = "mirror"
     RAIDZ1 = "raidz1"
     RAIDZ2 = "raidz2"

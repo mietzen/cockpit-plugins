@@ -277,7 +277,8 @@ class ZfsService:
         name = validate_name(payload["name"], "pool_name")
         vdevs = []
         for v in payload.get("vdevs", []):
-            v_type = VDevType(v["type"])
+            raw_type = v.get("type", "data")
+            v_type = VDevType(raw_type) if raw_type in [e.value for e in VDevType] else VDevType.DATA
             devices = [validate_name(d, "device") for d in v.get("devices", [])]
             vdevs.append(VDevConfig(type=v_type, devices=devices))
         

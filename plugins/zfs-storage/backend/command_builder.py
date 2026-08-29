@@ -63,14 +63,18 @@ class CommandBuilder:
         if compression != CompressionType.OFF:
             cmd.extend(["-O", f"compression={compression.value}"])
 
+        fs_props = {"compression", "dedup", "atime", "sync", "recordsize", "mountpoint", "quota", "reservation", "encryption", "keyformat", "readonly", "acltype", "xattr"}
         if properties:
             for k, v in properties.items():
-                cmd.extend(["-o", f"{k}={v}"])
+                if k in fs_props:
+                    cmd.extend(["-O", f"{k}={v}"])
+                else:
+                    cmd.extend(["-o", f"{k}={v}"])
 
         cmd.append(name)
 
         for vdev in vdevs:
-            if vdev.type in (VDevType.DATA,):
+            if vdev.type in (VDevType.DATA, VDevType.STRIPE):
                 cmd.extend(vdev.devices)
             elif vdev.type == VDevType.MIRROR:
                 cmd.append("mirror")
