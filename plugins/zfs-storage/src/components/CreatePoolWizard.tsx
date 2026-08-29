@@ -214,11 +214,19 @@ export const CreatePoolWizard: React.FC<CreatePoolWizardProps> = ({
         onClose={onClose}
         style={{ height: "100%", minHeight: "560px", border: "none" }}
         footer={(activeStep, onNext, onBack) => {
-          const stepIndex = typeof activeStep.index === "number" ? activeStep.index : 1;
-          const isLastStep = stepIndex === 5;
+          const isLastStep =
+            activeStep.id === "step-5" ||
+            activeStep.index === 5 ||
+            (typeof activeStep.id === "string" && activeStep.id.includes("5")) ||
+            (typeof activeStep.name === "string" && activeStep.name.includes("Review"));
+
+          const isFirstStep =
+            activeStep.id === "step-1" ||
+            activeStep.index === 1 ||
+            (typeof activeStep.id === "string" && activeStep.id.includes("1"));
 
           const handleNextClick = (e: React.MouseEvent<HTMLButtonElement>) => {
-            if (stepIndex === 1 && !name.trim()) {
+            if (isFirstStep && !name.trim()) {
               setError("Pool name is required");
               return;
             }
@@ -246,7 +254,7 @@ export const CreatePoolWizard: React.FC<CreatePoolWizardProps> = ({
               <Button
                 variant="secondary"
                 onClick={onBack}
-                isDisabled={stepIndex === 1 || loading}
+                isDisabled={isFirstStep || loading}
                 style={{ width: "90px" }}
               >
                 Back

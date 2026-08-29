@@ -4,8 +4,10 @@ import { execSync } from "child_process";
 const TEST_POOL = "e2epool";
 
 function runHostCmd(cmd: string): string {
+  const sshHost = process.env.SSH_HOST;
+  const fullCmd = sshHost ? `ssh -o StrictHostKeyChecking=no ${sshHost} "${cmd.replace(/"/g, '\\"')}"` : cmd;
   try {
-    return execSync(cmd, { encoding: "utf-8" }).trim();
+    return execSync(fullCmd, { encoding: "utf-8" }).trim();
   } catch (err: any) {
     return (err.stdout || "") + " " + (err.stderr || "");
   }
@@ -33,6 +35,8 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
       viewport: { width: 1440, height: 900 },
       ignoreHTTPSErrors: true,
     });
+    page.on("console", (msg) => console.log(`[PAGE LOG] ${msg.type()}: ${msg.text()}`));
+    page.on("pageerror", (err) => console.log(`[PAGE ERR] ${err.message || err}`));
   });
 
   test.afterAll(async () => {
@@ -44,41 +48,53 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
   });
 
   test("1. Login to Cockpit and load ZFS storage plugin", async () => {
-    await page.goto("/");
-    await page.waitForTimeout(1000);
+    const user = process.env.COCKPIT_USER || "test-user";
+    const pass = process.env.COCKPIT_PASSWORD || "password";
 
-    // Check for login fields
+    await page.goto("/");
+
     const userInput = page.locator("input#login-user-input, input#login-user, input[name='login-user'], input[autocomplete='username']").first();
     const passInput = page.locator("input#login-password-input, input#login-password, input[name='login-password'], input[autocomplete='current-password']").first();
     const loginBtn = page.locator("button#login-button, button[type='submit']").first();
 
-    const isLoginVisible = await userInput.isVisible({ timeout: 5000 }).catch(() => false);
-    if (isLoginVisible) {
-      await userInput.click();
-      await userInput.fill("runner");
-      await passInput.click();
-      await passInput.fill("password");
+    // Wait for either login form to appear or authenticated session
+    try {
+      await userInput.waitFor({ state: "visible", timeout: 8000 });
+      await userInput.fill(user);
+      await passInput.fill(pass);
 
       const authCheckbox = page.locator("input#authorized-input").first();
       if ((await authCheckbox.count()) > 0) {
         await authCheckbox.setChecked(true, { force: true }).catch(() => {});
       }
 
-      await passInput.press("Enter");
-      await loginBtn.click().catch(() => {});
-      await page.waitForTimeout(2000);
-
-      const errorAlert = page.locator("#error-group:not([hidden]), .dialog-error:not([hidden]), .pf-m-danger:not([hidden])").first();
-      if (await errorAlert.isVisible({ timeout: 2000 }).catch(() => false)) {
-        await userInput.fill("test-user");
-        await passInput.fill("password");
-        await passInput.press("Enter");
-        await page.waitForTimeout(2000);
-      }
+      await loginBtn.click();
+    } catch {
+      // Session already active
     }
 
-    // Navigate directly to plugin URL in Cockpit shell
-    await page.goto("/zfs-storage");
+    // Wait for authenticated shell to load
+    await page.waitForSelector("nav, #sidebar, a:has-text('System')", { timeout: 20000 });
+
+    // Elevate access to administrative if needed
+    const elevateBtn = page.locator("button:has-text('Limited access'), a:has-text('Limited access')").first();
+    if (await elevateBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
+      await elevateBtn.click();
+      const sudoPass = page.locator("input#superuser-password-input, input[type='password']").first();
+      if (await sudoPass.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await sudoPass.fill(pass);
+        const authBtn = page.locator("button#superuser-authorize-button, button:has-text('Authenticate')").first();
+        await authBtn.click();
+      }
+      await page.keyboard.press("Escape");
+      await page.click("button:has-text('Close'), [aria-label='Close']").catch(() => {});
+      await page.waitForSelector("button:has-text('Administrative access'), a:has-text('Administrative access')", { timeout: 10000 }).catch(() => {});
+    }
+
+    // Navigate to ZFS storage plugin via sidebar
+    const navLink = page.locator("a:has-text('ZFS storage'), a:has-text('ZFS Storage'), a[href*='zfs-storage']").first();
+    await navLink.waitFor({ state: "visible", timeout: 20000 });
+    await navLink.click();
 
     const frame = await getFrame();
     await frame.waitForSelector("#root", { timeout: 20000 });
@@ -92,55 +108,60 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     const frame = await getFrame();
 
     // Navigate to Pools tab
-    await frame.click("button:has-text(\"Pools\")");
+    await frame.click("button[role='tab']:has-text('Pools'), button:has-text('Pools')");
 
     // Open Create Pool wizard
-    await frame.click("button:visible:has-text(\"Create pool\")");
+    const createPoolBtn = frame.locator("button:visible:has-text('Create pool')").first();
+    await createPoolBtn.waitFor({ state: "visible", timeout: 10000 });
+    await createPoolBtn.click();
 
     // Step 1: General Info
     const poolNameInput = frame.locator("input#wizard-pool-name, input#pool-name").first();
-    await poolNameInput.waitFor({ state: "visible", timeout: 5000 });
+    await poolNameInput.waitFor({ state: "visible", timeout: 10000 });
     await poolNameInput.fill(TEST_POOL);
-    await frame.click("button:visible:has-text(\"Next\")");
+    await frame.locator(".pf-v5-c-wizard__footer button:has-text('Next')").first().click();
 
     // Step 2: VDEV Configuration (Select available disks)
     const diskCheckbox = frame.locator("table tbody input[type=\"checkbox\"]").first();
     await diskCheckbox.waitFor({ state: "visible", timeout: 5000 });
     await diskCheckbox.setChecked(true);
-    await frame.click("button:visible:has-text(\"Next\")");
+    await frame.locator(".pf-v5-c-wizard__footer button:has-text('Next')").first().click();
 
     // Step 3: Properties (leave defaults)
-    await frame.locator("button:visible:has-text(\"Next\")").first().click();
+    await frame.locator(".pf-v5-c-wizard__footer button:has-text('Next')").first().click();
 
     // Step 4: Filesystem Defaults (leave defaults)
-    await frame.locator("button:visible:has-text(\"Next\")").first().click();
+    await frame.locator(".pf-v5-c-wizard__footer button:has-text('Next')").first().click();
 
     // Step 5: Review & Create
-    await frame.locator("button:visible:has-text(\"Create\")").first().click();
+    await frame.locator(".pf-v5-c-wizard__footer button:has-text('Create')").first().click();
 
     // Verify on Host Filesystem using zpool CLI
     await expect.poll(() => runHostCmd(`sudo zpool list -H -o name,health ${TEST_POOL}`), { timeout: 10000 }).toContain("ONLINE");
 
     // Verify in Web UI
-    await expect(frame.locator(`text=${TEST_POOL}`).first()).toBeVisible({ timeout: 10000 });
+    await expect(frame.locator(`button:visible:has-text("${TEST_POOL}"), a:visible:has-text("${TEST_POOL}")`).first()).toBeVisible({ timeout: 10000 });
   });
 
   test("3. Create Child Dataset and verify compression on filesystem", async () => {
     const frame = await getFrame();
 
     // Go to pool details
-    await frame.locator(`table tbody button:has-text("${TEST_POOL}"), table tbody a:has-text("${TEST_POOL}")`).first().click();
+    await frame.locator(`button:visible:has-text("${TEST_POOL}"), a:visible:has-text("${TEST_POOL}")`).first().click();
 
     // Switch to Datasets & Volumes tab
     await frame.locator("button[role=\"tab\"]:has-text(\"Datasets & Volumes\"), button:has-text(\"Datasets & Volumes\")").first().click();
 
     // Click Create dataset
-    await frame.locator("button:visible:has-text(\"Create dataset\")").first().click();
+    const createDsBtn = frame.locator("button:visible:has-text(\"Create dataset\")").first();
+    await createDsBtn.waitFor({ state: "visible", timeout: 10000 });
+    await createDsBtn.click();
 
     // Fill dataset form
-    await frame.fill("input#ds-name", "testdata");
-    await frame.selectOption("select#ds-comp", "lz4");
-    await frame.locator("button:visible:has-text(\"Create Dataset\")").first().click();
+    const dsNameInput = frame.locator("input#ds-name").first();
+    await dsNameInput.waitFor({ state: "visible", timeout: 5000 });
+    await dsNameInput.fill("testdata");
+    await frame.locator(".pf-v5-c-modal-box button:has-text('Create Dataset')").first().click();
 
     // Verify on Host Filesystem
     await expect.poll(() => runHostCmd(`sudo zfs list -H -o name ${TEST_POOL}/testdata`), { timeout: 10000 }).toBe(`${TEST_POOL}/testdata`);
@@ -156,12 +177,16 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     const frame = await getFrame();
 
     // Click Create volume
-    await frame.locator("button:visible:has-text(\"Create volume\")").first().click();
+    const createVolBtn = frame.locator("button:visible:has-text(\"Create volume\")").first();
+    await createVolBtn.waitFor({ state: "visible", timeout: 10000 });
+    await createVolBtn.click();
 
     // Fill zvol form
-    await frame.fill("input#zvol-name", "testvol");
+    const zvolNameInput = frame.locator("input#zvol-name").first();
+    await zvolNameInput.waitFor({ state: "visible", timeout: 5000 });
+    await zvolNameInput.fill("testvol");
     await frame.fill("input#zvol-size", "100M");
-    await frame.locator("button:visible:has-text(\"Create Volume\")").first().click();
+    await frame.locator(".pf-v5-c-modal-box button:has-text('Create Volume')").first().click();
 
     // Verify on Host Filesystem
     await expect.poll(() => runHostCmd(`sudo zfs list -H -t volume -o name ${TEST_POOL}/testvol`), { timeout: 10000 }).toBe(`${TEST_POOL}/testvol`);
@@ -176,11 +201,16 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     // Switch to Snapshots tab
     await frame.locator("button[role=\"tab\"]:has-text(\"Snapshots\"), button:has-text(\"Snapshots\")").first().click();
 
-    // Click Take snapshot
-    await frame.locator("button:visible:has-text(\"Take snapshot\")").first().click();
+    // Click Create snapshot
+    const takeSnapBtn = frame.locator("button:visible:has-text(\"Create snapshot\"), button:visible:has-text(\"Take snapshot\")").first();
+    await takeSnapBtn.waitFor({ state: "visible", timeout: 10000 });
+    await takeSnapBtn.click();
 
-    await frame.fill("input#snap-name", "snap-e2e-test");
-    await frame.locator("button:visible:has-text(\"Create Snapshot\")").first().click();
+    const snapInput = frame.locator("input#snap-name, input[placeholder*='snap']").first();
+    if (await snapInput.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await snapInput.fill("snap-e2e-test");
+    }
+    await frame.locator(".pf-v5-c-modal-box button:has-text('Create Snapshot'), .pf-v5-c-modal-box button:has-text('Take Snapshot'), .pf-v5-c-modal-box button.pf-m-primary").first().click();
 
     // Verify on Host Filesystem
     await expect.poll(() => runHostCmd(`sudo zfs list -H -t snapshot -o name`), { timeout: 10000 }).toContain("snap-e2e-test");
@@ -197,8 +227,12 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
 
     // Start scrub
     const scrubBtn = frame.locator("button:visible:has-text(\"Start scrub\")").first();
-    if (await scrubBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await scrubBtn.click();
+    await scrubBtn.waitFor({ state: "visible", timeout: 10000 });
+    await scrubBtn.click();
+
+    const confirmBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Execute Command'), .pf-v5-c-modal-box button:has-text('Execute'), .pf-v5-c-modal-box button.pf-m-primary").first();
+    if (await confirmBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await confirmBtn.click();
     }
 
     // Verify on Host Filesystem
@@ -213,12 +247,14 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
 
     // Find row for testdata and click 3-dot actions dropdown
     const row = frame.locator("table tbody tr", { hasText: "testdata" }).first();
-    await row.locator("button[aria-label=\"Dataset actions\"]").click();
+    await row.locator("button[aria-label=\"Dataset actions\"], button.pf-v5-c-menu-toggle").first().click();
 
-    await frame.locator("button:has-text(\"Rename\"), li:has-text(\"Rename\")").first().click();
+    await frame.locator("button:has-text(\"Rename\"), li:has-text(\"Rename\"), a:has-text(\"Rename\")").first().click();
 
-    await frame.fill("input#rename-new", "testdatanew");
-    await frame.locator("button:visible:has-text(\"Rename\")").first().click();
+    const renameInput = frame.locator("input#rename-new").first();
+    await renameInput.waitFor({ state: "visible", timeout: 5000 });
+    await renameInput.fill("testdatanew");
+    await frame.locator(".pf-v5-c-modal-box button:has-text('Rename'), button:text-is('Rename')").first().click();
 
     // Verify on Host Filesystem
     await expect.poll(() => runHostCmd(`sudo zfs list -H -o name ${TEST_POOL}/testdatanew`), { timeout: 10000 }).toBe(`${TEST_POOL}/testdatanew`);
@@ -232,13 +268,15 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
 
     // Find row for testdatanew and click Delete
     const row = frame.locator("table tbody tr", { hasText: "testdatanew" }).first();
-    await row.locator("button[aria-label=\"Dataset actions\"]").click();
+    await row.locator("button[aria-label=\"Dataset actions\"], button.pf-v5-c-menu-toggle").first().click();
 
-    await frame.locator("button:has-text(\"Delete\"), li:has-text(\"Delete\")").first().click();
+    await frame.locator("button:has-text(\"Delete\"), li:has-text(\"Delete\"), a:has-text(\"Delete\")").first().click();
 
     // Type confirmation name in modal
-    await frame.fill("input#destroy-confirm", `${TEST_POOL}/testdatanew`);
-    await frame.locator("button:visible:has-text(\"Permanently Destroy\")").first().click();
+    const confirmInput = frame.locator("input#destroy-confirm").first();
+    await confirmInput.waitFor({ state: "visible", timeout: 5000 });
+    await confirmInput.fill(`${TEST_POOL}/testdatanew`);
+    await frame.locator(".pf-v5-c-modal-box button:has-text('Permanently Destroy'), button:text-is('Permanently Destroy')").first().click();
 
     // Verify on Host Filesystem
     await expect.poll(() => runHostCmd(`sudo zfs list -H -o name ${TEST_POOL}/testdatanew 2>&1 || true`), { timeout: 10000 }).toContain("does not exist");

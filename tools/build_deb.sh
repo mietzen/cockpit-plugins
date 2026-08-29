@@ -73,6 +73,9 @@ PRERM_EOF
         cp -r "${PLUGIN_DIR}/dist/"* "$STAGE_DIR/usr/share/cockpit/${PLUGIN_NAME}/"
         rm -rf "$STAGE_DIR/usr/share/cockpit/${PLUGIN_NAME}/backend" || true
     fi
+    if [ -f "${PLUGIN_DIR}/manifest.json" ]; then
+        cp "${PLUGIN_DIR}/manifest.json" "$STAGE_DIR/usr/share/cockpit/${PLUGIN_NAME}/"
+    fi
 
     # Backend helper
     if [ -d "${PLUGIN_DIR}/backend" ]; then

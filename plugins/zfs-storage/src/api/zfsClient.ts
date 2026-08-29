@@ -29,7 +29,7 @@ export class ZfsApiClient {
     const cmd = ["python3", this.helperPath, subcommand, ...args];
 
     try {
-      const output = await cockpit.spawn(cmd, { superuser: "try", err: "message" });
+      const output = await cockpit.spawn(cmd, { superuser: "require", err: "message" });
       return JSON.parse(output.trim() || "{}");
     } catch (err: any) {
       // If primary path failed, try fallback
@@ -39,7 +39,7 @@ export class ZfsApiClient {
         }
         try {
           const fallbackCmd = ["python3", fallback, subcommand, ...args];
-          const out = await cockpit.spawn(fallbackCmd, { superuser: "try", err: "message" });
+          const out = await cockpit.spawn(fallbackCmd, { superuser: "require", err: "message" });
           this.helperPath = fallback;
           return JSON.parse(out.trim() || "{}");
         } catch {
@@ -89,24 +89,35 @@ export class ZfsApiClient {
       };
     }
 
-    const cockpit = (window as any).cockpit;
     try {
-      const output = await cockpit.spawn(cmdArgs, { superuser: "try", err: "message" });
+      const res = await this.runHelper("exec", JSON.stringify(cmdArgs));
       return {
-        success: true,
-        returncode: 0,
-        stdout: output,
-        stderr: "",
+        success: res.success ?? (res.returncode === 0),
+        returncode: res.returncode ?? 0,
+        stdout: res.stdout || "",
+        stderr: res.stderr || "",
         command: cmdArgs.join(" "),
       };
-    } catch (err: any) {
-      return {
-        success: false,
-        returncode: 1,
-        stdout: "",
-        stderr: err.message || String(err),
-        command: cmdArgs.join(" "),
-      };
+    } catch (helperErr: any) {
+      const cockpit = (window as any).cockpit;
+      try {
+        const output = await cockpit.spawn(cmdArgs, { superuser: "require", err: "message" });
+        return {
+          success: true,
+          returncode: 0,
+          stdout: output,
+          stderr: "",
+          command: cmdArgs.join(" "),
+        };
+      } catch (err: any) {
+        return {
+          success: false,
+          returncode: 1,
+          stdout: "",
+          stderr: err.message || helperErr.message || String(err),
+          command: cmdArgs.join(" "),
+        };
+      }
     }
   }
 

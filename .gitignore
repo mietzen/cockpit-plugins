@@ -10,3 +10,5 @@ test-results/
 __pycache__/
 
 inspection/
+*.deb
+[0-9]*.[0-9]*.[0-9]*/

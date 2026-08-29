@@ -200,9 +200,21 @@ class ZfsService:
             map_vdevs(pool.get("special", []))
             map_vdevs(pool.get("dedup", []))
 
+        def has_system_mount(d: Dict[str, Any]) -> bool:
+            mp = d.get("mountpoint")
+            if mp and (mp in ("/", "/boot", "/boot/efi", "/usr", "/var", "/home", "/etc") or mp == "[SWAP]"):
+                return True
+            for c in d.get("children", []):
+                if has_system_mount(c):
+                    return True
+            return False
+
         for dev in raw_devices:
             dev_name = dev.get("name", "")
-            if dev.get("type") == "disk" and not dev_name.startswith("zd") and not dev_name.startswith("loop") and not dev_name.startswith("ram"):
+            dev_type = dev.get("type", "")
+            if dev_type in ("disk", "loop") and not dev_name.startswith("zd") and not dev_name.startswith("ram"):
+                if has_system_mount(dev):
+                    continue
                 path = dev.get("path") or f"/dev/{dev.get('name')}"
                 
                 smart_info = {"health": "UNKNOWN", "temperature": None}

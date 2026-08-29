@@ -153,11 +153,15 @@ exit 0
 
         # Add frontend files to /usr/share/cockpit/<plugin_name>/
         share_target = f"usr/share/cockpit/{plugin_name}"
+        manifest_file = os.path.join(plugin_dir, "manifest.json")
+        if os.path.exists(manifest_file):
+            add_file_to_tar(manifest_file, f"{share_target}/manifest.json")
+
         for root, dirs, files in os.walk(dist_dir):
             rel_dir = os.path.relpath(root, dist_dir)
             target_dir = share_target if rel_dir == "." else f"{share_target}/{rel_dir}"
             for f in files:
-                if f.startswith("backend"):
+                if f.startswith("backend") or f == "manifest.json":
                     continue
                 file_path = os.path.join(root, f)
                 arcname = f"{target_dir}/{f}"
