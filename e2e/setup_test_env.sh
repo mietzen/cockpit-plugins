@@ -55,12 +55,23 @@ echo "Shadow entry verification:"
 sudo grep -E "test-user|runner" /etc/shadow || true
 
 # Configure Cockpit
-sudo mkdir -p /etc/cockpit
+sudo mkdir -p /etc/cockpit /etc/cockpit/ws-certs.d
 cat << 'EOF' | sudo tee /etc/cockpit/cockpit.conf
 [WebService]
 AllowUnencrypted = true
 Origins = https://127.0.0.1:9090 https://localhost:9090 http://127.0.0.1:9090 http://localhost:9090
 EOF
+
+# Pre-generate self-signed certificate to prevent missing sscg warning
+if [ ! -f /etc/cockpit/ws-certs.d/0-self-signed.cert ]; then
+    sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+        -keyout /tmp/cockpit.key \
+        -out /tmp/cockpit.crt \
+        -subj "/CN=localhost" -batch
+    sudo cat /tmp/cockpit.key /tmp/cockpit.crt | sudo tee /etc/cockpit/ws-certs.d/0-self-signed.cert >/dev/null
+    sudo chmod 600 /etc/cockpit/ws-certs.d/0-self-signed.cert
+    sudo rm -f /tmp/cockpit.key /tmp/cockpit.crt
+fi
 
 # 4. Install cockpit-zfs plugin
 echo "==> Installing plugin..."
