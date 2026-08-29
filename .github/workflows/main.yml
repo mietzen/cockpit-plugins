@@ -78,15 +78,13 @@ jobs:
           sudo bash e2e/setup_test_env.sh
 
       - name: Install Playwright & Browsers
-        working-directory: zfs-storage
         run: |
           npm install
           npx playwright install chromium --with-deps
 
       - name: Run E2E Playwright Test Suite
-        working-directory: zfs-storage
         run: |
-          COCKPIT_URL=https://127.0.0.1:9090 npx playwright test --config ../e2e/playwright.config.ts
+          COCKPIT_URL=https://127.0.0.1:9090 npx playwright test --config e2e/playwright.config.ts
 
       - name: Upload E2E Test Report
         if: always()
