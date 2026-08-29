@@ -51,10 +51,10 @@ if [ -z "${SOURCE_DATE_EPOCH:-}" ]; then
         SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct "refs/tags/v${VERSION}" -- "$PLUGIN_DIR" 2>/dev/null || true)
     fi
 
-    if [ -z "$SOURCE_DATE_EPOCH" ]; then
+    if [ -z "${SOURCE_DATE_EPOCH:-}" ]; then
         SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct "$PLUGIN_DIR" 2>/dev/null || true)
     fi
-    if [ -z "$SOURCE_DATE_EPOCH" ]; then
+    if [ -z "${SOURCE_DATE_EPOCH:-}" ]; then
         SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct 2>/dev/null || date +%s)
     fi
     export SOURCE_DATE_EPOCH
