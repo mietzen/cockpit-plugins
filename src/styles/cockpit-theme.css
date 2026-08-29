@@ -772,7 +772,28 @@ select:focus-visible {
 .pf-v5-c-alert {
   border-radius: 12px !important;
   overflow: hidden !important;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25) !important;
+  box-shadow: none !important;
+  border: 1px solid var(--zfs-card-border) !important;
+  --pf-v5-c-alert--BorderTopWidth: 0 !important;
+  --pf-v5-c-alert--BorderTopColor: transparent !important;
+  --pf-v5-c-alert--BoxShadow: none !important;
+}
+
+.pf-v5-c-alert::before,
+.pf-v5-c-alert::after {
+  display: none !important;
+  content: none !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.pf-v5-c-alert.pf-m-info,
+.pf-v5-c-alert.pf-m-success,
+.pf-v5-c-alert.pf-m-danger,
+.pf-v5-c-alert.pf-m-warning {
+  border: 1px solid var(--zfs-card-border) !important;
+  border-top: 1px solid var(--zfs-card-border) !important;
+  box-shadow: none !important;
 }
 
 .pf-v5-c-alert__title .pf-v5-screen-reader {
