@@ -17,14 +17,20 @@ A collection of modern, production-grade plugins and extensions for Cockpit serv
 curl -fsSL https://mietzen.github.io/cockpit-plugins/install.sh | sudo bash
 ```
 
-#### Manual Setup:
+#### Manual Setup (DEB822):
 ```shell
 # 1. Download official GPG signing key
 sudo install -m 0755 -d /etc/apt/keyrings
 curl -fsSL https://mietzen.github.io/cockpit-plugins/cockpit-plugins.gpg | sudo tee /etc/apt/keyrings/cockpit-plugins.gpg > /dev/null
 
-# 2. Add repository source
-echo "deb [signed-by=/etc/apt/keyrings/cockpit-plugins.gpg] https://mietzen.github.io/cockpit-plugins/ stable main" | sudo tee /etc/apt/sources.list.d/cockpit-plugins.list
+# 2. Add DEB822 repository source
+sudo tee /etc/apt/sources.list.d/cockpit-plugins.sources << 'EOF'
+Types: deb
+URIs: https://mietzen.github.io/cockpit-plugins/
+Suites: stable
+Components: main
+Signed-By: /etc/apt/keyrings/cockpit-plugins.gpg
+EOF
 
 # 3. Update and install
 sudo apt update

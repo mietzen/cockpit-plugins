@@ -233,13 +233,27 @@ echo "==> Configuring Cockpit Plugins APT Repository ({owner}/{repo})..."
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq && apt-get install -y -qq curl ca-certificates gnupg
 
-# Setup keyring
+# Setup keyring and DEB822 repository source
 install -m 0755 -d /etc/apt/keyrings
+rm -f /etc/apt/sources.list.d/cockpit-plugins.list
+
 if curl -fsSL "https://{owner}.github.io/{repo}/cockpit-plugins.gpg" -o /etc/apt/keyrings/cockpit-plugins.gpg 2>/dev/null; then
     chmod 644 /etc/apt/keyrings/cockpit-plugins.gpg
-    echo "deb [signed-by=/etc/apt/keyrings/cockpit-plugins.gpg] https://{owner}.github.io/{repo}/ {dist_name} {component}" > /etc/apt/sources.list.d/cockpit-plugins.list
+    cat << EOF > /etc/apt/sources.list.d/cockpit-plugins.sources
+Types: deb
+URIs: https://{owner}.github.io/{repo}/
+Suites: {dist_name}
+Components: {component}
+Signed-By: /etc/apt/keyrings/cockpit-plugins.gpg
+EOF
 else
-    echo "deb [trusted=yes] https://{owner}.github.io/{repo}/ {dist_name} {component}" > /etc/apt/sources.list.d/cockpit-plugins.list
+    cat << EOF > /etc/apt/sources.list.d/cockpit-plugins.sources
+Types: deb
+URIs: https://{owner}.github.io/{repo}/
+Suites: {dist_name}
+Components: {component}
+Trusted: yes
+EOF
 fi
 
 echo "==> Updating package cache and installing cockpit-zfs-storage..."
@@ -408,10 +422,18 @@ echo "==> Installation complete! Access Cockpit at https://<server-ip>:9090 and 
             <h2>Debian, Ubuntu & Proxmox (APT)</h2>
             <p>One-line automated installation with GPG verification:</p>
             <pre><code>curl -fsSL https://{owner}.github.io/{repo}/install.sh | sudo bash</code></pre>
-            <p style="margin-top: 1rem; color: var(--text-secondary); font-size: 0.9rem;">Manual setup:</p>
+            <p style="margin-top: 1rem; color: var(--text-secondary); font-size: 0.9rem;">Manual setup (DEB822 format):</p>
             <pre><code>sudo install -m 0755 -d /etc/apt/keyrings
 curl -fsSL https://{owner}.github.io/{repo}/cockpit-plugins.gpg | sudo tee /etc/apt/keyrings/cockpit-plugins.gpg > /dev/null
-echo "deb [signed-by=/etc/apt/keyrings/cockpit-plugins.gpg] https://{owner}.github.io/{repo}/ {dist_name} {component}" | sudo tee /etc/apt/sources.list.d/cockpit-plugins.list
+
+sudo tee /etc/apt/sources.list.d/cockpit-plugins.sources << 'EOF'
+Types: deb
+URIs: https://{owner}.github.io/{repo}/
+Suites: {dist_name}
+Components: {component}
+Signed-By: /etc/apt/keyrings/cockpit-plugins.gpg
+EOF
+
 sudo apt update && sudo apt install cockpit-zfs-storage</code></pre>
         </div>
 
