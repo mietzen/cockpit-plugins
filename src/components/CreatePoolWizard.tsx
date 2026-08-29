@@ -19,9 +19,10 @@ import {
   CardBody,
 } from "@patternfly/react-core";
 import { Table, Thead, Tr, Th, Tbody, Td } from "@patternfly/react-table";
-import { PlusCircleIcon, TrashIcon, CopyIcon, CheckIcon } from "@patternfly/react-icons";
+import { PlusCircleIcon, TrashIcon } from "@patternfly/react-icons";
 import { DiskDevice } from "../types";
 import { formatBytes } from "../utils/formatters";
+import { CommandBox } from "./CommandBox";
 
 interface VDevEntry {
   id: string;
@@ -87,7 +88,6 @@ export const CreatePoolWizard: React.FC<CreatePoolWizardProps> = ({
   // Execution
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [copiedCmd, setCopiedCmd] = useState(false);
 
   if (!isOpen) {
     return null;
@@ -101,33 +101,29 @@ export const CreatePoolWizard: React.FC<CreatePoolWizardProps> = ({
     }
 
     cmd.push("-o", `ashift=${ashift}`);
-    cmd.push("-o", `autoexpand=${autoexpand ? "on" : "off"}`);
-    cmd.push("-o", `autoreplace=${autoreplace ? "on" : "off"}`);
-    cmd.push("-o", `autotrim=${autotrim ? "on" : "off"}`);
-    cmd.push("-o", `failmode=${failmode}`);
 
-    if (altroot.trim()) {
-      cmd.push("-R", altroot.trim());
-    }
-    if (mountpoint.trim()) {
-      cmd.push("-m", mountpoint.trim());
-    }
+    if (autoexpand) cmd.push("-o", "autoexpand=on");
+    if (autoreplace) cmd.push("-o", "autoreplace=on");
+    if (autotrim) cmd.push("-o", "autotrim=on");
+    if (failmode && failmode !== "wait") cmd.push("-o", `failmode=${failmode}`);
+    if (altroot.trim()) cmd.push("-R", altroot.trim());
 
-    cmd.push("-O", `compression=${compression}`);
-    cmd.push("-O", `dedup=${dedup}`);
-    cmd.push("-O", `atime=${atime ? "on" : "off"}`);
-    cmd.push("-O", `sync=${sync}`);
-    cmd.push("-O", `recordsize=${recordsize}`);
+    if (compression && compression !== "off") cmd.push("-O", `compression=${compression}`);
+    if (dedup && dedup !== "off") cmd.push("-O", `dedup=${dedup}`);
+    if (!atime) cmd.push("-O", "atime=off");
+    if (sync && sync !== "standard") cmd.push("-O", `sync=${sync}`);
+    if (recordsize && recordsize !== "128k") cmd.push("-O", `recordsize=${recordsize}`);
+    if (mountpoint.trim()) cmd.push("-m", mountpoint.trim());
 
-    cmd.push(name.trim() || "tank");
+    cmd.push(name.trim() || "<pool_name>");
 
-    // Add VDev layout
-    for (const v of vdevs) {
-      if (v.devices.length === 0) continue;
-      if (v.type !== "stripe") {
-        cmd.push(v.type);
+    for (const vdev of vdevs) {
+      if (vdev.type !== "stripe") {
+        cmd.push(vdev.type);
       }
-      cmd.push(...v.devices);
+      for (const dev of vdev.devices) {
+        cmd.push(dev);
+      }
     }
 
     return cmd;
@@ -139,17 +135,15 @@ export const CreatePoolWizard: React.FC<CreatePoolWizardProps> = ({
       return;
     }
 
-    const assignedDisks = vdevs.flatMap((v) => v.devices);
-    if (assignedDisks.length === 0) {
-      setError("At least one disk must be assigned to a VDev");
+    const totalDisks = vdevs.reduce((acc, v) => acc + v.devices.length, 0);
+    if (totalDisks === 0) {
+      setError("Please select at least one disk device to create the pool");
       return;
     }
 
     setLoading(true);
     setError(null);
-
     try {
-      const cmd = buildCommand();
       await onCreatePool({
         name: name.trim(),
         vdevs,
@@ -166,7 +160,7 @@ export const CreatePoolWizard: React.FC<CreatePoolWizardProps> = ({
         altroot: altroot.trim() || undefined,
         mountpoint: mountpoint.trim() || undefined,
         force,
-        command: cmd,
+        command: buildCommand(),
       });
       onClose();
     } catch (err: any) {
@@ -176,19 +170,18 @@ export const CreatePoolWizard: React.FC<CreatePoolWizardProps> = ({
   };
 
   const addVDev = (type: VDevEntry["type"]) => {
-    setVdevs((prev) => [
-      ...prev,
-      { id: `vdev-${Date.now()}-${Math.random()}`, type, devices: [] },
-    ]);
+    const newId = `vdev-${Date.now()}`;
+    setVdevs([...vdevs, { id: newId, type, devices: [] }]);
   };
 
   const removeVDev = (id: string) => {
-    setVdevs((prev) => prev.filter((v) => v.id !== id));
+    if (vdevs.length <= 1) return;
+    setVdevs(vdevs.filter((v) => v.id !== id));
   };
 
   const toggleDiskInVDev = (vdevId: string, diskPath: string) => {
-    setVdevs((prev) =>
-      prev.map((v) => {
+    setVdevs(
+      vdevs.map((v) => {
         if (v.id === vdevId) {
           const exists = v.devices.includes(diskPath);
           return {
@@ -206,25 +199,20 @@ export const CreatePoolWizard: React.FC<CreatePoolWizardProps> = ({
     );
   };
 
-  const handleCopyCmd = () => {
-    navigator.clipboard.writeText(buildCommand().join(" "));
-    setCopiedCmd(true);
-    setTimeout(() => setCopiedCmd(false), 2000);
-  };
-
   return (
     <Modal
       variant={ModalVariant.large}
       isOpen={isOpen}
       onClose={onClose}
       showClose={true}
-      title="Create ZFS Storage Pool"
+      hasNoBodyPadding
       aria-label="Create ZFS Storage Pool Modal"
-      style={{ minHeight: "650px", display: "flex", flexDirection: "column" }}
+      style={{ minHeight: "600px" }}
     >
       <Wizard
+        title="Create ZFS Storage Pool"
         onClose={onClose}
-        style={{ height: "100%", minHeight: "520px" }}
+        style={{ height: "100%", minHeight: "560px", border: "none" }}
       >
         {/* Step 1: Identity & Sector Size */}
         <WizardStep name="Name &amp; Ashift" id="step-1">
@@ -327,7 +315,7 @@ export const CreatePoolWizard: React.FC<CreatePoolWizardProps> = ({
             </Flex>
 
             {vdevs.map((vdev, idx) => (
-              <Card key={vdev.id} isPlain style={{ border: "1px solid #333333", marginBottom: "1rem" }}>
+              <Card key={vdev.id} isPlain style={{ border: "1px solid var(--zfs-card-border)", marginBottom: "1rem" }}>
                 <CardBody>
                   <Flex justifyContent={{ default: "justifyContentSpaceBetween" }} style={{ marginBottom: "0.5rem" }}>
                     <FlexItem>
@@ -449,9 +437,9 @@ export const CreatePoolWizard: React.FC<CreatePoolWizardProps> = ({
                 value={compression}
                 onChange={(_event, val) => setCompression(val)}
               >
-                <FormSelectOption value="lz4" label="lz4 (Fast, recommended default)" />
-                <FormSelectOption value="zstd" label="zstd (Higher compression ratio)" />
-                <FormSelectOption value="gzip" label="gzip (Legacy maximum compression)" />
+                <FormSelectOption value="lz4" label="lz4 (Fast &amp; Recommended)" />
+                <FormSelectOption value="zstd" label="zstd (High compression)" />
+                <FormSelectOption value="gzip" label="gzip (Maximum compression)" />
                 <FormSelectOption value="off" label="off (No compression)" />
               </FormSelect>
             </FormGroup>
@@ -462,9 +450,9 @@ export const CreatePoolWizard: React.FC<CreatePoolWizardProps> = ({
                 value={dedup}
                 onChange={(_event, val) => setDedup(val)}
               >
-                <FormSelectOption value="off" label="off (Recommended unless dedicated RAM available)" />
-                <FormSelectOption value="on" label="on" />
-                <FormSelectOption value="verify" label="verify (Cryptographic verification)" />
+                <FormSelectOption value="off" label="off (Recommended unless >= 5 GB RAM / TB)" />
+                <FormSelectOption value="on" label="on (SHA256)" />
+                <FormSelectOption value="verify" label="verify (SHA256 with bitwise verification)" />
               </FormSelect>
             </FormGroup>
 
@@ -543,49 +531,7 @@ export const CreatePoolWizard: React.FC<CreatePoolWizardProps> = ({
               </CardBody>
             </Card>
 
-            <div style={{ marginBottom: "1.5rem" }}>
-              <div style={{ fontSize: "0.85rem", color: "#a0a0a0", marginBottom: "0.4rem", fontWeight: 600 }}>
-                Shell Command Preview:
-              </div>
-              <div
-                style={{
-                  position: "relative",
-                  backgroundColor: "rgb(15, 15, 15)",
-                  border: "1px solid #383838",
-                  borderRadius: "8px",
-                  padding: "10px 42px 10px 14px",
-                  fontFamily: "monospace",
-                  fontSize: "0.9rem",
-                  color: "#92c5f9",
-                  wordBreak: "break-all",
-                  lineHeight: "1.4",
-                }}
-              >
-                <span>{buildCommand().join(" ")}</span>
-                <button
-                  type="button"
-                  onClick={handleCopyCmd}
-                  title={copiedCmd ? "Copied!" : "Copy command"}
-                  style={{
-                    position: "absolute",
-                    right: "8px",
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    background: "transparent",
-                    border: "none",
-                    color: copiedCmd ? "#5ba352" : "#a0a0a0",
-                    cursor: "pointer",
-                    padding: "4px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    borderRadius: "4px",
-                  }}
-                >
-                  {copiedCmd ? <CheckIcon style={{ fontSize: "14px" }} /> : <CopyIcon style={{ fontSize: "14px" }} />}
-                </button>
-              </div>
-            </div>
+            <CommandBox command={buildCommand().join(" ")} label="Shell Command Preview:" />
 
             <Flex gap={{ default: "gapMd" }} style={{ marginTop: "1.5rem", marginBottom: "1rem" }}>
               <FlexItem>
@@ -608,7 +554,7 @@ export const CreatePoolWizard: React.FC<CreatePoolWizardProps> = ({
             </Flex>
 
             {error && (
-              <Alert variant="danger" title="Pool Creation Failed" style={{ marginTop: "1rem" }}>
+              <Alert variant="danger" isInline title="Failed to create pool" style={{ marginTop: "1rem" }}>
                 {error}
               </Alert>
             )}
