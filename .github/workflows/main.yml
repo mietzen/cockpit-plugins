@@ -16,9 +16,6 @@ permissions:
   pages: write
   id-token: write
 
-env:
-  ACTIONS_ALLOW_NODE20: "true"
-
 jobs:
   build:
     name: Build Plugins, Test & Package (.deb & .rpm)
