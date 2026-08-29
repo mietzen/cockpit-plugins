@@ -525,6 +525,8 @@ select:focus-visible {
   background-color: var(--zfs-card-bg) !important;
   border: 1px solid var(--zfs-card-border) !important;
   color: var(--zfs-text-primary) !important;
+  height: 640px !important;
+  min-height: 640px !important;
   max-height: 90vh !important;
   display: flex !important;
   flex-direction: column !important;
@@ -533,8 +535,8 @@ select:focus-visible {
 }
 
 .pf-v5-c-modal-box__body {
+  flex: 1 1 auto !important;
   overflow-y: auto !important;
-  max-height: calc(90vh - 140px) !important;
   background-color: var(--zfs-card-bg) !important;
 }
 
@@ -559,6 +561,9 @@ select:focus-visible {
   border-radius: 16px !important;
   box-shadow: none !important;
   background-color: var(--zfs-card-bg) !important;
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
 }
 
 .pf-v5-c-modal-box .pf-v5-c-wizard__outer-wrap {
@@ -566,6 +571,9 @@ select:focus-visible {
   box-shadow: none !important;
   border-radius: 16px !important;
   background-color: var(--zfs-card-bg) !important;
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
 }
 
 .pf-v5-c-wizard,
@@ -575,6 +583,7 @@ select:focus-visible {
   border: 1px solid var(--zfs-card-border) !important;
   color: var(--zfs-text-primary) !important;
   overflow: hidden !important;
+  height: 100% !important;
 }
 
 .pf-v5-c-wizard::after,
