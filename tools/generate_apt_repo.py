@@ -7,6 +7,7 @@ import gzip
 import hashlib
 import shutil
 import argparse
+import subprocess
 from datetime import datetime, timezone
 
 def get_hashes(data):
@@ -19,6 +20,13 @@ def get_hashes(data):
 
 def parse_deb_control(deb_path):
     """Extract control file content from .deb archive."""
+    try:
+        p = subprocess.run(["dpkg-deb", "-f", deb_path], capture_output=True, text=True)
+        if p.returncode == 0 and p.stdout:
+            return p.stdout
+    except Exception:
+        pass
+
     with open(deb_path, "rb") as f:
         magic = f.read(8)
         if magic != b"!<arch>\n":
@@ -36,12 +44,15 @@ def parse_deb_control(deb_path):
 
             if name.startswith("control.tar"):
                 control_tar_io = io.BytesIO(file_data)
-                with tarfile.open(fileobj=control_tar_io, mode="r:*") as tar:
-                    for member in tar.getmembers():
-                        if member.name.endswith("control") or member.name == "./control":
-                            ef = tar.extractfile(member)
-                            if ef:
-                                return ef.read().decode("utf-8")
+                try:
+                    with tarfile.open(fileobj=control_tar_io, mode="r:*") as tar:
+                        for member in tar.getmembers():
+                            if member.name.endswith("control") or member.name == "./control":
+                                ef = tar.extractfile(member)
+                                if ef:
+                                    return ef.read().decode("utf-8")
+                except Exception:
+                    pass
     return ""
 
 def generate_apt_repo(deb_dir, output_dir, dist_name="stable", component="main", owner="mietzen", repo="cockpit-plugins"):

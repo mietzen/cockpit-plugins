@@ -90,7 +90,7 @@ PRERM_EOF
     fi
 
     DEB_FILE="${OUTPUT_DIR}/${PKG_NAME}_${VERSION}_all.deb"
-    "$DPKG_DEB" --build --root-owner-group "$STAGE_DIR" "$DEB_FILE"
+    "$DPKG_DEB" -Zgzip --build --root-owner-group "$STAGE_DIR" "$DEB_FILE"
     echo "Created Debian package: $DEB_FILE"
 else
     echo "==> dpkg-deb not found on host, using python fallback..."
