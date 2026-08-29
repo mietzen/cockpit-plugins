@@ -76,6 +76,11 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
       const errorAlert = page.locator("#error-group:not([hidden]), .dialog-error:not([hidden]), .pf-m-danger:not([hidden])").first();
       if (await errorAlert.isVisible({ timeout: 2000 }).catch(() => false)) {
         console.log("Login error alert:", await errorAlert.innerText());
+        console.log("Retrying login with runner user...");
+        await userInput.fill("runner");
+        await passInput.fill("password");
+        await passInput.press("Enter");
+        await page.waitForTimeout(3000);
       }
 
       console.log("URL after login:", page.url());

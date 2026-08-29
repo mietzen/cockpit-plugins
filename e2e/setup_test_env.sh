@@ -35,17 +35,24 @@ echo "==> Configuring users and authentication..."
 if ! id "test-user" &>/dev/null; then
     sudo useradd -m -s /bin/bash test-user
 fi
-echo "test-user:password" | sudo chpasswd
+PASS_HASH=$(openssl passwd -6 "password")
+sudo usermod -p "$PASS_HASH" test-user || true
+sudo passwd -u test-user || true
 sudo usermod -aG sudo,adm test-user || true
-sudo chage -d "$(date +%Y-%m-%d)" -m 0 -M 99999 test-user || true
+sudo chage -d 20000 -m 0 -M 99999 -I -1 -E -1 test-user || true
 echo "test-user ALL=(ALL) NOPASSWD:ALL" | sudo tee /etc/sudoers.d/test-user
 
 # Also ensure runner user has known password
 if id "runner" &>/dev/null; then
-    echo "runner:password" | sudo chpasswd || true
+    sudo usermod -p "$PASS_HASH" runner || true
+    sudo passwd -u runner || true
     sudo usermod -aG sudo,adm runner || true
+    sudo chage -d 20000 -m 0 -M 99999 -I -1 -E -1 runner || true
     echo "runner ALL=(ALL) NOPASSWD:ALL" | sudo tee /etc/sudoers.d/runner || true
 fi
+
+echo "Shadow entry verification:"
+sudo grep -E "test-user|runner" /etc/shadow || true
 
 # Configure Cockpit
 sudo mkdir -p /etc/cockpit
