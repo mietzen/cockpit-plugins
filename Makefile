@@ -10,10 +10,19 @@ build-zfs:
 	@echo "==> Building zfs-storage plugin..."
 	$(MAKE) -C plugins/zfs-storage build
 
+test:
+	@echo "==> Running backend unit tests..."
+	PYTHONPATH=plugins/zfs-storage pytest plugins/zfs-storage/backend/tests
+
 deb: build
 	@echo "==> Packaging Debian packages..."
 	mkdir -p dist-debs
-	tools/build_deb.sh plugins/zfs-storage dist-debs 1.0.0
+	tools/build_deb.sh plugins/zfs-storage 1.0.0 dist-debs
+
+rpm: build
+	@echo "==> Packaging RPM packages..."
+	mkdir -p dist-rpms
+	tools/build_rpm.sh plugins/zfs-storage 1.0.0 dist-rpms
 
 apt-repo: deb
 	@echo "==> Generating APT repository for GitHub Pages..."

@@ -1,0 +1,21 @@
+{
+  "name": "Cockpit Plugins DevContainer",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "ms-python.python",
+        "ms-playwright.playwright"
+      ]
+    }
+  },
+  "remoteUser": "vscode",
+  "mounts": [
+    "source=cockpit-plugins-persist,target=/home/vscode/.persist,type=volume"
+  ],
+  "postCreateCommand": "sudo chown -R vscode:vscode /home/vscode/.persist && mise install && npm install && npm --prefix plugins/zfs-storage install"
+}

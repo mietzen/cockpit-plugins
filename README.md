@@ -18,19 +18,49 @@ A collection of modern, production-grade plugins and extensions for [Cockpit](ht
 
 ---
 
-## 🚀 Quick Install (APT Repository)
+## 🚀 Installation
 
-Install and automatically receive updates directly via APT on Debian, Ubuntu, and Proxmox systems:
+### Debian, Ubuntu & Proxmox (APT)
 
+#### One-Line Automated Install (with GPG key):
 ```shell
-# 1. Add Cockpit Plugins APT repository
-echo "deb [trusted=yes] https://mietzen.github.io/cockpit-plugins/ stable main" | sudo tee /etc/apt/sources.list.d/cockpit-plugins.list
+curl -fsSL https://mietzen.github.io/cockpit-plugins/install.sh | sudo bash
+```
 
-# 2. Update package cache
+#### Manual Setup:
+```shell
+# 1. Download official GPG signing key
+sudo install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://mietzen.github.io/cockpit-plugins/cockpit-plugins.gpg | sudo tee /etc/apt/keyrings/cockpit-plugins.gpg > /dev/null
+
+# 2. Add repository source
+echo "deb [signed-by=/etc/apt/keyrings/cockpit-plugins.gpg] https://mietzen.github.io/cockpit-plugins/ stable main" | sudo tee /etc/apt/sources.list.d/cockpit-plugins.list
+
+# 3. Update and install
 sudo apt update
-
-# 3. Install ZFS Storage plugin
 sudo apt install cockpit-zfs-storage
+```
+
+---
+
+### Rocky Linux, RHEL & Fedora (DNF / YUM)
+
+#### One-Line Automated Install:
+```shell
+curl -fsSL https://mietzen.github.io/cockpit-plugins/install-rpm.sh | sudo bash
+```
+
+#### Manual Setup:
+```shell
+sudo tee /etc/yum.repos.d/cockpit-plugins.repo << 'EOF'
+[cockpit-plugins]
+name=Cockpit Plugins Repository
+baseurl=https://mietzen.github.io/cockpit-plugins/rpm/
+enabled=1
+gpgcheck=0
+EOF
+
+sudo dnf install -y cockpit-zfs-storage
 ```
 
 ---
@@ -153,6 +183,16 @@ make e2e
 
 ---
 
+## 🐳 DevContainer Development
+
+Open this monorepo in VS Code or GitHub Codespaces with DevContainers:
+- **Base image**: [`docker-mise-devcontainer`](https://github.com/mietzen/docker-mise-devcontainer) (Debian Trixie)
+- **Pre-installed**: Cockpit, OpenZFS utilities, Node.js 22, Python 3.12, and Playwright dependencies
+- **Command**: Run `Dev Containers: Reopen in Container` in VS Code.
+
+---
+
 ## 📄 License
 
 MIT License. Developed for the OpenZFS and Cockpit community.
+

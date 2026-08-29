@@ -1,9 +1,11 @@
-name: Cockpit Plugins CI & APT Repository
+name: Cockpit Plugins CI & APT/RPM Repository
 
 on:
   push:
     branches:
       - main
+    tags:
+      - '*-v*'
   pull_request:
     branches:
       - main
@@ -16,7 +18,7 @@ permissions:
 
 jobs:
   build:
-    name: Build Plugins & Debian Packages
+    name: Build Plugins, Test & Package (.deb & .rpm)
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout Repository
@@ -25,28 +27,56 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: "npm"
-          cache-dependency-path: plugins/zfs-storage/package-lock.json
+          cache-dependency-path: "**/package-lock.json"
 
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          cache: "pip"
 
-      - name: Build zfs-storage plugin
+      - name: Install Python Test Dependencies
         run: |
-          make build-zfs
+          pip install pytest
+
+      - name: Run Backend Unit Tests
+        run: |
+          PYTHONPATH=plugins/zfs-storage pytest plugins/zfs-storage/backend/tests
+
+      - name: Build zfs-storage Frontend
+        run: |
+          npm --prefix plugins/zfs-storage install
+          npm --prefix plugins/zfs-storage run build
+
+      - name: Install Packaging Tools (RPM & DPKG)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq rpm dpkg-dev
 
       - name: Build Debian Packages (.deb)
         run: |
-          make deb
+          mkdir -p dist-debs
+          ./tools/build_deb.sh plugins/zfs-storage 1.0.0 dist-debs
+
+      - name: Build RPM Packages (.rpm)
+        run: |
+          mkdir -p dist-rpms
+          ./tools/build_rpm.sh plugins/zfs-storage 1.0.0 dist-rpms
 
       - name: Upload Debian Packages
         uses: actions/upload-artifact@v4
         with:
           name: deb-packages
           path: dist-debs/*.deb
+          retention-days: 7
+
+      - name: Upload RPM Packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: rpm-packages
+          path: dist-rpms/*.rpm
           retention-days: 7
 
   e2e:
@@ -60,12 +90,22 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
+          cache: "npm"
+          cache-dependency-path: "**/package-lock.json"
 
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+
+      - name: Cache Playwright Browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            playwright-${{ runner.os }}-
 
       - name: Download Built .deb Packages
         uses: actions/download-artifact@v4
@@ -86,18 +126,16 @@ jobs:
         run: |
           COCKPIT_URL=https://127.0.0.1:9090 npx playwright test --config e2e/playwright.config.ts
 
-      - name: Upload E2E Test Artifacts & Screenshots
-        if: always()
+      - name: Upload E2E Test Failure Artifacts
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-test-results
-          path: |
-            test-results/
-            playwright-report/
+          name: playwright-failure-results
+          path: test-results/
           retention-days: 14
 
-  deploy-apt-pages:
-    name: Assemble & Deploy APT Repository to GitHub Pages
+  deploy-pages:
+    name: Assemble & Deploy Repositories to GitHub Pages
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     needs: [build, e2e]
@@ -113,15 +151,25 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Download Built .deb Packages
+      - name: Download Built Packages
         uses: actions/download-artifact@v4
         with:
           name: deb-packages
           path: dist-debs
 
-      - name: Assemble APT Repository & Landing Page
+      - name: Download Built RPM Packages
+        uses: actions/download-artifact@v4
+        with:
+          name: rpm-packages
+          path: dist-rpms
+
+      - name: Assemble APT & RPM Repositories
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: |
           python3 tools/generate_apt_repo.py --deb-dir dist-debs --output-dir pages --owner ${{ github.repository_owner }} --repo ${{ github.event.repository.name }}
+          python3 tools/generate_rpm_repo.py --rpm-dir dist-rpms --output-dir pages/rpm --owner ${{ github.repository_owner }} --repo ${{ github.event.repository.name }}
 
       - name: Upload GitHub Pages Artifact
         uses: actions/upload-pages-artifact@v3
@@ -131,3 +179,36 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+  github-release:
+    name: Publish Tagged GitHub Release
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-24.04
+    needs: [build, e2e]
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Download Built Packages
+        uses: actions/download-artifact@v4
+        with:
+          name: deb-packages
+          path: dist-debs
+
+      - name: Download Built RPM Packages
+        uses: actions/download-artifact@v4
+        with:
+          name: rpm-packages
+          path: dist-rpms
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG_NAME="${{ github.ref_name }}"
+          echo "Creating GitHub Release for $TAG_NAME..."
+          gh release create "$TAG_NAME" \
+            dist-debs/*.deb \
+            dist-rpms/*.rpm \
+            --title "$TAG_NAME" \
+            --generate-notes

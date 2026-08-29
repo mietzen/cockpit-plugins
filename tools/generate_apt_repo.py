@@ -8,7 +8,7 @@ import hashlib
 import shutil
 import argparse
 import subprocess
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 def get_hashes(data):
     return {
@@ -127,7 +127,10 @@ SHA256: {hashes['sha256']}
 
     # Release file for dists/stable/
     release_dir = os.path.join(output_dir, "dists", dist_name)
-    now_utc = datetime.now(timezone.utc).strftime("%a, %d %b %Y %H:%M:%S UTC")
+    now_dt = datetime.now(timezone.utc) - timedelta(minutes=10)
+    valid_dt = datetime.now(timezone.utc) + timedelta(days=365)
+    now_utc = now_dt.strftime("%a, %d %b %Y %H:%M:%S UTC")
+    valid_utc = valid_dt.strftime("%a, %d %b %Y %H:%M:%S UTC")
 
     pkgs_info = get_hashes(packages_bytes)
     pkgs_gz_info = get_hashes(open(packages_gz_path, "rb").read())
@@ -141,6 +144,7 @@ Suite: {dist_name}
 Codename: {dist_name}
 Version: 1.0
 Date: {now_utc}
+Valid-Until: {valid_utc}
 Architectures: all amd64 arm64
 Components: {component}
 Description: APT Repository for Cockpit Plugins
@@ -154,8 +158,99 @@ SHA256:
  {pkgs_info['sha256']} {pkgs_info['size']} {rel_pkgs_path}
  {pkgs_gz_info['sha256']} {pkgs_gz_info['size']} {rel_pkgs_gz_path}
 """
-    with open(os.path.join(release_dir, "Release"), "w", encoding="utf-8") as f:
+    release_path = os.path.join(release_dir, "Release")
+    with open(release_path, "w", encoding="utf-8") as f:
         f.write(release_content)
+
+    # GPG signing & key export
+    gpg_imported = False
+    gpg_key_env = os.environ.get("GPG_PRIVATE_KEY", "").strip()
+    gpg_passphrase = os.environ.get("GPG_PASSPHRASE", "").strip()
+
+    if gpg_key_env:
+        try:
+            import_cmd = ["gpg", "--batch", "--yes", "--import"]
+            subprocess.run(import_cmd, input=gpg_key_env.encode(), capture_output=True, check=True)
+            gpg_imported = True
+        except Exception as e:
+            print(f"Warning: Failed to import GPG_PRIVATE_KEY: {e}")
+
+    # Check for available GPG secret keys
+    gpg_has_keys = False
+    try:
+        p_keys = subprocess.run(["gpg", "--list-secret-keys", "--with-colons"], capture_output=True, text=True)
+        if p_keys.returncode == 0 and "sec:" in p_keys.stdout:
+            gpg_has_keys = True
+    except Exception:
+        pass
+
+    if gpg_has_keys or gpg_imported:
+        print("==> GPG secret key detected. Exporting public keys and signing Release file...")
+        try:
+            # Export ASCII armored public key (key.gpg)
+            p_export_armor = subprocess.run(["gpg", "--armor", "--export"], capture_output=True)
+            if p_export_armor.returncode == 0 and p_export_armor.stdout:
+                with open(os.path.join(output_dir, "key.gpg"), "wb") as f:
+                    f.write(p_export_armor.stdout)
+                print("Created key.gpg (armored)")
+
+            # Export binary keyring (cockpit-plugins.gpg)
+            p_export_bin = subprocess.run(["gpg", "--export"], capture_output=True)
+            if p_export_bin.returncode == 0 and p_export_bin.stdout:
+                with open(os.path.join(output_dir, "cockpit-plugins.gpg"), "wb") as f:
+                    f.write(p_export_bin.stdout)
+                print("Created cockpit-plugins.gpg (binary keyring)")
+
+            # Sign InRelease (clearsign)
+            inrelease_path = os.path.join(release_dir, "InRelease")
+            sign_inrelease_cmd = ["gpg", "--batch", "--yes", "--clearsign", "--digest-algo", "SHA256"]
+            if gpg_passphrase:
+                sign_inrelease_cmd.extend(["--pinentry-mode", "loopback", "--passphrase", gpg_passphrase])
+            sign_inrelease_cmd.extend(["-o", inrelease_path, release_path])
+            subprocess.run(sign_inrelease_cmd, check=True)
+            print("Created InRelease (clear-signed)")
+
+            # Sign Release.gpg (detached)
+            release_gpg_path = os.path.join(release_dir, "Release.gpg")
+            sign_rel_cmd = ["gpg", "--batch", "--yes", "-abs", "--digest-algo", "SHA256"]
+            if gpg_passphrase:
+                sign_rel_cmd.extend(["--pinentry-mode", "loopback", "--passphrase", gpg_passphrase])
+            sign_rel_cmd.extend(["-o", release_gpg_path, release_path])
+            subprocess.run(sign_rel_cmd, check=True)
+            print("Created Release.gpg (detached signature)")
+        except Exception as e:
+            print(f"Warning: Failed to sign Release file: {e}")
+    else:
+        print("Note: No GPG signing key provided. Repository will be served without GPG signatures.")
+
+    # Write one-line install script install.sh
+    install_sh_content = f"""#!/usr/bin/env bash
+set -e
+
+echo "==> Configuring Cockpit Plugins APT Repository ({owner}/{repo})..."
+
+# Ensure prerequisites
+export DEBIAN_FRONTEND=noninteractive
+apt-get update -qq && apt-get install -y -qq curl ca-certificates gnupg
+
+# Setup keyring
+install -m 0755 -d /etc/apt/keyrings
+if curl -fsSL "https://{owner}.github.io/{repo}/cockpit-plugins.gpg" -o /etc/apt/keyrings/cockpit-plugins.gpg 2>/dev/null; then
+    chmod 644 /etc/apt/keyrings/cockpit-plugins.gpg
+    echo "deb [signed-by=/etc/apt/keyrings/cockpit-plugins.gpg] https://{owner}.github.io/{repo}/ {dist_name} {component}" > /etc/apt/sources.list.d/cockpit-plugins.list
+else
+    echo "deb [trusted=yes] https://{owner}.github.io/{repo}/ {dist_name} {component}" > /etc/apt/sources.list.d/cockpit-plugins.list
+fi
+
+echo "==> Updating package cache and installing cockpit-zfs-storage..."
+apt-get update -qq
+apt-get install -y cockpit-zfs-storage
+
+echo "==> Installation complete! Access Cockpit at https://<server-ip>:9090 and select 'ZFS storage'."
+"""
+    with open(os.path.join(output_dir, "install.sh"), "w", encoding="utf-8") as f:
+        f.write(install_sh_content)
+    os.chmod(os.path.join(output_dir, "install.sh"), 0o755)
 
     # Generate modern HTML index for GitHub Pages
     packages_table_rows = "".join([

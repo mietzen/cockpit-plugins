@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+set -e
+
+PLUGIN_DIR="${1:-plugins/zfs-storage}"
+VERSION="${2:-1.0.0}"
+OUTPUT_DIR="${3:-dist-rpms}"
+
+if [ ! -d "$PLUGIN_DIR" ]; then
+    echo "Error: Plugin directory '$PLUGIN_DIR' not found."
+    exit 1
+fi
+
+PLUGIN_NAME=$(basename "$PLUGIN_DIR")
+PKG_NAME="cockpit-${PLUGIN_NAME}"
+
+echo "==> Packaging RPM for ${PKG_NAME} (version ${VERSION})..."
+mkdir -p "$OUTPUT_DIR"
+
+if command -v rpmbuild >/dev/null 2>&1; then
+    echo "==> Using rpmbuild to build RPM package..."
+    RPMBUILD_DIR="build/rpmbuild"
+    rm -rf "$RPMBUILD_DIR"
+    mkdir -p "$RPMBUILD_DIR"/{BUILD,RPMS,SOURCES,SPECS,SRPMS,BUILDROOT}
+
+    SPEC_FILE="$RPMBUILD_DIR/SPECS/${PKG_NAME}.spec"
+    cat << SPEC_EOF > "$SPEC_FILE"
+Name:           ${PKG_NAME}
+Version:        ${VERSION}
+Release:        1%{?dist}
+Summary:        Advanced OpenZFS storage manager for Cockpit
+BuildArch:      noarch
+License:        MIT
+URL:            https://github.com/mietzen/cockpit-plugins
+Requires:       cockpit-bridge, python3
+
+%description
+Advanced OpenZFS storage manager for Cockpit.
+Manage ZFS pools, datasets, zvols, snapshots, scrubs, trims,
+and SMART disk health with PatternFly v5 UI.
+
+%prep
+
+%build
+
+%install
+rm -rf %{buildroot}
+mkdir -p %{buildroot}/usr/share/cockpit/${PLUGIN_NAME}
+mkdir -p %{buildroot}/usr/libexec/cockpit-zfs
+
+if [ -d "${PWD}/${PLUGIN_DIR}/dist" ]; then
+    cp -r "${PWD}/${PLUGIN_DIR}/dist/"* %{buildroot}/usr/share/cockpit/${PLUGIN_NAME}/
+    rm -rf %{buildroot}/usr/share/cockpit/${PLUGIN_NAME}/backend || true
+fi
+if [ -f "${PWD}/${PLUGIN_DIR}/manifest.json" ]; then
+    cp "${PWD}/${PLUGIN_DIR}/manifest.json" %{buildroot}/usr/share/cockpit/${PLUGIN_NAME}/
+fi
+if [ -d "${PWD}/${PLUGIN_DIR}/backend" ]; then
+    cp -r "${PWD}/${PLUGIN_DIR}/backend/"* %{buildroot}/usr/libexec/cockpit-zfs/
+fi
+chmod 755 %{buildroot}/usr/libexec/cockpit-zfs/zfs_helper.py 2>/dev/null || true
+
+%clean
+rm -rf %{buildroot}
+
+%files
+%defattr(-,root,root,-)
+/usr/share/cockpit/${PLUGIN_NAME}
+/usr/libexec/cockpit-zfs
+
+SPEC_EOF
+
+    rpmbuild --define "_topdir ${PWD}/${RPMBUILD_DIR}" -bb "$SPEC_FILE"
+    find "$RPMBUILD_DIR/RPMS" -name "*.rpm" -exec cp {} "$OUTPUT_DIR/" \;
+    echo "Created RPM package in $OUTPUT_DIR"
+else
+    echo "==> rpmbuild not found on host, creating fallback RPM staging..."
+    mkdir -p "$OUTPUT_DIR"
+fi
