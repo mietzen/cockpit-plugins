@@ -533,26 +533,6 @@ export const CreatePoolWizard: React.FC<CreatePoolWizardProps> = ({
 
             <CommandBox command={buildCommand().join(" ")} label="Shell Command Preview:" />
 
-            <Flex gap={{ default: "gapMd" }} style={{ marginTop: "1.5rem", marginBottom: "1rem" }}>
-              <FlexItem>
-                <Button
-                  variant="primary"
-                  size="lg"
-                  onClick={handleFinish}
-                  isDisabled={loading || !name.trim()}
-                  isLoading={loading}
-                  id="wizard-create-pool-btn"
-                >
-                  {loading ? "Creating Pool..." : "Create Pool Now"}
-                </Button>
-              </FlexItem>
-              <FlexItem>
-                <Button variant="secondary" size="lg" onClick={onClose} isDisabled={loading}>
-                  Cancel
-                </Button>
-              </FlexItem>
-            </Flex>
-
             {error && (
               <Alert variant="danger" isInline title="Failed to create pool" style={{ marginTop: "1rem" }}>
                 {error}

@@ -366,11 +366,27 @@ h1, h2, h3, h4, h5, h6 {
 .pf-v5-c-form-control input,
 .pf-v5-c-form-control select,
 select.pf-v5-c-form-control,
-.pf-v5-c-form-control textarea {
+input.pf-v5-c-form-control,
+.pf-v5-c-form-control textarea,
+.pf-v5-c-text-input-group,
+.pf-v5-c-text-input-group__text-input {
   border-radius: 8px !important;
   background-color: var(--zfs-input-bg) !important;
   border: 1px solid var(--zfs-input-border) !important;
   color: var(--zfs-text-primary) !important;
+  box-shadow: none !important;
+  outline: none !important;
+  outline-offset: 0 !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+}
+
+.pf-v5-c-form-control > input,
+.pf-v5-c-form-control > select,
+.pf-v5-c-form-control > textarea {
+  border: none !important;
+  background: transparent !important;
+  outline: none !important;
   box-shadow: none !important;
 }
 
@@ -380,16 +396,25 @@ select.pf-v5-c-form-control {
   padding-right: 2rem !important;
 }
 
-.pf-v5-c-form-control::after {
+.pf-v5-c-form-control::before,
+.pf-v5-c-form-control::after,
+.pf-v5-c-text-input-group::before,
+.pf-v5-c-text-input-group::after {
+  display: none !important;
+  content: none !important;
   border: none !important;
-  border-radius: 8px !important;
+  box-shadow: none !important;
+  outline: none !important;
 }
 
 .pf-v5-c-form-control:focus,
 .pf-v5-c-form-control:focus-within,
 .pf-v5-c-form-control input:focus,
 .pf-v5-c-form-control select:focus,
-.pf-v5-c-form-control textarea:focus {
+.pf-v5-c-form-control textarea:focus,
+.pf-v5-c-form-control:focus-visible,
+input:focus-visible,
+select:focus-visible {
   border-color: var(--zfs-secondary-btn-border) !important;
   box-shadow: 0 0 0 1px var(--zfs-secondary-btn-border) !important;
   outline: none !important;
@@ -468,15 +493,30 @@ select.pf-v5-c-form-control {
   position: fixed !important;
   inset: 0 !important;
   z-index: 9999 !important;
-  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.72) 0%, rgba(0, 0, 0, 0.5) 60%, rgba(0, 0, 0, 0.25) 100%) !important;
-  backdrop-filter: blur(2.5px) !important;
-  -webkit-backdrop-filter: blur(2.5px) !important;
+  background: transparent !important;
   border-radius: 16px !important;
   overflow: hidden !important;
+  pointer-events: auto !important;
+}
+
+.pf-v5-c-backdrop::before {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: -1 !important;
+  pointer-events: none !important;
+  border-radius: 16px !important;
+  background: radial-gradient(ellipse 65% 60% at 50% 50%, rgba(0, 0, 0, 0.72) 0%, rgba(0, 0, 0, 0.48) 45%, rgba(0, 0, 0, 0.15) 75%, transparent 100%) !important;
+  backdrop-filter: blur(3px) !important;
+  -webkit-backdrop-filter: blur(3px) !important;
+  mask-image: radial-gradient(ellipse 75% 70% at 50% 50%, black 25%, rgba(0, 0, 0, 0.55) 60%, transparent 100%) !important;
+  -webkit-mask-image: radial-gradient(ellipse 75% 70% at 50% 50%, black 25%, rgba(0, 0, 0, 0.55) 60%, transparent 100%) !important;
 }
 
 .pf-v5-c-modal-box {
+  position: relative !important;
   z-index: 10000 !important;
+  opacity: 1 !important;
   border-radius: 16px !important;
   background-color: var(--zfs-card-bg) !important;
   border: 1px solid var(--zfs-card-border) !important;
@@ -484,13 +524,14 @@ select.pf-v5-c-form-control {
   max-height: 90vh !important;
   display: flex !important;
   flex-direction: column !important;
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5) !important;
-  opacity: 1 !important;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5) !important;
+  overflow: hidden !important;
 }
 
 .pf-v5-c-modal-box__body {
   overflow-y: auto !important;
   max-height: calc(90vh - 140px) !important;
+  background-color: var(--zfs-card-bg) !important;
 }
 
 .pf-v5-c-modal-box::after {
@@ -506,17 +547,21 @@ select.pf-v5-c-form-control {
   gap: 0.75rem !important;
   align-items: center !important;
   margin-top: auto !important;
+  background-color: var(--zfs-card-bg) !important;
 }
 
 .pf-v5-c-modal-box .pf-v5-c-wizard {
   border: none !important;
   border-radius: 16px !important;
   box-shadow: none !important;
+  background-color: var(--zfs-card-bg) !important;
 }
 
 .pf-v5-c-modal-box .pf-v5-c-wizard__outer-wrap {
   border: none !important;
   box-shadow: none !important;
+  border-radius: 16px !important;
+  background-color: var(--zfs-card-bg) !important;
 }
 
 .pf-v5-c-wizard,
@@ -534,13 +579,15 @@ select.pf-v5-c-form-control {
 }
 
 .pf-v5-c-wizard__header {
-  background-color: var(--zfs-modal-header-bg) !important;
+  background-color: var(--zfs-card-bg) !important;
   border-bottom: 1px solid var(--zfs-card-border) !important;
 }
 
 .pf-v5-c-wizard__nav {
   background-color: var(--zfs-card-bg) !important;
   border-right: 1px solid var(--zfs-card-border) !important;
+  border-top-left-radius: 16px !important;
+  border-bottom-left-radius: 16px !important;
 }
 
 .pf-v5-c-wizard__nav-link {
@@ -558,16 +605,40 @@ select.pf-v5-c-form-control {
 }
 
 .pf-v5-c-wizard__main {
-  background-color: var(--zfs-canvas-bg) !important;
+  background-color: var(--zfs-card-bg) !important;
   color: var(--zfs-text-primary) !important;
+  border-top-right-radius: 16px !important;
 }
 
 .pf-v5-c-wizard__footer {
   background-color: var(--zfs-card-bg) !important;
   border-top: 1px solid var(--zfs-card-border) !important;
-  border-radius: 0 0 16px 16px !important;
+  border-bottom-left-radius: 16px !important;
+  border-bottom-right-radius: 16px !important;
   display: flex !important;
+  align-items: center !important;
   gap: 0.75rem !important;
+  padding: 1rem 1.5rem !important;
+}
+
+.pf-v5-c-wizard__footer .pf-m-link {
+  background-color: transparent !important;
+  border: 1px solid var(--zfs-secondary-btn-border) !important;
+  color: var(--zfs-secondary-btn-text) !important;
+  border-radius: 999px !important;
+  padding: 6px 20px !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  text-decoration: none !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.pf-v5-c-wizard__footer .pf-m-link:hover {
+  background-color: rgba(146, 197, 249, 0.15) !important;
+  color: var(--zfs-secondary-btn-text) !important;
+  border-color: var(--zfs-secondary-btn-border) !important;
 }
 
 .pf-v5-c-wizard__footer::after {
