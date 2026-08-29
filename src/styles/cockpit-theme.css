@@ -508,11 +508,11 @@ select:focus-visible {
   border-radius: 16px !important;
   background-color: rgba(0, 0, 0, 0.6) !important;
   mask-image:
-    linear-gradient(to right, transparent 0px, black 20px, black calc(100% - 20px), transparent 100%),
-    linear-gradient(to bottom, transparent 0px, black 20px, black calc(100% - 20px), transparent 100%) !important;
+    linear-gradient(to right, transparent 0px, black 10px, black calc(100% - 10px), transparent 100%),
+    linear-gradient(to bottom, transparent 0px, black 10px, black calc(100% - 10px), transparent 100%) !important;
   -webkit-mask-image:
-    linear-gradient(to right, transparent 0px, black 20px, black calc(100% - 20px), transparent 100%),
-    linear-gradient(to bottom, transparent 0px, black 20px, black calc(100% - 20px), transparent 100%) !important;
+    linear-gradient(to right, transparent 0px, black 10px, black calc(100% - 10px), transparent 100%),
+    linear-gradient(to bottom, transparent 0px, black 10px, black calc(100% - 10px), transparent 100%) !important;
   mask-composite: intersect !important;
   -webkit-mask-composite: destination-in !important;
 }
