@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import "@patternfly/react-core/dist/styles/base.css";
 import "./styles/cockpit-theme.css";
 import {
-  Page,
   Alert,
   AlertGroup,
   AlertActionCloseButton,
@@ -35,8 +34,6 @@ import { RenameModal } from "./components/Modals/RenameModal";
 import { ArcDetailsModal } from "./components/Modals/ArcDetailsModal";
 import { SmartDetailsModal } from "./components/Modals/SmartDetailsModal";
 import { CommandPreviewModal } from "./components/CommandPreviewModal";
-
-declare const cockpit: any;
 
 interface AppRoute {
   view: "dashboard" | "pools" | "pool-details" | "disks" | "settings";
@@ -154,18 +151,10 @@ export const App: React.FC = () => {
     return { view: "dashboard", poolName: null, subTab: "topology" };
   }, []);
 
-  // Synchronize state from cockpit.location or window.location.hash
+  // Synchronize state from URL hash
   const syncFromUrl = useCallback(() => {
-    let segments: string[] = [];
-
-    if (typeof cockpit !== "undefined" && cockpit.location && cockpit.location.path) {
-      segments = cockpit.location.path;
-    } else {
-      const hash = window.location.hash.replace(/^#\/?/, "");
-      if (hash) {
-        segments = hash.split("/").filter(Boolean);
-      }
-    }
+    const hash = window.location.hash.replace(/^#\/?/, "");
+    const segments = hash ? hash.split("/").filter(Boolean) : [];
 
     const pathKey = segments.join("/");
     if (lastNavigatedPathRef.current === pathKey) {
@@ -174,19 +163,10 @@ export const App: React.FC = () => {
     lastNavigatedPathRef.current = pathKey;
 
     const newRoute = parseRoute(segments);
-    setRoute((prev) => {
-      if (
-        prev.view === newRoute.view &&
-        prev.poolName === newRoute.poolName &&
-        prev.subTab === newRoute.subTab
-      ) {
-        return prev;
-      }
-      return newRoute;
-    });
+    setRoute(newRoute);
   }, [parseRoute]);
 
-  // Navigate to a new route and update URL
+  // Navigate to a new route in memory and update URL hash (zero iframe redraw)
   const navigateTo = useCallback((segments: string[]) => {
     const pathKey = segments.join("/");
     if (lastNavigatedPathRef.current === pathKey) {
@@ -195,48 +175,28 @@ export const App: React.FC = () => {
     lastNavigatedPathRef.current = pathKey;
 
     const newRoute = parseRoute(segments);
-    setRoute((prev) => {
-      if (
-        prev.view === newRoute.view &&
-        prev.poolName === newRoute.poolName &&
-        prev.subTab === newRoute.subTab
-      ) {
-        return prev;
-      }
-      return newRoute;
-    });
+    setRoute(newRoute);
 
-    if (typeof cockpit !== "undefined" && cockpit.location && cockpit.location.go) {
-      cockpit.location.go(segments);
-    } else {
-      const targetHash = `#/${pathKey}`;
-      if (window.location.hash !== targetHash) {
-        window.location.hash = targetHash;
-      }
+    const targetHash = pathKey ? `#/${pathKey}` : "#/";
+    if (window.location.hash !== targetHash) {
+      window.history.replaceState(null, "", targetHash);
     }
   }, [parseRoute]);
 
-  // Listen to URL changes for browser Back / Forward buttons
+  // Listen to browser Back / Forward buttons without parent frame thrashing
   useEffect(() => {
     syncFromUrl();
 
-    if (typeof cockpit !== "undefined" && cockpit.location && cockpit.location.on) {
-      cockpit.location.on("changed", syncFromUrl);
-      return () => {
-        if (cockpit.location.off) {
-          cockpit.location.off("changed", syncFromUrl);
-        }
-      };
-    } else {
-      const handleHashChange = () => syncFromUrl();
-      const handlePopState = () => syncFromUrl();
-      window.addEventListener("hashchange", handleHashChange);
-      window.addEventListener("popstate", handlePopState);
-      return () => {
-        window.removeEventListener("hashchange", handleHashChange);
-        window.removeEventListener("popstate", handlePopState);
-      };
-    }
+    const handleHashChange = () => syncFromUrl();
+    const handlePopState = () => syncFromUrl();
+
+    window.addEventListener("hashchange", handleHashChange);
+    window.addEventListener("popstate", handlePopState);
+
+    return () => {
+      window.removeEventListener("hashchange", handleHashChange);
+      window.removeEventListener("popstate", handlePopState);
+    };
   }, [syncFromUrl]);
 
   const addAlert = (variant: "success" | "danger" | "warning" | "info", title: string, message?: string) => {
@@ -428,7 +388,7 @@ export const App: React.FC = () => {
   const selectedPool = pools.find((p) => p.name === route.poolName) || pools[0] || null;
 
   return (
-    <Page>
+    <div style={{ minHeight: "100vh", backgroundColor: "var(--zfs-canvas-bg)", color: "var(--zfs-text-primary)" }}>
       <Navigation
         activeView={route.view}
         onSelectView={(v) => {
@@ -457,7 +417,7 @@ export const App: React.FC = () => {
         ))}
       </AlertGroup>
 
-      {/* Persistent In-Memory Views for 0ms Redraw */}
+      {/* Pure In-Memory Persistent Views for True 0ms Redraw */}
       <div style={{ display: route.view === "dashboard" ? "block" : "none" }}>
         <DashboardView
           systemInfo={systemInfo}
@@ -751,6 +711,6 @@ export const App: React.FC = () => {
           onCancel={() => setPreviewModalState(null)}
         />
       )}
-    </Page>
+    </div>
   );
 };
