@@ -90,6 +90,7 @@ if [ -n "$DPKG_DEB" ]; then
         DEB_DESC="Advanced SMB (Samba) and NFS file sharing manager for Cockpit.\n Manage Samba shares, NFS exports, Samba users, permissions matrix,\n and live client connection monitoring with PatternFly v5 UI."
     fi
 
+    mkdir -p "$STAGE_DIR/usr/share/cockpit/${PLUGIN_NAME}"
     mkdir -p "$STAGE_DIR/usr/libexec/${HELPER_DIR_NAME}"
     mkdir -p "$OUTPUT_DIR"
 
