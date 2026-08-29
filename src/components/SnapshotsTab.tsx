@@ -381,7 +381,7 @@ export const SnapshotsTab: React.FC<SnapshotsTabProps> = ({
                               </Td>
                               <Td isActionCell>
                                 <Dropdown
-                                  popperProps={{ position: "right", preventOverflow: true }}
+                                  popperProps={{ position: "right", preventOverflow: true, appendTo: () => document.body }}
                                   isOpen={openDropdown === snap.name}
                                   onSelect={() => setOpenDropdown(null)}
                                   onOpenChange={(isOpen) =>

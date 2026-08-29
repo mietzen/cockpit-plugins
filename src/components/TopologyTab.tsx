@@ -132,7 +132,7 @@ export const TopologyTab: React.FC<TopologyTabProps> = ({
                     <Td isActionCell>
                       {!vdev.is_group && (
                         <Dropdown
-                          popperProps={{ position: "right", preventOverflow: true }}
+                          popperProps={{ position: "right", preventOverflow: true, appendTo: () => document.body }}
                           isOpen={openDropdown === vdev.name}
                           onSelect={() => setOpenDropdown(null)}
                           onOpenChange={(isOpen) => setOpenDropdown(isOpen ? vdev.name : null)}
@@ -229,7 +229,7 @@ export const TopologyTab: React.FC<TopologyTabProps> = ({
                         <Td dataLabel="Checksum errors">{child.cksum}</Td>
                         <Td isActionCell>
                           <Dropdown
-                            popperProps={{ position: "right", preventOverflow: true }}
+                            popperProps={{ position: "right", preventOverflow: true, appendTo: () => document.body }}
                             isOpen={openDropdown === child.name}
                             onSelect={() => setOpenDropdown(null)}
                             onOpenChange={(isOpen) => setOpenDropdown(isOpen ? child.name : null)}

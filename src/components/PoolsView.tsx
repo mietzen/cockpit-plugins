@@ -190,7 +190,7 @@ export const PoolsView: React.FC<PoolsViewProps> = ({
                         </Td>
                         <Td isActionCell>
                           <Dropdown
-                            popperProps={{ position: "right", preventOverflow: true }}
+                            popperProps={{ position: "right", preventOverflow: true, appendTo: () => document.body }}
                             isOpen={openDropdown === pool.name}
                             onSelect={() => setOpenDropdown(null)}
                             onOpenChange={(isOpen) => setOpenDropdown(isOpen ? pool.name : null)}

@@ -26,30 +26,46 @@ export const RenameModal: React.FC<RenameModalProps> = ({
   onClose,
   onRename,
 }) => {
-  const [newName, setNewName] = useState(currentName);
+  const isHierarchical = itemType !== "snapshot" && currentName.includes("/");
+  const parentPath = isHierarchical
+    ? currentName.substring(0, currentName.lastIndexOf("/"))
+    : "";
+  const leafName = isHierarchical
+    ? currentName.substring(currentName.lastIndexOf("/") + 1)
+    : currentName;
+
+  const [newName, setNewName] = useState(leafName);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setNewName(currentName);
+    setNewName(leafName);
     setError(null);
     setLoading(false);
-  }, [currentName, isOpen]);
+  }, [currentName, leafName, isOpen]);
 
   if (!isOpen) {
     return null;
   }
 
+  const computedTargetPath =
+    isHierarchical && !newName.trim().includes("/") && parentPath
+      ? `${parentPath}/${newName.trim()}`
+      : newName.trim();
+
+  const isUnchanged =
+    newName.trim() === leafName || computedTargetPath === currentName;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newName.trim() || newName.trim() === currentName) {
+    if (!newName.trim() || isUnchanged) {
       onClose();
       return;
     }
     setLoading(true);
     setError(null);
     try {
-      await onRename(newName.trim());
+      await onRename(computedTargetPath);
       onClose();
     } catch (err: any) {
       setError(err.message || String(err));
@@ -76,7 +92,7 @@ export const RenameModal: React.FC<RenameModalProps> = ({
           variant="primary"
           onClick={handleSubmit}
           isLoading={loading}
-          isDisabled={loading || !newName.trim() || newName.trim() === currentName}
+          isDisabled={loading || !newName.trim() || isUnchanged}
         >
           Rename
         </Button>,
@@ -91,11 +107,11 @@ export const RenameModal: React.FC<RenameModalProps> = ({
             {error}
           </Alert>
         )}
-        <FormGroup label="Current path / name" fieldId="rename-current">
+        <FormGroup label="Current path" fieldId="rename-current">
           <TextInput id="rename-current" value={currentName} isReadOnly />
         </FormGroup>
         <FormGroup
-          label={itemType === "snapshot" ? "New snapshot name" : "New target path"}
+          label={itemType === "snapshot" ? "New snapshot name" : "New name"}
           fieldId="rename-new"
           isRequired
         >
@@ -106,6 +122,11 @@ export const RenameModal: React.FC<RenameModalProps> = ({
             autoFocus
           />
         </FormGroup>
+        {isHierarchical && (
+          <div style={{ fontSize: "0.85rem", color: "var(--zfs-text-secondary)", marginTop: "-0.5rem" }}>
+            Full target: <code>{computedTargetPath}</code>
+          </div>
+        )}
       </Form>
     </Modal>
   );

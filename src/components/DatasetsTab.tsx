@@ -249,7 +249,7 @@ export const DatasetsTab: React.FC<DatasetsTabProps> = ({
                   </Td>
                   <Td isActionCell>
                     <Dropdown
-                      popperProps={{ position: "right", preventOverflow: true }}
+                      popperProps={{ position: "right", preventOverflow: true, appendTo: () => document.body }}
                       isOpen={openDropdown === ds.name}
                       onSelect={() => setOpenDropdown(null)}
                       onOpenChange={(isOpen) => setOpenDropdown(isOpen ? ds.name : null)}
@@ -287,12 +287,16 @@ export const DatasetsTab: React.FC<DatasetsTabProps> = ({
                             {ds.mounted ? "Unmount" : "Mount"}
                           </DropdownItem>
                         )}
-                        <DropdownItem key="rename" onClick={() => onRenameDataset(ds)}>
-                          Rename
-                        </DropdownItem>
-                        <DropdownItem key="destroy" style={{ color: "red" }} onClick={() => onDestroyDataset(ds)}>
-                          Destroy
-                        </DropdownItem>
+                        {ds.name !== poolName && (
+                          <DropdownItem key="rename" onClick={() => onRenameDataset(ds)}>
+                            Rename
+                          </DropdownItem>
+                        )}
+                        {ds.name !== poolName && (
+                          <DropdownItem key="destroy" style={{ color: "red" }} onClick={() => onDestroyDataset(ds)}>
+                            Delete
+                          </DropdownItem>
+                        )}
                       </DropdownList>
                     </Dropdown>
                   </Td>

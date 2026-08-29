@@ -682,8 +682,13 @@ export const App: React.FC = () => {
               const cmd = ["zfs", "rename", renameTarget.originalSnapshot.name, target];
               await executeCmd(cmd, `Renamed snapshot to @${newName}`);
             } else {
-              const cmd = ["zfs", "rename", renameTarget.currentName, newName.trim()];
-              await executeCmd(cmd, `Renamed ${renameTarget.itemType} to ${newName}`);
+              let targetPath = newName.trim();
+              if (!targetPath.includes("/") && renameTarget.currentName.includes("/")) {
+                const parent = renameTarget.currentName.substring(0, renameTarget.currentName.lastIndexOf("/"));
+                targetPath = `${parent}/${targetPath}`;
+              }
+              const cmd = ["zfs", "rename", renameTarget.currentName, targetPath];
+              await executeCmd(cmd, `Renamed ${renameTarget.itemType} to ${targetPath}`);
             }
           }}
         />

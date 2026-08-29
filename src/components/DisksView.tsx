@@ -157,7 +157,7 @@ export const DisksView: React.FC<DisksViewProps> = ({
                   </Td>
                   <Td isActionCell>
                     <Dropdown
-                      popperProps={{ position: "right", preventOverflow: true }}
+                      popperProps={{ position: "right", preventOverflow: true, appendTo: () => document.body }}
                       isOpen={openDropdown === disk.name}
                       onSelect={() => setOpenDropdown(null)}
                       onOpenChange={(isOpen) => setOpenDropdown(isOpen ? disk.name : null)}
