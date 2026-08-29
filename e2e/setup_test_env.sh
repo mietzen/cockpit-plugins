@@ -45,7 +45,7 @@ if ls dist-debs/*.deb 1> /dev/null 2>&1; then
     sudo dpkg -i dist-debs/*.deb || sudo apt-get install -f -y
 else
     echo "No .deb found, installing directly via make..."
-    sudo make -C zfs-storage install
+    sudo make -C plugins/zfs-storage install
 fi
 
 sudo chmod -R 755 /usr/share/cockpit/zfs-storage || true

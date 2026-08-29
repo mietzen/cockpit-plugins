@@ -27,7 +27,7 @@ jobs:
         with:
           node-version: 20
           cache: "npm"
-          cache-dependency-path: zfs-storage/package-lock.json
+          cache-dependency-path: plugins/zfs-storage/package-lock.json
 
       - name: Setup Python
         uses: actions/setup-python@v5

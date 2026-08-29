@@ -1,7 +1,7 @@
 # Agent Instructions: cockpit-plugins Monorepo
 
 ## 1. Monorepo Structure
-- `zfs-storage/`: Advanced OpenZFS storage manager plugin for Cockpit.
+- `plugins/`: Cockpit plugin packages (`plugins/zfs-storage/`, etc.).
 - `tools/`: Build and packaging utilities (`build_deb.py`, `generate_apt_repo.py`).
 - `e2e/`: Playwright end-to-end test suite and runner provisioning.
 - `.agents/skills/`: Discovered agent skill definitions.
