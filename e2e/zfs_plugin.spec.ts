@@ -52,8 +52,9 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     console.log("Is login form visible:", isLoginVisible);
 
     if (isLoginVisible) {
+      await userInput.click();
       await userInput.fill("test-user");
-      const passInput = page.locator("input#login-password-input, input#login-password, input[name='login-password'], input[autocomplete='current-password']").first();
+      await passInput.click();
       await passInput.fill("password");
 
       const authCheckbox = page.locator("input#authorized-input").first();
@@ -61,23 +62,21 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
         await authCheckbox.setChecked(true, { force: true }).catch(() => {});
       }
 
-      const loginBtn = page.locator("button#login-button, button[type='submit']").first();
-      await loginBtn.click();
-      console.log("Clicked login button. Waiting for auth...");
-      await page.waitForTimeout(4000);
+      console.log("Submitting login form via Enter and button click...");
+      await passInput.press("Enter");
+      await loginBtn.click().catch(() => {});
+
+      // Wait for login redirection / sidebar to appear
+      await page.waitForSelector("nav, #sidebar, a:has-text('System'), a:has-text('ZFS storage'), a:has-text('ZFS Storage')", { timeout: 15000 }).catch(() => {});
+      await page.waitForTimeout(3000);
 
       const errorAlert = page.locator("#error-group:not([hidden]), .dialog-error:not([hidden]), .pf-m-danger:not([hidden])").first();
       if (await errorAlert.isVisible({ timeout: 2000 }).catch(() => false)) {
         console.log("Login error alert:", await errorAlert.innerText());
-        console.log("Retrying with runner user...");
-        await userInput.fill("runner");
-        await passInput.fill("password");
-        await loginBtn.click();
-        await page.waitForTimeout(4000);
       }
 
       console.log("URL after login:", page.url());
-      console.log("Body text after login:", (await page.innerText("body")).slice(0, 500));
+      console.log("Cockpit journal:", runHostCmd("sudo journalctl -u cockpit -u cockpit.socket -n 20 --no-pager 2>/dev/null || true"));
     }
 
     // Print all links
