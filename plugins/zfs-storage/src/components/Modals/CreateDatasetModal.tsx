@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Modal,
   ModalVariant,
@@ -12,6 +12,7 @@ import {
   Alert,
 } from "@patternfly/react-core";
 import { CommandBox } from "../CommandBox";
+import { zfsApi } from "../../api/zfsClient";
 
 interface CreateDatasetModalProps {
   isOpen: boolean;
@@ -44,8 +45,17 @@ export const CreateDatasetModal: React.FC<CreateDatasetModalProps> = ({
   const [atime, setAtime] = useState(true);
   const [sync, setSync] = useState("standard");
   const [mountpoint, setMountpoint] = useState("");
+  const [shareSmb, setShareSmb] = useState(false);
+  const [shareNfs, setShareNfs] = useState(false);
+  const [services, setServices] = useState<{ smb: boolean; nfs: boolean }>({ smb: false, nfs: false });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      zfsApi.probeSharingServices().then((res) => setServices(res)).catch(() => {});
+    }
+  }, [isOpen]);
 
   if (!isOpen) {
     return null;
@@ -99,6 +109,12 @@ export const CreateDatasetModal: React.FC<CreateDatasetModalProps> = ({
         mountpoint,
         command: buildCommand(),
       });
+
+      if (shareSmb || shareNfs) {
+        const targetPath = mountpoint.trim() || `/${fullPath}`;
+        await zfsApi.shareDataset({ path: targetPath, smb: shareSmb, nfs: shareNfs });
+      }
+
       setLoading(false);
       onClose();
     } catch (err: any) {
@@ -208,6 +224,28 @@ export const CreateDatasetModal: React.FC<CreateDatasetModalProps> = ({
             onChange={(_event, checked) => setAtime(checked)}
           />
         </FormGroup>
+
+        {(services.smb || services.nfs) && (
+          <FormGroup label="File Sharing Options" fieldId="ds-sharing">
+            {services.smb && (
+              <Checkbox
+                id="ds-share-smb"
+                label="Share via SMB (Samba)"
+                isChecked={shareSmb}
+                onChange={(_event, checked) => setShareSmb(checked)}
+              />
+            )}
+            {services.nfs && (
+              <Checkbox
+                id="ds-share-nfs"
+                label="Share via NFS"
+                isChecked={shareNfs}
+                onChange={(_event, checked) => setShareNfs(checked)}
+                style={{ marginTop: services.smb ? 6 : 0 }}
+              />
+            )}
+          </FormGroup>
+        )}
 
         <CommandBox command={buildCommand()} />
 

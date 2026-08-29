@@ -1,13 +1,13 @@
 {
-  "name": "cockpit-zfs",
-  "version": "0.5.0",
-  "description": "Open-source Cockpit plugin for OpenZFS storage management",
+  "name": "cockpit-file-sharing",
+  "version": "0.1.0",
+  "description": "Open-source Cockpit plugin for SMB and NFS file sharing management",
   "main": "dist/index.html",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test:backend": "PYTHONPATH=. python3 -m unittest discover backend/tests"
+    "test:backend": "PYTHONPATH=. pytest backend/tests"
   },
   "dependencies": {
     "@patternfly/patternfly": "^5.4.0",

@@ -547,6 +547,15 @@ def main():
             device = sys.argv[4]
             new_device = sys.argv[5] if len(sys.argv) > 5 else None
             res = svc.disk_action(act, pool, device, new_device)
+        elif action == "probe-sharing-services":
+            smb_rc = subprocess.run(["systemctl", "is-active", "smbd"], capture_output=True).returncode
+            nfs_rc = subprocess.run(["systemctl", "is-active", "nfs-server"], capture_output=True).returncode
+            if nfs_rc != 0:
+                nfs_rc = subprocess.run(["systemctl", "is-active", "nfs-kernel-server"], capture_output=True).returncode
+            res = {
+                "smb": smb_rc == 0,
+                "nfs": nfs_rc == 0,
+            }
         else:
             res = {"error": f"Unknown action '{action}'"}
 

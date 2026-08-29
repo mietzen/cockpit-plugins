@@ -1,0 +1,10 @@
+{
+  "name": "file-sharing",
+  "version": 1,
+  "menu": {
+    "index": {
+      "label": "File sharing",
+      "order": 34
+    }
+  }
+}

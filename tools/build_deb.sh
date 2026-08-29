@@ -75,8 +75,22 @@ if [ -n "$DPKG_DEB" ]; then
     STAGE_DIR="build/deb-staging/${PKG_NAME}"
     rm -rf "$STAGE_DIR"
     mkdir -p "$STAGE_DIR/DEBIAN"
-    mkdir -p "$STAGE_DIR/usr/share/cockpit/${PLUGIN_NAME}"
-    mkdir -p "$STAGE_DIR/usr/libexec/cockpit-zfs"
+    HELPER_DIR_NAME="cockpit-${PLUGIN_NAME}"
+    if [ "$PLUGIN_NAME" = "zfs-storage" ]; then
+        HELPER_DIR_NAME="cockpit-zfs"
+    fi
+
+    DEB_DEPENDS="cockpit-bridge | cockpit, python3"
+    DEB_DESC="Cockpit plugin ${PLUGIN_NAME}"
+    if [ "$PLUGIN_NAME" = "zfs-storage" ]; then
+        DEB_DEPENDS="cockpit-bridge | cockpit, zfsutils-linux, python3, smartmontools"
+        DEB_DESC="Advanced OpenZFS storage manager for Cockpit.\n Manage ZFS pools, datasets, zvols, snapshots, scrubs, trims,\n and SMART disk health with PatternFly v5 UI."
+    elif [ "$PLUGIN_NAME" = "file-sharing" ]; then
+        DEB_DEPENDS="cockpit-bridge | cockpit, python3, samba, nfs-kernel-server | nfs-common"
+        DEB_DESC="Advanced SMB (Samba) and NFS file sharing manager for Cockpit.\n Manage Samba shares, NFS exports, Samba users, permissions matrix,\n and live client connection monitoring with PatternFly v5 UI."
+    fi
+
+    mkdir -p "$STAGE_DIR/usr/libexec/${HELPER_DIR_NAME}"
     mkdir -p "$OUTPUT_DIR"
 
     # Control file
@@ -87,19 +101,17 @@ Section: admin
 Priority: optional
 Architecture: all
 Maintainer: Nils Stein <github.nstein@mailbox.org>
-Depends: cockpit-bridge | cockpit, zfsutils-linux, python3, smartmontools
+Depends: ${DEB_DEPENDS}
 Homepage: https://github.com/mietzen/cockpit-plugins
-Description: Advanced OpenZFS storage manager for Cockpit.
- Manage ZFS pools, datasets, zvols, snapshots, scrubs, trims,
- and SMART disk health with PatternFly v5 UI.
+Description: ${DEB_DESC}
 CONTROL_EOF
 
     # Maintainer scripts
-    cat << 'POSTINST_EOF' > "$STAGE_DIR/DEBIAN/postinst"
+    cat << POSTINST_EOF > "$STAGE_DIR/DEBIAN/postinst"
 #!/bin/sh
 set -e
-if [ -f /usr/libexec/cockpit-zfs/zfs_helper.py ]; then
-    chmod +x /usr/libexec/cockpit-zfs/zfs_helper.py
+if [ -d /usr/libexec/${HELPER_DIR_NAME} ]; then
+    chmod -R 755 /usr/libexec/${HELPER_DIR_NAME}
 fi
 exit 0
 POSTINST_EOF
@@ -123,11 +135,11 @@ PRERM_EOF
 
     # Backend helper
     if [ -d "${PLUGIN_DIR}/backend" ]; then
-        cp -r "${PLUGIN_DIR}/backend/"* "$STAGE_DIR/usr/libexec/cockpit-zfs/"
+        cp -r "${PLUGIN_DIR}/backend/"* "$STAGE_DIR/usr/libexec/${HELPER_DIR_NAME}/"
     fi
 
     # Clean non-production test files and bytecode caches
-    rm -rf "$STAGE_DIR/usr/libexec/cockpit-zfs/tests"
+    rm -rf "$STAGE_DIR/usr/libexec/${HELPER_DIR_NAME}/tests"
     find "$STAGE_DIR" -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
     find "$STAGE_DIR" -name "*.pyc" -delete 2>/dev/null || true
     find "$STAGE_DIR" -name "*.pyo" -delete 2>/dev/null || true
@@ -135,9 +147,7 @@ PRERM_EOF
     # Fix permissions and timestamps for reproducible builds
     find "$STAGE_DIR" -type d -exec chmod 755 {} +
     find "$STAGE_DIR/usr" -type f -exec chmod 644 {} +
-    if [ -f "$STAGE_DIR/usr/libexec/cockpit-zfs/zfs_helper.py" ]; then
-        chmod 755 "$STAGE_DIR/usr/libexec/cockpit-zfs/zfs_helper.py"
-    fi
+    find "$STAGE_DIR/usr/libexec/${HELPER_DIR_NAME}" -name "*.py" -exec chmod 755 {} + 2>/dev/null || true
     find "$STAGE_DIR" -exec touch -d "@$SOURCE_DATE_EPOCH" {} + 2>/dev/null || find "$STAGE_DIR" -exec touch -t "$(date -r "$SOURCE_DATE_EPOCH" +%Y%m%d%H%M.%S 2>/dev/null || date -u -d "@$SOURCE_DATE_EPOCH" +%Y%m%d%H%M.%S)" {} + 2>/dev/null || true
 
     DEB_FILE="${OUTPUT_DIR}/${PKG_NAME}_${VERSION}_all.deb"

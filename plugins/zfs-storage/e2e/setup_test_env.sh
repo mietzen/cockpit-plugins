@@ -7,10 +7,10 @@ echo "========================================="
 
 # 1. Install packages if on Debian/Ubuntu
 if command -v apt-get &>/dev/null; then
-    echo "==> Installing system packages (cockpit-ws, cockpit-bridge, cockpit-system, libpam-systemd, zfsutils-linux)..."
+    echo "==> Installing system packages (cockpit-ws, cockpit-bridge, cockpit-system, zfs, samba, nfs)..."
     export DEBIAN_FRONTEND=noninteractive
     sudo apt-get update -qq
-    sudo apt-get install -y -qq --no-install-recommends cockpit-ws cockpit-bridge cockpit-system libpam-systemd zfsutils-linux smartmontools python3 util-linux curl
+    sudo apt-get install -y -qq --no-install-recommends cockpit-ws cockpit-bridge cockpit-system libpam-systemd zfsutils-linux smartmontools python3 util-linux curl samba nfs-kernel-server
 fi
 
 # 2. Setup virtual loop disks for ZFS testing
@@ -95,8 +95,24 @@ else
     sudo make -C plugins/zfs-storage install
 fi
 
-sudo chmod -R 755 /usr/share/cockpit/zfs-storage || true
-sudo chmod -R 755 /usr/libexec/cockpit-zfs || true
+sudo chmod -R 755 /usr/share/cockpit/* || true
+sudo chmod -R 755 /usr/libexec/cockpit-* || true
+
+# Pre-configure test file sharing fixtures
+sudo mkdir -p /srv/samba/test /srv/nfs/test /tank/ansible
+if [ -f /etc/samba/smb.conf ]; then
+    sudo bash -c 'cat << "EOF" >> /etc/samba/smb.conf
+
+# <-- BEGIN ANSIBLE MANAGED storage_cluster CONFIG -->
+[ansible_locked_share]
+   path = /tank/ansible
+   read only = yes
+# <-- END ANSIBLE MANAGED storage_cluster CONFIG -->
+EOF'
+fi
+sudo mkdir -p /etc/exports.d
+echo "/srv/nfs/test 192.168.40.0/24(rw,sync,no_subtree_check,root_squash)" | sudo tee /etc/exports.d/cockpit.exports
+echo -e "password\npassword" | sudo smbpasswd -a -s test-user 2>/dev/null || true
 
 # 5. Start Cockpit service
 echo "==> Starting Cockpit service..."
