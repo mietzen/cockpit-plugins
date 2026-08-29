@@ -17,5 +17,6 @@
   "mounts": [
     "source=cockpit-plugins-persist,target=/home/vscode/.persist,type=volume"
   ],
-  "postCreateCommand": "sudo chown -R vscode:vscode /home/vscode/.persist && mise install && mise run install"
+  "postCreateCommand": "sudo chown -R vscode:vscode /home/vscode/.persist && mise install",
+  "postStartCommand": "mise run install"
 }
