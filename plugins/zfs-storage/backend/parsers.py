@@ -299,7 +299,6 @@ def parse_lsblk(raw_json: str) -> List[Dict[str, Any]]:
         return [
             d for d in devices
             if not d.get("name", "").startswith("zd")
-            and not d.get("name", "").startswith("loop")
             and not d.get("name", "").startswith("ram")
         ]
     except Exception:
