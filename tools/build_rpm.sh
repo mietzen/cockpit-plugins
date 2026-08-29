@@ -102,9 +102,9 @@ SPEC_EOF
     rpmbuild \
         --define "_topdir ${PWD}/${RPMBUILD_DIR}" \
         --define "_buildhost localhost" \
-        --define "clamp_mtime 1" \
+        --define "_clamp_mtime 1" \
         --define "_source_date_epoch ${SOURCE_DATE_EPOCH}" \
-        --define "source_date_epoch_from_changelog 0" \
+        --define "_source_date_epoch_from_changelog 0" \
         --define "_binary_payload w9.gzdio" \
         --define "_build_id_links none" \
         -bb "$SPEC_FILE"
