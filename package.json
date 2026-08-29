@@ -5,6 +5,6 @@
   "description": "Cockpit plugins monorepo",
   "devDependencies": {
     "@playwright/test": "^1.48.0",
-    "typescript": "^5.4.5"
+    "typescript": "^7.0.2"
   }
 }
