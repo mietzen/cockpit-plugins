@@ -77,7 +77,7 @@ exit 0
 """
 
     control_tar_io = io.BytesIO()
-    with tarfile.open(fileobj=control_tar_io, mode="w:gz") as tar:
+    with tarfile.open(fileobj=control_tar_io, mode="w:gz", format=tarfile.USTAR_FORMAT) as tar:
         def add_file(name, content, mode=0o644):
             ti = tarfile.TarInfo(name=name)
             ti.size = len(content)
@@ -86,6 +86,8 @@ exit 0
             ti.gid = 0
             ti.uname = "root"
             ti.gname = "root"
+            ti.mtime = 0
+            ti.pax_headers = {}
             tar.addfile(ti, io.BytesIO(content.encode("utf-8") if isinstance(content, str) else content))
 
         add_file("control", control_content, 0o644)
@@ -96,13 +98,15 @@ exit 0
 
     # 3. data.tar.gz
     data_tar_io = io.BytesIO()
-    with tarfile.open(fileobj=data_tar_io, mode="w:gz") as tar:
+    with tarfile.open(fileobj=data_tar_io, mode="w:gz", format=tarfile.USTAR_FORMAT) as tar:
         def add_file_to_tar(file_path, arcname, is_exec=False):
             ti = tar.gettarinfo(file_path, arcname=arcname)
             ti.uid = 0
             ti.gid = 0
             ti.uname = "root"
             ti.gname = "root"
+            ti.mtime = 0
+            ti.pax_headers = {}
             if ti.isdir():
                 ti.mode = 0o755
                 tar.addfile(ti)
