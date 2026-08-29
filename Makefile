@@ -36,7 +36,7 @@ deploy: build
 
 e2e:
 	@echo "==> Running Playwright E2E tests..."
-	npx playwright test --config e2e/playwright.config.ts
+	npx playwright test
 
 clean:
 	rm -rf dist dist-debs pages build

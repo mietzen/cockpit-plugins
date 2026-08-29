@@ -174,7 +174,7 @@ The repository includes a Playwright test suite that tests live Cockpit and Open
 
 ```shell
 # Setup virtual test disks and user
-sudo bash e2e/setup_test_env.sh
+sudo bash plugins/zfs-storage/e2e/setup_test_env.sh
 
 # Run Playwright test suite
 make e2e

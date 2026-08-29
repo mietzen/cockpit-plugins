@@ -117,7 +117,7 @@ jobs:
 
       - name: Setup ZFS & Cockpit Test Environment
         run: |
-          sudo bash e2e/setup_test_env.sh
+          sudo bash plugins/zfs-storage/e2e/setup_test_env.sh
 
       - name: Install Playwright & Browsers
         run: |
@@ -126,7 +126,7 @@ jobs:
 
       - name: Run E2E Playwright Test Suite
         run: |
-          COCKPIT_URL=https://127.0.0.1:9090 npx playwright test --config e2e/playwright.config.ts
+          COCKPIT_URL=https://127.0.0.1:9090 npx playwright test
 
       - name: Upload E2E Test Failure Artifacts
         if: failure()

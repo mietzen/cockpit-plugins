@@ -1,7 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
-  testDir: "./",
+  testDir: "./plugins",
   testMatch: /.*\.spec\.ts/,
   timeout: 60000,
   expect: {
