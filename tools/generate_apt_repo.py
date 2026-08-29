@@ -414,12 +414,12 @@ echo "==> Installation complete! Access Cockpit at https://<server-ip>:9090 and 
 <body>
     <div class="container">
         <div class="header">
-            <h1>Cockpit Plugins Repository</h1>
+            <h1>📦 Cockpit Plugins Repository</h1>
             <p>Official repository for Cockpit extensions by <a href="https://github.com/{owner}" style="color: var(--accent); text-decoration: none;">{owner}</a></p>
         </div>
 
         <div class="card">
-            <h2>Debian, Ubuntu & Proxmox (APT)</h2>
+            <h2>🚀 Debian, Ubuntu & Proxmox (APT)</h2>
             <p>One-line automated installation with GPG verification:</p>
             <pre><code>curl -fsSL https://{owner}.github.io/{repo}/install.sh | sudo bash</code></pre>
             <p style="margin-top: 1rem; color: var(--text-secondary); font-size: 0.9rem;">Manual setup (DEB822 format):</p>
@@ -438,7 +438,7 @@ sudo apt update && sudo apt install cockpit-zfs-storage</code></pre>
         </div>
 
         <div class="card">
-            <h2>Rocky Linux, RHEL & Fedora (DNF / YUM)</h2>
+            <h2>🎩 Rocky Linux, RHEL & Fedora (DNF / YUM)</h2>
             <p>One-line automated installation:</p>
             <pre><code>curl -fsSL https://{owner}.github.io/{repo}/install-rpm.sh | sudo bash</code></pre>
             <p style="margin-top: 1rem; color: var(--text-secondary); font-size: 0.9rem;">Manual setup:</p>
@@ -456,7 +456,7 @@ sudo dnf install -y cockpit-zfs-storage</code></pre>
         </div>
 
         <div class="card">
-            <h2>Available Packages</h2>
+            <h2>📦 Available Packages</h2>
             <table>
                 <thead>
                     <tr>
