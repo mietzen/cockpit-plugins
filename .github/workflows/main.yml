@@ -137,9 +137,9 @@ jobs:
 
   deploy-pages:
     name: Assemble & Deploy Repositories to GitHub Pages
-    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+    if: (startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch') && !failure() && !cancelled()
     runs-on: ubuntu-24.04
-    needs: [build, e2e]
+    needs: [build, e2e, github-release]
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -163,6 +163,12 @@ jobs:
         with:
           name: rpm-packages
           path: dist-rpms
+
+      - name: Verify Package Digests Against Published GitHub Releases
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 tools/verify_release_digests.py --deb-dir dist-debs --rpm-dir dist-rpms
 
       - name: Assemble APT & RPM Repositories
         env:
