@@ -225,7 +225,7 @@ export const CreatePoolWizard: React.FC<CreatePoolWizardProps> = ({
             activeStep.index === 1 ||
             (typeof activeStep.id === "string" && activeStep.id.includes("1"));
 
-          const handleNextClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+          const handleNextClick = () => {
             if (isFirstStep && !name.trim()) {
               setError("Pool name is required");
               return;
@@ -234,7 +234,7 @@ export const CreatePoolWizard: React.FC<CreatePoolWizardProps> = ({
             if (isLastStep) {
               handleFinish();
             } else {
-              onNext(e);
+              onNext();
             }
           };
 

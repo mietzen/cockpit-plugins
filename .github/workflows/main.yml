@@ -86,12 +86,14 @@ jobs:
         run: |
           COCKPIT_URL=https://127.0.0.1:9090 npx playwright test --config e2e/playwright.config.ts
 
-      - name: Upload E2E Test Report
+      - name: Upload E2E Test Artifacts & Screenshots
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
-          path: playwright-report/
+          name: playwright-test-results
+          path: |
+            test-results/
+            playwright-report/
           retention-days: 14
 
   deploy-apt-pages:
