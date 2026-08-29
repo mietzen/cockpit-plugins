@@ -319,7 +319,11 @@ h1, h2, h3, h4, h5, h6 {
 .pf-v5-c-table {
   background-color: var(--zfs-card-bg) !important;
   color: var(--zfs-text-primary) !important;
-  border-radius: 12px !important;
+  border-radius: 16px !important;
+  border: 1px solid var(--zfs-card-border) !important;
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  overflow: hidden !important;
 }
 
 .pf-v5-c-table thead tr {
@@ -330,36 +334,122 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--zfs-table-header-color) !important;
   font-weight: 600 !important;
   background-color: transparent !important;
+  border-bottom: 1px solid var(--zfs-table-border) !important;
 }
 
 .pf-v5-c-table tbody tr {
   border-bottom: 1px solid var(--zfs-table-border) !important;
 }
 
+.pf-v5-c-table tbody tr:last-child,
+.pf-v5-c-table tbody tr:last-of-type {
+  border-bottom: none !important;
+}
+
+.pf-v5-c-table tbody tr:last-child td,
+.pf-v5-c-table tbody tr:last-child th,
+.pf-v5-c-table tbody tr:last-of-type td,
+.pf-v5-c-table tbody tr:last-of-type th {
+  border-bottom: none !important;
+  --pf-v5-c-table--cell--BorderBottomWidth: 0 !important;
+}
+
 .pf-v5-c-table td {
   color: var(--zfs-text-primary) !important;
+  border-bottom: 1px solid var(--zfs-table-border) !important;
+}
+
+/* =========================================================
+   Cards & Snapshot Tree Groupings
+   ========================================================= */
+.pf-v5-c-card {
+  border-radius: 16px !important;
+  overflow: hidden !important;
+  background-color: var(--zfs-card-bg) !important;
+  border: 1px solid var(--zfs-card-border) !important;
+  color: var(--zfs-text-primary) !important;
+  box-shadow: none !important;
+}
+
+.pf-v5-c-card::before,
+.pf-v5-c-card::after {
+  display: none !important;
+  content: none !important;
+  border: none !important;
+}
+
+.pf-v5-c-card__header {
+  border-top-left-radius: 16px !important;
+  border-top-right-radius: 16px !important;
+  background-color: var(--zfs-card-bg) !important;
+}
+
+.pf-v5-c-card__body {
+  background-color: var(--zfs-card-bg) !important;
+  overflow: hidden !important;
+}
+
+.pf-v5-c-card .pf-v5-c-table {
+  border-radius: 0 !important;
+  border: none !important;
+  background-color: transparent !important;
+}
+
+.pf-v5-c-card .pf-v5-c-table tbody tr:last-child td,
+.pf-v5-c-card .pf-v5-c-table tbody tr:last-of-type td {
+  border-bottom: none !important;
 }
 
 /* =========================================================
    Search & Form Inputs
    ========================================================= */
 .pf-v5-c-search-input,
-.pf-v5-c-search-input::after,
-.pf-v5-c-search-input__text-input,
-.pf-v5-c-search-input__text-input::after {
+.pf-v5-c-text-input-group {
   border-radius: 999px !important;
   background-color: var(--zfs-card-bg) !important;
   border: 1px solid var(--zfs-card-border) !important;
+  box-shadow: none !important;
+  overflow: hidden !important;
+  outline: none !important;
 }
 
+.pf-v5-c-search-input::before,
 .pf-v5-c-search-input::after,
-.pf-v5-c-search-input__text-input::after {
+.pf-v5-c-search-input__bar::before,
+.pf-v5-c-search-input__bar::after,
+.pf-v5-c-text-input-group::before,
+.pf-v5-c-text-input-group::after,
+.pf-v5-c-text-input-group__main::before,
+.pf-v5-c-text-input-group__main::after,
+.pf-v5-c-text-input-group__text::before,
+.pf-v5-c-text-input-group__text::after,
+.pf-v5-c-text-input-group__text-input::before,
+.pf-v5-c-text-input-group__text-input::after,
+.pf-v5-c-text-input-group__utilities::before,
+.pf-v5-c-text-input-group__utilities::after {
+  display: none !important;
+  content: none !important;
   border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
 }
 
-.pf-v5-c-search-input__text-input {
+.pf-v5-c-text-input-group__main,
+.pf-v5-c-text-input-group__text,
+.pf-v5-c-text-input-group__text-input,
+.pf-v5-c-text-input-group__utilities {
+  border: none !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.pf-v5-c-search-input__text-input,
+.pf-v5-c-text-input-group__text-input {
   background-color: transparent !important;
   color: var(--zfs-text-primary) !important;
+  border: none !important;
+  outline: none !important;
 }
 
 .pf-v5-c-form-control,
@@ -367,9 +457,7 @@ h1, h2, h3, h4, h5, h6 {
 .pf-v5-c-form-control select,
 select.pf-v5-c-form-control,
 input.pf-v5-c-form-control,
-.pf-v5-c-form-control textarea,
-.pf-v5-c-text-input-group,
-.pf-v5-c-text-input-group__text-input {
+.pf-v5-c-form-control textarea {
   border-radius: 8px !important;
   background-color: var(--zfs-input-bg) !important;
   border: 1px solid var(--zfs-input-border) !important;

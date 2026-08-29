@@ -108,22 +108,22 @@ export const DatasetsTab: React.FC<DatasetsTabProps> = ({
               </EmptyStateActions>
             </EmptyStateFooter>
           </EmptyState>
-        )
-      ) : (
-        <Table aria-label="Datasets Table" variant="compact">
-          <Thead>
-            <Tr>
-              <Th>Name</Th>
-              <Th>Type</Th>
-              <Th>Used</Th>
-              <Th>Available</Th>
-              <Th>Mountpoint</Th>
-              <Th>Compression</Th>
-              <Th>Encryption</Th>
-              <Th style={{ textAlign: "center" }}>Snapshots</Th>
-              <Th aria-label="Actions" />
-            </Tr>
-          </Thead>
+        )) : (
+          <div style={{ borderRadius: "16px", border: "1px solid var(--zfs-card-border)", overflow: "hidden", backgroundColor: "var(--zfs-card-bg)" }}>
+          <Table aria-label="Datasets Table" variant="compact" style={{ border: "none", marginBottom: 0 }}>
+            <Thead>
+              <Tr>
+                <Th>Name</Th>
+                <Th>Type</Th>
+                <Th>Used</Th>
+                <Th>Available</Th>
+                <Th>Mountpoint</Th>
+                <Th>Compression</Th>
+                <Th>Encryption</Th>
+                <Th style={{ textAlign: "center" }}>Snapshots</Th>
+                <Th aria-label="Actions" />
+              </Tr>
+            </Thead>
           <Tbody>
             {poolDatasets.map((ds) => {
               const depth = (ds.name.match(/\//g) || []).length;
@@ -301,6 +301,7 @@ export const DatasetsTab: React.FC<DatasetsTabProps> = ({
             })}
           </Tbody>
         </Table>
+        </div>
       )}
     </div>
   );
