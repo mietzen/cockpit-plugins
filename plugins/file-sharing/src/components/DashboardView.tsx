@@ -177,7 +177,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </FlexItem>
             </Flex>
           </CardTitle>
-          <CardBody>
+          <CardBody style={{ padding: 0 }}>
             <Table aria-label="Active SMB Shares Table">
               <Thead>
                 <Tr>
@@ -230,7 +230,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </FlexItem>
             </Flex>
           </CardTitle>
-          <CardBody>
+          <CardBody style={{ padding: 0 }}>
             {sessions.length === 0 ? (
               <div style={{ padding: "1.5rem", textAlign: "center", color: "var(--zfs-text-secondary)" }}>
                 No active client connections currently established.

@@ -112,8 +112,21 @@ h1, h2, h3, h4, h5, h6 {
   margin: 0 !important;
 }
 
-.pf-v5-c-tabs {
+.pf-v5-c-tabs,
+.pf-v5-c-tabs__list {
   background-color: transparent !important;
+  border: none !important;
+}
+
+.pf-v5-c-tabs::before,
+.pf-v5-c-tabs::after,
+.pf-v5-c-tabs__list::before,
+.pf-v5-c-tabs__list::after,
+.pf-v5-c-tabs__item::before,
+.pf-v5-c-tabs__link::before {
+  display: none !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 
 .pf-v5-c-tabs__link {
@@ -121,6 +134,7 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--zfs-text-secondary) !important;
   padding: 12px 16px !important;
   background-color: transparent !important;
+  border: none !important;
 }
 
 .pf-v5-c-tabs__link:hover {
@@ -137,7 +151,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* =========================================================
-   Buttons: Pill Rounded
+   Buttons: Pill Rounded & Defect-Free Outlines
    ========================================================= */
 .pf-v5-c-button {
   border-radius: 999px !important;
@@ -148,6 +162,7 @@ h1, h2, h3, h4, h5, h6 {
   border: none !important;
 }
 
+/* Primary Button */
 .pf-v5-c-button.pf-m-primary {
   background-color: var(--zfs-primary-btn-bg) !important;
   border: 1px solid var(--zfs-primary-btn-bg) !important;
@@ -173,6 +188,7 @@ h1, h2, h3, h4, h5, h6 {
   border: none !important;
 }
 
+/* Secondary Button */
 .pf-v5-c-button.pf-m-secondary {
   background-color: transparent !important;
   border: 1px solid var(--zfs-secondary-btn-border) !important;
@@ -197,6 +213,7 @@ h1, h2, h3, h4, h5, h6 {
   border: none !important;
 }
 
+/* Danger Button */
 .pf-v5-c-button.pf-m-danger {
   background-color: #c9190b !important;
   border: 1px solid #c9190b !important;
@@ -214,6 +231,7 @@ h1, h2, h3, h4, h5, h6 {
   border: none !important;
 }
 
+/* Plain icon buttons */
 .pf-v5-c-button.pf-m-plain,
 .pf-v5-c-menu-toggle.pf-m-plain {
   border-radius: 6px !important;
@@ -234,11 +252,20 @@ h1, h2, h3, h4, h5, h6 {
   border: none !important;
 }
 
+/* Link Button */
 .pf-v5-c-button.pf-m-link {
   color: var(--zfs-secondary-btn-text) !important;
   font-weight: 500 !important;
   padding: 0 !important;
   background: transparent !important;
+  border: none !important;
+}
+
+.pf-v5-c-button.pf-m-link:hover {
+  opacity: 0.85;
+}
+
+.pf-v5-c-button.pf-m-link::after {
   border: none !important;
 }
 
@@ -251,16 +278,69 @@ h1, h2, h3, h4, h5, h6 {
   background-color: var(--zfs-card-bg) !important;
   color: var(--zfs-text-primary) !important;
   box-shadow: none !important;
-  overflow: visible !important;
+  overflow: hidden !important;
+}
+
+.pf-v5-c-card::before,
+.pf-v5-c-card::after {
+  display: none !important;
+  content: none !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 
 .pf-v5-c-card__title,
 .pf-v5-c-card__header {
   color: var(--zfs-text-heading) !important;
+  border-top-left-radius: 16px !important;
+  border-top-right-radius: 16px !important;
+  background-color: var(--zfs-card-bg) !important;
 }
 
 .pf-v5-c-card__body {
   background-color: var(--zfs-card-bg) !important;
+  overflow: hidden !important;
+}
+
+/* =========================================================
+   Progress Bars: Centered, Clean 8px Height
+   ========================================================= */
+.pf-v5-c-progress {
+  --pf-v5-c-progress__bar--Height: 8px !important;
+  --pf-v5-c-progress__bar--BackgroundColor: var(--zfs-progress-track) !important;
+  --pf-v5-c-progress__indicator--BackgroundColor: var(--zfs-progress-fill) !important;
+  --pf-v5-c-progress__bar--BorderRadius: 999px !important;
+  --pf-v5-c-progress__indicator--BorderRadius: 999px !important;
+  margin-top: 0.25rem !important;
+  margin-bottom: 0.25rem !important;
+}
+
+.pf-v5-c-progress__bar {
+  height: 8px !important;
+  min-height: 8px !important;
+  max-height: 8px !important;
+  border-radius: 999px !important;
+  background-color: var(--zfs-progress-track) !important;
+  overflow: hidden !important;
+  box-shadow: none !important;
+  border: none !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+.pf-v5-c-progress__indicator {
+  height: 8px !important;
+  min-height: 8px !important;
+  max-height: 8px !important;
+  border-radius: 999px !important;
+  background-color: var(--zfs-progress-fill) !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+.pf-v5-c-progress__status {
+  color: var(--zfs-text-secondary) !important;
+  font-size: 0.85rem !important;
 }
 
 /* =========================================================
@@ -274,6 +354,12 @@ h1, h2, h3, h4, h5, h6 {
   border-collapse: separate !important;
   border-spacing: 0 !important;
   overflow: hidden !important;
+}
+
+.pf-v5-c-card .pf-v5-c-table {
+  border-radius: 0 !important;
+  border: none !important;
+  background-color: transparent !important;
 }
 
 .pf-v5-c-table thead tr {
@@ -291,24 +377,24 @@ h1, h2, h3, h4, h5, h6 {
   border-bottom: 1px solid var(--zfs-table-border) !important;
 }
 
-.pf-v5-c-table tbody tr:hover {
-  background-color: var(--zfs-table-row-hover) !important;
+.pf-v5-c-table tbody tr:last-child,
+.pf-v5-c-table tbody tr:last-of-type {
+  border-bottom: none !important;
 }
 
 .pf-v5-c-table tbody tr:last-child td,
-.pf-v5-c-table tbody tr:last-of-type td {
+.pf-v5-c-table tbody tr:last-child th,
+.pf-v5-c-table tbody tr:last-of-type td,
+.pf-v5-c-table tbody tr:last-of-type th,
+.pf-v5-c-card .pf-v5-c-table tbody tr:last-child td,
+.pf-v5-c-card .pf-v5-c-table tbody tr:last-of-type td {
   border-bottom: none !important;
+  --pf-v5-c-table--cell--BorderBottomWidth: 0 !important;
 }
 
 .pf-v5-c-table td {
   color: var(--zfs-text-primary) !important;
   border-bottom: 1px solid var(--zfs-table-border) !important;
-}
-
-.pf-v5-c-card .pf-v5-c-table {
-  border-radius: 0 !important;
-  border: none !important;
-  background-color: transparent !important;
 }
 
 /* =========================================================
@@ -324,39 +410,307 @@ h1, h2, h3, h4, h5, h6 {
   outline: none !important;
 }
 
+.pf-v5-c-search-input::before,
+.pf-v5-c-search-input::after,
+.pf-v5-c-search-input__bar::before,
+.pf-v5-c-search-input__bar::after,
+.pf-v5-c-text-input-group::before,
+.pf-v5-c-text-input-group::after,
+.pf-v5-c-text-input-group__main::before,
+.pf-v5-c-text-input-group__main::after,
+.pf-v5-c-text-input-group__text::before,
+.pf-v5-c-text-input-group__text::after,
+.pf-v5-c-text-input-group__text-input::before,
+.pf-v5-c-text-input-group__text-input::after,
+.pf-v5-c-text-input-group__utilities::before,
+.pf-v5-c-text-input-group__utilities::after {
+  display: none !important;
+  content: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.pf-v5-c-text-input-group__main,
+.pf-v5-c-text-input-group__text,
+.pf-v5-c-text-input-group__text-input,
+.pf-v5-c-text-input-group__utilities {
+  border: none !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.pf-v5-c-search-input__text-input,
+.pf-v5-c-text-input-group__text-input {
+  background-color: transparent !important;
+  color: var(--zfs-text-primary) !important;
+  border: none !important;
+  outline: none !important;
+}
+
+.pf-v5-c-form-control {
+  --pf-v5-c-form-control--BorderBottomWidth: 0 !important;
+  --pf-v5-c-form-control--BorderBottomColor: transparent !important;
+  --pf-v5-c-form-control--BorderRadius: 8px !important;
+  --pf-v5-c-form-control--BorderColor: var(--zfs-input-border) !important;
+  --pf-v5-c-form-control--BackgroundColor: var(--zfs-input-bg) !important;
+  border-radius: 8px !important;
+  background-color: var(--zfs-input-bg) !important;
+  border: 1px solid var(--zfs-input-border) !important;
+  color: var(--zfs-text-primary) !important;
+  box-shadow: none !important;
+  outline: none !important;
+  outline-offset: 0 !important;
+}
+
 .pf-v5-c-form-control,
 .pf-v5-c-form-control input,
 .pf-v5-c-form-control select,
+select.pf-v5-c-form-control,
+input.pf-v5-c-form-control,
 .pf-v5-c-form-control textarea {
-  background-color: var(--zfs-input-bg) !important;
-  border-color: var(--zfs-input-border) !important;
-  color: var(--zfs-text-primary) !important;
   border-radius: 8px !important;
+  background-color: var(--zfs-input-bg) !important;
+  color: var(--zfs-text-primary) !important;
+  box-shadow: none !important;
+  outline: none !important;
+  outline-offset: 0 !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
 }
 
-.pf-v5-c-form__label-text {
-  color: var(--zfs-text-primary) !important;
-  font-weight: 500 !important;
+.pf-v5-c-form-control > input,
+.pf-v5-c-form-control > select,
+.pf-v5-c-form-control > textarea {
+  border: none !important;
+  background: transparent !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.pf-v5-c-form-control select,
+select.pf-v5-c-form-control {
+  padding-left: 0.75rem !important;
+  padding-right: 2rem !important;
+}
+
+.pf-v5-c-form-control::before,
+.pf-v5-c-form-control::after,
+.pf-v5-c-text-input-group::before,
+.pf-v5-c-text-input-group::after {
+  display: none !important;
+  content: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.pf-v5-c-form-control:focus,
+.pf-v5-c-form-control:focus-within,
+.pf-v5-c-form-control input:focus,
+.pf-v5-c-form-control select:focus,
+.pf-v5-c-form-control textarea:focus,
+.pf-v5-c-form-control:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  border-color: var(--zfs-secondary-btn-border) !important;
+  box-shadow: 0 0 0 1px var(--zfs-secondary-btn-border) !important;
+  outline: none !important;
+}
+
+/* Checkbox & Radio highlight */
+.pf-v5-c-check__input:checked,
+.pf-v5-c-radio__input:checked {
+  background-color: var(--zfs-secondary-btn-border) !important;
+  border-color: var(--zfs-secondary-btn-border) !important;
+}
+
+.pf-v5-c-check__input:checked::before {
+  color: var(--zfs-primary-btn-text) !important;
 }
 
 /* =========================================================
-   Modals
+   Labels & Badges: Pill Geometry
    ========================================================= */
-.pf-v5-c-modal-box {
-  background-color: var(--zfs-card-bg) !important;
-  color: var(--zfs-text-primary) !important;
-  border-radius: 16px !important;
+.pf-v5-c-label,
+.pf-v5-c-badge {
+  border-radius: 999px !important;
+  font-weight: 500 !important;
+  padding: 2px 10px !important;
+}
+
+.pf-v5-c-label.pf-m-blue {
+  background-color: rgba(0, 102, 204, 0.15) !important;
+  color: var(--zfs-secondary-btn-text) !important;
+  border: 1px solid rgba(0, 102, 204, 0.3) !important;
+}
+
+.pf-v5-c-label.pf-m-green {
+  background-color: rgba(62, 134, 53, 0.15) !important;
+  color: #3e8635 !important;
+  border: 1px solid rgba(62, 134, 53, 0.3) !important;
+}
+
+.pf-v5-c-label.pf-m-orange {
+  background-color: rgba(240, 171, 0, 0.15) !important;
+  color: #c58c00 !important;
+  border: 1px solid rgba(240, 171, 0, 0.3) !important;
+}
+
+.pf-v5-c-label.pf-m-red {
+  background-color: rgba(201, 25, 11, 0.15) !important;
+  color: #c9190b !important;
+  border: 1px solid rgba(201, 25, 11, 0.3) !important;
+}
+
+.pf-v5-c-label.pf-m-purple {
+  background-color: rgba(154, 85, 255, 0.15) !important;
+  color: #843fe8 !important;
+  border: 1px solid rgba(154, 85, 255, 0.3) !important;
+}
+
+.pf-v5-c-label.pf-m-grey {
+  background-color: rgba(128, 128, 128, 0.15) !important;
+  color: var(--zfs-text-secondary) !important;
   border: 1px solid var(--zfs-card-border) !important;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25) !important;
+}
+
+/* =========================================================
+   Flex Title Alignment: Perfectly Centered with Buttons
+   ========================================================= */
+.pf-v5-l-flex .pf-v5-c-title {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  line-height: 1.2 !important;
+}
+
+/* =========================================================
+   Wizard & Modals: 16px Rounded & Screen-Capped Scrollable
+   ========================================================= */
+.pf-v5-c-backdrop {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 9999 !important;
+  background: transparent !important;
+  border-radius: 16px !important;
+  overflow: hidden !important;
+  pointer-events: auto !important;
+}
+
+.pf-v5-c-backdrop::before {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: -1 !important;
+  pointer-events: none !important;
+  border-radius: 16px !important;
+  background-color: rgba(0, 0, 0, 0.6) !important;
+  mask-image:
+    linear-gradient(to right, transparent 0px, black 10px, black calc(100% - 10px), transparent 100%),
+    linear-gradient(to bottom, transparent 0px, black 10px, black calc(100% - 10px), transparent 100%) !important;
+  -webkit-mask-image:
+    linear-gradient(to right, transparent 0px, black 10px, black calc(100% - 10px), transparent 100%),
+    linear-gradient(to bottom, transparent 0px, black 10px, black calc(100% - 10px), transparent 100%) !important;
+  mask-composite: intersect !important;
+  -webkit-mask-composite: destination-in !important;
+}
+
+.pf-v5-c-modal-box {
+  position: relative !important;
+  z-index: 10000 !important;
+  opacity: 1 !important;
+  border-radius: 16px !important;
+  background-color: var(--zfs-card-bg) !important;
+  border: 1px solid var(--zfs-card-border) !important;
+  color: var(--zfs-text-primary) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5) !important;
+  overflow: hidden !important;
+}
+
+.pf-v5-c-modal-box__body {
+  flex: 1 1 auto !important;
+  overflow-y: auto !important;
+  background-color: var(--zfs-card-bg) !important;
+}
+
+.pf-v5-c-modal-box::after {
+  border: none !important;
 }
 
 .pf-v5-c-modal-box__title-text {
   color: var(--zfs-text-heading) !important;
 }
 
-/* Badges / Labels */
-.pf-v5-c-label {
-  border-radius: 999px !important;
+.pf-v5-c-modal-box__footer {
+  display: flex !important;
+  gap: 0.75rem !important;
+  align-items: center !important;
+  margin-top: auto !important;
+  background-color: var(--zfs-card-bg) !important;
+}
+
+.pf-v5-c-menu {
+  border-radius: 12px !important;
+  background-color: var(--zfs-card-bg) !important;
+  border: 1px solid var(--zfs-card-border) !important;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25) !important;
+  z-index: 9999 !important;
+}
+
+/* Toast & Notification Alerts */
+.pf-v5-c-alert {
+  border-radius: 12px !important;
+  overflow: hidden !important;
+  box-shadow: none !important;
+  border: 1px solid var(--zfs-card-border) !important;
+  --pf-v5-c-alert--BorderTopWidth: 0 !important;
+  --pf-v5-c-alert--BorderTopColor: transparent !important;
+  --pf-v5-c-alert--BoxShadow: none !important;
+}
+
+.pf-v5-c-alert::before,
+.pf-v5-c-alert::after {
+  display: none !important;
+  content: none !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.pf-v5-c-alert.pf-m-info,
+.pf-v5-c-alert.pf-m-success,
+.pf-v5-c-alert.pf-m-danger,
+.pf-v5-c-alert.pf-m-warning {
+  border: 1px solid var(--zfs-card-border) !important;
+  border-top: 1px solid var(--zfs-card-border) !important;
+  box-shadow: none !important;
+}
+
+.pf-v5-c-alert__title .pf-v5-screen-reader {
+  display: none !important;
+}
+
+.pf-v5-c-menu::after {
+  border: none !important;
+}
+
+.pf-v5-c-menu__item {
+  color: var(--zfs-text-primary) !important;
+}
+
+.pf-v5-c-menu__item:hover {
+  background-color: var(--zfs-secondary-btn-hover) !important;
+  color: var(--zfs-text-heading) !important;
+}
+
+.pf-v5-c-empty-state__title-text {
+  color: var(--zfs-text-heading) !important;
+}
+
+.pf-v5-c-empty-state__body {
+  color: var(--zfs-text-secondary) !important;
 }
 
 /* Custom Metric Value */
