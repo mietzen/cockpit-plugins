@@ -256,9 +256,9 @@ export const CreatePoolWizard: React.FC<CreatePoolWizardProps> = ({
                 onClick={handleNextClick}
                 isDisabled={loading}
                 isLoading={loading}
-                style={{ width: isLastStep ? "125px" : "90px" }}
+                style={{ width: "90px" }}
               >
-                {isLastStep ? (loading ? "Creating..." : "Create Pool") : "Next"}
+                {isLastStep ? (loading ? "Creating..." : "Create") : "Next"}
               </Button>
               <Button
                 variant="secondary"
