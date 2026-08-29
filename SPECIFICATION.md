@@ -2,7 +2,7 @@
 
 ## 1. Overview & Architecture
 
-`cockpit-zfs` is an open-source Cockpit plugin providing comprehensive OpenZFS storage management with the full feature set of commercial plugin.
+`cockpit-zfs` is an open-source Cockpit plugin providing comprehensive OpenZFS storage management.
 
 ```
 +-------------------------------------------------------------------+
