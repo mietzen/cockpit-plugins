@@ -54,7 +54,7 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     const isLoginVisible = await userInput.isVisible({ timeout: 5000 }).catch(() => false);
     if (isLoginVisible) {
       await userInput.click();
-      await userInput.fill("test-user");
+      await userInput.fill("runner");
       await passInput.click();
       await passInput.fill("password");
 
