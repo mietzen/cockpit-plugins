@@ -10,7 +10,7 @@
     <script src="../base1/cockpit.js"></script>
     <script type="text/javascript">
         (function () {
-            function updateTheme(theme) {
+            function updateTheme(forcedTheme) {
                 const preference = localStorage.getItem('cockpit_filesharing_theme') || localStorage.getItem('cockpit_zfs_theme') || 'auto';
                 let isDark = false;
                 if (preference === 'dark') {
@@ -18,13 +18,37 @@
                 } else if (preference === 'light') {
                     isDark = false;
                 } else {
-                    const shellTheme = theme || localStorage.getItem('shell:style') || 'auto';
-                    isDark = shellTheme === 'dark' || (window.matchMedia?.('(prefers-color-scheme: dark)').matches && shellTheme === 'auto');
+                    const shellTheme = forcedTheme || localStorage.getItem('shell:style') || 'auto';
+                    if (shellTheme === 'dark') {
+                        isDark = true;
+                    } else if (shellTheme === 'light') {
+                        isDark = false;
+                    } else {
+                        // "auto" mode: check parent document class or prefers-color-scheme
+                        try {
+                            if (window.parent && window.parent.document && window.parent.document.documentElement) {
+                                const pCls = window.parent.document.documentElement.classList;
+                                if (pCls.contains('pf-v6-theme-dark') || pCls.contains('pf-v5-theme-dark') || pCls.contains('theme-dark')) {
+                                    isDark = true;
+                                }
+                            }
+                        } catch (e) {}
+                        if (!isDark && window.matchMedia) {
+                            isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                        }
+                    }
                 }
+
                 if (isDark) {
                     document.documentElement.classList.add('pf-v5-theme-dark');
+                    document.documentElement.classList.add('pf-v6-theme-dark');
+                    document.documentElement.classList.remove('pf-v5-theme-light');
+                    document.documentElement.classList.remove('pf-v6-theme-light');
                 } else {
                     document.documentElement.classList.remove('pf-v5-theme-dark');
+                    document.documentElement.classList.remove('pf-v6-theme-dark');
+                    document.documentElement.classList.add('pf-v5-theme-light');
+                    document.documentElement.classList.add('pf-v6-theme-light');
                 }
             }
 
@@ -35,8 +59,8 @@
             });
 
             window.addEventListener('cockpit-style', function (e) {
-                if (e instanceof CustomEvent) {
-                    updateTheme(e.detail.style);
+                if (e instanceof CustomEvent && e.detail) {
+                    updateTheme(e.detail.style || e.detail.theme);
                 } else {
                     updateTheme();
                 }
@@ -47,6 +71,16 @@
                     updateTheme();
                 });
             }
+
+            // Sync parent frame DOM class changes in real time
+            try {
+                if (window.parent && window.parent.document && window.parent.document.documentElement) {
+                    const observer = new MutationObserver(function () {
+                        updateTheme();
+                    });
+                    observer.observe(window.parent.document.documentElement, { attributes: true, attributeFilter: ['class'] });
+                }
+            } catch (e) {}
 
             updateTheme();
         })();

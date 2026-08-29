@@ -29,12 +29,19 @@
   --zfs-modal-header-bg: #f5f5f5;
 }
 
-/* Dark Mode Variables (Cockpit .pf-v5-theme-dark or dark preference) */
+/* Dark Mode Variables (Cockpit .pf-v5-theme-dark, .pf-v6-theme-dark, or dark preference) */
 :root.pf-v5-theme-dark,
 html.pf-v5-theme-dark,
 body.pf-v5-theme-dark,
+:root.pf-v6-theme-dark,
+html.pf-v6-theme-dark,
+body.pf-v6-theme-dark,
+:root.theme-dark,
+html.theme-dark,
+body.theme-dark,
 [data-theme="dark"],
-.pf-v5-theme-dark {
+.pf-v5-theme-dark,
+.pf-v6-theme-dark {
   --zfs-canvas-bg: rgb(21, 21, 21);
   --zfs-card-bg: rgb(28, 28, 28);
   --zfs-card-border: #333333;
@@ -58,6 +65,37 @@ body.pf-v5-theme-dark,
   --zfs-table-border: #383838;
   --zfs-table-row-hover: rgba(255, 255, 255, 0.04);
   --zfs-modal-header-bg: rgb(32, 32, 32);
+}
+
+/* Automatic OS-Level Dark Mode (when not explicitly overridden to light) */
+@media (prefers-color-scheme: dark) {
+  :root:not(.pf-v5-theme-light):not(.pf-v6-theme-light),
+  html:not(.pf-v5-theme-light):not(.pf-v6-theme-light),
+  body:not(.pf-v5-theme-light):not(.pf-v6-theme-light) {
+    --zfs-canvas-bg: rgb(21, 21, 21);
+    --zfs-card-bg: rgb(28, 28, 28);
+    --zfs-card-border: #333333;
+    --zfs-text-primary: #f0f0f0;
+    --zfs-text-secondary: #a0a0a0;
+    --zfs-text-heading: #ffffff;
+    --zfs-input-bg: rgb(35, 35, 35);
+    --zfs-input-border: #444444;
+    --zfs-code-bg: rgb(15, 15, 15);
+    --zfs-code-color: rgb(146, 197, 249);
+    --zfs-progress-track: rgba(255, 255, 255, 0.12);
+    --zfs-progress-fill: rgb(146, 197, 249);
+    --zfs-primary-btn-bg: rgb(146, 197, 249);
+    --zfs-primary-btn-text: #002952;
+    --zfs-primary-btn-hover: #b9daf9;
+    --zfs-secondary-btn-border: rgb(146, 197, 249);
+    --zfs-secondary-btn-text: rgb(146, 197, 249);
+    --zfs-secondary-btn-hover: rgba(146, 197, 249, 0.15);
+    --zfs-tab-active-color: rgb(146, 197, 249);
+    --zfs-table-header-color: #a0a0a0;
+    --zfs-table-border: #383838;
+    --zfs-table-row-hover: rgba(255, 255, 255, 0.04);
+    --zfs-modal-header-bg: rgb(32, 32, 32);
+  }
 }
 
 /* =========================================================
