@@ -506,11 +506,17 @@ select:focus-visible {
   z-index: -1 !important;
   pointer-events: none !important;
   border-radius: 16px !important;
-  background: radial-gradient(ellipse 65% 60% at 50% 50%, rgba(0, 0, 0, 0.72) 0%, rgba(0, 0, 0, 0.48) 45%, rgba(0, 0, 0, 0.15) 75%, transparent 100%) !important;
-  backdrop-filter: blur(3px) !important;
-  -webkit-backdrop-filter: blur(3px) !important;
-  mask-image: radial-gradient(ellipse 75% 70% at 50% 50%, black 25%, rgba(0, 0, 0, 0.55) 60%, transparent 100%) !important;
-  -webkit-mask-image: radial-gradient(ellipse 75% 70% at 50% 50%, black 25%, rgba(0, 0, 0, 0.55) 60%, transparent 100%) !important;
+  background-color: rgba(0, 0, 0, 0.65) !important;
+  backdrop-filter: blur(3.5px) !important;
+  -webkit-backdrop-filter: blur(3.5px) !important;
+  mask-image:
+    linear-gradient(to right, transparent 0%, black 80px, black calc(100% - 80px), transparent 100%),
+    linear-gradient(to bottom, transparent 0%, black 50px, black calc(100% - 50px), transparent 100%) !important;
+  -webkit-mask-image:
+    linear-gradient(to right, transparent 0%, black 80px, black calc(100% - 80px), transparent 100%),
+    linear-gradient(to bottom, transparent 0%, black 50px, black calc(100% - 50px), transparent 100%) !important;
+  mask-composite: intersect !important;
+  -webkit-mask-composite: destination-in !important;
 }
 
 .pf-v5-c-modal-box {
