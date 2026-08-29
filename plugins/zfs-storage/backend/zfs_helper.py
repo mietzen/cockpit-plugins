@@ -218,12 +218,13 @@ class ZfsService:
                 path = dev.get("path") or f"/dev/{dev.get('name')}"
                 
                 smart_info = {"health": "UNKNOWN", "temperature": None}
-                try:
-                    p_smart = run_cmd(["smartctl", "-j", "-H", "-A", "-i", path])
-                    if p_smart.returncode in (0, 4):
-                        smart_info = parse_smartctl(p_smart.stdout)
-                except Exception:
-                    pass
+                if not dev_name.startswith("loop"):
+                    try:
+                        p_smart = run_cmd(["smartctl", "-j", "-H", "-A", "-i", path])
+                        if p_smart.returncode in (0, 4):
+                            smart_info = parse_smartctl(p_smart.stdout)
+                    except Exception:
+                        pass
 
                 pool_name = pool_device_map.get(path) or pool_device_map.get(dev.get("name"))
                 if not pool_name and dev.get("children"):

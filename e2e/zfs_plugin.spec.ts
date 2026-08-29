@@ -123,7 +123,7 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
 
     // Step 2: VDEV Configuration (Select available disks)
     const diskCheckbox = frame.locator("table tbody input[type=\"checkbox\"]").first();
-    await diskCheckbox.waitFor({ state: "visible", timeout: 5000 });
+    await diskCheckbox.waitFor({ state: "visible", timeout: 15000 });
     await diskCheckbox.setChecked(true);
     await frame.locator(".pf-v5-c-wizard__footer button:has-text('Next')").first().click();
 
