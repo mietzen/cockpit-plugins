@@ -67,12 +67,12 @@ export const DatasetsTab: React.FC<DatasetsTabProps> = ({
     <div>
       <Flex justifyContent={{ default: "justifyContentSpaceBetween" }} alignItems={{ default: "alignItemsCenter" }} style={{ marginBottom: "1.5rem" }}>
         <FlexItem>
-          <Title headingLevel="h2" size="xl" style={{ fontWeight: 600 }}>
+          <Title headingLevel="h2" size="xl" style={{ fontWeight: 600, margin: 0, lineHeight: 1.2 }}>
             Datasets &amp; Volumes ({poolDatasets.length})
           </Title>
         </FlexItem>
         <FlexItem>
-          <Flex>
+          <Flex alignItems={{ default: "alignItemsCenter" }} gap={{ default: "gapSm" }}>
             <FlexItem>
               <Button variant="primary" icon={<PlusCircleIcon />} onClick={() => onCreateDataset(poolName)}>
                 Create dataset

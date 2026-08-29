@@ -90,12 +90,12 @@ export const SnapshotsTab: React.FC<SnapshotsTabProps> = ({
     <div>
       <Flex justifyContent={{ default: "justifyContentSpaceBetween" }} alignItems={{ default: "alignItemsCenter" }} style={{ marginBottom: "1.5rem" }}>
         <FlexItem>
-          <Title headingLevel="h2" size="xl" style={{ fontWeight: 600 }}>
+          <Title headingLevel="h2" size="xl" style={{ fontWeight: 600, margin: 0, lineHeight: 1.2 }}>
             Snapshots ({poolSnaps.length})
           </Title>
         </FlexItem>
         <FlexItem>
-          <Flex>
+          <Flex alignItems={{ default: "alignItemsCenter" }} gap={{ default: "gapSm" }}>
             {selectedSnaps.length > 0 && (
               <FlexItem>
                 <Button

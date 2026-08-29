@@ -65,21 +65,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       <PageSection variant="light" style={{ paddingBottom: "1rem" }}>
         <Flex justifyContent={{ default: "justifyContentSpaceBetween" }} alignItems={{ default: "alignItemsCenter" }}>
           <FlexItem>
-            <Flex alignItems={{ default: "alignItemsBaseline" }}>
+            <Flex alignItems={{ default: "alignItemsCenter" }}>
               <FlexItem>
-                <Title headingLevel="h1" size="2xl" style={{ fontWeight: 600 }}>
+                <Title headingLevel="h1" size="2xl" style={{ fontWeight: 600, margin: 0, lineHeight: 1.2 }}>
                   ZFS Storage
                 </Title>
               </FlexItem>
               <FlexItem>
-                <span style={{ color: "var(--pf-v5-global--Color--200)", marginLeft: "0.5rem" }}>
+                <span style={{ color: "var(--zfs-text-secondary)", marginLeft: "0.5rem" }}>
                   {systemInfo?.version ? systemInfo.version.split("\n")[0] : "OpenZFS"}
                 </span>
               </FlexItem>
             </Flex>
           </FlexItem>
           <FlexItem>
-            <Flex>
+            <Flex alignItems={{ default: "alignItemsCenter" }} gap={{ default: "gapSm" }}>
               <FlexItem>
                 <Button variant="primary" icon={<PlusCircleIcon />} onClick={onCreatePool}>
                   Create pool

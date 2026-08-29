@@ -293,9 +293,9 @@ export const TopologyTab: React.FC<TopologyTabProps> = ({
 
   return (
     <div>
-      <Flex justifyContent={{ default: "justifyContentSpaceBetween" }} style={{ marginBottom: "1.5rem" }}>
+      <Flex justifyContent={{ default: "justifyContentSpaceBetween" }} alignItems={{ default: "alignItemsCenter" }} style={{ marginBottom: "1.5rem" }}>
         <FlexItem>
-          <Title headingLevel="h2" size="xl" style={{ fontWeight: 600 }}>
+          <Title headingLevel="h2" size="xl" style={{ fontWeight: 600, margin: 0, lineHeight: 1.2 }}>
             Topology &amp; Devices
           </Title>
         </FlexItem>

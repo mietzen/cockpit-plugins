@@ -128,15 +128,20 @@ export const App: React.FC = () => {
 
   // Parse path segments into route state atomically
   const parseRoute = useCallback((segments: string[]): AppRoute => {
-    if (!segments || segments.length === 0 || segments[0] === "" || segments[0] === "dashboard" || segments[0] === "overview") {
+    let clean = segments ? [...segments] : [];
+    if (clean.length > 0 && (clean[0] === "zfs-storage" || clean[0] === "cockpit-zfs")) {
+      clean = clean.slice(1);
+    }
+
+    if (!clean || clean.length === 0 || clean[0] === "" || clean[0] === "dashboard" || clean[0] === "overview") {
       return { view: "dashboard", poolName: null, subTab: "topology" };
     }
 
-    const root = segments[0];
+    const root = clean[0];
     if (root === "pools") {
-      if (segments.length >= 2 && segments[1]) {
-        const subTab = segments.length >= 3 && segments[2] ? segments[2] : "topology";
-        return { view: "pool-details", poolName: segments[1], subTab };
+      if (clean.length >= 2 && clean[1]) {
+        const subTab = clean.length >= 3 && clean[2] ? clean[2] : "topology";
+        return { view: "pool-details", poolName: clean[1], subTab };
       }
       return { view: "pools", poolName: null, subTab: "topology" };
     }

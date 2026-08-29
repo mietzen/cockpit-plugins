@@ -72,12 +72,12 @@ export const PoolsView: React.FC<PoolsViewProps> = ({
       <PageSection variant="light" style={{ paddingBottom: "1rem" }}>
         <Flex justifyContent={{ default: "justifyContentSpaceBetween" }} alignItems={{ default: "alignItemsCenter" }}>
           <FlexItem>
-            <Title headingLevel="h1" size="2xl" style={{ fontWeight: 600 }}>
+            <Title headingLevel="h1" size="2xl" style={{ fontWeight: 600, margin: 0, lineHeight: 1.2 }}>
               Pools
             </Title>
           </FlexItem>
           <FlexItem>
-            <Flex>
+            <Flex alignItems={{ default: "alignItemsCenter" }} gap={{ default: "gapSm" }}>
               <FlexItem>
                 <Button variant="primary" icon={<PlusCircleIcon />} onClick={onCreatePool}>
                   Create pool
