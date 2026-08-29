@@ -34,7 +34,17 @@ VERSION="${VERSION#v}"
 
 # Set SOURCE_DATE_EPOCH for reproducible builds
 if [ -z "${SOURCE_DATE_EPOCH:-}" ]; then
-    SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct "$PLUGIN_DIR" 2>/dev/null || true)
+    if [ -n "$GIT_TAG" ] && git rev-parse "$GIT_TAG" >/dev/null 2>&1; then
+        SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct "$GIT_TAG" -- "$PLUGIN_DIR" 2>/dev/null || true)
+    elif git rev-parse "${PLUGIN_NAME}-v${VERSION}" >/dev/null 2>&1; then
+        SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct "${PLUGIN_NAME}-v${VERSION}" -- "$PLUGIN_DIR" 2>/dev/null || true)
+    elif git rev-parse "v${VERSION}" >/dev/null 2>&1; then
+        SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct "v${VERSION}" -- "$PLUGIN_DIR" 2>/dev/null || true)
+    fi
+
+    if [ -z "$SOURCE_DATE_EPOCH" ]; then
+        SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct "$PLUGIN_DIR" 2>/dev/null || true)
+    fi
     if [ -z "$SOURCE_DATE_EPOCH" ]; then
         SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct 2>/dev/null || date +%s)
     fi

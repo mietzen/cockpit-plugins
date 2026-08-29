@@ -46,7 +46,7 @@ jobs:
 
       - name: Run Backend Unit Tests
         run: |
-          PYTHONPATH=plugins/zfs-storage pytest plugins/zfs-storage/backend/tests
+          PYTHONPATH=plugins/zfs-storage pytest plugins/zfs-storage/backend/tests tools/tests
 
       - name: Install Packaging Tools (RPM & DPKG)
         run: |
