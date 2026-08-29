@@ -2,3 +2,14 @@
 node = "24"
 python = "3.12"
 uv = "latest"
+
+[env]
+_.python.venv = { path = ".venv", create = true }
+
+[tasks.install]
+description = "Install Python and Node dependencies"
+run = """
+uv pip install -r requirements-dev.txt
+npm install
+npm --prefix plugins/zfs-storage install
+"""

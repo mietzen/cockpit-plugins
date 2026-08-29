@@ -17,5 +17,5 @@
   "mounts": [
     "source=cockpit-plugins-persist,target=/home/vscode/.persist,type=volume"
   ],
-  "postCreateCommand": "sudo chown -R vscode:vscode /home/vscode/.persist && mise install && npm install && npm --prefix plugins/zfs-storage install"
+  "postCreateCommand": "sudo chown -R vscode:vscode /home/vscode/.persist && mise install && mise run install"
 }
