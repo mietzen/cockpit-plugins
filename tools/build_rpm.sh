@@ -128,7 +128,7 @@ rm -rf %{buildroot}
 /usr/libexec/cockpit-zfs
 
 %changelog
-* ${CHANGELOG_DATE} Nils Stein <nils@mietzen.de> - ${VERSION}-1
+* ${CHANGELOG_DATE} Nils Stein <github.nstein@mailbox.org> - ${VERSION}-1
 - Release ${VERSION}
 
 SPEC_EOF
