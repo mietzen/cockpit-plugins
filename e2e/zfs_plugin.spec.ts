@@ -70,13 +70,10 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
       await page.waitForSelector("nav, #sidebar, a:has-text('System'), a:has-text('ZFS storage'), a:has-text('ZFS Storage')", { timeout: 15000 }).catch(() => {});
     }
 
-    // Navigate to ZFS storage plugin via sidebar or direct route
+    // Navigate to ZFS storage plugin via sidebar
     const navLink = page.locator("a:has-text('ZFS storage'), a:has-text('ZFS Storage'), a[href*='zfs-storage']").first();
-    if (await navLink.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await navLink.click();
-    } else {
-      await page.goto("/@localhost/zfs-storage");
-    }
+    await navLink.waitFor({ state: "visible", timeout: 20000 });
+    await navLink.click();
 
     const frame = await getFrame();
     await frame.waitForSelector("#root", { timeout: 15000 });
