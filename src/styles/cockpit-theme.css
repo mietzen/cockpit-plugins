@@ -4,7 +4,7 @@
 
 /* Default / Light Mode Variables */
 :root {
-  --zfs-canvas-bg: #f0f0f0;
+  --zfs-canvas-bg: rgb(242, 242, 242);
   --zfs-card-bg: #ffffff;
   --zfs-card-border: #d2d2d2;
   --zfs-text-primary: #151515;
@@ -506,15 +506,13 @@ select:focus-visible {
   z-index: -1 !important;
   pointer-events: none !important;
   border-radius: 16px !important;
-  background-color: rgba(0, 0, 0, 0.65) !important;
-  backdrop-filter: blur(3.5px) !important;
-  -webkit-backdrop-filter: blur(3.5px) !important;
+  background-color: rgba(0, 0, 0, 0.6) !important;
   mask-image:
-    linear-gradient(to right, transparent 0%, black 80px, black calc(100% - 80px), transparent 100%),
-    linear-gradient(to bottom, transparent 0%, black 50px, black calc(100% - 50px), transparent 100%) !important;
+    linear-gradient(to right, transparent 0%, black 24px, black calc(100% - 24px), transparent 100%),
+    linear-gradient(to bottom, transparent 0%, black 16px, black calc(100% - 16px), transparent 100%) !important;
   -webkit-mask-image:
-    linear-gradient(to right, transparent 0%, black 80px, black calc(100% - 80px), transparent 100%),
-    linear-gradient(to bottom, transparent 0%, black 50px, black calc(100% - 50px), transparent 100%) !important;
+    linear-gradient(to right, transparent 0%, black 24px, black calc(100% - 24px), transparent 100%),
+    linear-gradient(to bottom, transparent 0%, black 16px, black calc(100% - 16px), transparent 100%) !important;
   mask-composite: intersect !important;
   -webkit-mask-composite: destination-in !important;
 }
