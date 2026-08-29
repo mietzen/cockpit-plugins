@@ -266,31 +266,32 @@ echo "==> Installation complete! Access Cockpit at https://<server-ip>:9090 and 
         f.write(install_sh_content)
     os.chmod(os.path.join(output_dir, "install.sh"), 0o755)
 
-    # Check for RPM packages
-    rpm_summary = []
+    # Check for RPM packages and build map
+    rpm_map = {}
     if rpm_dir and os.path.exists(rpm_dir):
         for rpm_f in os.listdir(rpm_dir):
             if rpm_f.endswith(".rpm"):
                 rpm_path = os.path.join(rpm_dir, rpm_f)
                 stat_res = os.stat(rpm_path)
-                rpm_summary.append({
-                    "name": rpm_f.split("-")[0],
+                pkg_key = rpm_f.split("-1.")[0] if "-1." in rpm_f else rpm_f.rsplit("-", 2)[0]
+                rpm_map[pkg_key] = {
                     "filename": f"rpm/{rpm_f}",
                     "size": f"{stat_res.st_size / 1024:.1f} KiB",
-                })
+                }
 
     # Generate modern HTML index for GitHub Pages
-    packages_table_rows = "".join([
-        f"""<tr>
+    def format_row(p):
+        deb_link = f'<a href="{p["filename"]}" class="download-link">.deb</a> ({p["size"]})'
+        rpm_info = rpm_map.get(p["name"]) or (rpm_map.get(list(rpm_map.keys())[0]) if len(rpm_map) == 1 else None)
+        rpm_link = f' | <a href="{rpm_info["filename"]}" class="download-link">.rpm</a> ({rpm_info["size"]})' if rpm_info else ""
+        return f"""<tr>
             <td><strong><code>{p['name']}</code></strong></td>
             <td><span class="badge">{p['version']}</span></td>
             <td>{p['description']}</td>
-            <td>
-                <a href="{p['filename']}" class="download-link">Download .deb</a> ({p['size']})
-                {" | <a href='rpm/" + p['name'] + "-1.0.0-1.el10.noarch.rpm' class='download-link'>Download .rpm</a>" if rpm_summary else ""}
-            </td>
-        </tr>""" for p in packages_summary
-    ])
+            <td>{deb_link}{rpm_link}</td>
+        </tr>"""
+
+    packages_table_rows = "".join([format_row(p) for p in packages_summary])
 
     html_content = f"""<!DOCTYPE html>
 <html lang="en">
