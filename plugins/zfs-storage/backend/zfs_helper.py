@@ -171,7 +171,7 @@ class ZfsService:
         return parse_zfs_snapshots(p.stdout)
 
     def get_disks(self) -> List[Dict[str, Any]]:
-        p = run_cmd(["lsblk", "-J", "-b", "-o", "NAME,KNAME,PATH,SIZE,ROTA,TYPE,TRAN,SERIAL,WWN,MODEL,MOUNTPOINT,FSTYPE,UUID,HOTPLUG"])
+        p = run_cmd(["lsblk", "-a", "-J", "-b", "-o", "NAME,KNAME,PATH,SIZE,ROTA,TYPE,TRAN,SERIAL,WWN,MODEL,MOUNTPOINT,FSTYPE,UUID,HOTPLUG"])
         if p.returncode != 0:
             return []
 
@@ -202,7 +202,7 @@ class ZfsService:
 
         def has_system_mount(d: Dict[str, Any]) -> bool:
             mp = d.get("mountpoint")
-            if mp and (mp in ("/", "/boot", "/boot/efi", "/usr", "/var", "/home", "/etc") or mp == "[SWAP]"):
+            if mp and (mp in ("/", "/boot", "/boot/efi", "/usr", "/var", "/home", "/etc") or mp.startswith("/snap") or mp == "[SWAP]"):
                 return True
             for c in d.get("children", []):
                 if has_system_mount(c):
@@ -213,6 +213,8 @@ class ZfsService:
             dev_name = dev.get("name", "")
             dev_type = dev.get("type", "")
             if dev_type in ("disk", "loop") and not dev_name.startswith("zd") and not dev_name.startswith("ram"):
+                if dev.get("size", 0) <= 0:
+                    continue
                 if has_system_mount(dev):
                     continue
                 path = dev.get("path") or f"/dev/{dev.get('name')}"
