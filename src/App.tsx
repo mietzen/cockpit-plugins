@@ -174,7 +174,7 @@ export const App: React.FC = () => {
     setRoute(newRoute);
   }, [parseRoute]);
 
-  // Navigate to a new route in memory and update URL hash (zero iframe redraw)
+  // Navigate to a new route in memory without notifying parent frame
   const navigateTo = useCallback((segments: string[]) => {
     const pathKey = segments.join("/");
     if (lastNavigatedPathRef.current === pathKey) {

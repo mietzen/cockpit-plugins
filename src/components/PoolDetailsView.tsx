@@ -156,7 +156,7 @@ export const PoolDetailsView: React.FC<PoolDetailsViewProps> = ({
       </PageSection>
 
       <PageSection style={{ paddingTop: "1.5rem" }}>
-        {activeTab === "topology" && (
+        <div style={{ display: activeTab === "topology" ? "block" : "none" }}>
           <TopologyTab
             pool={pool}
             onAttachDisk={onAttachDisk}
@@ -168,8 +168,8 @@ export const PoolDetailsView: React.FC<PoolDetailsViewProps> = ({
             onTrimDisk={onTrimDisk}
             onViewSmartDetails={onViewSmartDetails}
           />
-        )}
-        {activeTab === "datasets" && (
+        </div>
+        <div style={{ display: activeTab === "datasets" ? "block" : "none" }}>
           <DatasetsTab
             poolName={pool.name}
             datasets={datasets}
@@ -188,8 +188,8 @@ export const PoolDetailsView: React.FC<PoolDetailsViewProps> = ({
             onRenameDataset={onRenameDataset}
             onDestroyDataset={onDestroyDataset}
           />
-        )}
-        {activeTab === "snapshots" && (
+        </div>
+        <div style={{ display: activeTab === "snapshots" ? "block" : "none" }}>
           <SnapshotsTab
             poolName={pool.name}
             snapshots={snapshots}
@@ -202,20 +202,20 @@ export const PoolDetailsView: React.FC<PoolDetailsViewProps> = ({
             onDestroySnapshot={onDestroySnapshot}
             onBulkDestroySnapshots={onBulkDestroySnapshots}
           />
-        )}
-        {activeTab === "maintenance" && (
+        </div>
+        <div style={{ display: activeTab === "maintenance" ? "block" : "none" }}>
           <MaintenanceTab
             pool={pool}
             onScrubAction={onScrubAction}
             onTrimAction={onTrimAction}
           />
-        )}
-        {activeTab === "settings" && (
+        </div>
+        <div style={{ display: activeTab === "settings" ? "block" : "none" }}>
           <PoolSettingsTab
             pool={pool}
             onSaveProperties={onSaveProperties}
           />
-        )}
+        </div>
       </PageSection>
     </>
   );
