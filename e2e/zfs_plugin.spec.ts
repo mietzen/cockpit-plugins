@@ -48,6 +48,9 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
 
     // Check for login fields
     const userInput = page.locator("input#login-user-input, input#login-user, input[name='login-user'], input[autocomplete='username']").first();
+    const passInput = page.locator("input#login-password-input, input#login-password, input[name='login-password'], input[autocomplete='current-password']").first();
+    const loginBtn = page.locator("button#login-button, button[type='submit']").first();
+
     const isLoginVisible = await userInput.isVisible({ timeout: 5000 }).catch(() => false);
     console.log("Is login form visible:", isLoginVisible);
 
