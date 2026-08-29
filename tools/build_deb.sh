@@ -43,7 +43,7 @@ Section: admin
 Priority: optional
 Architecture: all
 Maintainer: Nils Stein <nils@mietzen.de>
-Depends: cockpit, zfsutils-linux, python3, smartmontools
+Depends: cockpit-bridge | cockpit, zfsutils-linux, python3, smartmontools
 Homepage: https://github.com/mietzen/cockpit-plugins
 Description: Advanced OpenZFS storage manager for Cockpit.
  Manage ZFS pools, datasets, zvols, snapshots, scrubs, trims,
