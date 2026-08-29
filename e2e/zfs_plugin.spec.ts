@@ -42,11 +42,16 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
 
   test("1. Login to Cockpit and load ZFS storage plugin", async () => {
     await page.goto("/");
-    await page.waitForLoadState("domcontentloaded");
+    await page.waitForTimeout(1000);
+    console.log("Initial page URL:", page.url());
+    console.log("Initial page title:", await page.title());
 
     // Check for login fields
     const userInput = page.locator("input#login-user-input, input#login-user, input[name='login-user'], input[autocomplete='username']").first();
-    if (await userInput.isVisible({ timeout: 8000 }).catch(() => false)) {
+    const isLoginVisible = await userInput.isVisible({ timeout: 5000 }).catch(() => false);
+    console.log("Is login form visible:", isLoginVisible);
+
+    if (isLoginVisible) {
       await userInput.fill("test-user");
       const passInput = page.locator("input#login-password-input, input#login-password, input[name='login-password'], input[autocomplete='current-password']").first();
       await passInput.fill("password");
@@ -58,19 +63,32 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
 
       const loginBtn = page.locator("button#login-button, button[type='submit']").first();
       await loginBtn.click();
-      
-      // Wait for login to complete (sidebar or nav appears, login input disappears)
-      await page.waitForSelector("nav, #sidebar, a:has-text('System'), a:has-text('ZFS storage'), a:has-text('ZFS Storage')", { timeout: 25000 }).catch(() => {});
+      console.log("Clicked login button. Waiting for auth...");
+      await page.waitForTimeout(5000);
+      console.log("URL after login:", page.url());
+      console.log("Body text after login:", (await page.innerText("body")).slice(0, 500));
     }
+
+    // Print all links
+    const links = await page.$$eval("a", (els) => els.map((e) => `${e.textContent?.trim()} -> ${e.getAttribute("href")}`));
+    console.log("Page links:", links);
+
+    // Print all iframes
+    const iframes = await page.$$eval("iframe", (els) => els.map((e) => e.outerHTML));
+    console.log("Page iframes:", iframes);
 
     // Navigate to ZFS storage plugin via sidebar or URL
     const navLink = page.locator("a:has-text('ZFS storage'), a:has-text('ZFS Storage'), a[href*='zfs-storage']").first();
     if (await navLink.isVisible({ timeout: 5000 }).catch(() => false)) {
+      console.log("Clicking sidebar link for ZFS storage");
       await navLink.click();
     } else {
+      console.log("Sidebar link not visible, doing page.goto('/@localhost/zfs-storage')");
       await page.goto("/@localhost/zfs-storage");
     }
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(3000);
+    console.log("URL after navigation:", page.url());
+    console.log("Body HTML snippet:", (await page.innerHTML("body")).slice(0, 1000));
 
     const frame = await getFrame();
     await frame.waitForSelector("#root, text=ZFS Storage", { timeout: 20000 });
