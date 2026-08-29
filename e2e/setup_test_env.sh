@@ -7,10 +7,10 @@ echo "========================================="
 
 # 1. Install packages if on Debian/Ubuntu
 if command -v apt-get &>/dev/null; then
-    echo "==> Installing system packages (cockpit, zfsutils-linux, smartmontools)..."
+    echo "==> Installing system packages without recommends (cockpit-ws, cockpit-bridge, cockpit-system, zfsutils-linux)..."
     export DEBIAN_FRONTEND=noninteractive
     sudo apt-get update -qq
-    sudo apt-get install -y -qq cockpit zfsutils-linux smartmontools python3 util-linux curl
+    sudo apt-get install -y -qq --no-install-recommends cockpit-ws cockpit-bridge cockpit-system zfsutils-linux smartmontools python3 util-linux curl
 fi
 
 # 2. Setup virtual loop disks for ZFS testing
