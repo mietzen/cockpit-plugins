@@ -404,12 +404,45 @@ echo "==> Installation complete! Access Cockpit at https://<server-ip>:9090 and 
         a.download-link:hover {{
             text-decoration: underline;
         }}
-        .logo-icon {{
-            width: 22px;
-            height: 22px;
-            vertical-align: -3px;
-            margin-right: 8px;
-            display: inline-block;
+        .card-header-with-logo {{
+            display: flex;
+            align-items: center;
+            gap: 1.25rem;
+            margin-bottom: 1rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid var(--border);
+        }}
+        .distro-package-icon {{
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 100px;
+            height: 100px;
+            flex-shrink: 0;
+        }}
+        .distro-package-icon .box-emoji {{
+            font-size: 72pt;
+            line-height: 1;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }}
+        .distro-package-icon .overlay-logo {{
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 40px;
+            height: 40px;
+            pointer-events: none;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
+        }}
+        .card-header-with-logo h2 {{
+            margin: 0;
+            border-bottom: none;
+            padding-bottom: 0;
         }}
         .footer {{
             text-align: center;
@@ -427,7 +460,16 @@ echo "==> Installation complete! Access Cockpit at https://<server-ip>:9090 and 
         </div>
 
         <div class="card">
-            <h2><img src="https://upload.wikimedia.org/wikipedia/commons/6/66/Openlogo-debianV2.svg" alt="Debian" class="logo-icon"> Debian, Ubuntu & Proxmox (APT)</h2>
+            <div class="card-header-with-logo">
+                <div class="distro-package-icon">
+                    <span class="box-emoji">📦</span>
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/6/66/Openlogo-debianV2.svg" alt="Debian" class="overlay-logo">
+                </div>
+                <div>
+                    <h2>Debian, Ubuntu & Proxmox (APT)</h2>
+                    <p style="margin: 0.25rem 0 0 0; color: var(--text-secondary); font-size: 0.95rem;">Automated DEB822 repository setup & GPG package validation</p>
+                </div>
+            </div>
             <p>One-line automated installation with GPG verification:</p>
             <pre><code>curl -fsSL https://{owner}.github.io/{repo}/install.sh | sudo bash</code></pre>
             <p style="margin-top: 1rem; color: var(--text-secondary); font-size: 0.9rem;">Manual setup (DEB822 format):</p>
@@ -446,7 +488,16 @@ sudo apt update && sudo apt install cockpit-zfs-storage</code></pre>
         </div>
 
         <div class="card">
-            <h2><img src="https://upload.wikimedia.org/wikipedia/commons/0/00/RPM_Logo.svg" alt="RPM" class="logo-icon"> Rocky Linux, RHEL & Fedora (DNF / YUM)</h2>
+            <div class="card-header-with-logo">
+                <div class="distro-package-icon">
+                    <span class="box-emoji">📦</span>
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/0/00/RPM_Logo.svg" alt="RPM" class="overlay-logo">
+                </div>
+                <div>
+                    <h2>Rocky Linux, RHEL & Fedora (DNF / YUM)</h2>
+                    <p style="margin: 0.25rem 0 0 0; color: var(--text-secondary); font-size: 0.95rem;">Automated YUM/DNF repository setup & GPG signature verification</p>
+                </div>
+            </div>
             <p>One-line automated installation:</p>
             <pre><code>curl -fsSL https://{owner}.github.io/{repo}/install-rpm.sh | sudo bash</code></pre>
             <p style="margin-top: 1rem; color: var(--text-secondary); font-size: 0.9rem;">Manual setup:</p>
