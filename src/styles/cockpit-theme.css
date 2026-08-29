@@ -608,6 +608,19 @@ select:focus-visible {
   font-weight: 600 !important;
 }
 
+.pf-v5-c-wizard__main,
+.pf-v5-c-wizard__main::before,
+.pf-v5-c-wizard__main::after,
+.pf-v5-c-wizard__body,
+.pf-v5-c-wizard__body::before,
+.pf-v5-c-wizard__body::after,
+.pf-v5-c-wizard__footer,
+.pf-v5-c-wizard__footer::before,
+.pf-v5-c-wizard__footer::after {
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+}
+
 .pf-v5-c-wizard__main {
   background-color: var(--zfs-card-bg) !important;
   color: var(--zfs-text-primary) !important;
@@ -617,6 +630,7 @@ select:focus-visible {
 .pf-v5-c-wizard__footer {
   background-color: var(--zfs-card-bg) !important;
   border-top: 1px solid var(--zfs-card-border) !important;
+  box-shadow: none !important;
   border-bottom-left-radius: 16px !important;
   border-bottom-right-radius: 16px !important;
   display: flex !important;

@@ -213,6 +213,52 @@ export const CreatePoolWizard: React.FC<CreatePoolWizardProps> = ({
         title="Create ZFS Storage Pool"
         onClose={onClose}
         style={{ height: "100%", minHeight: "560px", border: "none" }}
+        footer={(activeStep, onNext, onBack) => {
+          const stepIndex = typeof activeStep.index === "number" ? activeStep.index : 1;
+          const isLastStep = stepIndex === 5;
+          const isStep1Invalid = stepIndex === 1 && !name.trim();
+
+          return (
+            <div
+              className="pf-v5-c-wizard__footer"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.75rem",
+                padding: "1rem 1.5rem",
+                borderTop: "1px solid var(--zfs-card-border)",
+                backgroundColor: "var(--zfs-card-bg)",
+                boxShadow: "none",
+              }}
+            >
+              <Button
+                variant="secondary"
+                onClick={onBack}
+                isDisabled={stepIndex === 1 || loading}
+                style={{ width: "90px" }}
+              >
+                Back
+              </Button>
+              <Button
+                variant="primary"
+                onClick={isLastStep ? handleFinish : onNext}
+                isDisabled={loading || isStep1Invalid}
+                isLoading={loading}
+                style={{ width: "130px" }}
+              >
+                {isLastStep ? (loading ? "Creating..." : "Create Pool") : "Next"}
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={onClose}
+                isDisabled={loading}
+                style={{ width: "90px" }}
+              >
+                Cancel
+              </Button>
+            </div>
+          );
+        }}
       >
         {/* Step 1: Identity & Sector Size */}
         <WizardStep name="Name &amp; Ashift" id="step-1">
@@ -494,15 +540,7 @@ export const CreatePoolWizard: React.FC<CreatePoolWizardProps> = ({
         </WizardStep>
 
         {/* Step 5: Review & Command Preview */}
-        <WizardStep
-          name="Review &amp; Create"
-          id="step-5"
-          footer={{
-            isNextDisabled: loading || !name.trim(),
-            nextButtonText: loading ? "Creating Pool..." : "Create Pool",
-            onNext: handleFinish,
-          }}
-        >
+        <WizardStep name="Review &amp; Create" id="step-5">
           <div>
             <Title headingLevel="h3" size="lg" style={{ marginBottom: "1rem" }}>
               Step 5: Review Configuration &amp; Command Preview
