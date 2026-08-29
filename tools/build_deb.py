@@ -97,6 +97,20 @@ exit 0
     # 3. data.tar.gz
     data_tar_io = io.BytesIO()
     with tarfile.open(fileobj=data_tar_io, mode="w:gz") as tar:
+        def add_file_to_tar(file_path, arcname, is_exec=False):
+            ti = tar.gettarinfo(file_path, arcname=arcname)
+            ti.uid = 0
+            ti.gid = 0
+            ti.uname = "root"
+            ti.gname = "root"
+            if ti.isdir():
+                ti.mode = 0o755
+                tar.addfile(ti)
+            else:
+                ti.mode = 0o755 if is_exec or arcname.endswith(".py") or arcname.endswith(".sh") else 0o644
+                with open(file_path, "rb") as f:
+                    tar.addfile(ti, f)
+
         # Add frontend files to /usr/share/cockpit/<plugin_name>/
         share_target = f"usr/share/cockpit/{plugin_name}"
         for root, dirs, files in os.walk(dist_dir):
@@ -107,7 +121,7 @@ exit 0
                     continue
                 file_path = os.path.join(root, f)
                 arcname = f"{target_dir}/{f}"
-                tar.add(file_path, arcname=arcname)
+                add_file_to_tar(file_path, arcname)
 
         # Add backend files to /usr/libexec/cockpit-zfs/
         libexec_target = "usr/libexec/cockpit-zfs"
@@ -118,10 +132,7 @@ exit 0
                 for f in files:
                     file_path = os.path.join(root, f)
                     arcname = f"{target_dir}/{f}"
-                    ti = tar.gettarinfo(file_path, arcname=arcname)
-                    if f.endswith(".py"):
-                        ti.mode = 0o755
-                    tar.addfile(ti, open(file_path, "rb"))
+                    add_file_to_tar(file_path, arcname, is_exec=f.endswith(".py"))
 
     data_tar_bytes = data_tar_io.getvalue()
 

@@ -36,6 +36,7 @@ if ! id "test-user" &>/dev/null; then
     sudo useradd -m -s /bin/bash test-user
 fi
 echo "test-user:password" | sudo chpasswd
+sudo usermod -aG sudo test-user || true
 echo "test-user ALL=(ALL) NOPASSWD:ALL" | sudo tee /etc/sudoers.d/test-user
 
 # 4. Install cockpit-zfs plugin
@@ -46,6 +47,9 @@ else
     echo "No .deb found, installing directly via make..."
     sudo make -C zfs-storage install
 fi
+
+sudo chmod -R 755 /usr/share/cockpit/zfs-storage || true
+sudo chmod -R 755 /usr/libexec/cockpit-zfs || true
 
 # 5. Start Cockpit service
 echo "==> Starting Cockpit service..."

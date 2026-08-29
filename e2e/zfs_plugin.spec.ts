@@ -41,37 +41,32 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
   });
 
   test("1. Login to Cockpit and load ZFS storage plugin", async () => {
-    await page.goto("/");
-    await page.waitForTimeout(1000);
+    await page.goto("/login");
+    await page.waitForLoadState("domcontentloaded");
 
     // Check for login fields
     const userInput = page.locator("input#login-user-input, input#login-user, input[name='login-user'], input[autocomplete='username']").first();
-    if (await userInput.isVisible({ timeout: 5000 }).catch(() => false)) {
+    if (await userInput.isVisible({ timeout: 8000 }).catch(() => false)) {
       await userInput.fill("test-user");
       const passInput = page.locator("input#login-password-input, input#login-password, input[name='login-password'], input[autocomplete='current-password']").first();
       await passInput.fill("password");
 
-      const authCheckbox = page.locator("input#authorized-input, input[type='checkbox']").first();
-      if (await authCheckbox.isVisible().catch(() => false)) {
-        await authCheckbox.check().catch(() => {});
+      const authCheckbox = page.locator("input#authorized-input").first();
+      if ((await authCheckbox.count()) > 0) {
+        await authCheckbox.setChecked(true, { force: true }).catch(() => {});
       }
 
       const loginBtn = page.locator("button#login-button, button[type='submit']").first();
       await loginBtn.click();
-      await page.waitForTimeout(3000);
+      await page.waitForURL((url) => !url.pathname.includes("/login"), { timeout: 20000 }).catch(() => {});
     }
 
-    // Navigate to ZFS storage plugin
-    const sidebarLink = page.locator("a:has-text('ZFS storage'), a:has-text('ZFS Storage'), a[href*='zfs-storage']").first();
-    if (await sidebarLink.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await sidebarLink.click();
-    } else {
-      await page.goto("/@localhost/zfs-storage");
-    }
-    await page.waitForTimeout(2000);
+    // Direct navigation to plugin URL
+    await page.goto("/@localhost/zfs-storage");
+    await page.waitForLoadState("domcontentloaded");
 
     const frame = await getFrame();
-    await frame.waitForSelector("#root, body", { timeout: 15000 });
+    await frame.waitForSelector("#root, text=ZFS Storage", { timeout: 20000 });
 
     // Verify Overview header is visible
     await expect(frame.locator("text=ZFS Storage").first()).toBeVisible({ timeout: 15000 });
