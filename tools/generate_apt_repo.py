@@ -272,11 +272,14 @@ echo "==> Installation complete! Access Cockpit at https://<server-ip>:9090 and 
         for rpm_f in os.listdir(rpm_dir):
             if rpm_f.endswith(".rpm"):
                 rpm_path = os.path.join(rpm_dir, rpm_f)
+                with open(rpm_path, "rb") as rf:
+                    rpm_sha256 = hashlib.sha256(rf.read()).hexdigest()
                 stat_res = os.stat(rpm_path)
                 pkg_key = rpm_f.split("-1.")[0] if "-1." in rpm_f else rpm_f.rsplit("-", 2)[0]
                 rpm_map[pkg_key] = {
                     "filename": f"rpm/{rpm_f}",
                     "size": f"{stat_res.st_size / 1024:.1f} KiB",
+                    "sha256": rpm_sha256,
                 }
 
     # Generate modern HTML index for GitHub Pages
@@ -284,11 +287,14 @@ echo "==> Installation complete! Access Cockpit at https://<server-ip>:9090 and 
         deb_link = f'<a href="{p["filename"]}" class="download-link">.deb</a> ({p["size"]})'
         rpm_info = rpm_map.get(p["name"]) or (rpm_map.get(list(rpm_map.keys())[0]) if len(rpm_map) == 1 else None)
         rpm_link = f'<br><a href="{rpm_info["filename"]}" class="download-link">.rpm</a> ({rpm_info["size"]})' if rpm_info else ""
+        deb_sha = f'<code title="{p["sha256"]}">{p["sha256"][:12]}...</code>'
+        rpm_sha = f'<br><code title="{rpm_info["sha256"]}">{rpm_info["sha256"][:12]}...</code>' if rpm_info else ""
         return f"""<tr>
             <td><strong><code>{p['name']}</code></strong></td>
             <td><span class="badge">{p['version']}</span></td>
             <td>{p['description']}</td>
             <td>{deb_link}{rpm_link}</td>
+            <td>{deb_sha}{rpm_sha}</td>
         </tr>"""
 
     packages_table_rows = "".join([format_row(p) for p in packages_summary])
