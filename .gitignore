@@ -1,5 +1,11 @@
 node_modules/
 dist/
+dist-debs/
+pages/
+build/
+playwright-report/
+test-results/
 .DS_Store
 *.pyc
 __pycache__/
+

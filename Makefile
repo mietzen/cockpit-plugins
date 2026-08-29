@@ -1,36 +1,32 @@
-PREFIX ?= /usr
-COCKPIT_DIR ?= $(PREFIX)/share/cockpit/zfs-storage
-LIBEXEC_DIR ?= $(PREFIX)/libexec/cockpit-zfs
-TARGET ?= test-user@192.168.40.142
+.PHONY: all build build-zfs deb apt-repo clean install deploy e2e
 
-.PHONY: all build test test-backend install deploy clean
+all: build deb
 
-all: build
+build: build-zfs
 
-build:
-	npm run build
-	cp manifest.json dist/
-	mkdir -p dist/backend
-	cp -r backend/* dist/backend/
+build-zfs:
+	@echo "==> Building zfs-storage plugin..."
+	$(MAKE) -C zfs-storage build
 
-test: test-backend
+deb: build
+	@echo "==> Packaging Debian packages..."
+	mkdir -p dist-debs
+	python3 tools/build_deb.py zfs-storage --output-dir dist-debs --version 1.0.0
 
-test-backend:
-	PYTHONPATH=. python3 -m unittest discover backend/tests
+apt-repo: deb
+	@echo "==> Generating APT repository for GitHub Pages..."
+	python3 tools/generate_apt_repo.py --deb-dir dist-debs --output-dir pages --owner mietzen --repo cockpit-plugins
 
 install: build
-	mkdir -p $(DESTDIR)$(COCKPIT_DIR)
-	cp -r dist/* $(DESTDIR)$(COCKPIT_DIR)/
-	mkdir -p $(DESTDIR)$(LIBEXEC_DIR)
-	cp -r backend/* $(DESTDIR)$(LIBEXEC_DIR)/
-	chmod +x $(DESTDIR)$(LIBEXEC_DIR)/zfs_helper.py
+	$(MAKE) -C zfs-storage install
 
 deploy: build
-	ssh -o StrictHostKeyChecking=no $(TARGET) "sudo mkdir -p /usr/share/cockpit/zfs-storage /usr/libexec/cockpit-zfs"
-	scp -r -o StrictHostKeyChecking=no dist/* $(TARGET):/tmp/cockpit-zfs-dist/ 2>/dev/null || (ssh -o StrictHostKeyChecking=no $(TARGET) "mkdir -p /tmp/cockpit-zfs-dist" && scp -r -o StrictHostKeyChecking=no dist/* $(TARGET):/tmp/cockpit-zfs-dist/)
-	scp -r -o StrictHostKeyChecking=no backend/* $(TARGET):/tmp/cockpit-zfs-backend/ 2>/dev/null || (ssh -o StrictHostKeyChecking=no $(TARGET) "mkdir -p /tmp/cockpit-zfs-backend" && scp -r -o StrictHostKeyChecking=no backend/* $(TARGET):/tmp/cockpit-zfs-backend/)
-	ssh -o StrictHostKeyChecking=no $(TARGET) "sudo cp -r /tmp/cockpit-zfs-dist/* /usr/share/cockpit/zfs-storage/ && sudo cp -r /tmp/cockpit-zfs-backend/* /usr/libexec/cockpit-zfs/ && sudo chmod +x /usr/libexec/cockpit-zfs/zfs_helper.py"
-	@echo "Deployment to $(TARGET) complete!"
+	$(MAKE) -C zfs-storage deploy TARGET=$(TARGET)
+
+e2e:
+	@echo "==> Running Playwright E2E tests..."
+	npx playwright test --config e2e/playwright.config.ts
 
 clean:
-	rm -rf dist node_modules
+	rm -rf dist dist-debs pages build
+	$(MAKE) -C zfs-storage clean

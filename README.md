@@ -1,10 +1,41 @@
-# Cockpit ZFS Storage
+# Cockpit Plugins
 
-A modern, fast, and feature-rich **ZFS Storage Manager** plugin for [Cockpit](https://cockpit-project.org/). Manage ZFS pools, datasets, zvols, snapshots, scrubs, trims, and SMART disk health directly from Cockpit with PatternFly v5 design and zero flicker.
+[![Main Workflow](https://github.com/mietzen/cockpit-plugins/actions/workflows/main.yml/badge.svg)](https://github.com/mietzen/cockpit-plugins/actions/workflows/main.yml)
+[![APT Repository](https://img.shields.io/badge/APT-Repository-blue?logo=debian)](https://mietzen.github.io/cockpit-plugins/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![PatternFly](https://img.shields.io/badge/UI-PatternFly%20v5-red)](https://www.patternfly.org/)
+[![OpenZFS](https://img.shields.io/badge/ZFS-OpenZFS%202.x-orange)](https://openzfs.org/)
+
+A collection of modern, production-grade plugins and extensions for [Cockpit](https://cockpit-project.org/) server administration.
 
 ---
 
-## 📸 Screenshots
+## 📦 Available Plugins
+
+| Plugin | Package Name | Description | Status |
+| :--- | :--- | :--- | :--- |
+| [**ZFS Storage**](zfs-storage/) | `cockpit-zfs-storage` | Complete OpenZFS storage manager with pool creation wizards, dataset/zvol trees, snapshots, scrubs, trims, and SMART health monitoring. | **Stable** |
+
+---
+
+## 🚀 Quick Install (APT Repository)
+
+Install and automatically receive updates directly via APT on Debian, Ubuntu, and Proxmox systems:
+
+```shell
+# 1. Add Cockpit Plugins APT repository
+echo "deb [trusted=yes] https://mietzen.github.io/cockpit-plugins/ stable main" | sudo tee /etc/apt/sources.list.d/cockpit-plugins.list
+
+# 2. Update package cache
+sudo apt update
+
+# 3. Install ZFS Storage plugin
+sudo apt install cockpit-zfs-storage
+```
+
+---
+
+## 📸 Screenshots (ZFS Storage Plugin)
 
 ### Overview & Dashboard
 | Light Theme | Dark Theme |
@@ -16,7 +47,7 @@ A modern, fast, and feature-rich **ZFS Storage Manager** plugin for [Cockpit](ht
 | :---: | :---: |
 | ![Pools Light](docs/screenshots/02-pools-light.png) | ![Pools Dark](docs/screenshots/02-pools-dark.png) |
 
-### Pool Topology & Devices
+### Pool Topology & Physical Devices
 | Light Theme | Dark Theme |
 | :---: | :---: |
 | ![Topology Light](docs/screenshots/03-pool-topology-light.png) | ![Topology Dark](docs/screenshots/03-pool-topology-dark.png) |
@@ -26,7 +57,7 @@ A modern, fast, and feature-rich **ZFS Storage Manager** plugin for [Cockpit](ht
 | :---: | :---: |
 | ![Datasets Light](docs/screenshots/04-pool-datasets-light.png) | ![Datasets Dark](docs/screenshots/04-pool-datasets-dark.png) |
 
-### Snapshots Tree & Focus
+### Snapshots Tree & Target Focus
 | Light Theme | Dark Theme |
 | :---: | :---: |
 | ![Snapshots Light](docs/screenshots/05-pool-snapshots-light.png) | ![Snapshots Dark](docs/screenshots/05-pool-snapshots-dark.png) |
@@ -36,7 +67,7 @@ A modern, fast, and feature-rich **ZFS Storage Manager** plugin for [Cockpit](ht
 | :---: | :---: |
 | ![Maintenance Light](docs/screenshots/06-pool-maintenance-light.png) | ![Maintenance Dark](docs/screenshots/06-pool-maintenance-dark.png) |
 
-### Physical Disks & SMART Health
+### Disks & SMART Health
 | Light Theme | Dark Theme |
 | :---: | :---: |
 | ![Disks Light](docs/screenshots/07-disks-smart-light.png) | ![Disks Dark](docs/screenshots/07-disks-smart-dark.png) |
@@ -48,85 +79,76 @@ A modern, fast, and feature-rich **ZFS Storage Manager** plugin for [Cockpit](ht
 
 ---
 
-## ✨ Features
+## ✨ Features (ZFS Storage)
 
-- **Storage Pool Management**:
-  - Multi-step Pool Creation Wizard with support for Stripe, Mirror, RAIDZ1, RAIDZ2, RAIDZ3, and dRAID configurations.
-  - Dedicated VDEV roles: Data, Log (SLOG), Cache (L2ARC), and Special (Metadata).
+- **Pool Management**:
+  - Multi-step Pool Wizard with Stripe, Mirror, RAIDZ1/2/3, and dRAID configurations.
+  - Dedicated VDEV roles for Data, Log (SLOG), Cache (L2ARC), and Special (Metadata).
   - Pool import scan with automatic discovery and force import options.
-  - Export and destroy pools with verification safeguards.
-  - Real-time pool health, capacity, fragmentation, and deduplication stats.
+  - Safe pool export and destroy with typed confirmation safeguards.
 
-- **Datasets & Volumes (zvols)**:
-  - Create and manage filesystems and block volumes (zvols).
-  - Nested hierarchical dataset tree representation.
-  - Full property editor: Compression (`lz4`, `zstd`, `gzip`), deduplication, quotas, record sizes, atime, and mountpoints.
+- **Datasets & zvols**:
+  - Full filesystem and block volume (zvol) creation and management.
+  - Hierarchical nested dataset tree.
+  - Real-time property editing (Compression `lz4`/`zstd`, Quotas, Deduplication, Record sizes, Mountpoints).
   - Mount, unmount, rename, and delete actions.
 
 - **Snapshots & Clones**:
-  - Hierarchical snapshot tree with dataset target selection.
-  - Automatic focus, uncollapse, and scroll-to-dataset from dataset badges.
+  - Dataset-specific snapshot creation with target selectors.
+  - Clickable snapshot badges in Datasets tab that uncollapse and focus target snapshots.
   - Rollback, clone, rename, and bulk snapshot destruction.
 
-- **Pool Maintenance**:
-  - Live progress monitoring for scrubs and trims.
-  - Start, pause, resume, and cancel scrubs and trims.
-  - Clean status alerts for verification and error reports.
+- **Maintenance**:
+  - Real-time progress monitoring for scrubs and trims.
+  - Start, pause, resume, and cancel verification operations.
 
-- **Disks & SMART Monitoring**:
-  - Detailed disk enumeration across NVMe, SATA, SAS, and SCSI.
-  - Integrated SMART health status, temperature, serial numbers, and model information.
+- **Disks & SMART**:
+  - Comprehensive drive enumeration with model, serial, temperature, and SMART health.
   - Disk offline, online, replace, and attach actions.
 
-- **Design & Performance**:
-  - Built with **PatternFly v5** and seamless Cockpit Dark / Light mode auto-sync.
-  - Pure in-memory view routing for **instant 0ms redraw and zero flicker**.
-  - Safe shell command preview modal for destructive operations.
+- **Performance & Theming**:
+  - Built with **PatternFly v5** and synchronized with Cockpit Dark / Light shell theme.
+  - Pure in-memory view routing for **true 0ms redraw and zero iframe flicker**.
 
 ---
 
-## 🛠️ Architecture
+## 🛠️ Building From Source
 
-- **Frontend**: React 18, TypeScript, Vite, PatternFly v5.
-- **Bridge**: Pure Cockpit JavaScript API bridge (`cockpit.spawn`).
-- **Backend Helper**: Python 3 executable helper (`zfs_helper.py`) executing native `zpool`, `zfs`, `lsblk`, `smartctl`, and `kstat` / `/proc/spl/kstat/zfs/arcstats`.
-- **System Package**: Deploys as a standard Cockpit package into `/usr/share/cockpit/zfs-storage` and `/usr/libexec/cockpit-zfs`.
+```shell
+# Clone repository
+git clone https://github.com/mietzen/cockpit-plugins.git
+cd cockpit-plugins
 
----
-
-## 🚀 Installation & Deployment
-
-### Requirements
-- Linux (Debian 12+, Ubuntu 22.04+, RHEL/Fedora/Rocky 9+)
-- `cockpit`
-- `zfsutils-linux` or `zfs` OpenZFS packages
-- `smartmontools` (for SMART drive health)
-- Node.js 18+ & npm (for building from source)
-
-### Building from Source
-
-```bash
-# Clone the repository
-git clone https://github.com/mietzen/cockpit-zfs.git
-cd cockpit-zfs
-
-# Install dependencies
-npm install
-
-# Build package
+# Build all plugins
 make build
-```
 
-### Local Installation
+# Build Debian packages (.deb)
+make deb
 
-```bash
+# Install locally
 sudo make install
 ```
 
-### Remote Deployment to Test Server / VM
+### Remote Deployment
 
-```bash
+Deploy directly to a remote test machine over SSH:
+
+```shell
 make deploy TARGET=user@192.168.1.100
+```
+
+---
+
+## 🧪 End-to-End Testing
+
+The repository includes a comprehensive Playwright test suite that tests live Cockpit and OpenZFS on Ubuntu runners:
+
+```shell
+# Setup virtual test disks and user
+sudo bash e2e/setup_test_env.sh
+
+# Run Playwright test suite
+make e2e
 ```
 
 ---
