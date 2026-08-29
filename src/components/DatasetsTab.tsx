@@ -31,6 +31,7 @@ import { formatBytes } from "../utils/formatters";
 interface DatasetsTabProps {
   poolName: string;
   datasets: ZDataset[];
+  isLoading?: boolean;
   onCreateDataset: (parentDataset?: string) => void;
   onCreateZVol: (parentDataset?: string) => void;
   onEditProperties: (dataset: ZDataset) => void;
@@ -43,6 +44,7 @@ interface DatasetsTabProps {
 export const DatasetsTab: React.FC<DatasetsTabProps> = ({
   poolName,
   datasets,
+  isLoading = false,
   onCreateDataset,
   onCreateZVol,
   onEditProperties,
@@ -86,23 +88,25 @@ export const DatasetsTab: React.FC<DatasetsTabProps> = ({
       </Flex>
 
       {poolDatasets.length === 0 ? (
-        <EmptyState>
-          <EmptyStateHeader
-            titleText="No datasets found"
-            icon={<EmptyStateIcon icon={FolderIcon} />}
-            headingLevel="h4"
-          />
-          <EmptyStateBody>
-            No datasets or volumes have been created under pool {poolName}.
-          </EmptyStateBody>
-          <EmptyStateFooter>
-            <EmptyStateActions>
-              <Button variant="primary" icon={<PlusCircleIcon />} onClick={() => onCreateDataset(poolName)}>
-                Create dataset
-              </Button>
-            </EmptyStateActions>
-          </EmptyStateFooter>
-        </EmptyState>
+        isLoading ? null : (
+          <EmptyState>
+            <EmptyStateHeader
+              titleText="No datasets found"
+              icon={<EmptyStateIcon icon={FolderIcon} />}
+              headingLevel="h4"
+            />
+            <EmptyStateBody>
+              No datasets or volumes have been created under pool {poolName}.
+            </EmptyStateBody>
+            <EmptyStateFooter>
+              <EmptyStateActions>
+                <Button variant="primary" icon={<PlusCircleIcon />} onClick={() => onCreateDataset(poolName)}>
+                  Create dataset
+                </Button>
+              </EmptyStateActions>
+            </EmptyStateFooter>
+          </EmptyState>
+        )
       ) : (
         <Table aria-label="Datasets Table" variant="compact">
           <Thead>
@@ -150,13 +154,19 @@ export const DatasetsTab: React.FC<DatasetsTabProps> = ({
                   </Td>
                   <Td dataLabel="Used">{formatBytes(ds.used)}</Td>
                   <Td dataLabel="Available">{formatBytes(ds.avail)}</Td>
-                  <Td dataLabel="Mountpoint">
+                  <Td dataLabel="Mountpoint" style={{ minWidth: "220px" }}>
                     {isFilesystem ? (
                       ds.mountpoint ? (
-                        <Flex alignItems={{ default: "alignItemsCenter" }}>
-                          <FlexItem>{ds.mountpoint}</FlexItem>
-                          <FlexItem>
-                            <Label color={ds.mounted ? "green" : "orange"} style={{ marginLeft: "0.5rem" }}>
+                        <Flex
+                          justifyContent={{ default: "justifyContentSpaceBetween" }}
+                          alignItems={{ default: "alignItemsCenter" }}
+                          style={{ width: "100%" }}
+                        >
+                          <FlexItem style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {ds.mountpoint}
+                          </FlexItem>
+                          <FlexItem style={{ marginLeft: "auto", flexShrink: 0 }}>
+                            <Label color={ds.mounted ? "green" : "orange"}>
                               {ds.mounted ? "Mounted" : "Unmounted"}
                             </Label>
                           </FlexItem>

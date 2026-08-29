@@ -35,6 +35,7 @@ import { formatBytes } from "../utils/formatters";
 
 interface PoolsViewProps {
   pools: ZPool[];
+  isLoading?: boolean;
   onSelectPool: (poolName: string, subTab?: string) => void;
   onCreatePool: () => void;
   onImportPool: () => void;
@@ -46,6 +47,7 @@ interface PoolsViewProps {
 
 export const PoolsView: React.FC<PoolsViewProps> = ({
   pools,
+  isLoading = false,
   onSelectPool,
   onCreatePool,
   onImportPool,
@@ -93,26 +95,28 @@ export const PoolsView: React.FC<PoolsViewProps> = ({
 
       <PageSection style={{ paddingTop: "1.5rem" }}>
         {pools.length === 0 ? (
-          <EmptyState>
-            <EmptyStateHeader
-              titleText="No ZFS storage pools configured"
-              icon={<EmptyStateIcon icon={DatabaseIcon} />}
-              headingLevel="h4"
-            />
-            <EmptyStateBody>
-              You don't have any OpenZFS storage pools active on this system. Create a new pool using available host disks or import an existing pool.
-            </EmptyStateBody>
-            <EmptyStateFooter>
-              <EmptyStateActions>
-                <Button variant="primary" icon={<PlusCircleIcon />} onClick={onCreatePool}>
-                  Create pool
-                </Button>
-                <Button variant="link" icon={<DownloadIcon />} onClick={onImportPool}>
-                  Import pool
-                </Button>
-              </EmptyStateActions>
-            </EmptyStateFooter>
-          </EmptyState>
+          isLoading ? null : (
+            <EmptyState>
+              <EmptyStateHeader
+                titleText="No ZFS storage pools configured"
+                icon={<EmptyStateIcon icon={DatabaseIcon} />}
+                headingLevel="h4"
+              />
+              <EmptyStateBody>
+                You don't have any OpenZFS storage pools active on this system. Create a new pool using available host disks or import an existing pool.
+              </EmptyStateBody>
+              <EmptyStateFooter>
+                <EmptyStateActions>
+                  <Button variant="primary" icon={<PlusCircleIcon />} onClick={onCreatePool}>
+                    Create pool
+                  </Button>
+                  <Button variant="link" icon={<DownloadIcon />} onClick={onImportPool}>
+                    Import pool
+                  </Button>
+                </EmptyStateActions>
+              </EmptyStateFooter>
+            </EmptyState>
+          )
         ) : (
           <>
             <div style={{ maxWidth: "350px", marginBottom: "1rem" }}>

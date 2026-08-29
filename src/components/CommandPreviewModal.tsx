@@ -5,7 +5,7 @@ import {
   Button,
   Alert,
 } from "@patternfly/react-core";
-import { CopyIcon, CheckIcon } from "@patternfly/react-icons";
+import { CommandBox } from "./CommandBox";
 
 interface CommandPreviewModalProps {
   isOpen: boolean;
@@ -28,19 +28,12 @@ export const CommandPreviewModal: React.FC<CommandPreviewModalProps> = ({
 }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
 
   if (!isOpen) {
     return null;
   }
 
   const cmdString = Array.isArray(command) ? command.join(" ") : command;
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(cmdString);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   const handleExecute = async () => {
     setLoading(true);
@@ -76,7 +69,7 @@ export const CommandPreviewModal: React.FC<CommandPreviewModalProps> = ({
       ]}
     >
       {description && (
-        <p style={{ marginBottom: "1rem", color: "#f0f0f0" }}>{description}</p>
+        <p style={{ marginBottom: "1rem", color: "var(--zfs-text-primary)" }}>{description}</p>
       )}
 
       {isDestructive && (
@@ -90,50 +83,7 @@ export const CommandPreviewModal: React.FC<CommandPreviewModalProps> = ({
         </Alert>
       )}
 
-      <div style={{ marginBottom: "1rem" }}>
-        <div style={{ fontSize: "0.85rem", color: "#a0a0a0", marginBottom: "0.4rem", fontWeight: 600 }}>
-          Command line:
-        </div>
-        <div
-          style={{
-            position: "relative",
-            backgroundColor: "rgb(15, 15, 15)",
-            border: "1px solid #383838",
-            borderRadius: "8px",
-            padding: "10px 42px 10px 14px",
-            fontFamily: "monospace",
-            fontSize: "0.9rem",
-            color: "#92c5f9",
-            wordBreak: "break-all",
-            lineHeight: "1.4",
-          }}
-        >
-          <span>{cmdString}</span>
-          <button
-            type="button"
-            onClick={handleCopy}
-            title={copied ? "Copied!" : "Copy command"}
-            style={{
-              position: "absolute",
-              right: "8px",
-              top: "50%",
-              transform: "translateY(-50%)",
-              background: "transparent",
-              border: "none",
-              color: copied ? "#5ba352" : "#a0a0a0",
-              cursor: "pointer",
-              padding: "4px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              borderRadius: "4px",
-              transition: "color 0.15s ease",
-            }}
-          >
-            {copied ? <CheckIcon style={{ fontSize: "14px" }} /> : <CopyIcon style={{ fontSize: "14px" }} />}
-          </button>
-        </div>
-      </div>
+      <CommandBox command={cmdString} label="Command line:" />
 
       {error && (
         <Alert variant="danger" isInline title="Command execution failed" style={{ marginTop: "1rem" }}>

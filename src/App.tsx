@@ -6,8 +6,6 @@ import {
   Alert,
   AlertGroup,
   AlertActionCloseButton,
-  Spinner,
-  PageSection,
 } from "@patternfly/react-core";
 import {
   SystemInfo,
@@ -58,7 +56,7 @@ export const App: React.FC = () => {
   const [datasets, setDatasets] = useState<ZDataset[]>([]);
   const [snapshots, setSnapshots] = useState<ZSnapshot[]>([]);
   const [disks, setDisks] = useState<DiskDevice[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   // Global Alerts
   const [alerts, setAlerts] = useState<
@@ -99,6 +97,35 @@ export const App: React.FC = () => {
 
   const lastNavigatedPathRef = useRef<string>("");
 
+  // Sync theme with Cockpit shell
+  useEffect(() => {
+    const applyTheme = () => {
+      const themePref = localStorage.getItem("cockpit_zfs_theme") || "auto";
+      let isDark = false;
+      if (themePref === "dark") {
+        isDark = true;
+      } else if (themePref === "light") {
+        isDark = false;
+      } else {
+        const shellTheme = localStorage.getItem("shell:style") || "auto";
+        isDark =
+          shellTheme === "dark" ||
+          (window.matchMedia?.("(prefers-color-scheme: dark)").matches &&
+            shellTheme === "auto");
+      }
+
+      if (isDark) {
+        document.documentElement.classList.add("pf-v5-theme-dark");
+      } else {
+        document.documentElement.classList.remove("pf-v5-theme-dark");
+      }
+    };
+
+    applyTheme();
+    window.addEventListener("storage", applyTheme);
+    return () => window.removeEventListener("storage", applyTheme);
+  }, []);
+
   // Parse path segments into route state atomically
   const parseRoute = useCallback((segments: string[]): AppRoute => {
     if (!segments || segments.length === 0 || segments[0] === "" || segments[0] === "dashboard" || segments[0] === "overview") {
@@ -128,9 +155,7 @@ export const App: React.FC = () => {
 
     if (typeof cockpit !== "undefined" && cockpit.location && cockpit.location.path) {
       segments = cockpit.location.path;
-    }
-
-    if (segments.length === 0) {
+    } else {
       const hash = window.location.hash.replace(/^#\/?/, "");
       if (hash) {
         segments = hash.split("/").filter(Boolean);
@@ -176,13 +201,13 @@ export const App: React.FC = () => {
       return newRoute;
     });
 
-    const targetHash = `#/${pathKey}`;
-    if (window.location.hash !== targetHash) {
-      window.location.hash = targetHash;
-    }
-
     if (typeof cockpit !== "undefined" && cockpit.location && cockpit.location.go) {
       cockpit.location.go(segments);
+    } else {
+      const targetHash = `#/${pathKey}`;
+      if (window.location.hash !== targetHash) {
+        window.location.hash = targetHash;
+      }
     }
   }, [parseRoute]);
 
@@ -190,29 +215,23 @@ export const App: React.FC = () => {
   useEffect(() => {
     syncFromUrl();
 
-    const handleHashChange = () => syncFromUrl();
-    const handlePopState = () => syncFromUrl();
-
-    window.addEventListener("hashchange", handleHashChange);
-    window.addEventListener("popstate", handlePopState);
-
-    let removeCockpitListener: (() => void) | null = null;
     if (typeof cockpit !== "undefined" && cockpit.location && cockpit.location.on) {
       cockpit.location.on("changed", syncFromUrl);
-      removeCockpitListener = () => {
+      return () => {
         if (cockpit.location.off) {
           cockpit.location.off("changed", syncFromUrl);
         }
       };
+    } else {
+      const handleHashChange = () => syncFromUrl();
+      const handlePopState = () => syncFromUrl();
+      window.addEventListener("hashchange", handleHashChange);
+      window.addEventListener("popstate", handlePopState);
+      return () => {
+        window.removeEventListener("hashchange", handleHashChange);
+        window.removeEventListener("popstate", handlePopState);
+      };
     }
-
-    return () => {
-      window.removeEventListener("hashchange", handleHashChange);
-      window.removeEventListener("popstate", handlePopState);
-      if (removeCockpitListener) {
-        removeCockpitListener();
-      }
-    };
   }, [syncFromUrl]);
 
   const addAlert = (variant: "success" | "danger" | "warning" | "info", title: string, message?: string) => {
@@ -433,152 +452,150 @@ export const App: React.FC = () => {
         ))}
       </AlertGroup>
 
-      {isLoading && !systemInfo && pools.length === 0 ? (
-        <PageSection style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "50vh" }}>
-          <Spinner size="xl" />
-        </PageSection>
-      ) : (
-        <>
-          {route.view === "dashboard" && (
-            <DashboardView
-              systemInfo={systemInfo}
-              pools={pools}
-              disks={disks}
-              onSelectPool={handleSelectPool}
-              onCreatePool={() => setIsCreatePoolOpen(true)}
-              onImportPool={() => {
-                const cmd = ["zpool", "import", "-d", "/dev/disk/by-id", "-f"];
-                setPreviewModalState({
-                  isOpen: true,
-                  title: "Import ZFS Pools",
-                  command: cmd,
-                  description: "Scan available disks and import discovered ZFS pools.",
-                  onConfirm: () => executeCmd(cmd, "Import scan executed"),
-                });
-              }}
-              onViewArcDetails={() => setIsArcModalOpen(true)}
-              onViewSmartDetails={handleViewSmartDetails}
-            />
-          )}
+      {/* Persistent Views for Instant 0ms Navigation without flicker */}
+      <div style={{ display: route.view === "dashboard" ? "block" : "none" }}>
+        <DashboardView
+          systemInfo={systemInfo}
+          pools={pools}
+          disks={disks}
+          onSelectPool={handleSelectPool}
+          onCreatePool={() => setIsCreatePoolOpen(true)}
+          onImportPool={() => {
+            const cmd = ["zpool", "import", "-d", "/dev/disk/by-id", "-f"];
+            setPreviewModalState({
+              isOpen: true,
+              title: "Import ZFS Pools",
+              command: cmd,
+              description: "Scan available disks and import discovered ZFS pools.",
+              onConfirm: () => executeCmd(cmd, "Import scan executed"),
+            });
+          }}
+          onViewArcDetails={() => setIsArcModalOpen(true)}
+          onViewSmartDetails={handleViewSmartDetails}
+        />
+      </div>
 
-          {route.view === "pools" && (
-            <PoolsView
-              pools={pools}
-              onSelectPool={handleSelectPool}
-              onCreatePool={() => setIsCreatePoolOpen(true)}
-              onImportPool={() => {
-                const cmd = ["zpool", "import", "-d", "/dev/disk/by-id", "-f"];
-                setPreviewModalState({
-                  isOpen: true,
-                  title: "Import ZFS Pools",
-                  command: cmd,
-                  description: "Scan available disks and import discovered ZFS pools.",
-                  onConfirm: () => executeCmd(cmd, "Import scan executed"),
-                });
-              }}
-              onDestroyPool={(p) => setDestroyTarget({ type: "pool", name: p.name })}
-              onExportPool={handleExportPool}
-              onScrubPool={(p, act) => handleScrubAction(p.name, act)}
-              onTrimPool={(p, act) => handleTrimAction(p.name, act)}
-            />
-          )}
+      <div style={{ display: route.view === "pools" ? "block" : "none" }}>
+        <PoolsView
+          pools={pools}
+          isLoading={isLoading}
+          onSelectPool={handleSelectPool}
+          onCreatePool={() => setIsCreatePoolOpen(true)}
+          onImportPool={() => {
+            const cmd = ["zpool", "import", "-d", "/dev/disk/by-id", "-f"];
+            setPreviewModalState({
+              isOpen: true,
+              title: "Import ZFS Pools",
+              command: cmd,
+              description: "Scan available disks and import discovered ZFS pools.",
+              onConfirm: () => executeCmd(cmd, "Import scan executed"),
+            });
+          }}
+          onDestroyPool={(p) => setDestroyTarget({ type: "pool", name: p.name })}
+          onExportPool={handleExportPool}
+          onScrubPool={(p, act) => handleScrubAction(p.name, act)}
+          onTrimPool={(p, act) => handleTrimAction(p.name, act)}
+        />
+      </div>
 
-          {route.view === "pool-details" && selectedPool && (
-            <PoolDetailsView
-              pool={selectedPool}
-              datasets={datasets}
-              snapshots={snapshots}
-              activeTab={route.subTab}
-              onTabChange={handleSubTabChange}
-              onBack={() => {
-                navigateTo(["pools"]);
-              }}
-              onAttachDisk={(pName, dev) => setAttachTarget({ poolName: pName, existingDevice: dev })}
-              onDetachDisk={(pName, dev) => {
-                const cmd = ["zpool", "detach", pName, dev];
-                setPreviewModalState({
-                  isOpen: true,
-                  title: `Detach Device: ${dev}`,
-                  command: cmd,
-                  description: `Detach mirror device ${dev} from pool ${pName}.`,
-                  onConfirm: () => executeCmd(cmd, `Detached ${dev}`),
-                });
-              }}
-              onOfflineDisk={(pName, dev) => {
-                const cmd = ["zpool", "offline", pName, dev];
-                executeCmd(cmd, `Offlined ${dev}`).catch((err) => addAlert("danger", "Offline failed", err.message));
-              }}
-              onOnlineDisk={(pName, dev) => {
-                const cmd = ["zpool", "online", pName, dev];
-                executeCmd(cmd, `Onlined ${dev}`).catch((err) => addAlert("danger", "Online failed", err.message));
-              }}
-              onReplaceDisk={(pName, dev) => setReplaceTarget({ poolName: pName, oldDevice: dev })}
-              onClearErrors={handleClearErrors}
-              onTrimDisk={(pName, dev) => {
-                const cmd = ["zpool", "trim", pName, dev];
-                executeCmd(cmd, `Started trim on ${dev}`).catch((err) => addAlert("danger", "Trim failed", err.message));
-              }}
-              onCreateDataset={(p) => setCreateDatasetParent(p || selectedPool.name)}
-              onCreateZVol={(p) => setCreateZVolParent(p || selectedPool.name)}
-              onEditProperties={(ds) => setEditPropertiesTarget(ds)}
-              onCreateSnapshot={(ds) => setCreateSnapshotTarget(ds ? ds.name : selectedPool.name)}
-              onMountToggle={handleMountToggle}
-              onRenameDataset={(ds) => {
-                setRenameTarget({
-                  itemType: ds.type === "volume" ? "volume" : "dataset",
-                  currentName: ds.name,
-                });
-              }}
-              onDestroyDataset={(ds) => setDestroyTarget({ type: "dataset", name: ds.name })}
-              onRollbackSnapshot={(s) => setRollbackSnapshotTarget(s)}
-              onCloneSnapshot={(s) => setCloneSnapshotTarget(s)}
-              onRenameSnapshot={(s) => {
-                setRenameTarget({
-                  itemType: "snapshot",
-                  currentName: s.snapshot_name,
-                  originalSnapshot: s,
-                });
-              }}
-              onDestroySnapshot={(s) => setDestroyTarget({ type: "snapshot", name: s.name })}
-              onBulkDestroySnapshots={(snaps) => {
-                const names = snaps.map((s) => s.name);
-                setDestroyTarget({ type: "snapshots", name: names.join(" ") });
-              }}
-              onScrubAction={handleScrubAction}
-              onTrimAction={handleTrimAction}
-              onSaveProperties={(pName, props) => {
-                const cmds: string[][] = Object.entries(props).map(([k, v]) => ["zpool", "set", `${k}=${v}`, pName]);
-                const runAll = async () => {
-                  for (const c of cmds) {
-                    await executeCmd(c, `Updated pool property`);
-                  }
-                };
-                if (shouldPreview()) {
-                  setPreviewModalState({
-                    isOpen: true,
-                    title: `Update pool properties: ${pName}`,
-                    command: cmds.map((c) => c.join(" ")),
-                    onConfirm: runAll,
-                  });
-                } else {
-                  runAll().catch((err) => addAlert("danger", "Update properties failed", err.message));
-                }
-              }}
-              onViewSmartDetails={handleViewSmartDetails}
-            />
-          )}
-
-          {route.view === "disks" && (
-            <DisksView
-              disks={disks}
-              onWipeDisk={handleWipeDisk}
-              onRunSmartTest={handleRunSmartTest}
-            />
-          )}
-
-          {route.view === "settings" && <SettingsView systemInfo={systemInfo} />}
-        </>
+      {route.view === "pool-details" && selectedPool && (
+        <PoolDetailsView
+          pool={selectedPool}
+          datasets={datasets}
+          snapshots={snapshots}
+          isLoading={isLoading}
+          activeTab={route.subTab}
+          onTabChange={handleSubTabChange}
+          onBack={() => {
+            navigateTo(["pools"]);
+          }}
+          onAttachDisk={(pName, dev) => setAttachTarget({ poolName: pName, existingDevice: dev })}
+          onDetachDisk={(pName, dev) => {
+            const cmd = ["zpool", "detach", pName, dev];
+            setPreviewModalState({
+              isOpen: true,
+              title: `Detach Device: ${dev}`,
+              command: cmd,
+              description: `Detach mirror device ${dev} from pool ${pName}.`,
+              onConfirm: () => executeCmd(cmd, `Detached ${dev}`),
+            });
+          }}
+          onOfflineDisk={(pName, dev) => {
+            const cmd = ["zpool", "offline", pName, dev];
+            executeCmd(cmd, `Offlined ${dev}`).catch((err) => addAlert("danger", "Offline failed", err.message));
+          }}
+          onOnlineDisk={(pName, dev) => {
+            const cmd = ["zpool", "online", pName, dev];
+            executeCmd(cmd, `Onlined ${dev}`).catch((err) => addAlert("danger", "Online failed", err.message));
+          }}
+          onReplaceDisk={(pName, dev) => setReplaceTarget({ poolName: pName, oldDevice: dev })}
+          onClearErrors={handleClearErrors}
+          onTrimDisk={(pName, dev) => {
+            const cmd = ["zpool", "trim", pName, dev];
+            executeCmd(cmd, `Started trim on ${dev}`).catch((err) => addAlert("danger", "Trim failed", err.message));
+          }}
+          onCreateDataset={(p) => setCreateDatasetParent(p || selectedPool.name)}
+          onCreateZVol={(p) => setCreateZVolParent(p || selectedPool.name)}
+          onEditProperties={(ds) => setEditPropertiesTarget(ds)}
+          onCreateSnapshot={(ds) => setCreateSnapshotTarget(ds ? ds.name : selectedPool.name)}
+          onMountToggle={handleMountToggle}
+          onRenameDataset={(ds) => {
+            setRenameTarget({
+              itemType: ds.type === "volume" ? "volume" : "dataset",
+              currentName: ds.name,
+            });
+          }}
+          onDestroyDataset={(ds) => setDestroyTarget({ type: "dataset", name: ds.name })}
+          onRollbackSnapshot={(s) => setRollbackSnapshotTarget(s)}
+          onCloneSnapshot={(s) => setCloneSnapshotTarget(s)}
+          onRenameSnapshot={(s) => {
+            setRenameTarget({
+              itemType: "snapshot",
+              currentName: s.snapshot_name,
+              originalSnapshot: s,
+            });
+          }}
+          onDestroySnapshot={(s) => setDestroyTarget({ type: "snapshot", name: s.name })}
+          onBulkDestroySnapshots={(snaps) => {
+            const names = snaps.map((s) => s.name);
+            setDestroyTarget({ type: "snapshots", name: names.join(" ") });
+          }}
+          onScrubAction={handleScrubAction}
+          onTrimAction={handleTrimAction}
+          onSaveProperties={(pName, props) => {
+            const cmds: string[][] = Object.entries(props).map(([k, v]) => ["zpool", "set", `${k}=${v}`, pName]);
+            const runAll = async () => {
+              for (const c of cmds) {
+                await executeCmd(c, `Updated pool property`);
+              }
+            };
+            if (shouldPreview()) {
+              setPreviewModalState({
+                isOpen: true,
+                title: `Update pool properties: ${pName}`,
+                command: cmds.map((c) => c.join(" ")),
+                onConfirm: runAll,
+              });
+            } else {
+              runAll().catch((err) => addAlert("danger", "Update properties failed", err.message));
+            }
+          }}
+          onViewSmartDetails={handleViewSmartDetails}
+        />
       )}
+
+      <div style={{ display: route.view === "disks" ? "block" : "none" }}>
+        <DisksView
+          disks={disks}
+          onWipeDisk={handleWipeDisk}
+          onRunSmartTest={handleRunSmartTest}
+          onViewSmartDetails={handleViewSmartDetails}
+        />
+      </div>
+
+      <div style={{ display: route.view === "settings" ? "block" : "none" }}>
+        <SettingsView systemInfo={systemInfo} />
+      </div>
 
       {/* Modals & Wizards */}
       <CreatePoolWizard

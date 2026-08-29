@@ -30,6 +30,7 @@ import { formatBytes, formatDate } from "../utils/formatters";
 interface SnapshotsTabProps {
   poolName: string;
   snapshots: ZSnapshot[];
+  isLoading?: boolean;
   onCreateSnapshot: () => void;
   onRollbackSnapshot: (snapshot: ZSnapshot) => void;
   onCloneSnapshot: (snapshot: ZSnapshot) => void;
@@ -41,6 +42,7 @@ interface SnapshotsTabProps {
 export const SnapshotsTab: React.FC<SnapshotsTabProps> = ({
   poolName,
   snapshots,
+  isLoading = false,
   onCreateSnapshot,
   onRollbackSnapshot,
   onCloneSnapshot,
@@ -115,23 +117,25 @@ export const SnapshotsTab: React.FC<SnapshotsTabProps> = ({
       </Flex>
 
       {poolSnaps.length === 0 ? (
-        <EmptyState>
-          <EmptyStateHeader
-            titleText="No snapshots taken"
-            icon={<EmptyStateIcon icon={CameraIcon} />}
-            headingLevel="h4"
-          />
-          <EmptyStateBody>
-            Snapshots are point-in-time read-only copies of your datasets. They take no initial space until data blocks change.
-          </EmptyStateBody>
-          <EmptyStateFooter>
-            <EmptyStateActions>
-              <Button variant="primary" icon={<PlusCircleIcon />} onClick={onCreateSnapshot}>
-                Create snapshot
-              </Button>
-            </EmptyStateActions>
-          </EmptyStateFooter>
-        </EmptyState>
+        isLoading ? null : (
+          <EmptyState>
+            <EmptyStateHeader
+              titleText="No snapshots taken"
+              icon={<EmptyStateIcon icon={CameraIcon} />}
+              headingLevel="h4"
+            />
+            <EmptyStateBody>
+              Snapshots are point-in-time read-only copies of your datasets. They take no initial space until data blocks change.
+            </EmptyStateBody>
+            <EmptyStateFooter>
+              <EmptyStateActions>
+                <Button variant="primary" icon={<PlusCircleIcon />} onClick={onCreateSnapshot}>
+                  Create snapshot
+                </Button>
+              </EmptyStateActions>
+            </EmptyStateFooter>
+          </EmptyState>
+        )
       ) : (
         <>
           <div style={{ maxWidth: "350px", marginBottom: "1rem" }}>

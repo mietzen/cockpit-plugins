@@ -29,6 +29,7 @@ interface PoolDetailsViewProps {
   pool: ZPool;
   datasets: ZDataset[];
   snapshots: ZSnapshot[];
+  isLoading?: boolean;
   activeTab?: string;
   onTabChange?: (tab: string) => void;
   onBack: () => void;
@@ -61,6 +62,7 @@ export const PoolDetailsView: React.FC<PoolDetailsViewProps> = ({
   pool,
   datasets,
   snapshots,
+  isLoading = false,
   activeTab = "topology",
   onTabChange,
   onBack,
@@ -170,6 +172,7 @@ export const PoolDetailsView: React.FC<PoolDetailsViewProps> = ({
           <DatasetsTab
             poolName={pool.name}
             datasets={datasets}
+            isLoading={isLoading}
             onCreateDataset={onCreateDataset}
             onCreateZVol={onCreateZVol}
             onEditProperties={onEditProperties}
@@ -183,6 +186,7 @@ export const PoolDetailsView: React.FC<PoolDetailsViewProps> = ({
           <SnapshotsTab
             poolName={pool.name}
             snapshots={snapshots}
+            isLoading={isLoading}
             onCreateSnapshot={() => onCreateSnapshot()}
             onRollbackSnapshot={onRollbackSnapshot}
             onCloneSnapshot={onCloneSnapshot}

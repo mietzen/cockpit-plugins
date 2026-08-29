@@ -11,7 +11,6 @@ import {
   FormSelectOption,
   Checkbox,
   Button,
-  ActionGroup,
   Alert,
 } from "@patternfly/react-core";
 import { SystemInfo } from "../types";
@@ -71,7 +70,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ systemInfo }) => {
           <Alert variant="success" isInline title="Preferences saved" style={{ marginBottom: "1.5rem" }} />
         )}
 
-        <Card isPlain style={{ border: "1px solid var(--pf-v5-global--BorderColor--100)", maxWidth: "650px", marginBottom: "1.5rem" }}>
+        <Card isPlain style={{ border: "1px solid var(--zfs-card-border)", maxWidth: "650px", marginBottom: "1.5rem" }}>
           <CardTitle>Appearance &amp; Behavior</CardTitle>
           <CardBody>
             <Form onSubmit={handleSave}>
@@ -87,7 +86,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ systemInfo }) => {
                 </FormSelect>
               </FormGroup>
 
-              <FormGroup fieldId="enable-preview">
+              <FormGroup fieldId="enable-preview" style={{ marginBottom: "0.75rem" }}>
                 <Checkbox
                   id="enable-preview"
                   label="Show command preview modal before executing changes"
@@ -96,16 +95,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ systemInfo }) => {
                 />
               </FormGroup>
 
-              <ActionGroup>
+              <div style={{ marginTop: "1rem" }}>
                 <Button variant="primary" type="submit">
                   Save preferences
                 </Button>
-              </ActionGroup>
+              </div>
             </Form>
           </CardBody>
         </Card>
 
-        <Card isPlain style={{ border: "1px solid var(--pf-v5-global--BorderColor--100)", maxWidth: "650px" }}>
+        <Card isPlain style={{ border: "1px solid var(--zfs-card-border)", maxWidth: "650px" }}>
           <CardTitle>About Cockpit ZFS</CardTitle>
           <CardBody>
             <p style={{ marginBottom: "0.5rem" }}>

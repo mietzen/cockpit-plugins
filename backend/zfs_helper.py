@@ -201,7 +201,8 @@ class ZfsService:
             map_vdevs(pool.get("dedup", []))
 
         for dev in raw_devices:
-            if dev.get("type") == "disk":
+            dev_name = dev.get("name", "")
+            if dev.get("type") == "disk" and not dev_name.startswith("zd") and not dev_name.startswith("loop") and not dev_name.startswith("ram"):
                 path = dev.get("path") or f"/dev/{dev.get('name')}"
                 
                 smart_info = {"health": "UNKNOWN", "temperature": None}

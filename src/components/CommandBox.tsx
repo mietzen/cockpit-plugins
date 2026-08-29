@@ -22,20 +22,20 @@ export const CommandBox: React.FC<CommandBoxProps> = ({
   return (
     <div style={{ marginTop: "1rem", marginBottom: "0.5rem" }}>
       {label && (
-        <div style={{ fontSize: "0.85rem", color: "#a0a0a0", marginBottom: "0.4rem", fontWeight: 600 }}>
+        <div style={{ fontSize: "0.85rem", color: "var(--zfs-text-secondary)", marginBottom: "0.4rem", fontWeight: 600 }}>
           {label}
         </div>
       )}
       <div
         style={{
           position: "relative",
-          backgroundColor: "rgb(15, 15, 15)",
-          border: "1px solid #383838",
+          backgroundColor: "var(--zfs-code-bg)",
+          border: "1px solid var(--zfs-card-border)",
           borderRadius: "8px",
           padding: "10px 42px 10px 14px",
           fontFamily: "monospace",
           fontSize: "0.85rem",
-          color: "rgb(146, 197, 249)",
+          color: "var(--zfs-code-color)",
           wordBreak: "break-all",
           lineHeight: "1.4",
         }}
@@ -52,7 +52,7 @@ export const CommandBox: React.FC<CommandBoxProps> = ({
             transform: "translateY(-50%)",
             background: "transparent",
             border: "none",
-            color: copied ? "#5ba352" : "#a0a0a0",
+            color: copied ? "#5ba352" : "var(--zfs-text-secondary)",
             cursor: "pointer",
             padding: "4px",
             display: "flex",
