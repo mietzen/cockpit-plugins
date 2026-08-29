@@ -7,10 +7,10 @@ echo "========================================="
 
 # 1. Install packages if on Debian/Ubuntu
 if command -v apt-get &>/dev/null; then
-    echo "==> Installing system packages without recommends (cockpit-ws, cockpit-bridge, cockpit-system, zfsutils-linux)..."
+    echo "==> Installing system packages (cockpit-ws, cockpit-bridge, cockpit-system, libpam-systemd, zfsutils-linux)..."
     export DEBIAN_FRONTEND=noninteractive
     sudo apt-get update -qq
-    sudo apt-get install -y -qq --no-install-recommends cockpit-ws cockpit-bridge cockpit-system zfsutils-linux smartmontools python3 util-linux curl
+    sudo apt-get install -y -qq --no-install-recommends cockpit-ws cockpit-bridge cockpit-system libpam-systemd zfsutils-linux smartmontools python3 util-linux curl
 fi
 
 # 2. Setup virtual loop disks for ZFS testing
@@ -57,7 +57,17 @@ echo "Shadow entry verification:"
 sudo grep -E "test-user|runner" /etc/shadow || true
 
 # Configure Cockpit
-sudo mkdir -p /etc/cockpit /etc/cockpit/ws-certs.d
+sudo mkdir -p /etc/cockpit /etc/cockpit/ws-certs.d /etc/pam.d
+cat << 'EOF' | sudo tee /etc/pam.d/cockpit
+#%PAM-1.0
+auth      requisite pam_nologin.so
+auth      include   common-auth
+account   include   common-account
+password  include   common-password
+session   required  pam_loginuid.so
+session   include   common-session
+EOF
+
 cat << 'EOF' | sudo tee /etc/cockpit/cockpit.conf
 [WebService]
 AllowUnencrypted = true
