@@ -76,44 +76,80 @@ set -e
 exit 0
 """
 
+    # 2. control.tar.gz
     control_tar_io = io.BytesIO()
     with tarfile.open(fileobj=control_tar_io, mode="w:gz", format=tarfile.USTAR_FORMAT) as tar:
-        def add_file(name, content, mode=0o644):
-            ti = tarfile.TarInfo(name=name)
-            ti.size = len(content)
+        root_ti = tarfile.TarInfo(name="./")
+        root_ti.type = tarfile.DIRTYPE
+        root_ti.mode = 0o755
+        root_ti.uid = 0
+        root_ti.gid = 0
+        root_ti.mtime = 0
+        tar.addfile(root_ti)
+
+        def add_control_file(name, content, mode=0o644):
+            data = content.encode("utf-8") if isinstance(content, str) else content
+            ti = tarfile.TarInfo(name=f"./{name}")
+            ti.size = len(data)
             ti.mode = mode
             ti.uid = 0
             ti.gid = 0
             ti.uname = "root"
             ti.gname = "root"
             ti.mtime = 0
-            ti.pax_headers = {}
-            tar.addfile(ti, io.BytesIO(content.encode("utf-8") if isinstance(content, str) else content))
+            tar.addfile(ti, io.BytesIO(data))
 
-        add_file("control", control_content, 0o644)
-        add_file("postinst", postinst_content, 0o755)
-        add_file("prerm", prerm_content, 0o755)
+        add_control_file("control", control_content, 0o644)
+        add_control_file("postinst", postinst_content, 0o755)
+        add_control_file("prerm", prerm_content, 0o755)
 
     control_tar_bytes = control_tar_io.getvalue()
 
     # 3. data.tar.gz
     data_tar_io = io.BytesIO()
     with tarfile.open(fileobj=data_tar_io, mode="w:gz", format=tarfile.USTAR_FORMAT) as tar:
+        added_dirs = set()
+
+        def ensure_dirs(dir_path):
+            parts = os.path.normpath(dir_path).split(os.sep)
+            cur = "."
+            if cur not in added_dirs:
+                ti = tarfile.TarInfo(name=cur + "/")
+                ti.type = tarfile.DIRTYPE
+                ti.mode = 0o755
+                ti.uid = 0
+                ti.gid = 0
+                ti.mtime = 0
+                tar.addfile(ti)
+                added_dirs.add(cur)
+
+            for p in parts:
+                if not p or p == ".":
+                    continue
+                cur = f"{cur}/{p}"
+                if cur not in added_dirs:
+                    ti = tarfile.TarInfo(name=cur + "/")
+                    ti.type = tarfile.DIRTYPE
+                    ti.mode = 0o755
+                    ti.uid = 0
+                    ti.gid = 0
+                    ti.mtime = 0
+                    tar.addfile(ti)
+                    added_dirs.add(cur)
+
         def add_file_to_tar(file_path, arcname, is_exec=False):
-            ti = tar.gettarinfo(file_path, arcname=arcname)
+            ensure_dirs(os.path.dirname(arcname))
+            stat_res = os.stat(file_path)
+            ti = tarfile.TarInfo(name=f"./{arcname}")
+            ti.size = stat_res.st_size
             ti.uid = 0
             ti.gid = 0
             ti.uname = "root"
             ti.gname = "root"
             ti.mtime = 0
-            ti.pax_headers = {}
-            if ti.isdir():
-                ti.mode = 0o755
-                tar.addfile(ti)
-            else:
-                ti.mode = 0o755 if is_exec or arcname.endswith(".py") or arcname.endswith(".sh") else 0o644
-                with open(file_path, "rb") as f:
-                    tar.addfile(ti, f)
+            ti.mode = 0o755 if is_exec or arcname.endswith(".py") or arcname.endswith(".sh") else 0o644
+            with open(file_path, "rb") as f:
+                tar.addfile(ti, f)
 
         # Add frontend files to /usr/share/cockpit/<plugin_name>/
         share_target = f"usr/share/cockpit/{plugin_name}"
