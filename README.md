@@ -1,6 +1,6 @@
 # Cockpit Plugins
 
-A collection of modern, production-grade plugins and extensions for Cockpit server administration.
+A collection of plugins and extensions for Cockpit server administration.
 
 ## Available Plugins
 
