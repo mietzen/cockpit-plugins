@@ -41,7 +41,7 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
   });
 
   test("1. Login to Cockpit and load ZFS storage plugin", async () => {
-    await page.goto("/login");
+    await page.goto("/");
     await page.waitForLoadState("domcontentloaded");
 
     // Check for login fields
@@ -58,12 +58,19 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
 
       const loginBtn = page.locator("button#login-button, button[type='submit']").first();
       await loginBtn.click();
-      await page.waitForURL((url) => !url.pathname.includes("/login"), { timeout: 20000 }).catch(() => {});
+      
+      // Wait for login to complete (sidebar or nav appears, login input disappears)
+      await page.waitForSelector("nav, #sidebar, a:has-text('System'), a:has-text('ZFS storage'), a:has-text('ZFS Storage')", { timeout: 25000 }).catch(() => {});
     }
 
-    // Direct navigation to plugin URL
-    await page.goto("/@localhost/zfs-storage");
-    await page.waitForLoadState("domcontentloaded");
+    // Navigate to ZFS storage plugin via sidebar or URL
+    const navLink = page.locator("a:has-text('ZFS storage'), a:has-text('ZFS Storage'), a[href*='zfs-storage']").first();
+    if (await navLink.isVisible({ timeout: 5000 }).catch(() => false)) {
+      await navLink.click();
+    } else {
+      await page.goto("/@localhost/zfs-storage");
+    }
+    await page.waitForTimeout(2000);
 
     const frame = await getFrame();
     await frame.waitForSelector("#root, text=ZFS Storage", { timeout: 20000 });
