@@ -2,8 +2,8 @@
 set -euo pipefail
 
 PLUGIN_DIR="${1:-plugins/zfs-storage}"
-OUTPUT_DIR="${2:-dist-debs}"
-VERSION="${3:-1.0.0}"
+VERSION="${2:-1.0.0}"
+OUTPUT_DIR="${3:-dist-debs}"
 
 PLUGIN_NAME=$(basename "$PLUGIN_DIR")
 PKG_NAME="cockpit-${PLUGIN_NAME}"
