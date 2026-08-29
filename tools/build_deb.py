@@ -176,11 +176,14 @@ exit 0
             libexec_target = "usr/libexec/cockpit-zfs"
             if os.path.exists(backend_dir):
                 for root, dirs, files in os.walk(backend_dir):
+                    dirs[:] = [d for d in dirs if d != "__pycache__" and d != "tests"]
                     dirs.sort()
                     files.sort()
                     rel_dir = os.path.relpath(root, backend_dir)
                     target_dir = libexec_target if rel_dir == "." else f"{libexec_target}/{rel_dir}"
                     for f in files:
+                        if f.startswith(".") or f.endswith(".pyc") or f.endswith(".pyo"):
+                            continue
                         file_path = os.path.join(root, f)
                         arcname = f"{target_dir}/{f}"
                         add_file_to_tar(file_path, arcname, is_exec=f.endswith(".py"))

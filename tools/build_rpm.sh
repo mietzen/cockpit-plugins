@@ -82,6 +82,10 @@ fi
 if [ -d "${PWD}/${PLUGIN_DIR}/backend" ]; then
     cp -r "${PWD}/${PLUGIN_DIR}/backend/"* %{buildroot}/usr/libexec/cockpit-zfs/
 fi
+rm -rf %{buildroot}/usr/libexec/cockpit-zfs/tests
+find %{buildroot} -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
+find %{buildroot} -name "*.pyc" -delete 2>/dev/null || true
+find %{buildroot} -name "*.pyo" -delete 2>/dev/null || true
 chmod 755 %{buildroot}/usr/libexec/cockpit-zfs/zfs_helper.py 2>/dev/null || true
 
 %clean

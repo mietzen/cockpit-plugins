@@ -107,6 +107,12 @@ PRERM_EOF
         cp -r "${PLUGIN_DIR}/backend/"* "$STAGE_DIR/usr/libexec/cockpit-zfs/"
     fi
 
+    # Clean non-production test files and bytecode caches
+    rm -rf "$STAGE_DIR/usr/libexec/cockpit-zfs/tests"
+    find "$STAGE_DIR" -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
+    find "$STAGE_DIR" -name "*.pyc" -delete 2>/dev/null || true
+    find "$STAGE_DIR" -name "*.pyo" -delete 2>/dev/null || true
+
     # Fix permissions and timestamps for reproducible builds
     find "$STAGE_DIR" -type d -exec chmod 755 {} +
     find "$STAGE_DIR/usr" -type f -exec chmod 644 {} +
