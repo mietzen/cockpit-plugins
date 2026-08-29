@@ -87,6 +87,7 @@ find %{buildroot} -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || t
 find %{buildroot} -name "*.pyc" -delete 2>/dev/null || true
 find %{buildroot} -name "*.pyo" -delete 2>/dev/null || true
 chmod 755 %{buildroot}/usr/libexec/cockpit-zfs/zfs_helper.py 2>/dev/null || true
+find %{buildroot} -exec touch -d "@${SOURCE_DATE_EPOCH}" {} + 2>/dev/null || true
 
 %clean
 rm -rf %{buildroot}
