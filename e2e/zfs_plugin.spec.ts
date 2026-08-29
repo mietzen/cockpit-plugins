@@ -44,16 +44,20 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
   });
 
   test("1. Login to Cockpit and load ZFS storage plugin", async () => {
-    await page.goto("/", { waitUntil: "domcontentloaded" });
+    await page.goto("/");
+
+    // Wait for Cockpit dynamic UI to mount (login form or authenticated shell)
+    await page.waitForSelector("input#login-user-input, input#login-user, nav, #sidebar", { timeout: 15000 });
 
     // Check for login fields
     const userInput = page.locator("input#login-user-input, input#login-user, input[name='login-user'], input[autocomplete='username']").first();
     const passInput = page.locator("input#login-password-input, input#login-password, input[name='login-password'], input[autocomplete='current-password']").first();
     const loginBtn = page.locator("button#login-button, button[type='submit']").first();
 
-    const isLoginVisible = await userInput.isVisible({ timeout: 5000 }).catch(() => false);
-    if (isLoginVisible) {
-      await userInput.fill("runner");
+    if (await userInput.isVisible()) {
+      await userInput.click();
+      await userInput.fill("test-user");
+      await passInput.click();
       await passInput.fill("password");
 
       const authCheckbox = page.locator("input#authorized-input").first();
@@ -65,15 +69,11 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
       await loginBtn.click().catch(() => {});
 
       const errorAlert = page.locator("#error-group:not([hidden]), .dialog-error:not([hidden]), .pf-m-danger:not([hidden])").first();
-      if (await errorAlert.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await userInput.fill("test-user");
+      if (await errorAlert.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await userInput.fill("runner");
         await passInput.fill("password");
         await passInput.press("Enter");
-        await loginBtn.click().catch(() => {});
       }
-
-      // Wait for login redirection / sidebar to appear
-      await page.waitForSelector("nav, #sidebar, a:has-text('System'), a:has-text('ZFS storage'), a:has-text('ZFS Storage')", { timeout: 15000 });
     }
 
     // Navigate to ZFS storage plugin via sidebar
