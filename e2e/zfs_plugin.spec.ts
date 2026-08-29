@@ -109,7 +109,7 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     console.log("Body HTML snippet:", (await page.innerHTML("body")).slice(0, 1000));
 
     const frame = await getFrame();
-    await frame.waitForSelector("#root, text=ZFS Storage", { timeout: 20000 });
+    await frame.waitForSelector("#root", { timeout: 20000 });
 
     // Verify Overview header is visible
     await expect(frame.locator("text=ZFS Storage").first()).toBeVisible({ timeout: 15000 });
