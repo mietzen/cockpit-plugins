@@ -195,9 +195,7 @@ export const DatasetsTab: React.FC<DatasetsTabProps> = ({
                       <span style={{ color: "#999999" }}>off</span>
                     )}
                   </Td>
-                  <Td dataLabel="Snapshots">
-                    <Label color="grey">{ds.snapshot_count}</Label>
-                  </Td>
+                  <Td dataLabel="Snapshots">{ds.snapshot_count}</Td>
                   <Td isActionCell>
                     <Dropdown
                       popperProps={{ position: "right", preventOverflow: true }}
