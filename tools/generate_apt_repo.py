@@ -412,32 +412,24 @@ echo "==> Installation complete! Access Cockpit at https://<server-ip>:9090 and 
             padding-bottom: 0.75rem;
             border-bottom: 1px solid var(--border);
         }}
-        .distro-package-icon {{
-            position: relative;
+        .app-icon-badge {{
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 100px;
-            height: 100px;
+            width: 64px;
+            height: 64px;
+            background: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.15);
             flex-shrink: 0;
+            padding: 10px;
+            box-sizing: border-box;
         }}
-        .distro-package-icon .box-emoji {{
-            font-size: 72pt;
-            line-height: 1;
-            user-select: none;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }}
-        .distro-package-icon .overlay-logo {{
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 40px;
-            height: 40px;
-            pointer-events: none;
-            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
+        .app-icon-badge img {{
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
         }}
         .card-header-with-logo h2 {{
             margin: 0;
@@ -461,9 +453,8 @@ echo "==> Installation complete! Access Cockpit at https://<server-ip>:9090 and 
 
         <div class="card">
             <div class="card-header-with-logo">
-                <div class="distro-package-icon">
-                    <span class="box-emoji">📦</span>
-                    <img src="https://upload.wikimedia.org/wikipedia/commons/6/66/Openlogo-debianV2.svg" alt="Debian" class="overlay-logo">
+                <div class="app-icon-badge">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/6/66/Openlogo-debianV2.svg" alt="Debian">
                 </div>
                 <div>
                     <h2>Debian, Ubuntu & Proxmox (APT)</h2>
@@ -489,9 +480,8 @@ sudo apt update && sudo apt install cockpit-zfs-storage</code></pre>
 
         <div class="card">
             <div class="card-header-with-logo">
-                <div class="distro-package-icon">
-                    <span class="box-emoji">📦</span>
-                    <img src="https://upload.wikimedia.org/wikipedia/commons/0/00/RPM_Logo.svg" alt="RPM" class="overlay-logo">
+                <div class="app-icon-badge">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/0/00/RPM_Logo.svg" alt="RPM">
                 </div>
                 <div>
                     <h2>Rocky Linux, RHEL & Fedora (DNF / YUM)</h2>
