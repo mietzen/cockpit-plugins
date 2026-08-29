@@ -127,7 +127,12 @@ SPEC_EOF
         --define "_build_id_links none" \
         -bb "$SPEC_FILE"
     find "$RPMBUILD_DIR/RPMS" -name "*.rpm" -exec cp {} "$OUTPUT_DIR/" \;
-    echo "Created RPM package in $OUTPUT_DIR"
+    for rpm_f in "$OUTPUT_DIR"/*.rpm; do
+        if [ -f "$rpm_f" ]; then
+            python3 tools/reproducible_rpm.py "$rpm_f" --epoch "$SOURCE_DATE_EPOCH"
+        fi
+    done
+    echo "Created reproducible RPM package in $OUTPUT_DIR"
 else
     echo "==> rpmbuild not found on host, creating fallback RPM staging..."
     mkdir -p "$OUTPUT_DIR"
