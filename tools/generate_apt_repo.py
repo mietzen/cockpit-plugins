@@ -420,12 +420,15 @@ sudo apt update && sudo apt install cockpit-zfs-storage</code></pre>
             <p>One-line automated installation:</p>
             <pre><code>curl -fsSL https://{owner}.github.io/{repo}/install-rpm.sh | sudo bash</code></pre>
             <p style="margin-top: 1rem; color: var(--text-secondary); font-size: 0.9rem;">Manual setup:</p>
-            <pre><code>sudo tee /etc/yum.repos.d/cockpit-plugins.repo << 'EOF'
+            <pre><code>sudo rpm --import https://{owner}.github.io/{repo}/key.gpg
+sudo tee /etc/yum.repos.d/cockpit-plugins.repo << 'EOF'
 [cockpit-plugins]
 name=Cockpit Plugins Repository
 baseurl=https://{owner}.github.io/{repo}/rpm/
 enabled=1
-gpgcheck=0
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=https://{owner}.github.io/{repo}/key.gpg
 EOF
 sudo dnf install -y cockpit-zfs-storage</code></pre>
         </div>

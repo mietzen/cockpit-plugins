@@ -107,12 +107,17 @@ set -e
 
 echo "==> Configuring Cockpit Plugins RPM Repository ({owner}/{repo})..."
 
+# Import official repository GPG key if available
+rpm --import "https://{owner}.github.io/{repo}/key.gpg" 2>/dev/null || true
+
 cat << 'EOF' > /etc/yum.repos.d/cockpit-plugins.repo
 [cockpit-plugins]
 name=Cockpit Plugins Repository
 baseurl=https://{owner}.github.io/{repo}/rpm/
 enabled=1
-gpgcheck=0
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=https://{owner}.github.io/{repo}/key.gpg
 sslverify=1
 EOF
 

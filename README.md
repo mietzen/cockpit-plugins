@@ -40,12 +40,16 @@ curl -fsSL https://mietzen.github.io/cockpit-plugins/install-rpm.sh | sudo bash
 
 #### Manual Setup:
 ```shell
+sudo rpm --import https://mietzen.github.io/cockpit-plugins/key.gpg
+
 sudo tee /etc/yum.repos.d/cockpit-plugins.repo << 'EOF'
 [cockpit-plugins]
 name=Cockpit Plugins Repository
 baseurl=https://mietzen.github.io/cockpit-plugins/rpm/
 enabled=1
-gpgcheck=0
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=https://mietzen.github.io/cockpit-plugins/key.gpg
 EOF
 
 sudo dnf install -y cockpit-zfs-storage
