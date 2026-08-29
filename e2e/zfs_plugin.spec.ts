@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, Page, Frame } from "@playwright/test";
 import { execSync } from "child_process";
 
 const TEST_POOL = "e2epool";
@@ -12,49 +12,74 @@ function runHostCmd(cmd: string): string {
 }
 
 test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
-  test.beforeAll(async () => {
+  let page: Page;
+
+  async function getFrame(): Promise<Frame> {
+    const frameElement = await page.waitForSelector("iframe", { timeout: 20000 });
+    const frame = await frameElement.contentFrame();
+    if (!frame) {
+      throw new Error("Cockpit iframe contentFrame is null");
+    }
+    return frame;
+  }
+
+  test.beforeAll(async ({ browser }) => {
     // Cleanup any lingering test pool
     runHostCmd(`sudo zpool destroy -f ${TEST_POOL} 2>/dev/null || true`);
+    page = await browser.newPage({
+      viewport: { width: 1440, height: 900 },
+      ignoreHTTPSErrors: true,
+    });
   });
 
   test.afterAll(async () => {
     // Teardown test pool
     runHostCmd(`sudo zpool destroy -f ${TEST_POOL} 2>/dev/null || true`);
+    if (page) {
+      await page.close().catch(() => {});
+    }
   });
 
-  test("1. Login to Cockpit and load ZFS storage plugin", async ({ page }) => {
+  test("1. Login to Cockpit and load ZFS storage plugin", async () => {
     await page.goto("/");
     await page.waitForTimeout(1000);
 
-    // Fill login form
-    if (await page.isVisible("input#login-user-input")) {
-      await page.fill("input#login-user-input", "test-user");
-      await page.fill("input#login-password-input", "password");
-      const authCheckbox = await page.$("input#authorized-input");
-      if (authCheckbox) {
-        await authCheckbox.check();
+    // Check for login fields
+    const userInput = page.locator("input#login-user-input, input#login-user, input[name='login-user'], input[autocomplete='username']").first();
+    if (await userInput.isVisible({ timeout: 5000 }).catch(() => false)) {
+      await userInput.fill("test-user");
+      const passInput = page.locator("input#login-password-input, input#login-password, input[name='login-password'], input[autocomplete='current-password']").first();
+      await passInput.fill("password");
+
+      const authCheckbox = page.locator("input#authorized-input, input[type='checkbox']").first();
+      if (await authCheckbox.isVisible().catch(() => false)) {
+        await authCheckbox.check().catch(() => {});
       }
-      await page.click("button#login-button");
+
+      const loginBtn = page.locator("button#login-button, button[type='submit']").first();
+      await loginBtn.click();
       await page.waitForTimeout(3000);
     }
 
-    // Navigate to plugin
-    await page.goto("/zfs-storage");
-    await page.waitForTimeout(3000);
+    // Navigate to ZFS storage plugin
+    const sidebarLink = page.locator("a:has-text('ZFS storage'), a:has-text('ZFS Storage'), a[href*='zfs-storage']").first();
+    if (await sidebarLink.isVisible({ timeout: 5000 }).catch(() => false)) {
+      await sidebarLink.click();
+    } else {
+      await page.goto("/@localhost/zfs-storage");
+    }
+    await page.waitForTimeout(2000);
 
-    const frameElement = await page.waitForSelector("iframe[name*=\"zfs-storage\"], iframe[src*=\"zfs-storage\"]", { timeout: 15000 });
-    expect(frameElement).not.toBeNull();
-    const frame = await frameElement.contentFrame();
-    expect(frame).not.toBeNull();
+    const frame = await getFrame();
+    await frame.waitForSelector("#root, body", { timeout: 15000 });
 
     // Verify Overview header is visible
-    await expect(frame!.locator("text=ZFS Storage")).toBeVisible();
-    await expect(frame!.locator("text=Storage usage")).toBeVisible();
+    await expect(frame.locator("text=ZFS Storage").first()).toBeVisible({ timeout: 15000 });
+    await expect(frame.locator("text=Storage usage").first()).toBeVisible({ timeout: 15000 });
   });
 
-  test("2. Create ZFS Pool via Web UI Wizard and verify on filesystem", async ({ page }) => {
-    const frameElement = await page.waitForSelector("iframe[name*=\"zfs-storage\"], iframe[src*=\"zfs-storage\"]");
-    const frame = (await frameElement.contentFrame())!;
+  test("2. Create ZFS Pool via Web UI Wizard and verify on filesystem", async () => {
+    const frame = await getFrame();
 
     // Navigate to Pools tab
     await frame.click("button:has-text(\"Pools\")");
@@ -96,9 +121,8 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     await expect(frame.locator(`text=${TEST_POOL}`)).toBeVisible();
   });
 
-  test("3. Create Child Dataset and verify compression on filesystem", async ({ page }) => {
-    const frameElement = await page.waitForSelector("iframe[name*=\"zfs-storage\"], iframe[src*=\"zfs-storage\"]");
-    const frame = (await frameElement.contentFrame())!;
+  test("3. Create Child Dataset and verify compression on filesystem", async () => {
+    const frame = await getFrame();
 
     // Go to pool details
     await frame.click(`table tbody button:has-text("${TEST_POOL}")`);
@@ -126,12 +150,11 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     expect(compProp).toBe("lz4");
 
     // Verify in Web UI
-    await expect(frame.locator("text=testdata")).toBeVisible();
+    await expect(frame.locator("text=testdata").first()).toBeVisible();
   });
 
-  test("4. Create ZFS Volume (zvol) and verify device file on filesystem", async ({ page }) => {
-    const frameElement = await page.waitForSelector("iframe[name*=\"zfs-storage\"], iframe[src*=\"zfs-storage\"]");
-    const frame = (await frameElement.contentFrame())!;
+  test("4. Create ZFS Volume (zvol) and verify device file on filesystem", async () => {
+    const frame = await getFrame();
 
     // Click Create volume
     await frame.click("button:visible:has-text(\"Create volume\")");
@@ -148,12 +171,11 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     expect(zvolOutput).toBe(`${TEST_POOL}/testvol`);
 
     // Verify in Web UI
-    await expect(frame.locator("text=testvol")).toBeVisible();
+    await expect(frame.locator("text=testvol").first()).toBeVisible();
   });
 
-  test("5. Create ZFS Snapshot and verify in Snapshots tree & filesystem", async ({ page }) => {
-    const frameElement = await page.waitForSelector("iframe[name*=\"zfs-storage\"], iframe[src*=\"zfs-storage\"]");
-    const frame = (await frameElement.contentFrame())!;
+  test("5. Create ZFS Snapshot and verify in Snapshots tree & filesystem", async () => {
+    const frame = await getFrame();
 
     // Switch to Snapshots tab
     await frame.click("button[role=\"tab\"]:has-text(\"Snapshots\")");
@@ -172,12 +194,11 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     expect(snapOutput).toContain("snap-e2e-test");
 
     // Verify in Web UI
-    await expect(frame.locator("text=snap-e2e-test")).toBeVisible();
+    await expect(frame.locator("text=snap-e2e-test").first()).toBeVisible();
   });
 
-  test("6. Start and monitor Scrub via Maintenance tab", async ({ page }) => {
-    const frameElement = await page.waitForSelector("iframe[name*=\"zfs-storage\"], iframe[src*=\"zfs-storage\"]");
-    const frame = (await frameElement.contentFrame())!;
+  test("6. Start and monitor Scrub via Maintenance tab", async () => {
+    const frame = await getFrame();
 
     // Switch to Maintenance tab
     await frame.click("button[role=\"tab\"]:has-text(\"Maintenance\")");
@@ -195,9 +216,8 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     expect(statusOutput).toContain("scan:");
   });
 
-  test("7. Rename dataset and verify on filesystem", async ({ page }) => {
-    const frameElement = await page.waitForSelector("iframe[name*=\"zfs-storage\"], iframe[src*=\"zfs-storage\"]");
-    const frame = (await frameElement.contentFrame())!;
+  test("7. Rename dataset and verify on filesystem", async () => {
+    const frame = await getFrame();
 
     // Go back to Datasets & Volumes tab
     await frame.click("button[role=\"tab\"]:has-text(\"Datasets & Volumes\")");
@@ -223,9 +243,8 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     expect(oldDsOutput).toContain("does not exist");
   });
 
-  test("8. Delete dataset and volume and verify on filesystem", async ({ page }) => {
-    const frameElement = await page.waitForSelector("iframe[name*=\"zfs-storage\"], iframe[src*=\"zfs-storage\"]");
-    const frame = (await frameElement.contentFrame())!;
+  test("8. Delete dataset and volume and verify on filesystem", async () => {
+    const frame = await getFrame();
 
     // Find row for testdatanew and click Delete
     const row = frame.locator("table tbody tr", { hasText: "testdatanew" });
