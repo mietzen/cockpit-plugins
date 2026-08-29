@@ -1,0 +1,95 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+PLUGIN_DIR="${1:-plugins/zfs-storage}"
+OUTPUT_DIR="${2:-dist-debs}"
+VERSION="${3:-1.0.0}"
+
+PLUGIN_NAME=$(basename "$PLUGIN_DIR")
+PKG_NAME="cockpit-${PLUGIN_NAME}"
+MANIFEST="${PLUGIN_DIR}/manifest.json"
+
+if [ -f "$MANIFEST" ]; then
+    CUSTOM_NAME=$(python3 -c "import json; print(json.load(open('$MANIFEST')).get('name', ''))" 2>/dev/null || true)
+    if [ -n "$CUSTOM_NAME" ]; then
+        PKG_NAME="cockpit-${CUSTOM_NAME}"
+    fi
+fi
+
+# Locate dpkg-deb
+DPKG_DEB=""
+if command -v dpkg-deb >/dev/null 2>&1; then
+    DPKG_DEB=$(command -v dpkg-deb)
+elif [ -x "/opt/homebrew/bin/dpkg-deb" ]; then
+    DPKG_DEB="/opt/homebrew/bin/dpkg-deb"
+elif [ -x "/usr/bin/dpkg-deb" ]; then
+    DPKG_DEB="/usr/bin/dpkg-deb"
+fi
+
+if [ -n "$DPKG_DEB" ]; then
+    echo "==> Using system $DPKG_DEB to build Debian package..."
+    STAGE_DIR="build/deb-staging/${PKG_NAME}"
+    rm -rf "$STAGE_DIR"
+    mkdir -p "$STAGE_DIR/DEBIAN"
+    mkdir -p "$STAGE_DIR/usr/share/cockpit/${PLUGIN_NAME}"
+    mkdir -p "$STAGE_DIR/usr/libexec/cockpit-zfs"
+    mkdir -p "$OUTPUT_DIR"
+
+    # Control file
+    cat << CONTROL_EOF > "$STAGE_DIR/DEBIAN/control"
+Package: ${PKG_NAME}
+Version: ${VERSION}
+Section: admin
+Priority: optional
+Architecture: all
+Maintainer: Nils Stein <nils@mietzen.de>
+Depends: cockpit, zfsutils-linux, python3, smartmontools
+Homepage: https://github.com/mietzen/cockpit-plugins
+Description: Advanced OpenZFS storage manager for Cockpit.
+ Manage ZFS pools, datasets, zvols, snapshots, scrubs, trims,
+ and SMART disk health with PatternFly v5 UI.
+CONTROL_EOF
+
+    # Maintainer scripts
+    cat << 'POSTINST_EOF' > "$STAGE_DIR/DEBIAN/postinst"
+#!/bin/sh
+set -e
+if [ -f /usr/libexec/cockpit-zfs/zfs_helper.py ]; then
+    chmod +x /usr/libexec/cockpit-zfs/zfs_helper.py
+fi
+exit 0
+POSTINST_EOF
+    chmod 755 "$STAGE_DIR/DEBIAN/postinst"
+
+    cat << 'PRERM_EOF' > "$STAGE_DIR/DEBIAN/prerm"
+#!/bin/sh
+set -e
+exit 0
+PRERM_EOF
+    chmod 755 "$STAGE_DIR/DEBIAN/prerm"
+
+    # Frontend assets
+    if [ -d "${PLUGIN_DIR}/dist" ]; then
+        cp -r "${PLUGIN_DIR}/dist/"* "$STAGE_DIR/usr/share/cockpit/${PLUGIN_NAME}/"
+        rm -rf "$STAGE_DIR/usr/share/cockpit/${PLUGIN_NAME}/backend" || true
+    fi
+
+    # Backend helper
+    if [ -d "${PLUGIN_DIR}/backend" ]; then
+        cp -r "${PLUGIN_DIR}/backend/"* "$STAGE_DIR/usr/libexec/cockpit-zfs/"
+    fi
+
+    # Fix permissions
+    find "$STAGE_DIR/usr" -type d -exec chmod 755 {} +
+    find "$STAGE_DIR/usr" -type f -exec chmod 644 {} +
+    if [ -f "$STAGE_DIR/usr/libexec/cockpit-zfs/zfs_helper.py" ]; then
+        chmod 755 "$STAGE_DIR/usr/libexec/cockpit-zfs/zfs_helper.py"
+    fi
+
+    DEB_FILE="${OUTPUT_DIR}/${PKG_NAME}_${VERSION}_all.deb"
+    "$DPKG_DEB" --build --root-owner-group "$STAGE_DIR" "$DEB_FILE"
+    echo "Created Debian package: $DEB_FILE"
+else
+    echo "==> dpkg-deb not found on host, using python fallback..."
+    python3 tools/build_deb.py "$PLUGIN_DIR" --output-dir "$OUTPUT_DIR" --version "$VERSION"
+fi

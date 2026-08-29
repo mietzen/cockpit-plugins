@@ -13,7 +13,7 @@ build-zfs:
 deb: build
 	@echo "==> Packaging Debian packages..."
 	mkdir -p dist-debs
-	python3 tools/build_deb.py plugins/zfs-storage --output-dir dist-debs --version 1.0.0
+	tools/build_deb.sh plugins/zfs-storage dist-debs 1.0.0
 
 apt-repo: deb
 	@echo "==> Generating APT repository for GitHub Pages..."
