@@ -185,3 +185,21 @@ cockpit-zfs-storage_1.0.0_all.deb
 
 ### Automated APT Repository Generation
 GitHub Pages can host a complete APT repository containing `pool/`, `dists/stable/main/binary-all/Packages.gz`, and `Release` files, allowing end users to install and update plugins via standard `apt update && apt install cockpit-zfs-storage`.
+
+---
+
+## 4. Automated E2E CI Testing & Headless Pitfalls
+
+Testing Cockpit plugins with Playwright in headless CI (GitHub Actions) requires addressing several headless virtualization pitfalls:
+
+1. **Linux PAM & Shadow Authentication**:
+   - `useradd` leaves password hashes disabled (`!`) and shadow aging uninitialized in `/etc/shadow`.
+   - Set SHA-512 hashes via `openssl passwd -6`, unlock account with `passwd -u`, and initialize aging via `chage -d 20000 -m 0 -M 99999 -I -1 -E -1`.
+   - Configure `/etc/pam.d/cockpit` and set `AllowUnencrypted = true` in `/etc/cockpit/cockpit.conf`.
+
+2. **Iframe Scoping in Playwright**:
+   - Cockpit hosts plugins in an isolated iframe. Scope all test locators to `frameElement.contentFrame()` rather than the root page.
+
+3. **Virtual Loop Block Devices**:
+   - Headless CI runners lack physical storage drives. Loop devices (`/dev/loop0-3`) must be permitted by block parsers (`lsblk -a`), and `smartctl` execution must be bypassed for loop devices.
+
