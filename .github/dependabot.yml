@@ -36,6 +36,15 @@ updates:
       interval: "monthly"
     cooldown:
       default-days: 7
+    ignore:
+      - dependency-name: "@patternfly/*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "vite"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@vitejs/plugin-react"
+        update-types: ["version-update:semver-major"]
     groups:
       npm-zfs:
         patterns: ["*"]
