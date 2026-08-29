@@ -1,24 +1,14 @@
 # Cockpit Plugins
 
-[![Main Workflow](https://github.com/mietzen/cockpit-plugins/actions/workflows/main.yml/badge.svg)](https://github.com/mietzen/cockpit-plugins/actions/workflows/main.yml)
-[![APT Repository](https://img.shields.io/badge/APT-Repository-blue?logo=debian)](https://mietzen.github.io/cockpit-plugins/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![PatternFly](https://img.shields.io/badge/UI-PatternFly%20v5-red)](https://www.patternfly.org/)
-[![OpenZFS](https://img.shields.io/badge/ZFS-OpenZFS%202.x-orange)](https://openzfs.org/)
+A collection of modern, production-grade plugins and extensions for Cockpit server administration.
 
-A collection of modern, production-grade plugins and extensions for [Cockpit](https://cockpit-project.org/) server administration.
-
----
-
-## 📦 Available Plugins
+## Available Plugins
 
 | Plugin | Package Name | Description | Status |
 | :--- | :--- | :--- | :--- |
-| [**ZFS Storage**](zfs-storage/) | `cockpit-zfs-storage` | Complete OpenZFS storage manager with pool creation wizards, dataset/zvol trees, snapshots, scrubs, trims, and SMART health monitoring. | **Stable** |
+| [ZFS Storage](#zfs-storage) | `cockpit-zfs-storage` | Complete OpenZFS storage manager with pool creation wizards, dataset/zvol trees, snapshots, scrubs, trims, and SMART health monitoring. | Stable |
 
----
-
-## 🚀 Installation
+## Installation
 
 ### Debian, Ubuntu & Proxmox (APT)
 
@@ -41,8 +31,6 @@ sudo apt update
 sudo apt install cockpit-zfs-storage
 ```
 
----
-
 ### Rocky Linux, RHEL & Fedora (DNF / YUM)
 
 #### One-Line Automated Install:
@@ -63,53 +51,13 @@ EOF
 sudo dnf install -y cockpit-zfs-storage
 ```
 
----
+## Plugins
 
-## 📸 Screenshots (ZFS Storage Plugin)
+### ZFS Storage
 
-### Overview & Dashboard
-| Light Theme | Dark Theme |
-| :---: | :---: |
-| ![Overview Light](docs/screenshots/01-overview-light.png) | ![Overview Dark](docs/screenshots/01-overview-dark.png) |
+Advanced OpenZFS storage manager for Cockpit built with PatternFly v5.
 
-### Storage Pools
-| Light Theme | Dark Theme |
-| :---: | :---: |
-| ![Pools Light](docs/screenshots/02-pools-light.png) | ![Pools Dark](docs/screenshots/02-pools-dark.png) |
-
-### Pool Topology & Physical Devices
-| Light Theme | Dark Theme |
-| :---: | :---: |
-| ![Topology Light](docs/screenshots/03-pool-topology-light.png) | ![Topology Dark](docs/screenshots/03-pool-topology-dark.png) |
-
-### Datasets & Volumes (ZFS zvols)
-| Light Theme | Dark Theme |
-| :---: | :---: |
-| ![Datasets Light](docs/screenshots/04-pool-datasets-light.png) | ![Datasets Dark](docs/screenshots/04-pool-datasets-dark.png) |
-
-### Snapshots Tree & Target Focus
-| Light Theme | Dark Theme |
-| :---: | :---: |
-| ![Snapshots Light](docs/screenshots/05-pool-snapshots-light.png) | ![Snapshots Dark](docs/screenshots/05-pool-snapshots-dark.png) |
-
-### Pool Maintenance (Scrub & Trim)
-| Light Theme | Dark Theme |
-| :---: | :---: |
-| ![Maintenance Light](docs/screenshots/06-pool-maintenance-light.png) | ![Maintenance Dark](docs/screenshots/06-pool-maintenance-dark.png) |
-
-### Disks & SMART Health
-| Light Theme | Dark Theme |
-| :---: | :---: |
-| ![Disks Light](docs/screenshots/07-disks-smart-light.png) | ![Disks Dark](docs/screenshots/07-disks-smart-dark.png) |
-
-### Create Pool Wizard
-| Light Theme | Dark Theme |
-| :---: | :---: |
-| ![Create Pool Light](docs/screenshots/08-create-pool-modal-light.png) | ![Create Pool Dark](docs/screenshots/08-create-pool-modal-dark.png) |
-
----
-
-## ✨ Features (ZFS Storage)
+#### Features
 
 - **Pool Management**:
   - Multi-step Pool Wizard with Stripe, Mirror, RAIDZ1/2/3, and dRAID configurations.
@@ -117,7 +65,7 @@ sudo dnf install -y cockpit-zfs-storage
   - Pool import scan with automatic discovery and force import options.
   - Safe pool export and destroy with typed confirmation safeguards.
 
-- **Datasets & zvols**:
+- **Datasets & Volumes**:
   - Full filesystem and block volume (zvol) creation and management.
   - Hierarchical nested dataset tree.
   - Real-time property editing (Compression `lz4`/`zstd`, Quotas, Deduplication, Record sizes, Mountpoints).
@@ -137,12 +85,52 @@ sudo dnf install -y cockpit-zfs-storage
   - Disk offline, online, replace, and attach actions.
 
 - **Performance & Theming**:
-  - Built with **PatternFly v5** and synchronized with Cockpit Dark / Light shell theme.
-  - Pure in-memory view routing for **true 0ms redraw and zero iframe flicker**.
+  - Built with PatternFly v5 and synchronized with Cockpit Dark / Light shell theme.
+  - Pure in-memory view routing for true 0ms redraw and zero iframe flicker.
 
----
+#### Screenshots
 
-## 🛠️ Building From Source
+##### Overview & Dashboard
+| Light Theme | Dark Theme |
+| :---: | :---: |
+| ![Overview Light](docs/screenshots/01-overview-light.png) | ![Overview Dark](docs/screenshots/01-overview-dark.png) |
+
+##### Storage Pools
+| Light Theme | Dark Theme |
+| :---: | :---: |
+| ![Pools Light](docs/screenshots/02-pools-light.png) | ![Pools Dark](docs/screenshots/02-pools-dark.png) |
+
+##### Pool Topology & Physical Devices
+| Light Theme | Dark Theme |
+| :---: | :---: |
+| ![Topology Light](docs/screenshots/03-pool-topology-light.png) | ![Topology Dark](docs/screenshots/03-pool-topology-dark.png) |
+
+##### Datasets & Volumes (ZFS zvols)
+| Light Theme | Dark Theme |
+| :---: | :---: |
+| ![Datasets Light](docs/screenshots/04-pool-datasets-light.png) | ![Datasets Dark](docs/screenshots/04-pool-datasets-dark.png) |
+
+##### Snapshots Tree & Target Focus
+| Light Theme | Dark Theme |
+| :---: | :---: |
+| ![Snapshots Light](docs/screenshots/05-pool-snapshots-light.png) | ![Snapshots Dark](docs/screenshots/05-pool-snapshots-dark.png) |
+
+##### Pool Maintenance (Scrub & Trim)
+| Light Theme | Dark Theme |
+| :---: | :---: |
+| ![Maintenance Light](docs/screenshots/06-pool-maintenance-light.png) | ![Maintenance Dark](docs/screenshots/06-pool-maintenance-dark.png) |
+
+##### Disks & SMART Health
+| Light Theme | Dark Theme |
+| :---: | :---: |
+| ![Disks Light](docs/screenshots/07-disks-smart-light.png) | ![Disks Dark](docs/screenshots/07-disks-smart-dark.png) |
+
+##### Create Pool Wizard
+| Light Theme | Dark Theme |
+| :---: | :---: |
+| ![Create Pool Light](docs/screenshots/08-create-pool-modal-light.png) | ![Create Pool Dark](docs/screenshots/08-create-pool-modal-dark.png) |
+
+## Building From Source
 
 ```shell
 # Clone repository
@@ -154,6 +142,9 @@ make build
 
 # Build Debian packages (.deb)
 make deb
+
+# Build RPM packages (.rpm)
+make rpm
 
 # Install locally
 sudo make install
@@ -167,11 +158,9 @@ Deploy directly to a remote test machine over SSH:
 make deploy TARGET=user@192.168.1.100
 ```
 
----
+## End-to-End Testing
 
-## 🧪 End-to-End Testing
-
-The repository includes a comprehensive Playwright test suite that tests live Cockpit and OpenZFS on Ubuntu runners:
+The repository includes a Playwright test suite that tests live Cockpit and OpenZFS on Linux runners:
 
 ```shell
 # Setup virtual test disks and user
@@ -181,18 +170,9 @@ sudo bash e2e/setup_test_env.sh
 make e2e
 ```
 
----
-
-## 🐳 DevContainer Development
+## DevContainer Development
 
 Open this monorepo in VS Code or GitHub Codespaces with DevContainers:
-- **Base image**: [`docker-mise-devcontainer`](https://github.com/mietzen/docker-mise-devcontainer) (Debian Trixie)
-- **Pre-installed**: Cockpit, OpenZFS utilities, Node.js 22, Python 3.12, and Playwright dependencies
-- **Command**: Run `Dev Containers: Reopen in Container` in VS Code.
-
----
-
-## 📄 License
-
-MIT License. Developed for the OpenZFS and Cockpit community.
-
+- Base image: `ghcr.io/mietzen/docker-mise-devcontainer:latest` (Debian Trixie)
+- Pre-installed: Cockpit, OpenZFS utilities, Node.js 24, Python 3.12, and Playwright dependencies
+- Command: Run `Dev Containers: Reopen in Container` in VS Code.

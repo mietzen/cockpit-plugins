@@ -55,7 +55,7 @@ def parse_deb_control(deb_path):
                     pass
     return ""
 
-def generate_apt_repo(deb_dir, output_dir, dist_name="stable", component="main", owner="mietzen", repo="cockpit-plugins"):
+def generate_apt_repo(deb_dir, output_dir, dist_name="stable", component="main", owner="mietzen", repo="cockpit-plugins", rpm_dir=None):
     os.makedirs(output_dir, exist_ok=True)
     dists_dir = os.path.join(output_dir, "dists", dist_name, component, "binary-all")
     os.makedirs(dists_dir, exist_ok=True)
@@ -252,13 +252,29 @@ echo "==> Installation complete! Access Cockpit at https://<server-ip>:9090 and 
         f.write(install_sh_content)
     os.chmod(os.path.join(output_dir, "install.sh"), 0o755)
 
+    # Check for RPM packages
+    rpm_summary = []
+    if rpm_dir and os.path.exists(rpm_dir):
+        for rpm_f in os.listdir(rpm_dir):
+            if rpm_f.endswith(".rpm"):
+                rpm_path = os.path.join(rpm_dir, rpm_f)
+                stat_res = os.stat(rpm_path)
+                rpm_summary.append({
+                    "name": rpm_f.split("-")[0],
+                    "filename": f"rpm/{rpm_f}",
+                    "size": f"{stat_res.st_size / 1024:.1f} KiB",
+                })
+
     # Generate modern HTML index for GitHub Pages
     packages_table_rows = "".join([
         f"""<tr>
             <td><strong><code>{p['name']}</code></strong></td>
             <td><span class="badge">{p['version']}</span></td>
             <td>{p['description']}</td>
-            <td><a href="{p['filename']}" class="download-link">Download .deb</a> ({p['size']})</td>
+            <td>
+                <a href="{p['filename']}" class="download-link">Download .deb</a> ({p['size']})
+                {" | <a href='rpm/" + p['name'] + "-1.0.0-1.el10.noarch.rpm' class='download-link'>Download .rpm</a>" if rpm_summary else ""}
+            </td>
         </tr>""" for p in packages_summary
     ])
 
@@ -267,7 +283,7 @@ echo "==> Installation complete! Access Cockpit at https://<server-ip>:9090 and 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cockpit Plugins APT Repository</title>
+    <title>Cockpit Plugins Repository</title>
     <style>
         :root {{
             --bg: #0f141c;
@@ -384,32 +400,45 @@ echo "==> Installation complete! Access Cockpit at https://<server-ip>:9090 and 
 <body>
     <div class="container">
         <div class="header">
-            <h1>📦 Cockpit Plugins APT Repository</h1>
-            <p>Official Debian / Ubuntu repository for Cockpit extensions by <a href="https://github.com/{owner}" style="color: var(--accent); text-decoration: none;">{owner}</a></p>
+            <h1>Cockpit Plugins Repository</h1>
+            <p>Official repository for Cockpit extensions by <a href="https://github.com/{owner}" style="color: var(--accent); text-decoration: none;">{owner}</a></p>
         </div>
 
         <div class="card">
-            <h2>🚀 Quick Setup</h2>
-            <p>Add this repository to your Debian/Ubuntu server to install and automatically update Cockpit plugins:</p>
-            <pre><code># 1. Add repository source list
-echo "deb [trusted=yes] https://{owner}.github.io/{repo}/ {dist_name} {component}" | sudo tee /etc/apt/sources.list.d/cockpit-plugins.list
-
-# 2. Update package lists
-sudo apt update
-
-# 3. Install ZFS Storage plugin
-sudo apt install cockpit-zfs-storage</code></pre>
+            <h2>Debian, Ubuntu & Proxmox (APT)</h2>
+            <p>One-line automated installation with GPG verification:</p>
+            <pre><code>curl -fsSL https://{owner}.github.io/{repo}/install.sh | sudo bash</code></pre>
+            <p style="margin-top: 1rem; color: var(--text-secondary); font-size: 0.9rem;">Manual setup:</p>
+            <pre><code>sudo install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://{owner}.github.io/{repo}/cockpit-plugins.gpg | sudo tee /etc/apt/keyrings/cockpit-plugins.gpg > /dev/null
+echo "deb [signed-by=/etc/apt/keyrings/cockpit-plugins.gpg] https://{owner}.github.io/{repo}/ {dist_name} {component}" | sudo tee /etc/apt/sources.list.d/cockpit-plugins.list
+sudo apt update && sudo apt install cockpit-zfs-storage</code></pre>
         </div>
 
         <div class="card">
-            <h2>📦 Available Packages</h2>
+            <h2>Rocky Linux, RHEL & Fedora (DNF / YUM)</h2>
+            <p>One-line automated installation:</p>
+            <pre><code>curl -fsSL https://{owner}.github.io/{repo}/install-rpm.sh | sudo bash</code></pre>
+            <p style="margin-top: 1rem; color: var(--text-secondary); font-size: 0.9rem;">Manual setup:</p>
+            <pre><code>sudo tee /etc/yum.repos.d/cockpit-plugins.repo << 'EOF'
+[cockpit-plugins]
+name=Cockpit Plugins Repository
+baseurl=https://{owner}.github.io/{repo}/rpm/
+enabled=1
+gpgcheck=0
+EOF
+sudo dnf install -y cockpit-zfs-storage</code></pre>
+        </div>
+
+        <div class="card">
+            <h2>Available Packages</h2>
             <table>
                 <thead>
                     <tr>
                         <th>Package</th>
                         <th>Version</th>
                         <th>Description</th>
-                        <th>Direct Download</th>
+                        <th>Direct Downloads</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -433,6 +462,7 @@ sudo apt install cockpit-zfs-storage</code></pre>
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generate APT repository for Cockpit plugins")
     parser.add_argument("--deb-dir", default="dist-debs", help="Directory containing .deb files")
+    parser.add_argument("--rpm-dir", default="dist-rpms", help="Directory containing .rpm files")
     parser.add_argument("--output-dir", default="pages", help="Output directory for APT repo / GitHub Pages")
     parser.add_argument("--dist", default="stable", help="Distribution name (default: stable)")
     parser.add_argument("--component", default="main", help="Component name (default: main)")
@@ -440,4 +470,4 @@ if __name__ == "__main__":
     parser.add_argument("--repo", default="cockpit-plugins", help="GitHub repository name")
     args = parser.parse_args()
 
-    generate_apt_repo(args.deb_dir, args.output_dir, args.dist, args.component, args.owner, args.repo)
+    generate_apt_repo(args.deb_dir, args.output_dir, args.dist, args.component, args.owner, args.repo, args.rpm_dir)

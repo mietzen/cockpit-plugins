@@ -16,6 +16,9 @@ permissions:
   pages: write
   id-token: write
 
+env:
+  ACTIONS_ALLOW_NODE20: "true"
+
 jobs:
   build:
     name: Build Plugins, Test & Package (.deb & .rpm)
@@ -27,7 +30,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: "npm"
           cache-dependency-path: "**/package-lock.json"
 
@@ -91,7 +94,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: "npm"
           cache-dependency-path: "**/package-lock.json"
 
@@ -169,7 +172,7 @@ jobs:
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: |
-          python3 tools/generate_apt_repo.py --deb-dir dist-debs --output-dir pages --owner ${{ github.repository_owner }} --repo ${{ github.event.repository.name }}
+          python3 tools/generate_apt_repo.py --deb-dir dist-debs --rpm-dir dist-rpms --output-dir pages --owner ${{ github.repository_owner }} --repo ${{ github.event.repository.name }}
           python3 tools/generate_rpm_repo.py --rpm-dir dist-rpms --output-dir pages/rpm --owner ${{ github.repository_owner }} --repo ${{ github.event.repository.name }}
 
       - name: Upload GitHub Pages Artifact
