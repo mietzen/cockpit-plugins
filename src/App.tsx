@@ -35,18 +35,56 @@ import { ArcDetailsModal } from "./components/Modals/ArcDetailsModal";
 import { SmartDetailsModal } from "./components/Modals/SmartDetailsModal";
 import { CommandPreviewModal } from "./components/CommandPreviewModal";
 
+declare const cockpit: any;
+
 interface AppRoute {
   view: "dashboard" | "pools" | "pool-details" | "disks" | "settings";
   poolName: string | null;
   subTab: string;
 }
 
+const parseRoute = (segments: string[]): AppRoute => {
+  let clean = segments ? [...segments] : [];
+  if (clean.length > 0 && (clean[0] === "zfs-storage" || clean[0] === "cockpit-zfs")) {
+    clean = clean.slice(1);
+  }
+
+  if (!clean || clean.length === 0 || clean[0] === "" || clean[0] === "dashboard" || clean[0] === "overview") {
+    return { view: "dashboard", poolName: null, subTab: "topology" };
+  }
+
+  const root = clean[0];
+  if (root === "pools") {
+    if (clean.length >= 2 && clean[1]) {
+      const subTab = clean.length >= 3 && clean[2] ? clean[2] : "topology";
+      return { view: "pool-details", poolName: clean[1], subTab };
+    }
+    return { view: "pools", poolName: null, subTab: "topology" };
+  }
+  if (root === "disks") {
+    return { view: "disks", poolName: null, subTab: "topology" };
+  }
+  if (root === "settings") {
+    return { view: "settings", poolName: null, subTab: "topology" };
+  }
+  return { view: "dashboard", poolName: null, subTab: "topology" };
+};
+
 export const App: React.FC = () => {
-  const [route, setRoute] = useState<AppRoute>({
-    view: "dashboard",
-    poolName: null,
-    subTab: "topology",
+  const [route, setRoute] = useState<AppRoute>(() => {
+    let initialSegments: string[] = [];
+    if (typeof cockpit !== "undefined" && cockpit.location && Array.isArray(cockpit.location.path)) {
+      initialSegments = cockpit.location.path;
+    } else {
+      const hash = window.location.hash.replace(/^#\/?/, "");
+      if (hash) {
+        initialSegments = hash.split("/").filter(Boolean);
+      }
+    }
+    return parseRoute(initialSegments);
   });
+
+  const lastNavigatedPathRef = useRef<string>("");
 
   const [systemInfo, setSystemInfo] = useState<SystemInfo | null>(null);
   const [pools, setPools] = useState<ZPool[]>([]);
@@ -92,8 +130,6 @@ export const App: React.FC = () => {
     onConfirm: () => Promise<void>;
   } | null>(null);
 
-  const lastNavigatedPathRef = useRef<string>("");
-
   // Sync theme with Cockpit shell
   useEffect(() => {
     const applyTheme = () => {
@@ -121,34 +157,6 @@ export const App: React.FC = () => {
     applyTheme();
     window.addEventListener("storage", applyTheme);
     return () => window.removeEventListener("storage", applyTheme);
-  }, []);
-
-  // Parse path segments into route state atomically
-  const parseRoute = useCallback((segments: string[]): AppRoute => {
-    let clean = segments ? [...segments] : [];
-    if (clean.length > 0 && (clean[0] === "zfs-storage" || clean[0] === "cockpit-zfs")) {
-      clean = clean.slice(1);
-    }
-
-    if (!clean || clean.length === 0 || clean[0] === "" || clean[0] === "dashboard" || clean[0] === "overview") {
-      return { view: "dashboard", poolName: null, subTab: "topology" };
-    }
-
-    const root = clean[0];
-    if (root === "pools") {
-      if (clean.length >= 2 && clean[1]) {
-        const subTab = clean.length >= 3 && clean[2] ? clean[2] : "topology";
-        return { view: "pool-details", poolName: clean[1], subTab };
-      }
-      return { view: "pools", poolName: null, subTab: "topology" };
-    }
-    if (root === "disks") {
-      return { view: "disks", poolName: null, subTab: "topology" };
-    }
-    if (root === "settings") {
-      return { view: "settings", poolName: null, subTab: "topology" };
-    }
-    return { view: "dashboard", poolName: null, subTab: "topology" };
   }, []);
 
   // Synchronize state from URL hash
