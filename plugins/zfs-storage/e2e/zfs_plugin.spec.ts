@@ -1,13 +1,17 @@
 import { test, expect, Page, Frame } from "@playwright/test";
-import { execSync } from "child_process";
+import { execFileSync, execSync } from "child_process";
 
 const TEST_POOL = "e2epool";
 
 function runHostCmd(cmd: string): string {
   const sshHost = process.env.SSH_HOST;
-  const fullCmd = sshHost ? `ssh -o StrictHostKeyChecking=no ${sshHost} "${cmd.replace(/"/g, '\\"')}"` : cmd;
   try {
-    return execSync(fullCmd, { encoding: "utf-8" }).trim();
+    if (sshHost) {
+      return execFileSync("ssh", ["-o", "StrictHostKeyChecking=no", sshHost, cmd], {
+        encoding: "utf-8",
+      }).trim();
+    }
+    return execSync(cmd, { encoding: "utf-8" }).trim();
   } catch (err: any) {
     return (err.stdout || "") + " " + (err.stderr || "");
   }
