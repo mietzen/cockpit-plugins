@@ -2,6 +2,7 @@
 import sys
 import os
 import json
+import re
 import subprocess
 from typing import Dict, Any, List, Optional
 
@@ -53,6 +54,14 @@ except ImportError:
         parse_arcstats,
     )
 
+SAFE_NAME_RE = re.compile(r"^[a-zA-Z0-9_\-\.\:\/]+$")
+
+
+def validate_name(name: str, field_name: str = "Name") -> str:
+    if not name or not SAFE_NAME_RE.match(name):
+        raise ValueError(f"Invalid {field_name}: '{name}' contains forbidden characters")
+    return name
+
 
 def run_cmd(args: List[str], check: bool = False) -> subprocess.CompletedProcess:
     return subprocess.run(
@@ -71,7 +80,6 @@ class ZfsService:
 
     def get_system_info(self) -> Dict[str, Any]:
         kmod_loaded = os.path.exists("/proc/spl/kstat/zfs") or os.path.exists("/sys/module/zfs")
-        
         zfs_ver = ""
         try:
             p = run_cmd(["zfs", "version"])
@@ -101,7 +109,6 @@ class ZfsService:
             return []
 
         pools = parse_zpool_list(p_list.stdout)
-        
         for pool in pools:
             name = pool["name"]
             p_status = run_cmd(["zpool", "status", "-p", "-P", name])
@@ -118,12 +125,14 @@ class ZfsService:
         return pools
 
     def get_pool_status(self, pool_name: str) -> Dict[str, Any]:
+        validate_name(pool_name, "pool_name")
         p = run_cmd(["zpool", "status", "-p", "-P", pool_name])
         if p.returncode != 0:
             return {"error": p.stderr.strip()}
         return parse_zpool_status(p.stdout)
 
     def get_pool_properties(self, pool_name: str) -> Dict[str, str]:
+        validate_name(pool_name, "pool_name")
         p = run_cmd(["zpool", "get", "all", "-p", "-H", pool_name])
         if p.returncode != 0:
             return {}
@@ -135,6 +144,7 @@ class ZfsService:
             "-o", "name,type,used,avail,refer,mountpoint,mounted,compression,compressratio,dedup,encryption,keystatus,atime,sync,quota,reservation,recordsize,volsize,volblocksize,origin"
         ]
         if pool_name:
+            validate_name(pool_name, "pool_name")
             cmd.append(pool_name)
 
         p = run_cmd(cmd)
@@ -162,6 +172,7 @@ class ZfsService:
     def get_snapshots(self, path: Optional[str] = None) -> List[Dict[str, Any]]:
         cmd = ["zfs", "list", "-p", "-H", "-t", "snapshot", "-o", "name,creation,used,refer,clones"]
         if path:
+            validate_name(path, "path")
             cmd.append(path)
 
         p = run_cmd(cmd)
@@ -177,7 +188,6 @@ class ZfsService:
 
         raw_devices = parse_lsblk(p.stdout)
         disks = []
-
         pools = self.get_pools()
         pool_device_map: Dict[str, str] = {}
         for pool in pools:
@@ -253,15 +263,190 @@ class ZfsService:
 
         return disks
 
-    def execute_command(self, cmd_args: List[str]) -> Dict[str, Any]:
-        p = run_cmd(cmd_args)
+    def _exec(self, cmd: List[str]) -> Dict[str, Any]:
+        p = run_cmd(cmd)
         return {
             "success": p.returncode == 0,
             "returncode": p.returncode,
             "stdout": p.stdout.strip(),
             "stderr": p.stderr.strip(),
-            "command": " ".join(cmd_args),
+            "command": " ".join(cmd),
         }
+
+    def pool_create(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        name = validate_name(payload["name"], "pool_name")
+        vdevs = []
+        for v in payload.get("vdevs", []):
+            raw_type = v.get("type", "data")
+            v_type = VDevType(raw_type) if raw_type in [e.value for e in VDevType] else VDevType.DATA
+            devices = [validate_name(d, "device") for d in v.get("devices", [])]
+            vdevs.append(VDevConfig(type=v_type, devices=devices))
+        
+        ashift_val = payload.get("ashift")
+        ashift = AshiftType(int(ashift_val)) if ashift_val else AshiftType.ASHIFT_AUTO
+        
+        comp_val = payload.get("compression")
+        compression = CompressionType(comp_val) if comp_val else CompressionType.OFF
+
+        cmd = self.builder.build_pool_create(
+            name=name,
+            vdevs=vdevs,
+            ashift=ashift,
+            compression=compression,
+            altroot=payload.get("altroot"),
+            mountpoint=payload.get("mountpoint"),
+            properties=payload.get("properties"),
+            force=payload.get("force", False),
+        )
+        return self._exec(cmd)
+
+    def pool_destroy(self, pool_name: str, force: bool = True) -> Dict[str, Any]:
+        name = validate_name(pool_name, "pool_name")
+        cmd = self.builder.build_pool_destroy(name, force=force)
+        return self._exec(cmd)
+
+    def pool_export(self, pool_name: str, force: bool = False) -> Dict[str, Any]:
+        name = validate_name(pool_name, "pool_name")
+        cmd = self.builder.build_pool_export(name, force=force)
+        return self._exec(cmd)
+
+    def pool_import(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        name = payload.get("name")
+        if name:
+            validate_name(name, "pool_name")
+        cmd = self.builder.build_pool_import(
+            name=name,
+            force=payload.get("force", True),
+            altroot=payload.get("altroot"),
+            directory=payload.get("directory", "/dev/disk/by-id"),
+        )
+        return self._exec(cmd)
+
+    def pool_scrub(self, pool_name: str, action: str = "start") -> Dict[str, Any]:
+        name = validate_name(pool_name, "pool_name")
+        scrub_action = ScrubAction(action)
+        cmd = self.builder.build_pool_scrub(name, action=scrub_action)
+        return self._exec(cmd)
+
+    def pool_trim(self, pool_name: str, action: str = "start", device: Optional[str] = None) -> Dict[str, Any]:
+        name = validate_name(pool_name, "pool_name")
+        trim_action = TrimAction(action)
+        dev = validate_name(device, "device") if device else None
+        cmd = self.builder.build_pool_trim(name, action=trim_action, device=dev)
+        return self._exec(cmd)
+
+    def pool_clear(self, pool_name: str, device: Optional[str] = None) -> Dict[str, Any]:
+        name = validate_name(pool_name, "pool_name")
+        dev = validate_name(device, "device") if device else None
+        cmd = self.builder.build_pool_clear(name, device=dev)
+        return self._exec(cmd)
+
+    def pool_set_property(self, pool_name: str, prop: str, value: str) -> Dict[str, Any]:
+        name = validate_name(pool_name, "pool_name")
+        validate_name(prop, "prop")
+        cmd = self.builder.build_pool_set_property(name, prop=prop, value=value)
+        return self._exec(cmd)
+
+    def dataset_create(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        path = validate_name(payload["path"], "dataset_path")
+        ds_type = payload.get("type", "filesystem")
+        properties = payload.get("properties")
+
+        if ds_type == "volume":
+            size = payload.get("size", "10G")
+            volblocksize = payload.get("volblocksize")
+            sparse = payload.get("sparse", True)
+            cmd = self.builder.build_dataset_create_zvol(
+                path=path,
+                size=size,
+                volblocksize=volblocksize,
+                sparse=sparse,
+                properties=properties,
+            )
+        else:
+            cmd = self.builder.build_dataset_create(
+                path=path,
+                type=DatasetType.FILESYSTEM,
+                properties=properties,
+            )
+        return self._exec(cmd)
+
+    def dataset_destroy(self, path: str, recursive: bool = True, force: bool = True) -> Dict[str, Any]:
+        ds_path = validate_name(path, "dataset_path")
+        cmd = self.builder.build_dataset_destroy(ds_path, recursive=recursive, force=force)
+        return self._exec(cmd)
+
+    def dataset_rename(self, old_path: str, new_path: str) -> Dict[str, Any]:
+        old_p = validate_name(old_path, "old_path")
+        new_p = validate_name(new_path, "new_path")
+        cmd = self.builder.build_dataset_rename(old_p, new_p)
+        return self._exec(cmd)
+
+    def dataset_mount(self, path: str) -> Dict[str, Any]:
+        ds_path = validate_name(path, "dataset_path")
+        cmd = self.builder.build_dataset_mount(ds_path)
+        return self._exec(cmd)
+
+    def dataset_unmount(self, path: str, force: bool = False) -> Dict[str, Any]:
+        ds_path = validate_name(path, "dataset_path")
+        cmd = self.builder.build_dataset_unmount(ds_path, force=force)
+        return self._exec(cmd)
+
+    def dataset_set_property(self, path: str, prop: str, value: str) -> Dict[str, Any]:
+        ds_path = validate_name(path, "dataset_path")
+        validate_name(prop, "prop")
+        cmd = self.builder.build_dataset_set_property(ds_path, prop=prop, value=value)
+        return self._exec(cmd)
+
+    def dataset_inherit_property(self, path: str, prop: str) -> Dict[str, Any]:
+        ds_path = validate_name(path, "dataset_path")
+        validate_name(prop, "prop")
+        cmd = self.builder.build_dataset_inherit(ds_path, prop=prop)
+        return self._exec(cmd)
+
+    def snapshot_create(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        path = validate_name(payload["path"], "dataset_path")
+        snap_name = validate_name(payload["name"], "snapshot_name")
+        recursive = payload.get("recursive", False)
+        cmd = self.builder.build_snapshot_create(path, snapshot_name=snap_name, recursive=recursive)
+        return self._exec(cmd)
+
+    def snapshot_destroy(self, snapshot_path: str, recursive: bool = False) -> Dict[str, Any]:
+        snap_p = validate_name(snapshot_path, "snapshot_path")
+        cmd = self.builder.build_snapshot_destroy(snap_p, recursive=recursive)
+        return self._exec(cmd)
+
+    def snapshot_rollback(self, snapshot_path: str, destroy_intermediate: bool = True) -> Dict[str, Any]:
+        snap_p = validate_name(snapshot_path, "snapshot_path")
+        cmd = self.builder.build_snapshot_rollback(snap_p, destroy_intermediate=destroy_intermediate)
+        return self._exec(cmd)
+
+    def snapshot_clone(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        snapshot_path = validate_name(payload["snapshot"], "snapshot_path")
+        clone_path = validate_name(payload["clone_path"], "clone_path")
+        properties = payload.get("properties")
+        cmd = self.builder.build_snapshot_clone(snapshot_path, clone_path=clone_path, properties=properties)
+        return self._exec(cmd)
+
+    def disk_action(self, action: str, pool: str, device: str, new_device: Optional[str] = None) -> Dict[str, Any]:
+        pool_name = validate_name(pool, "pool_name")
+        dev = validate_name(device, "device")
+        new_dev = validate_name(new_device, "new_device") if new_device else None
+
+        if action == "offline":
+            cmd = self.builder.build_pool_offline(pool_name, dev)
+        elif action == "online":
+            cmd = self.builder.build_pool_online(pool_name, dev)
+        elif action == "detach":
+            cmd = self.builder.build_pool_detach(pool_name, dev)
+        elif action == "attach" and new_dev:
+            cmd = self.builder.build_pool_attach(pool_name, dev, new_dev)
+        elif action == "replace" and new_dev:
+            cmd = self.builder.build_pool_replace(pool_name, dev, new_dev)
+        else:
+            raise ValueError(f"Unknown or invalid disk action: '{action}'")
+
+        return self._exec(cmd)
 
 
 def main():
@@ -283,20 +468,85 @@ def main():
         elif action == "pool-properties":
             pool = sys.argv[2] if len(sys.argv) > 2 else ""
             res = svc.get_pool_properties(pool)
+        elif action == "pool-create":
+            payload = json.loads(sys.argv[2])
+            res = svc.pool_create(payload)
+        elif action == "pool-destroy":
+            pool = sys.argv[2]
+            res = svc.pool_destroy(pool)
+        elif action == "pool-export":
+            pool = sys.argv[2]
+            res = svc.pool_export(pool)
+        elif action == "pool-import":
+            payload = json.loads(sys.argv[2]) if len(sys.argv) > 2 else {}
+            res = svc.pool_import(payload)
+        elif action == "pool-scrub":
+            pool = sys.argv[2]
+            scrub_action = sys.argv[3] if len(sys.argv) > 3 else "start"
+            res = svc.pool_scrub(pool, scrub_action)
+        elif action == "pool-trim":
+            pool = sys.argv[2]
+            trim_action = sys.argv[3] if len(sys.argv) > 3 else "start"
+            device = sys.argv[4] if len(sys.argv) > 4 else None
+            res = svc.pool_trim(pool, trim_action, device)
+        elif action == "pool-clear":
+            pool = sys.argv[2]
+            device = sys.argv[3] if len(sys.argv) > 3 else None
+            res = svc.pool_clear(pool, device)
+        elif action == "pool-set-property":
+            pool, prop, val = sys.argv[2], sys.argv[3], sys.argv[4]
+            res = svc.pool_set_property(pool, prop, val)
         elif action == "datasets-list":
             pool = sys.argv[2] if len(sys.argv) > 2 else None
             res = svc.get_datasets(pool)
+        elif action == "dataset-create":
+            payload = json.loads(sys.argv[2])
+            res = svc.dataset_create(payload)
+        elif action == "dataset-destroy":
+            path = sys.argv[2]
+            recursive = sys.argv[3].lower() == "true" if len(sys.argv) > 3 else True
+            res = svc.dataset_destroy(path, recursive=recursive)
+        elif action == "dataset-rename":
+            old_p, new_p = sys.argv[2], sys.argv[3]
+            res = svc.dataset_rename(old_p, new_p)
+        elif action == "dataset-mount":
+            path = sys.argv[2]
+            res = svc.dataset_mount(path)
+        elif action == "dataset-unmount":
+            path = sys.argv[2]
+            force = sys.argv[3].lower() == "true" if len(sys.argv) > 3 else False
+            res = svc.dataset_unmount(path, force=force)
+        elif action == "dataset-set-property":
+            path, prop, val = sys.argv[2], sys.argv[3], sys.argv[4]
+            res = svc.dataset_set_property(path, prop, val)
+        elif action == "dataset-inherit-property":
+            path, prop = sys.argv[2], sys.argv[3]
+            res = svc.dataset_inherit_property(path, prop)
         elif action == "snapshots-list":
             path = sys.argv[2] if len(sys.argv) > 2 else None
             res = svc.get_snapshots(path)
+        elif action == "snapshot-create":
+            payload = json.loads(sys.argv[2])
+            res = svc.snapshot_create(payload)
+        elif action == "snapshot-destroy":
+            snap_path = sys.argv[2]
+            recursive = sys.argv[3].lower() == "true" if len(sys.argv) > 3 else False
+            res = svc.snapshot_destroy(snap_path, recursive=recursive)
+        elif action == "snapshot-rollback":
+            snap_path = sys.argv[2]
+            destroy_inter = sys.argv[3].lower() == "true" if len(sys.argv) > 3 else True
+            res = svc.snapshot_rollback(snap_path, destroy_intermediate=destroy_inter)
+        elif action == "snapshot-clone":
+            payload = json.loads(sys.argv[2])
+            res = svc.snapshot_clone(payload)
         elif action == "disks-list":
             res = svc.get_disks()
-        elif action == "exec":
-            if len(sys.argv) < 3:
-                res = {"error": "Missing command payload"}
-            else:
-                cmd_args = json.loads(sys.argv[2])
-                res = svc.execute_command(cmd_args)
+        elif action == "disk-action":
+            act = sys.argv[2]
+            pool = sys.argv[3]
+            device = sys.argv[4]
+            new_device = sys.argv[5] if len(sys.argv) > 5 else None
+            res = svc.disk_action(act, pool, device, new_device)
         else:
             res = {"error": f"Unknown action '{action}'"}
 

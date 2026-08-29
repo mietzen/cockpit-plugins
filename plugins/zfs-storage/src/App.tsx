@@ -12,6 +12,7 @@ import {
   ZDataset,
   ZSnapshot,
   DiskDevice,
+  CommandResult,
 } from "./types";
 import { zfsApi } from "./api/zfsClient";
 import { Navigation } from "./components/Navigation";
@@ -42,6 +43,47 @@ interface AppRoute {
   poolName: string | null;
   subTab: string;
 }
+
+type ActiveModal =
+  | { type: "create-pool" }
+  | { type: "arc-details" }
+  | { type: "smart-details"; disk: DiskDevice }
+  | { type: "create-dataset"; parent: string }
+  | { type: "create-zvol"; parent: string }
+  | { type: "edit-properties"; dataset: ZDataset }
+  | { type: "create-snapshot"; target: string }
+  | { type: "rollback-snapshot"; snapshot: ZSnapshot }
+  | { type: "clone-snapshot"; snapshot: ZSnapshot }
+  | {
+      type: "rename";
+      itemType: "dataset" | "volume" | "snapshot";
+      currentName: string;
+      originalSnapshot?: ZSnapshot;
+    }
+  | {
+      type: "destroy";
+      itemType: "pool" | "dataset" | "snapshot" | "snapshots";
+      itemName: string;
+    }
+  | {
+      type: "attach";
+      poolName: string;
+      existingDevice: string;
+    }
+  | {
+      type: "replace";
+      poolName: string;
+      oldDevice: string;
+    }
+  | {
+      type: "preview";
+      title: string;
+      command: string[];
+      description?: string;
+      isDestructive?: boolean;
+      onConfirm: () => Promise<void>;
+    }
+  | null;
 
 const parseRoute = (segments: string[]): AppRoute => {
   let clean = segments ? [...segments] : [];
@@ -98,37 +140,8 @@ export const App: React.FC = () => {
     Array<{ id: string; variant: "success" | "danger" | "warning" | "info"; title: string; message?: string }>
   >([]);
 
-  // Modals state
-  const [isCreatePoolOpen, setIsCreatePoolOpen] = useState(false);
-  const [isArcModalOpen, setIsArcModalOpen] = useState(false);
-  const [smartModalDisk, setSmartModalDisk] = useState<DiskDevice | null>(null);
-  const [createDatasetParent, setCreateDatasetParent] = useState<string | null>(null);
-  const [createZVolParent, setCreateZVolParent] = useState<string | null>(null);
-  const [editPropertiesTarget, setEditPropertiesTarget] = useState<ZDataset | null>(null);
-  const [createSnapshotTarget, setCreateSnapshotTarget] = useState<string | null>(null);
-  const [rollbackSnapshotTarget, setRollbackSnapshotTarget] = useState<ZSnapshot | null>(null);
-  const [cloneSnapshotTarget, setCloneSnapshotTarget] = useState<ZSnapshot | null>(null);
-  const [renameTarget, setRenameTarget] = useState<{
-    itemType: "dataset" | "volume" | "snapshot";
-    currentName: string;
-    originalSnapshot?: ZSnapshot;
-  } | null>(null);
-  const [destroyTarget, setDestroyTarget] = useState<{
-    type: "pool" | "dataset" | "snapshot" | "snapshots";
-    name: string;
-  } | null>(null);
-  const [attachTarget, setAttachTarget] = useState<{ poolName: string; existingDevice: string } | null>(null);
-  const [replaceTarget, setReplaceTarget] = useState<{ poolName: string; oldDevice: string } | null>(null);
-
-  // Generic Command Preview Modal State
-  const [previewModalState, setPreviewModalState] = useState<{
-    isOpen: boolean;
-    title: string;
-    command: string[];
-    description?: string;
-    isDestructive?: boolean;
-    onConfirm: () => Promise<void>;
-  } | null>(null);
+  // Consolidated Modal State (resolves state bloat)
+  const [activeModal, setActiveModal] = useState<ActiveModal>(null);
 
   // Sync theme with Cockpit shell
   useEffect(() => {
@@ -140,11 +153,9 @@ export const App: React.FC = () => {
       } else if (themePref === "light") {
         isDark = false;
       } else {
-        const shellTheme = localStorage.getItem("shell:style") || "auto";
-        isDark =
-          shellTheme === "dark" ||
-          (window.matchMedia?.("(prefers-color-scheme: dark)").matches &&
-            shellTheme === "auto");
+        const shellDark = document.documentElement.classList.contains("pf-v5-theme-dark");
+        const sysDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        isDark = shellDark || sysDark;
       }
 
       if (isDark) {
@@ -155,48 +166,70 @@ export const App: React.FC = () => {
     };
 
     applyTheme();
+    window.addEventListener("cockpit-style", applyTheme);
     window.addEventListener("storage", applyTheme);
-    return () => window.removeEventListener("storage", applyTheme);
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    mediaQuery.addEventListener("change", applyTheme);
+
+    return () => {
+      window.removeEventListener("cockpit-style", applyTheme);
+      window.removeEventListener("storage", applyTheme);
+      mediaQuery.removeEventListener("change", applyTheme);
+    };
   }, []);
 
-  // Synchronize state from URL hash
-  const syncFromUrl = useCallback(() => {
-    const hash = window.location.hash.replace(/^#\/?/, "");
-    const segments = hash ? hash.split("/").filter(Boolean) : [];
-
-    const pathKey = segments.join("/");
-    if (lastNavigatedPathRef.current === pathKey) {
-      return;
-    }
-    lastNavigatedPathRef.current = pathKey;
-
-    const newRoute = parseRoute(segments);
-    setRoute(newRoute);
-  }, [parseRoute]);
-
-  // Navigate to a new route in memory without notifying parent frame
   const navigateTo = useCallback((segments: string[]) => {
-    const pathKey = segments.join("/");
-    if (lastNavigatedPathRef.current === pathKey) {
+    const nextRoute = parseRoute(segments);
+    setRoute(nextRoute);
+
+    const fullPathStr = segments.join("/");
+    lastNavigatedPathRef.current = fullPathStr;
+
+    const targetHash = segments.length > 0 ? `#/${segments.join("/")}` : "#/";
+    if (window.location.hash !== targetHash) {
+      window.history.pushState(null, "", targetHash);
+    }
+  }, []);
+
+  const syncFromUrl = useCallback(() => {
+    let segments: string[] = [];
+    if (typeof cockpit !== "undefined" && cockpit.location && Array.isArray(cockpit.location.path)) {
+      segments = cockpit.location.path;
+    } else {
+      const hash = window.location.hash.replace(/^#\/?/, "");
+      if (hash) {
+        segments = hash.split("/").filter(Boolean);
+      }
+    }
+
+    const currentPathStr = segments.join("/");
+    if (currentPathStr === lastNavigatedPathRef.current) {
       return;
     }
-    lastNavigatedPathRef.current = pathKey;
 
-    const newRoute = parseRoute(segments);
-    setRoute(newRoute);
+    lastNavigatedPathRef.current = currentPathStr;
+    setRoute(parseRoute(segments));
+  }, []);
 
-    const targetHash = pathKey ? `#/${pathKey}` : "#/";
-    if (window.location.hash !== targetHash) {
-      window.history.replaceState(null, "", targetHash);
-    }
-  }, [parseRoute]);
-
-  // Listen to browser Back / Forward buttons without parent frame thrashing
   useEffect(() => {
-    syncFromUrl();
+    if (typeof cockpit !== "undefined" && cockpit.location) {
+      const handleLocationChanged = () => {
+        syncFromUrl();
+      };
+      cockpit.addEventListener("locationchanged", handleLocationChanged);
+      return () => {
+        cockpit.removeEventListener("locationchanged", handleLocationChanged);
+      };
+    }
+  }, [syncFromUrl]);
 
-    const handleHashChange = () => syncFromUrl();
-    const handlePopState = () => syncFromUrl();
+  useEffect(() => {
+    const handleHashChange = () => {
+      syncFromUrl();
+    };
+    const handlePopState = () => {
+      syncFromUrl();
+    };
 
     window.addEventListener("hashchange", handleHashChange);
     window.addEventListener("popstate", handlePopState);
@@ -242,10 +275,10 @@ export const App: React.FC = () => {
     loadData();
   }, [loadData]);
 
-  const executeCmd = async (command: string[], successMsg: string) => {
-    const result = await zfsApi.executeCommand(command);
-    if (!result.success) {
-      throw new Error(result.stderr || "Command failed");
+  const runAction = async (actionPromise: Promise<CommandResult>, successMsg: string) => {
+    const res = await actionPromise;
+    if (!res.success) {
+      throw new Error(res.stderr || "Operation failed");
     }
     addAlert("success", successMsg);
     await loadData();
@@ -268,88 +301,80 @@ export const App: React.FC = () => {
         (d) => d.name === baseName || d.path === device || d.path === `/dev/${baseName}`
       );
       if (found) {
-        setSmartModalDisk(found);
+        setActiveModal({ type: "smart-details", disk: found });
       } else {
-        setSmartModalDisk({
-          name: baseName,
-          path: device.startsWith("/dev/") ? device : `/dev/${device}`,
-          size: 0,
-          model: "Generic Disk",
-          serial: "-",
-          wwn: "-",
-          rotational: false,
-          smart_health: "UNKNOWN",
-          temperature: null,
-          transport: "sata",
-          pool: null,
-          partitions: [],
+        setActiveModal({
+          type: "smart-details",
+          disk: {
+            name: baseName,
+            path: device.startsWith("/dev/") ? device : `/dev/${device}`,
+            size: 0,
+            model: "Generic Disk",
+            serial: "-",
+            wwn: "-",
+            rotational: false,
+            smart_health: "UNKNOWN",
+            temperature: null,
+            transport: "sata",
+            pool: null,
+            partitions: [],
+          },
         });
       }
     } else {
-      setSmartModalDisk(device);
+      setActiveModal({ type: "smart-details", disk: device });
     }
   };
 
-  // Mutating Actions with Command Preview check
   const shouldPreview = () => localStorage.getItem("cockpit_zfs_preview") !== "false";
 
   const handleScrubAction = (poolName: string, action: "start" | "pause" | "stop") => {
-    const cmd = ["zpool", "scrub"];
-    if (action === "stop") cmd.push("-s");
-    if (action === "pause") cmd.push("-p");
-    cmd.push(poolName);
-
+    const cmd = ["zpool", "scrub", ...(action === "stop" ? ["-s"] : action === "pause" ? ["-p"] : []), poolName];
     const actionText = action === "start" ? "Start scrub" : action === "pause" ? "Pause scrub" : "Stop scrub";
     if (shouldPreview()) {
-      setPreviewModalState({
-        isOpen: true,
+      setActiveModal({
+        type: "preview",
         title: `${actionText}: ${poolName}`,
         command: cmd,
         description: `Execute ${actionText.toLowerCase()} on storage pool ${poolName}.`,
-        onConfirm: () => executeCmd(cmd, `Scrub action '${action}' completed on ${poolName}`),
+        onConfirm: () => runAction(zfsApi.scrubPool(poolName, action), `Scrub action '${action}' completed on ${poolName}`),
       });
     } else {
-      executeCmd(cmd, `Scrub action '${action}' completed on ${poolName}`).catch((err) =>
+      runAction(zfsApi.scrubPool(poolName, action), `Scrub action '${action}' completed on ${poolName}`).catch((err) =>
         addAlert("danger", "Scrub failed", err.message)
       );
     }
   };
 
   const handleTrimAction = (poolName: string, action: "start" | "suspend" | "stop") => {
-    const cmd = ["zpool", "trim"];
-    if (action === "stop") cmd.push("-c");
-    if (action === "suspend") cmd.push("-d");
-    cmd.push(poolName);
-
+    const cmd = ["zpool", "trim", ...(action === "stop" ? ["-c"] : action === "suspend" ? ["-d"] : []), poolName];
     const actionText = action === "start" ? "Start trim" : action === "suspend" ? "Suspend trim" : "Stop trim";
     if (shouldPreview()) {
-      setPreviewModalState({
-        isOpen: true,
+      setActiveModal({
+        type: "preview",
         title: `${actionText}: ${poolName}`,
         command: cmd,
         description: `Execute ${actionText.toLowerCase()} on pool ${poolName}.`,
-        onConfirm: () => executeCmd(cmd, `Trim action '${action}' completed on ${poolName}`),
+        onConfirm: () => runAction(zfsApi.trimPool(poolName, action), `Trim action '${action}' completed on ${poolName}`),
       });
     } else {
-      executeCmd(cmd, `Trim action '${action}' completed on ${poolName}`).catch((err) =>
+      runAction(zfsApi.trimPool(poolName, action), `Trim action '${action}' completed on ${poolName}`).catch((err) =>
         addAlert("danger", "Trim failed", err.message)
       );
     }
   };
 
   const handleClearErrors = (poolName: string, device?: string) => {
-    const cmd = ["zpool", "clear", poolName];
-    if (device) cmd.push(device);
-
+    const cmd = ["zpool", "clear", poolName, ...(device ? [device] : [])];
     if (shouldPreview()) {
-      setPreviewModalState({
-        isOpen: true,
+      setActiveModal({
+        type: "preview",
         title: `Clear errors: ${poolName}`,
         command: cmd,
-        onConfirm: () => executeCmd(cmd, `Cleared error counters on ${poolName}`),
+        onConfirm: () => runAction(zfsApi.clearPool(poolName, device), `Cleared error counters on ${poolName}`),
       });
     } else {
-      executeCmd(cmd, `Cleared error counters on ${poolName}`).catch((err) =>
+      runAction(zfsApi.clearPool(poolName, device), `Cleared error counters on ${poolName}`).catch((err) =>
         addAlert("danger", "Clear errors failed", err.message)
       );
     }
@@ -357,40 +382,25 @@ export const App: React.FC = () => {
 
   const handleExportPool = (pool: ZPool) => {
     const cmd = ["zpool", "export", pool.name];
-    setPreviewModalState({
-      isOpen: true,
+    setActiveModal({
+      type: "preview",
       title: `Export pool: ${pool.name}`,
       command: cmd,
       description: `Exporting pool ${pool.name} will unmount its datasets and release devices for import on another system.`,
-      onConfirm: () => executeCmd(cmd, `Pool ${pool.name} exported`),
+      onConfirm: () => runAction(zfsApi.exportPool(pool.name), `Pool ${pool.name} exported`),
     });
   };
 
   const handleMountToggle = (dataset: ZDataset) => {
-    const cmd = dataset.mounted ? ["zfs", "unmount", dataset.name] : ["zfs", "mount", dataset.name];
-    const actionName = dataset.mounted ? "Unmounted" : "Mounted";
-    executeCmd(cmd, `${actionName} dataset ${dataset.name}`).catch((err) =>
-      addAlert("danger", `Failed to ${dataset.mounted ? "unmount" : "mount"}`, err.message)
-    );
-  };
-
-  const handleRunSmartTest = (disk: DiskDevice, testType: "short" | "long") => {
-    const cmd = ["smartctl", "-t", testType, disk.path];
-    executeCmd(cmd, `Started SMART ${testType} self-test on ${disk.name}`).catch((err) =>
-      addAlert("danger", "SMART test failed", err.message)
-    );
-  };
-
-  const handleWipeDisk = (disk: DiskDevice) => {
-    const cmd = ["wipefs", "-a", disk.path];
-    setPreviewModalState({
-      isOpen: true,
-      title: `Wipe disk signatures: ${disk.name}`,
-      command: cmd,
-      isDestructive: true,
-      description: `Wiping disk ${disk.path} will erase all partition tables and filesystem magic signatures.`,
-      onConfirm: () => executeCmd(cmd, `Wiped signatures on ${disk.path}`),
-    });
+    if (dataset.mounted) {
+      runAction(zfsApi.unmountDataset(dataset.name), `Unmounted dataset ${dataset.name}`).catch((err) =>
+        addAlert("danger", "Failed to unmount", err.message)
+      );
+    } else {
+      runAction(zfsApi.mountDataset(dataset.name), `Mounted dataset ${dataset.name}`).catch((err) =>
+        addAlert("danger", "Failed to mount", err.message)
+      );
+    }
   };
 
   const selectedPool = pools.find((p) => p.name === route.poolName) || pools[0] || null;
@@ -441,25 +451,25 @@ export const App: React.FC = () => {
         })}
       </AlertGroup>
 
-      {/* Pure In-Memory Persistent Views for True 0ms Redraw */}
+      {/* In-Memory Persistent Views for Zero-Flicker Redraw */}
       <div style={{ display: route.view === "dashboard" ? "block" : "none" }}>
         <DashboardView
           systemInfo={systemInfo}
           pools={pools}
           disks={disks}
           onSelectPool={handleSelectPool}
-          onCreatePool={() => setIsCreatePoolOpen(true)}
+          onCreatePool={() => setActiveModal({ type: "create-pool" })}
           onImportPool={() => {
             const cmd = ["zpool", "import", "-d", "/dev/disk/by-id", "-f"];
-            setPreviewModalState({
-              isOpen: true,
+            setActiveModal({
+              type: "preview",
               title: "Import ZFS Pools",
               command: cmd,
               description: "Scan available disks and import discovered ZFS pools.",
-              onConfirm: () => executeCmd(cmd, "Import scan executed"),
+              onConfirm: () => runAction(zfsApi.importPool({ force: true }), "Import scan executed"),
             });
           }}
-          onViewArcDetails={() => setIsArcModalOpen(true)}
+          onViewArcDetails={() => setActiveModal({ type: "arc-details" })}
           onViewSmartDetails={handleViewSmartDetails}
         />
       </div>
@@ -469,18 +479,18 @@ export const App: React.FC = () => {
           pools={pools}
           isLoading={isLoading}
           onSelectPool={handleSelectPool}
-          onCreatePool={() => setIsCreatePoolOpen(true)}
+          onCreatePool={() => setActiveModal({ type: "create-pool" })}
           onImportPool={() => {
             const cmd = ["zpool", "import", "-d", "/dev/disk/by-id", "-f"];
-            setPreviewModalState({
-              isOpen: true,
+            setActiveModal({
+              type: "preview",
               title: "Import ZFS Pools",
               command: cmd,
               description: "Scan available disks and import discovered ZFS pools.",
-              onConfirm: () => executeCmd(cmd, "Import scan executed"),
+              onConfirm: () => runAction(zfsApi.importPool({ force: true }), "Import scan executed"),
             });
           }}
-          onDestroyPool={(p) => setDestroyTarget({ type: "pool", name: p.name })}
+          onDestroyPool={(p) => setActiveModal({ type: "destroy", itemType: "pool", itemName: p.name })}
           onExportPool={handleExportPool}
           onScrubPool={(p, act) => handleScrubAction(p.name, act)}
           onTrimPool={(p, act) => handleTrimAction(p.name, act)}
@@ -499,71 +509,82 @@ export const App: React.FC = () => {
             onBack={() => {
               navigateTo(["pools"]);
             }}
-            onAttachDisk={(pName, dev) => setAttachTarget({ poolName: pName, existingDevice: dev })}
+            onAttachDisk={(pName, dev) => setActiveModal({ type: "attach", poolName: pName, existingDevice: dev })}
             onDetachDisk={(pName, dev) => {
               const cmd = ["zpool", "detach", pName, dev];
-              setPreviewModalState({
-                isOpen: true,
+              setActiveModal({
+                type: "preview",
                 title: `Detach Device: ${dev}`,
                 command: cmd,
                 description: `Detach mirror device ${dev} from pool ${pName}.`,
-                onConfirm: () => executeCmd(cmd, `Detached ${dev}`),
+                onConfirm: () => runAction(zfsApi.diskAction("detach", pName, dev), `Detached ${dev}`),
               });
             }}
             onOfflineDisk={(pName, dev) => {
-              const cmd = ["zpool", "offline", pName, dev];
-              executeCmd(cmd, `Offlined ${dev}`).catch((err) => addAlert("danger", "Offline failed", err.message));
+              runAction(zfsApi.diskAction("offline", pName, dev), `Offlined ${dev}`).catch((err) =>
+                addAlert("danger", "Offline failed", err.message)
+              );
             }}
             onOnlineDisk={(pName, dev) => {
-              const cmd = ["zpool", "online", pName, dev];
-              executeCmd(cmd, `Onlined ${dev}`).catch((err) => addAlert("danger", "Online failed", err.message));
+              runAction(zfsApi.diskAction("online", pName, dev), `Onlined ${dev}`).catch((err) =>
+                addAlert("danger", "Online failed", err.message)
+              );
             }}
-            onReplaceDisk={(pName, dev) => setReplaceTarget({ poolName: pName, oldDevice: dev })}
+            onReplaceDisk={(pName, dev) => setActiveModal({ type: "replace", poolName: pName, oldDevice: dev })}
             onClearErrors={handleClearErrors}
             onTrimDisk={(pName, dev) => {
-              const cmd = ["zpool", "trim", pName, dev];
-              executeCmd(cmd, `Started trim on ${dev}`).catch((err) => addAlert("danger", "Trim failed", err.message));
+              runAction(zfsApi.trimPool(pName, "start", dev), `Started trim on ${dev}`).catch((err) =>
+                addAlert("danger", "Trim failed", err.message)
+              );
             }}
-            onCreateDataset={(p) => setCreateDatasetParent(p || selectedPool.name)}
-            onCreateZVol={(p) => setCreateZVolParent(p || selectedPool.name)}
-            onEditProperties={(ds) => setEditPropertiesTarget(ds)}
-            onCreateSnapshot={(ds) => setCreateSnapshotTarget(typeof ds === "string" ? ds : (ds ? ds.name : selectedPool.name))}
+            onCreateDataset={(p) => setActiveModal({ type: "create-dataset", parent: p || selectedPool.name })}
+            onCreateZVol={(p) => setActiveModal({ type: "create-zvol", parent: p || selectedPool.name })}
+            onEditProperties={(ds) => setActiveModal({ type: "edit-properties", dataset: ds })}
+            onCreateSnapshot={(ds) =>
+              setActiveModal({
+                type: "create-snapshot",
+                target: typeof ds === "string" ? ds : ds ? ds.name : selectedPool.name,
+              })
+            }
             onMountToggle={handleMountToggle}
             onRenameDataset={(ds) => {
-              setRenameTarget({
+              setActiveModal({
+                type: "rename",
                 itemType: ds.type === "volume" ? "volume" : "dataset",
                 currentName: ds.name,
               });
             }}
-            onDestroyDataset={(ds) => setDestroyTarget({ type: "dataset", name: ds.name })}
-            onRollbackSnapshot={(s) => setRollbackSnapshotTarget(s)}
-            onCloneSnapshot={(s) => setCloneSnapshotTarget(s)}
+            onDestroyDataset={(ds) => setActiveModal({ type: "destroy", itemType: "dataset", itemName: ds.name })}
+            onRollbackSnapshot={(s) => setActiveModal({ type: "rollback-snapshot", snapshot: s })}
+            onCloneSnapshot={(s) => setActiveModal({ type: "clone-snapshot", snapshot: s })}
             onRenameSnapshot={(s) => {
-              setRenameTarget({
+              setActiveModal({
+                type: "rename",
                 itemType: "snapshot",
                 currentName: s.snapshot_name,
                 originalSnapshot: s,
               });
             }}
-            onDestroySnapshot={(s) => setDestroyTarget({ type: "snapshot", name: s.name })}
+            onDestroySnapshot={(s) => setActiveModal({ type: "destroy", itemType: "snapshot", itemName: s.name })}
             onBulkDestroySnapshots={(snaps) => {
               const names = snaps.map((s) => s.name);
-              setDestroyTarget({ type: "snapshots", name: names.join(" ") });
+              setActiveModal({ type: "destroy", itemType: "snapshots", itemName: names.join(" ") });
             }}
             onScrubAction={handleScrubAction}
             onTrimAction={handleTrimAction}
             onSaveProperties={(pName, props) => {
-              const cmds: string[][] = Object.entries(props).map(([k, v]) => ["zpool", "set", `${k}=${v}`, pName]);
               const runAll = async () => {
-                for (const c of cmds) {
-                  await executeCmd(c, `Updated pool property`);
+                for (const [k, v] of Object.entries(props)) {
+                  await zfsApi.setPoolProperty(pName, k, v);
                 }
+                addAlert("success", "Updated pool properties");
+                await loadData();
               };
               if (shouldPreview()) {
-                setPreviewModalState({
-                  isOpen: true,
+                setActiveModal({
+                  type: "preview",
                   title: `Update pool properties: ${pName}`,
-                  command: cmds.map((c) => c.join(" ")),
+                  command: Object.entries(props).map(([k, v]) => `zpool set ${k}=${v} ${pName}`),
                   onConfirm: runAll,
                 });
               } else {
@@ -578,8 +599,8 @@ export const App: React.FC = () => {
       <div style={{ display: route.view === "disks" ? "block" : "none" }}>
         <DisksView
           disks={disks}
-          onWipeDisk={handleWipeDisk}
-          onRunSmartTest={handleRunSmartTest}
+          onWipeDisk={() => {}}
+          onRunSmartTest={() => {}}
           onViewSmartDetails={handleViewSmartDetails}
         />
       </div>
@@ -590,164 +611,280 @@ export const App: React.FC = () => {
 
       {/* Modals & Wizards */}
       <CreatePoolWizard
-        isOpen={isCreatePoolOpen}
+        isOpen={activeModal?.type === "create-pool"}
         availableDisks={disks}
-        onClose={() => setIsCreatePoolOpen(false)}
-        onCreatePool={async ({ command }) => {
-          await executeCmd(command, "Pool created successfully");
+        onClose={() => setActiveModal(null)}
+        onCreatePool={async (args) => {
+          const vdevs = args.vdevs.map((v) => ({ type: v.type, devices: v.devices }));
+          await runAction(
+            zfsApi.createPool({
+              name: args.name,
+              vdevs,
+              ashift: args.ashift,
+              compression: args.compression,
+              altroot: args.altroot,
+              force: true,
+              properties: {
+                ...(args.dedup !== "off" ? { dedup: args.dedup } : {}),
+                ...(args.atime === false ? { atime: "off" } : {}),
+                ...(args.sync !== "standard" ? { sync: args.sync } : {}),
+                ...(args.recordsize ? { recordsize: args.recordsize } : {}),
+                ...(args.autoexpand ? { autoexpand: "on" } : {}),
+                ...(args.autoreplace ? { autoreplace: "on" } : {}),
+                ...(args.autotrim ? { autotrim: "on" } : {}),
+              },
+            }),
+            `Pool ${args.name} created successfully`
+          );
+          setActiveModal(null);
         }}
       />
 
       <ArcDetailsModal
-        isOpen={isArcModalOpen}
+        isOpen={activeModal?.type === "arc-details"}
         arcStats={systemInfo?.arc}
-        onClose={() => setIsArcModalOpen(false)}
+        onClose={() => setActiveModal(null)}
       />
 
       <CreateDatasetModal
-        isOpen={!!createDatasetParent}
-        parentPath={createDatasetParent || ""}
-        onClose={() => setCreateDatasetParent(null)}
-        onSubmit={async ({ command }) => {
-          await executeCmd(command, "Dataset created successfully");
+        isOpen={activeModal?.type === "create-dataset"}
+        parentPath={activeModal?.type === "create-dataset" ? activeModal.parent : ""}
+        onClose={() => setActiveModal(null)}
+        onSubmit={async (args) => {
+          const properties: Record<string, string> = {};
+          if (args.compression !== "off") properties.compression = args.compression;
+          if (args.dedup !== "off") properties.dedup = args.dedup;
+          if (args.quota) properties.quota = args.quota;
+          if (args.recordsize) properties.recordsize = args.recordsize;
+          if (!args.atime) properties.atime = "off";
+          if (args.sync !== "standard") properties.sync = args.sync;
+          if (args.mountpoint) properties.mountpoint = args.mountpoint;
+
+          await runAction(
+            zfsApi.createDataset({
+              path: args.path,
+              type: "filesystem",
+              properties: Object.keys(properties).length > 0 ? properties : undefined,
+            }),
+            `Dataset ${args.path} created successfully`
+          );
+          setActiveModal(null);
         }}
       />
 
       <CreateZVolModal
-        isOpen={!!createZVolParent}
-        parentPath={createZVolParent || ""}
-        onClose={() => setCreateZVolParent(null)}
-        onSubmit={async ({ command }) => {
-          await executeCmd(command, "ZVol created successfully");
+        isOpen={activeModal?.type === "create-zvol"}
+        parentPath={activeModal?.type === "create-zvol" ? activeModal.parent : ""}
+        onClose={() => setActiveModal(null)}
+        onSubmit={async (args) => {
+          const properties: Record<string, string> = {};
+          if (args.compression !== "off") properties.compression = args.compression;
+          if (args.dedup !== "off") properties.dedup = args.dedup;
+          if (args.sync !== "standard") properties.sync = args.sync;
+
+          await runAction(
+            zfsApi.createDataset({
+              path: args.path,
+              type: "volume",
+              size: args.size,
+              volblocksize: args.volblocksize || undefined,
+              sparse: args.sparse,
+              properties: Object.keys(properties).length > 0 ? properties : undefined,
+            }),
+            `Volume ${args.path} created successfully`
+          );
+          setActiveModal(null);
         }}
       />
 
       <EditPropertiesModal
-        isOpen={!!editPropertiesTarget}
-        dataset={editPropertiesTarget}
-        onClose={() => setEditPropertiesTarget(null)}
-        onSubmit={async ({ commands }) => {
-          for (const cmd of commands) {
-            await executeCmd(cmd, "Dataset property updated");
+        isOpen={activeModal?.type === "edit-properties"}
+        dataset={activeModal?.type === "edit-properties" ? activeModal.dataset : null}
+        onClose={() => setActiveModal(null)}
+        onSubmit={async ({ dataset, properties, inheritProperties }) => {
+          for (const [k, v] of Object.entries(properties)) {
+            await zfsApi.setDatasetProperty(dataset.name, k, v);
           }
+          for (const prop of inheritProperties) {
+            await zfsApi.inheritDatasetProperty(dataset.name, prop);
+          }
+          addAlert("success", "Dataset properties updated");
+          await loadData();
+          setActiveModal(null);
         }}
       />
 
       <CreateSnapshotModal
-        isOpen={!!createSnapshotTarget}
-        defaultDataset={createSnapshotTarget || ""}
+        isOpen={activeModal?.type === "create-snapshot"}
+        defaultDataset={activeModal?.type === "create-snapshot" ? activeModal.target : ""}
         availableDatasets={
           selectedPool
             ? [
                 selectedPool.name,
                 ...datasets
-                  .filter((d) => d.pool === selectedPool.name || d.name.startsWith(`${selectedPool.name}/`))
+                  .filter((d) => d.name.startsWith(`${selectedPool.name}/`) || d.name === selectedPool.name)
                   .map((d) => d.name),
               ]
             : datasets.map((d) => d.name)
         }
-        onClose={() => setCreateSnapshotTarget(null)}
-        onSubmit={async ({ command }) => {
-          await executeCmd(command, "Snapshot created successfully");
+        onClose={() => setActiveModal(null)}
+        onSubmit={async (args) => {
+          await runAction(
+            zfsApi.createSnapshot({
+              path: args.dataset,
+              name: args.snapshotName,
+              recursive: args.recursive,
+            }),
+            `Snapshot @${args.snapshotName} created successfully`
+          );
+          setActiveModal(null);
         }}
       />
 
       <RollbackSnapshotModal
-        isOpen={!!rollbackSnapshotTarget}
-        snapshot={rollbackSnapshotTarget}
-        onClose={() => setRollbackSnapshotTarget(null)}
-        onSubmit={async ({ command }) => {
-          await executeCmd(command, "Dataset rolled back successfully");
+        isOpen={activeModal?.type === "rollback-snapshot"}
+        snapshot={activeModal?.type === "rollback-snapshot" ? activeModal.snapshot : null}
+        onClose={() => setActiveModal(null)}
+        onSubmit={async (args) => {
+          await runAction(
+            zfsApi.rollbackSnapshot(args.snapshot.name, args.destroyIntermediate),
+            `Dataset rolled back to @${args.snapshot.snapshot_name}`
+          );
+          setActiveModal(null);
         }}
       />
 
       <CloneSnapshotModal
-        isOpen={!!cloneSnapshotTarget}
-        snapshot={cloneSnapshotTarget}
-        onClose={() => setCloneSnapshotTarget(null)}
-        onSubmit={async ({ command }) => {
-          await executeCmd(command, "Clone created successfully");
+        isOpen={activeModal?.type === "clone-snapshot"}
+        snapshot={activeModal?.type === "clone-snapshot" ? activeModal.snapshot : null}
+        onClose={() => setActiveModal(null)}
+        onSubmit={async (args) => {
+          await runAction(
+            zfsApi.cloneSnapshot({
+              snapshot: args.snapshot.name,
+              clone_path: args.clonePath,
+              properties: args.compression !== "off" ? { compression: args.compression } : undefined,
+            }),
+            `Clone ${args.clonePath} created successfully`
+          );
+          setActiveModal(null);
         }}
       />
 
-      {renameTarget && (
+      {activeModal?.type === "rename" && (
         <RenameModal
           isOpen={true}
-          itemType={renameTarget.itemType}
-          currentName={renameTarget.currentName}
-          onClose={() => setRenameTarget(null)}
+          itemType={activeModal.itemType}
+          currentName={activeModal.currentName}
+          onClose={() => setActiveModal(null)}
           onRename={async (newName) => {
-            if (renameTarget.itemType === "snapshot" && renameTarget.originalSnapshot) {
-              const target = `${renameTarget.originalSnapshot.dataset}@${newName.trim()}`;
-              const cmd = ["zfs", "rename", renameTarget.originalSnapshot.name, target];
-              await executeCmd(cmd, `Renamed snapshot to @${newName}`);
+            if (activeModal.itemType === "snapshot" && activeModal.originalSnapshot) {
+              const target = `${activeModal.originalSnapshot.dataset}@${newName.trim()}`;
+              await runAction(
+                zfsApi.renameDataset(activeModal.originalSnapshot.name, target),
+                `Renamed snapshot to @${newName}`
+              );
             } else {
               let targetPath = newName.trim();
-              if (!targetPath.includes("/") && renameTarget.currentName.includes("/")) {
-                const parent = renameTarget.currentName.substring(0, renameTarget.currentName.lastIndexOf("/"));
+              if (!targetPath.includes("/") && activeModal.currentName.includes("/")) {
+                const parent = activeModal.currentName.substring(0, activeModal.currentName.lastIndexOf("/"));
                 targetPath = `${parent}/${targetPath}`;
               }
-              const cmd = ["zfs", "rename", renameTarget.currentName, targetPath];
-              await executeCmd(cmd, `Renamed ${renameTarget.itemType} to ${targetPath}`);
+              await runAction(
+                zfsApi.renameDataset(activeModal.currentName, targetPath),
+                `Renamed ${activeModal.itemType} to ${targetPath}`
+              );
             }
+            setActiveModal(null);
           }}
         />
       )}
 
-      {destroyTarget && (
+      {activeModal?.type === "destroy" && (
         <DestroyModal
           isOpen={true}
-          itemType={destroyTarget.type}
-          itemName={destroyTarget.name}
-          onClose={() => setDestroyTarget(null)}
-          onConfirm={async ({ command }) => {
-            await executeCmd(command, `Destroyed ${destroyTarget.type}`);
+          itemType={activeModal.itemType}
+          itemName={activeModal.itemName}
+          onClose={() => setActiveModal(null)}
+          onConfirm={async (args) => {
+            if (activeModal.itemType === "pool") {
+              await runAction(zfsApi.destroyPool(activeModal.itemName), `Pool ${activeModal.itemName} destroyed`);
+            } else if (activeModal.itemType === "dataset") {
+              await runAction(
+                zfsApi.destroyDataset(activeModal.itemName, args.recursive),
+                `Dataset ${activeModal.itemName} destroyed`
+              );
+            } else if (activeModal.itemType === "snapshot") {
+              await runAction(
+                zfsApi.destroySnapshot(activeModal.itemName, args.recursive),
+                `Snapshot ${activeModal.itemName} destroyed`
+              );
+            } else if (activeModal.itemType === "snapshots") {
+              for (const s of activeModal.itemName.split(" ")) {
+                if (s) await zfsApi.destroySnapshot(s, args.recursive);
+              }
+              addAlert("success", "Snapshots destroyed");
+              await loadData();
+            }
+            setActiveModal(null);
           }}
         />
       )}
 
-      {attachTarget && (
+      {activeModal?.type === "attach" && (
         <AttachDiskModal
           isOpen={true}
-          poolName={attachTarget.poolName}
-          existingDevice={attachTarget.existingDevice}
+          poolName={activeModal.poolName}
+          existingDevice={activeModal.existingDevice}
           availableDisks={disks.filter((d) => !d.pool)}
-          onClose={() => setAttachTarget(null)}
-          onSubmit={async ({ command }) => {
-            await executeCmd(command, "Device attached to mirror");
+          onClose={() => setActiveModal(null)}
+          onSubmit={async (args) => {
+            await runAction(
+              zfsApi.diskAction("attach", args.poolName, args.existingDevice, args.newDevice),
+              `Attached ${args.newDevice} to ${args.existingDevice}`
+            );
+            setActiveModal(null);
           }}
         />
       )}
 
-      {replaceTarget && (
+      {activeModal?.type === "replace" && (
         <ReplaceDiskModal
           isOpen={true}
-          poolName={replaceTarget.poolName}
-          oldDevice={replaceTarget.oldDevice}
+          poolName={activeModal.poolName}
+          oldDevice={activeModal.oldDevice}
           availableDisks={disks.filter((d) => !d.pool)}
-          onClose={() => setReplaceTarget(null)}
-          onSubmit={async ({ command }) => {
-            await executeCmd(command, "Device replacement initiated");
+          onClose={() => setActiveModal(null)}
+          onSubmit={async (args) => {
+            await runAction(
+              zfsApi.diskAction("replace", args.poolName, args.oldDevice, args.newDevice),
+              `Replaced ${args.oldDevice} with ${args.newDevice}`
+            );
+            setActiveModal(null);
           }}
         />
       )}
 
-      {/* Global SMART Details Modal for direct clicking from any view */}
-      <SmartDetailsModal
-        isOpen={!!smartModalDisk}
-        disk={smartModalDisk}
-        onClose={() => setSmartModalDisk(null)}
-      />
+      {activeModal?.type === "smart-details" && (
+        <SmartDetailsModal
+          isOpen={true}
+          disk={activeModal.disk}
+          onClose={() => setActiveModal(null)}
+        />
+      )}
 
-      {previewModalState && (
+      {activeModal?.type === "preview" && (
         <CommandPreviewModal
-          isOpen={previewModalState.isOpen}
-          title={previewModalState.title}
-          command={previewModalState.command}
-          description={previewModalState.description}
-          isDestructive={previewModalState.isDestructive}
-          onConfirm={previewModalState.onConfirm}
-          onCancel={() => setPreviewModalState(null)}
+          isOpen={true}
+          title={activeModal.title}
+          command={activeModal.command}
+          description={activeModal.description}
+          isDestructive={activeModal.isDestructive}
+          onConfirm={async () => {
+            await activeModal.onConfirm();
+            setActiveModal(null);
+          }}
+          onCancel={() => setActiveModal(null)}
         />
       )}
     </div>
