@@ -47,11 +47,18 @@ if command -v rpmbuild >/dev/null 2>&1; then
     rm -rf "$RPMBUILD_DIR"
     mkdir -p "$RPMBUILD_DIR"/{BUILD,RPMS,SOURCES,SPECS,SRPMS,BUILDROOT}
 
+    CHANGELOG_DATE=$(date -u -d "@$SOURCE_DATE_EPOCH" "+%a %b %d %Y" 2>/dev/null || date -u -r "$SOURCE_DATE_EPOCH" "+%a %b %d %Y" 2>/dev/null || date "+%a %b %d %Y")
+
     SPEC_FILE="$RPMBUILD_DIR/SPECS/${PKG_NAME}.spec"
     cat << SPEC_EOF > "$SPEC_FILE"
+%define _buildhost localhost
+%define _build_id_links none
+%define _clamp_mtime 1
+%define _binary_payload w9.gzdio
+
 Name:           ${PKG_NAME}
 Version:        ${VERSION}
-Release:        1%{?dist}
+Release:        1
 Summary:        Advanced OpenZFS storage manager for Cockpit
 BuildArch:      noarch
 License:        MIT
@@ -97,6 +104,10 @@ rm -rf %{buildroot}
 /usr/share/cockpit/${PLUGIN_NAME}
 /usr/libexec/cockpit-zfs
 
+%changelog
+* ${CHANGELOG_DATE} Nils Stein <nils@mietzen.de> - ${VERSION}-1
+- Release ${VERSION}
+
 SPEC_EOF
 
     rpmbuild \
@@ -104,7 +115,7 @@ SPEC_EOF
         --define "_buildhost localhost" \
         --define "_clamp_mtime 1" \
         --define "_source_date_epoch ${SOURCE_DATE_EPOCH}" \
-        --define "_source_date_epoch_from_changelog 0" \
+        --define "_source_date_epoch_from_changelog 1" \
         --define "_binary_payload w9.gzdio" \
         --define "_build_id_links none" \
         -bb "$SPEC_FILE"
