@@ -15,7 +15,7 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
   let page: Page;
 
   async function getFrame(): Promise<Frame> {
-    const frameElement = await page.waitForSelector("iframe", { timeout: 20000 });
+    const frameElement = await page.waitForSelector("iframe[name*='zfs-storage'], iframe[src*='zfs-storage']", { timeout: 25000 });
     const frame = await frameElement.contentFrame();
     if (!frame) {
       throw new Error("Cockpit iframe contentFrame is null");
