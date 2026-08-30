@@ -1071,13 +1071,25 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     }, TEST_POOL);
     await page.waitForTimeout(300);
 
-    const dsKebab = frame.locator("table button.pf-v5-c-menu-toggle").first();
+    const dsKebab = frame.locator("button[aria-label='Dataset actions']").first();
     if (await dsKebab.isVisible({ timeout: 1000 }).catch(() => false)) {
       await dsKebab.click({ timeout: 1000 }).catch(() => {});
       await page.waitForTimeout(200);
       const editPropItem = frame.locator("button.pf-v5-c-menu__item:has-text('Edit properties')").first();
       if (await editPropItem.isVisible({ timeout: 1000 }).catch(() => false)) {
         await editPropItem.click({ timeout: 1000 }).catch(() => {});
+        await page.waitForTimeout(200);
+        const cancelBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
+        if (await cancelBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+          await cancelBtn.click({ timeout: 1000 }).catch(() => {});
+        }
+      }
+
+      await dsKebab.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
+      const renameItem = frame.locator("button.pf-v5-c-menu__item:has-text('Rename')").first();
+      if (await renameItem.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await renameItem.click({ timeout: 1000 }).catch(() => {});
         await page.waitForTimeout(200);
         const cancelBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
         if (await cancelBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
@@ -1096,6 +1108,21 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     if (await expandGroupBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
       await expandGroupBtn.click({ timeout: 1000 }).catch(() => {});
       await page.waitForTimeout(200);
+    }
+
+    const snapKebab = frame.locator("button[aria-label='Snapshot actions']").first();
+    if (await snapKebab.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await snapKebab.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
+      const cloneItem = frame.locator("button.pf-v5-c-menu__item:has-text('Clone to new dataset')").first();
+      if (await cloneItem.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await cloneItem.click({ timeout: 1000 }).catch(() => {});
+        await page.waitForTimeout(200);
+        const cancelBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
+        if (await cancelBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+          await cancelBtn.click({ timeout: 1000 }).catch(() => {});
+        }
+      }
     }
 
     // 3. Pool Settings Tab - Toggle controls
