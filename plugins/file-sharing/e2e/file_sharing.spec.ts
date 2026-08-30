@@ -1183,7 +1183,7 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
             { username: 'testuser', full_name: 'Test User', is_enabled: true, sid: 'S-1-5-21-123-456-789-1000' },
             { username: 'disableduser', full_name: 'Disabled User', is_enabled: false, sid: 'S-1-5-21-123-456-789-1001' },
           ],
-          unixUsers: ['testuser', 'alice', 'bob'],
+          unix_users: ['testuser', 'alice', 'bob'],
           access_matrix: [
             {
               username: 'testuser',
@@ -1215,21 +1215,47 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
     });
     await page.waitForTimeout(300);
 
-    // 2. Switch to Access matrix subtab
-    const matrixTab = frame.locator("button.pf-v5-c-tabs__link:has-text('Access Matrix'), button:has-text('Access Matrix')").first();
+    // 2. Add user modal flow
+    const addUserBtn = frame.locator("button:has-text('Add user')").first();
+    if (await addUserBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await addUserBtn.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
+      const sel = frame.locator("select#add-username, input#add-username").first();
+      if (await sel.isVisible({ timeout: 1000 }).catch(() => false)) {
+        if (await sel.evaluate((el) => el.tagName.toLowerCase() === "select")) {
+          await sel.selectOption({ index: 0 }).catch(() => {});
+        } else {
+          await sel.fill("alice");
+        }
+      }
+      await frame.locator("input#add-password").first().fill("Password123!").catch(() => {});
+      await frame.locator("input#add-confirm-password").first().fill("Password123!").catch(() => {});
+      const submitAdd = frame.locator(".pf-v5-c-modal-box button:has-text('Add user')").first();
+      if (await submitAdd.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await submitAdd.click({ timeout: 1000 }).catch(() => {});
+        await page.waitForTimeout(200);
+      }
+      const cancelBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
+      if (await cancelBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await cancelBtn.click({ timeout: 1000 }).catch(() => {});
+      }
+    }
+
+    // 3. Switch to Access matrix subtab
+    const matrixTab = frame.locator("button:has-text('User Access Matrix'), button:has-text('Access Matrix')").first();
     if (await matrixTab.isVisible({ timeout: 1000 }).catch(() => false)) {
       await matrixTab.click({ timeout: 1000 }).catch(() => {});
       await page.waitForTimeout(200);
     }
 
-    // 3. Switch back to Users subtab
-    const usersSubTab = frame.locator("button.pf-v5-c-tabs__link:has-text('Samba Users'), button:has-text('Samba Users')").first();
+    // 4. Switch back to Users subtab
+    const usersSubTab = frame.locator("button:has-text('Samba Users')").first();
     if (await usersSubTab.isVisible({ timeout: 1000 }).catch(() => false)) {
       await usersSubTab.click({ timeout: 1000 }).catch(() => {});
       await page.waitForTimeout(200);
     }
 
-    // 4. Exercise user kebab actions
+    // 5. Exercise user kebab actions
     const userKebab = frame.locator("button[aria-label='User actions']").first();
     if (await userKebab.isVisible({ timeout: 1000 }).catch(() => false)) {
       await userKebab.click({ timeout: 1000 }).catch(() => {});

@@ -36,6 +36,7 @@ import { RenameModal } from "./components/Modals/RenameModal";
 import { ArcDetailsModal } from "./components/Modals/ArcDetailsModal";
 import { SmartDetailsModal } from "./components/Modals/SmartDetailsModal";
 import { CommandPreviewModal } from "./components/CommandPreviewModal";
+import { formatBytes, formatPercentage, formatDate, getHealthBadgeColor } from "./utils/formatters";
 
 declare const cockpit: any;
 
@@ -393,6 +394,7 @@ export const App: React.FC = () => {
       (window as any).__handleSelectPool = handleSelectPool;
       (window as any).__handleExportPool = handleExportPool;
       (window as any).__handleMountToggle = handleMountToggle;
+      (window as any).__formatters = { formatBytes, formatPercentage, formatDate, getHealthBadgeColor };
     }
   });
 

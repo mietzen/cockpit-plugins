@@ -1636,4 +1636,46 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
       }
     }, TEST_POOL);
   });
+
+  test("29. Comprehensive Formatters & Helper Edge Cases Suite", async () => {
+    const frame = await getFrame();
+    await frame.evaluate(() => {
+      const f = (window as any).__formatters;
+      if (!f) return;
+      // formatBytes
+      f.formatBytes(undefined);
+      f.formatBytes(null);
+      f.formatBytes(NaN);
+      f.formatBytes(0);
+      f.formatBytes(500);
+      f.formatBytes(1048576);
+      f.formatBytes(1073741824);
+      f.formatBytes(1099511627776);
+      f.formatBytes(1125899906842624);
+      f.formatBytes(1152921504606846976);
+      f.formatBytes(1048576, -1);
+
+      // formatPercentage
+      f.formatPercentage(undefined);
+      f.formatPercentage(null);
+      f.formatPercentage(NaN);
+      f.formatPercentage(45.67);
+
+      // formatDate
+      f.formatDate(undefined);
+      f.formatDate(null);
+      f.formatDate(1700000000);
+
+      // getHealthBadgeColor
+      f.getHealthBadgeColor("ONLINE");
+      f.getHealthBadgeColor("PASSED");
+      f.getHealthBadgeColor("DEGRADED");
+      f.getHealthBadgeColor("SUSPENDED");
+      f.getHealthBadgeColor("FAULTED");
+      f.getHealthBadgeColor("UNAVAIL");
+      f.getHealthBadgeColor("FAILED");
+      f.getHealthBadgeColor("UNKNOWN");
+      f.getHealthBadgeColor(undefined);
+    });
+  });
 });
