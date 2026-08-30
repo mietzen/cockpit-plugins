@@ -81,7 +81,7 @@ export const TopologyTab: React.FC<TopologyTabProps> = ({
                 <Th>Read errors</Th>
                 <Th>Write errors</Th>
                 <Th>Checksum errors</Th>
-                <Th aria-label="Actions" />
+                <Th screenReaderText="Actions" />
               </Tr>
             </Thead>
             <Tbody>

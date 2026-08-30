@@ -336,6 +336,7 @@ export const SnapshotsTab: React.FC<SnapshotsTabProps> = ({
                         <Thead>
                           <Tr>
                             <Th
+                              aria-label="Select all snapshots in group"
                               select={{
                                 onSelect: (_event, isSelecting) =>
                                   handleSelectGroup(group.snapshots, isSelecting),
@@ -347,7 +348,7 @@ export const SnapshotsTab: React.FC<SnapshotsTabProps> = ({
                             <Th>Used</Th>
                             <Th>Referenced</Th>
                             <Th>Clones</Th>
-                            <Th aria-label="Actions" />
+                            <Th screenReaderText="Actions" />
                           </Tr>
                         </Thead>
                         <Tbody>

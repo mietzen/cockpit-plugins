@@ -88,7 +88,7 @@ export const DisksView: React.FC<DisksViewProps> = ({
               <Th>SMART status</Th>
               <Th>Temperature</Th>
               <Th>Pool assignment</Th>
-              <Th aria-label="Actions" />
+              <Th screenReaderText="Actions" />
             </Tr>
           </Thead>
           <Tbody>

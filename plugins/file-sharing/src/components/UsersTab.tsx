@@ -239,7 +239,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({
                       <Th>Full name</Th>
                       <Th>Status</Th>
                       <Th>Security identifier (SID)</Th>
-                      <Th style={{ textAlign: "right", width: "80px" }}></Th>
+                      <Th screenReaderText="Actions" style={{ textAlign: "right", width: "80px" }} />
                     </Tr>
                   </Thead>
                   <Tbody>

@@ -229,7 +229,7 @@ export const NfsExportsTab: React.FC<NfsExportsTabProps> = ({
                       <Th>Allowed clients &amp; networks</Th>
                       <Th>Configuration file</Th>
                       <Th>Status</Th>
-                      <Th style={{ textAlign: "right", width: "80px" }}></Th>
+                      <Th screenReaderText="Actions" style={{ textAlign: "right", width: "80px" }} />
                     </Tr>
                   </Thead>
                   <Tbody>

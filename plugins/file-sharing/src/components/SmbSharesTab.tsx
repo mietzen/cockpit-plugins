@@ -222,7 +222,7 @@ export const SmbSharesTab: React.FC<SmbSharesTabProps> = ({
                     <Th>Access</Th>
                     <Th>Permissions</Th>
                     <Th>Description</Th>
-                    <Th style={{ textAlign: "right", width: "80px" }}></Th>
+                    <Th screenReaderText="Actions" style={{ textAlign: "right", width: "80px" }} />
                   </Tr>
                 </Thead>
                 <Tbody>
