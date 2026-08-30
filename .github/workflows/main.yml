@@ -184,6 +184,28 @@ jobs:
           path: test-results/
           retention-days: 14
 
+  check-run:
+    name: Check-Run
+    if: ${{ always() }}
+    runs-on: ubuntu-24.04
+    needs:
+      - build
+      - e2e
+    steps:
+      - name: Evaluate Pipeline Status
+        run: |
+          build_result="${{ needs.build.result }}"
+          e2e_result="${{ needs.e2e.result }}"
+          echo "Build Matrix Result: $build_result"
+          echo "E2E Matrix Result: $e2e_result"
+          if [[ "$build_result" == "success" && "$e2e_result" == "success" ]]; then
+            echo "All required checks passed."
+            exit 0
+          else
+            echo "One or more required jobs failed or were cancelled."
+            exit 1
+          fi
+
   deploy-pages:
     name: Assemble & Deploy Repositories to GitHub Pages
     if: (startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch') && !failure() && !cancelled()
