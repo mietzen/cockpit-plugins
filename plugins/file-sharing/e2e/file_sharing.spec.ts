@@ -521,7 +521,7 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
     });
     await page.waitForTimeout(300);
 
-    // Switch to SMB Shares tab and open Create Share Modal then cancel
+    // Switch to SMB Shares tab and open Create Share Modal
     await frame.evaluate(() => {
       (window as any).__setActiveView?.("smb");
     });
@@ -530,13 +530,31 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
     if (await addShareBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
       await addShareBtn.click({ timeout: 2000 }).catch(() => {});
       await page.waitForTimeout(300);
+      
+      const shareNameInput = frame.locator("input#share-name, input[aria-label*='Share name']").first();
+      if (await shareNameInput.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await shareNameInput.fill("modal_test_share");
+      }
+      const sharePathInput = frame.locator("input#share-path, input[aria-label*='Share path']").first();
+      if (await sharePathInput.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await sharePathInput.fill("/srv/samba/modal_test");
+      }
+      const guestOkCheckbox = frame.locator("input#share-guest-ok").first();
+      if (await guestOkCheckbox.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await guestOkCheckbox.setChecked(true);
+      }
+      const readOnlyCheckbox = frame.locator("input#share-read-only").first();
+      if (await readOnlyCheckbox.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await readOnlyCheckbox.setChecked(false);
+      }
+
       const cancelModal = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
       if (await cancelModal.isVisible({ timeout: 1000 }).catch(() => false)) {
         await cancelModal.click({ timeout: 1000 }).catch(() => {});
       }
     }
 
-    // Switch to NFS Exports tab and open Create Export Modal then cancel
+    // Switch to NFS Exports tab and open Create Export Modal
     await frame.evaluate(() => {
       (window as any).__setActiveView?.("nfs");
     });
@@ -545,13 +563,23 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
     if (await addExportBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
       await addExportBtn.click({ timeout: 2000 }).catch(() => {});
       await page.waitForTimeout(300);
+      
+      const exportPathInput = frame.locator("input#export-path, input[aria-label*='Export path']").first();
+      if (await exportPathInput.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await exportPathInput.fill("/srv/nfs/modal_test");
+      }
+      const clientHostInput = frame.locator("input#client-host, input[aria-label*='Client host']").first();
+      if (await clientHostInput.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await clientHostInput.fill("192.168.1.0/24");
+      }
+
       const cancelModal = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
       if (await cancelModal.isVisible({ timeout: 1000 }).catch(() => false)) {
         await cancelModal.click({ timeout: 1000 }).catch(() => {});
       }
     }
 
-    // Switch to Users tab and open Add User Modal then cancel
+    // Switch to Users tab and open Add User Modal
     await frame.evaluate(() => {
       (window as any).__setActiveView?.("users");
     });
@@ -560,6 +588,16 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
     if (await addUserBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
       await addUserBtn.click({ timeout: 2000 }).catch(() => {});
       await page.waitForTimeout(300);
+
+      const usernameInput = frame.locator("input#user-name, input[aria-label*='Username']").first();
+      if (await usernameInput.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await usernameInput.fill("modal_user");
+      }
+      const passInput = frame.locator("input#user-password, input[type='password']").first();
+      if (await passInput.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await passInput.fill("SecretPassword123!");
+      }
+
       const cancelModal = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
       if (await cancelModal.isVisible({ timeout: 1000 }).catch(() => false)) {
         await cancelModal.click({ timeout: 1000 }).catch(() => {});

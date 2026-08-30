@@ -527,7 +527,22 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
           win.__setActiveModal(modalObj);
         }
       }, m);
-      await page.waitForTimeout(300);
+      await page.waitForTimeout(200);
+
+      // Touch form controls in the modal
+      const modalInput = frame.locator(".pf-v5-c-modal-box input[type='text']:visible").first();
+      if (await modalInput.isVisible({ timeout: 500 }).catch(() => false)) {
+        await modalInput.fill("test_modal_input").catch(() => {});
+      }
+      const modalCheckbox = frame.locator(".pf-v5-c-modal-box input[type='checkbox']:visible").first();
+      if (await modalCheckbox.isVisible({ timeout: 500 }).catch(() => false)) {
+        await modalCheckbox.click().catch(() => {});
+      }
+      const modalSelect = frame.locator(".pf-v5-c-modal-box select:visible").first();
+      if (await modalSelect.isVisible({ timeout: 500 }).catch(() => false)) {
+        await modalSelect.selectOption({ index: 1 }).catch(() => {});
+      }
+
       const closeBtn = frame.locator(".pf-v5-c-modal-box button[aria-label='Close'], .pf-v5-c-modal-box button:has-text('Cancel')").first();
       if (await closeBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
         await closeBtn.click();
