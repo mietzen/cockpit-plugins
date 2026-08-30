@@ -194,7 +194,7 @@ export const CreatePoolWizard: React.FC<CreatePoolWizardProps> = ({
         setRecordsize,
         addVDev,
         removeVDev,
-        handleSubmit,
+        handleSubmit: handleFinish,
       };
     }
   });
