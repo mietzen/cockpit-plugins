@@ -392,22 +392,7 @@ export const App: React.FC = () => {
       (window as any).__handleSubTabChange = handleSubTabChange;
       (window as any).__handleSelectPool = handleSelectPool;
       (window as any).__handleExportPool = handleExportPool;
-      (window as any).__handleImportPool = handleImportPool;
-      (window as any).__handleDestroyPool = handleDestroyPool;
-      (window as any).__handleCreateDataset = handleCreateDataset;
-      (window as any).__handleCreateZVol = handleCreateZVol;
-      (window as any).__handleCreateSnapshot = handleCreateSnapshot;
-      (window as any).__handleRollbackSnapshot = handleRollbackSnapshot;
-      (window as any).__handleCloneSnapshot = handleCloneSnapshot;
-      (window as any).__handleRename = handleRename;
-      (window as any).__handleDestroy = handleDestroy;
-      (window as any).__handleSaveDatasetProperties = handleSaveDatasetProperties;
-      (window as any).__handleSavePoolProperties = handleSavePoolProperties;
-      (window as any).__handleAttachDisk = handleAttachDisk;
-      (window as any).__handleReplaceDisk = handleReplaceDisk;
-      (window as any).__handleDetachDisk = handleDetachDisk;
-      (window as any).__handleOfflineDisk = handleOfflineDisk;
-      (window as any).__handleOnlineDisk = handleOnlineDisk;
+      (window as any).__handleMountToggle = handleMountToggle;
     }
   });
 

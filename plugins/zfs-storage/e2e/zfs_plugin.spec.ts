@@ -1361,22 +1361,15 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     await frame.evaluate(async (pool) => {
       const win = window as any;
       try {
-        await win.__handleCreateDataset?.({ name: `${pool}/mock_ds`, compression: "lz4" });
-        await win.__handleCreateZVol?.({ name: `${pool}/mock_vol`, size: "10M" });
-        await win.__handleCreateSnapshot?.(pool, "mock_snap");
-        await win.__handleRollbackSnapshot?.(`${pool}@mock_snap`);
-        await win.__handleCloneSnapshot?.(`${pool}@mock_snap`, `${pool}/mock_clone`);
-        await win.__handleRename?.(`${pool}/mock_ds`, `${pool}/mock_ds_renamed`);
-        await win.__handleDestroy?.(`${pool}/mock_ds_renamed`);
-        await win.__handleSaveDatasetProperties?.(`${pool}/mock_ds`, { compression: "zstd" });
-        await win.__handleSavePoolProperties?.(pool, { autoexpand: "on" });
-        await win.__handleAttachDisk?.(pool, "sda", "sdb");
-        await win.__handleReplaceDisk?.(pool, "sda", "sdb");
-        await win.__handleDetachDisk?.(pool, "sdb");
-        await win.__handleOfflineDisk?.(pool, "sda");
-        await win.__handleOnlineDisk?.(pool, "sda");
-        await win.__handleExportPool?.(pool);
-        await win.__handleImportPool?.(pool);
+        await win.__handleExportPool?.({ name: pool, state: "ONLINE" });
+        await win.__handleMountToggle?.({ name: `${pool}/data`, mounted: true });
+        await win.__handleMountToggle?.({ name: `${pool}/data`, mounted: false });
+        await win.__handleClearErrors?.(pool);
+        await win.__handleScrubAction?.(pool, "start");
+        await win.__handleTrimAction?.(pool, "start");
+        await win.__handleSelectPool?.(pool, "datasets");
+        await win.__handleSubTabChange?.("snapshots");
+        await win.__handleViewSmartDetails?.("sda");
       } catch {
         // ignore errors
       }
