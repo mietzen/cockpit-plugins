@@ -510,17 +510,64 @@ class TestZfsServiceActions(unittest.TestCase):
             self.assertTrue(res["smb"])
             self.assertTrue(res["nfs"])
 
-    @patch("sys.argv", ["zfs_helper.py", "unknown-action"])
-    def test_main_cli_unknown_action(self):
+    @patch("backend.zfs_helper.run_cmd")
+    @patch("sys.argv", ["zfs_helper.py", "disk-action", "online", "tank", "/dev/sdb"])
+    def test_main_cli_disk_action_online(self, mock_run):
+        mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
         with patch("builtins.print") as mock_print:
             main()
             mock_print.assert_called_once()
             res = json.loads(mock_print.call_args[0][0])
-            self.assertIn("error", res)
+            self.assertTrue(res["success"])
+
+    @patch("backend.zfs_helper.run_cmd")
+    @patch("sys.argv", ["zfs_helper.py", "disk-action", "attach", "tank", "/dev/sdb", "/dev/sdc"])
+    def test_main_cli_disk_action_attach(self, mock_run):
+        mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
+        with patch("builtins.print") as mock_print:
+            main()
+            mock_print.assert_called_once()
+            res = json.loads(mock_print.call_args[0][0])
+            self.assertTrue(res["success"])
+
+    @patch("backend.zfs_helper.run_cmd")
+    @patch("sys.argv", ["zfs_helper.py", "disk-action", "replace", "tank", "/dev/sdb", "/dev/sdc"])
+    def test_main_cli_disk_action_replace(self, mock_run):
+        mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
+        with patch("builtins.print") as mock_print:
+            main()
+            mock_print.assert_called_once()
+            res = json.loads(mock_print.call_args[0][0])
+            self.assertTrue(res["success"])
+
+    @patch("backend.zfs_helper.ZfsService.get_pools")
+    @patch("backend.zfs_helper.run_cmd")
+    def test_get_disks_filters(self, mock_run, mock_pools):
+        mock_pools.return_value = [{
+            "name": "tank",
+            "vdevs": [{"name": "/dev/sda1"}]
+        }]
+        lsblk_json = json.dumps({
+            "blockdevices": [
+                {"name": "sda", "kname": "sda", "path": "/dev/sda", "size": 107374182400, "rota": False, "type": "disk", "children": [{"name": "sda1", "path": "/dev/sda1", "mountpoint": None}]},
+                {"name": "sdb", "kname": "sdb", "path": "/dev/sdb", "size": 0, "rota": False, "type": "disk"},
+                {"name": "sdc", "kname": "sdc", "path": "/dev/sdc", "size": 107374182400, "rota": False, "type": "disk", "mountpoint": "/"},
+                {"name": "loop0", "kname": "loop0", "path": "/dev/loop0", "size": 1073741824, "rota": False, "type": "loop"}
+            ]
+        })
+        mock_run.side_effect = [
+            MagicMock(returncode=0, stdout=lsblk_json, stderr=""),
+            MagicMock(returncode=0, stdout=json.dumps({"smart_status": {"passed": True}}), stderr=""),
+        ]
+        disks = self.svc.get_disks()
+        self.assertEqual(len(disks), 2)
+        sda = next(d for d in disks if d["name"] == "sda")
+        self.assertIn("tank", sda["pool"])
 
 
 if __name__ == "__main__":
     unittest.main()
+
 
 
 

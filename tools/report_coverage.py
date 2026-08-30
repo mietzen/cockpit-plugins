@@ -11,6 +11,8 @@ TIER_CONFIG = {
         "patterns": [
             "command_builder.py",
             "zfs_helper.py",
+            "file_sharing_helper.py",
+            "smb_parser.py",
             "samba_parser.py",
             "nfs_parser.py",
             "access_matrix.py",
