@@ -628,12 +628,12 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
     // NFS Client Mapping subtab
     await frame.evaluate(() => (window as any).__setActiveView?.("nfs"));
     await page.waitForTimeout(300);
-    const clientsSubTab = frame.locator("button.pf-v5-c-tabs__link:has-text('Client mapping'), [role='tab']:has-text('Client mapping')").first();
+    const clientsSubTab = frame.locator("button.pf-v5-c-tabs__link:has-text('Client IP Access Map'), [role='tab']:has-text('Client IP')").first();
     if (await clientsSubTab.isVisible({ timeout: 2000 }).catch(() => false)) {
       await clientsSubTab.click({ timeout: 2000 }).catch(() => {});
       await page.waitForTimeout(300);
     }
-    const exportsSubTab = frame.locator("button.pf-v5-c-tabs__link:has-text('Export shares'), [role='tab']:has-text('Export shares')").first();
+    const exportsSubTab = frame.locator("button.pf-v5-c-tabs__link:has-text('Export Paths'), [role='tab']:has-text('Export Paths')").first();
     if (await exportsSubTab.isVisible({ timeout: 2000 }).catch(() => false)) {
       await exportsSubTab.click({ timeout: 2000 }).catch(() => {});
       await page.waitForTimeout(300);
@@ -642,12 +642,12 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
     // Users Access Matrix subtab
     await frame.evaluate(() => (window as any).__setActiveView?.("users"));
     await page.waitForTimeout(300);
-    const matrixSubTab = frame.locator("button.pf-v5-c-tabs__link:has-text('Share access matrix'), [role='tab']:has-text('Share access matrix')").first();
+    const matrixSubTab = frame.locator("button.pf-v5-c-tabs__link:has-text('User Access Matrix'), [role='tab']:has-text('User Access Matrix')").first();
     if (await matrixSubTab.isVisible({ timeout: 2000 }).catch(() => false)) {
       await matrixSubTab.click({ timeout: 2000 }).catch(() => {});
       await page.waitForTimeout(300);
     }
-    const usersSubTab = frame.locator("button.pf-v5-c-tabs__link:has-text('Samba users'), [role='tab']:has-text('Samba users')").first();
+    const usersSubTab = frame.locator("button.pf-v5-c-tabs__link:has-text('Samba Users'), [role='tab']:has-text('Samba Users')").first();
     if (await usersSubTab.isVisible({ timeout: 2000 }).catch(() => false)) {
       await usersSubTab.click({ timeout: 2000 }).catch(() => {});
       await page.waitForTimeout(300);

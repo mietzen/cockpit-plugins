@@ -622,7 +622,11 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
         await page.waitForTimeout(300);
       }
 
-      // Step 2: VDEV - Add VDEV button
+      // Step 2: VDEV - Select disk and add VDEV
+      const diskCheck = frame.locator(".pf-v5-c-wizard input[type='checkbox']").first();
+      if (await diskCheck.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await diskCheck.click().catch(() => {});
+      }
       const addVdevBtn = frame.locator("button:has-text('Add VDEV')").first();
       if (await addVdevBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
         await addVdevBtn.click({ timeout: 1000 }).catch(() => {});
@@ -708,5 +712,71 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
       (window as any).__navigateTo?.(["pools", pool, "settings"]);
     }, TEST_POOL);
     await page.waitForTimeout(300);
+  });
+
+  test("22. Direct Modal Form Controls & Operations Exercise", async () => {
+    const frame = await getFrame();
+    
+    // Trigger Create Dataset Modal form inputs
+    await frame.evaluate((pool) => {
+      (window as any).__setActiveModal?.({ type: "create-dataset", parent: pool });
+    }, TEST_POOL);
+    await page.waitForTimeout(300);
+    const dsNameInput = frame.locator("input#dataset-name, input[aria-label*='Dataset name']").first();
+    if (await dsNameInput.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await dsNameInput.fill("modal_ds_test");
+    }
+    const dsCompSelect = frame.locator("select#dataset-compression").first();
+    if (await dsCompSelect.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await dsCompSelect.selectOption("zstd");
+    }
+    const advSection = frame.locator("button:has-text('Advanced options')").first();
+    if (await advSection.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await advSection.click().catch(() => {});
+    }
+    const dsQuotaInput = frame.locator("input#dataset-quota").first();
+    if (await dsQuotaInput.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await dsQuotaInput.fill("1G");
+    }
+    const closeDsBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
+    if (await closeDsBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await closeDsBtn.click().catch(() => {});
+    }
+
+    // Trigger Create ZVol Modal form inputs
+    await frame.evaluate((pool) => {
+      (window as any).__setActiveModal?.({ type: "create-zvol", parent: pool });
+    }, TEST_POOL);
+    await page.waitForTimeout(300);
+    const zvolNameInput = frame.locator("input#zvol-name, input[aria-label*='Volume name']").first();
+    if (await zvolNameInput.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await zvolNameInput.fill("modal_zvol_test");
+    }
+    const zvolSizeInput = frame.locator("input#zvol-size").first();
+    if (await zvolSizeInput.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await zvolSizeInput.fill("500M");
+    }
+    const closeZvolBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
+    if (await closeZvolBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await closeZvolBtn.click().catch(() => {});
+    }
+
+    // Trigger Create Snapshot Modal form inputs
+    await frame.evaluate((pool) => {
+      (window as any).__setActiveModal?.({ type: "create-snapshot", target: pool });
+    }, TEST_POOL);
+    await page.waitForTimeout(300);
+    const snapNameInput = frame.locator("input#snapshot-name, input[aria-label*='Snapshot name']").first();
+    if (await snapNameInput.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await snapNameInput.fill("modal_snap_test");
+    }
+    const closeSnapBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
+    if (await closeSnapBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await closeSnapBtn.click().catch(() => {});
+    }
+
+    await frame.evaluate(() => {
+      (window as any).__setActiveModal?.(null);
+    });
   });
 });
