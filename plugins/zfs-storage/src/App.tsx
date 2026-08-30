@@ -243,6 +243,10 @@ export const App: React.FC = () => {
 
   useEffect(() => {
     loadData();
+    if (typeof window !== "undefined") {
+      (window as any).__setActiveModal = setActiveModal;
+      (window as any).__addAlert = addAlert;
+    }
   }, [loadData]);
 
   const runAction = async (actionPromise: Promise<CommandResult>, successMsg: string) => {

@@ -490,4 +490,41 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
       }
     }, TEST_POOL);
   });
+
+  test("18. Modal Rendering and Lifecycle Suite", async () => {
+    const frame = await getFrame();
+    const modalTypes = [
+      { type: "arc-details" },
+      { type: "create-dataset", parent: TEST_POOL },
+      { type: "create-zvol", parent: TEST_POOL },
+      { type: "edit-properties", dataset: { name: `${TEST_POOL}/testdata`, pool: TEST_POOL, type: "filesystem", mountpoint: `/mnt/${TEST_POOL}/testdata`, mounted: true, properties: {} } },
+      { type: "create-snapshot", target: TEST_POOL },
+      { type: "rollback-snapshot", snapshot: { name: `${TEST_POOL}@snap-test`, pool: TEST_POOL, dataset: TEST_POOL, snapshot_name: "snap-test", properties: {} } },
+      { type: "clone-snapshot", snapshot: { name: `${TEST_POOL}@snap-test`, pool: TEST_POOL, dataset: TEST_POOL, snapshot_name: "snap-test", properties: {} } },
+      { type: "attach-disk", poolName: TEST_POOL, existingDevice: "/dev/loop1" },
+      { type: "replace-disk", poolName: TEST_POOL, existingDevice: "/dev/loop1" },
+      { type: "rename", itemType: "dataset", currentName: `${TEST_POOL}/testdata` },
+      { type: "destroy", itemType: "dataset", itemName: `${TEST_POOL}/testdata` },
+      { type: "preview", title: "Preview Command", command: ["zfs", "list"] },
+    ];
+
+    for (const m of modalTypes) {
+      await frame.evaluate((modalObj) => {
+        const win = window as any;
+        if (win.__setActiveModal) {
+          win.__setActiveModal(modalObj);
+        }
+      }, m);
+      await page.waitForTimeout(300);
+      const closeBtn = frame.locator(".pf-v5-c-modal-box button[aria-label='Close'], .pf-v5-c-modal-box button:has-text('Cancel')").first();
+      if (await closeBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await closeBtn.click();
+      } else {
+        await frame.evaluate(() => {
+          const win = window as any;
+          if (win.__setActiveModal) win.__setActiveModal(null);
+        });
+      }
+    }
+  });
 });

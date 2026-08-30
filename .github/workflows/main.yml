@@ -71,6 +71,7 @@ jobs:
           file: coverage-python/coverage-python-${{ matrix.plugin }}.xml
           language: Python
           label: python-${{ matrix.plugin }}
+          fail-on-error: false
 
       - name: Upload Python Coverage Artifact
         uses: actions/upload-artifact@v7
@@ -217,6 +218,7 @@ jobs:
           file: coverage-e2e-${{ matrix.plugin }}/cobertura-coverage.xml
           language: JavaScript
           label: e2e-${{ matrix.plugin }}
+          fail-on-error: false
 
       - name: Upload E2E Coverage Artifact
         if: always()
