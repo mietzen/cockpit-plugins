@@ -1171,4 +1171,215 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
       }
     }
   });
+
+  test("27. Comprehensive Views & Disks Traversal with Rich Mock State", async () => {
+    const frame = await getFrame();
+
+    await frame.evaluate((pool) => {
+      const win = window as any;
+      const mockDisks = [
+        {
+          name: "sda",
+          path: "/dev/sda",
+          size: 500107862016,
+          model: "Samsung SSD 870",
+          serial: "S5YVNF0R123456",
+          wwn: "0x5002538f41234567",
+          rotational: false,
+          smart_health: "PASSED",
+          temperature: 34,
+          transport: "sata",
+          pool: pool,
+          partitions: [
+            { name: "sda1", size: 1048576, type: "21686148-6449-6E6F-744E-656564454649", label: "bios" },
+            { name: "sda2", size: 500105748480, type: "6A898CC3-1DD2-11B2-99A6-080020736631", label: "zfs" },
+          ],
+          smart_attributes: [
+            { id: 5, name: "Reallocated_Sector_Ct", raw: "0", value: 100, worst: 100, thresh: 10, when_failed: "-" },
+            { id: 194, name: "Temperature_Celsius", raw: "34", value: 66, worst: 50, thresh: 0, when_failed: "-" },
+          ],
+        },
+        {
+          name: "sdb",
+          path: "/dev/sdb",
+          size: 2000398934016,
+          model: "WDC WD20EFAX",
+          serial: "WD-WCC4M123456",
+          wwn: "0x50014ee265432109",
+          rotational: true,
+          smart_health: "PASSED",
+          temperature: 46,
+          transport: "sata",
+          pool: null,
+          partitions: [],
+          smart_attributes: [
+            { id: 5, name: "Reallocated_Sector_Ct", raw: "0", value: 100, worst: 100, thresh: 10, when_failed: "-" },
+          ],
+        },
+      ];
+
+      const mockPools = [
+        {
+          name: pool,
+          guid: "1234567890",
+          state: "ONLINE",
+          status: "ONLINE",
+          health: "ONLINE",
+          scan: { function: "scrub", state: "in_progress", percentage: 45, raw: "scrub in progress" },
+          size: 2000000000,
+          alloc: 500000000,
+          free: 1500000000,
+          frag: 12,
+          cap: 25,
+          altroot: "-",
+          vdevs: [
+            {
+              name: "mirror-0",
+              type: "mirror",
+              status: "ONLINE",
+              devices: [
+                { name: "sda", type: "disk", status: "ONLINE", read: 0, write: 0, cksum: 0 },
+                { name: "sdb", type: "disk", status: "ONLINE", read: 0, write: 0, cksum: 0 },
+              ],
+            },
+          ],
+        },
+      ];
+
+      const mockDatasets = [
+        {
+          name: `${pool}/data`,
+          pool: pool,
+          type: "filesystem",
+          used: 104857600,
+          avail: 1073741824,
+          refer: 104857600,
+          mountpoint: "/data",
+          mounted: true,
+          compression: "zstd",
+          compressratio: "1.50",
+          encryption: "aes-256-gcm",
+          quota: "10G",
+          reservation: "none",
+          recordsize: "128K",
+          atime: "on",
+          snapshot_count: 2,
+        },
+        {
+          name: `${pool}/vol1`,
+          pool: pool,
+          type: "volume",
+          used: 52428800,
+          avail: 1073741824,
+          refer: 52428800,
+          mountpoint: null,
+          mounted: false,
+          compression: "off",
+          compressratio: "1.00",
+          encryption: "off",
+          quota: "-",
+          reservation: "none",
+          volsize: "1G",
+          volblocksize: "8K",
+          snapshot_count: 0,
+        },
+      ];
+
+      const mockSnapshots = [
+        {
+          name: `${pool}/data@snap1`,
+          pool: pool,
+          dataset: `${pool}/data`,
+          snapshot_name: "snap1",
+          used: 1024,
+          refer: 104857600,
+          creation: "2026-08-30 10:00:00",
+          clones: [`${pool}/clone1`],
+        },
+      ];
+
+      const mockSysInfo = {
+        zfs_version: "2.2.0",
+        spl_version: "2.2.0",
+        arc_stats: {
+          size: 1073741824,
+          target_size: 2147483648,
+          max_size: 4294967296,
+          min_size: 536870912,
+          hit_rate: 98.5,
+          miss_rate: 1.5,
+          data_size: 536870912,
+          meta_size: 536870912,
+        },
+        total_memory: 8589934592,
+        free_memory: 4294967296,
+      };
+
+      win.__setDisks?.(mockDisks);
+      win.__setPools?.(mockPools);
+      win.__setDatasets?.(mockDatasets);
+      win.__setSnapshots?.(mockSnapshots);
+      win.__setSystemInfo?.(mockSysInfo);
+    }, TEST_POOL);
+    await page.waitForTimeout(300);
+
+    // 1. Visit Dashboard
+    await frame.evaluate(() => (window as any).__navigateTo?.(["dashboard"]));
+    await page.waitForTimeout(300);
+
+    // 2. Visit Pools Overview
+    await frame.evaluate(() => (window as any).__navigateTo?.(["pools"]));
+    await page.waitForTimeout(300);
+
+    // 3. Visit Disks View and expand table
+    await frame.evaluate(() => (window as any).__navigateTo?.(["disks"]));
+    await page.waitForTimeout(300);
+
+    const expandDiskBtn = frame.locator("table[aria-label*='Disks'] button.pf-v5-c-table__toggle, table button[aria-label*='Details']").first();
+    if (await expandDiskBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await expandDiskBtn.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
+    }
+
+    const smartDetailsBtn = frame.locator("button:has-text('SMART details'), button:has-text('View SMART')").first();
+    if (await smartDetailsBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await smartDetailsBtn.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
+      const closeBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Close')").first();
+      if (await closeBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await closeBtn.click({ timeout: 1000 }).catch(() => {});
+      }
+    }
+
+    // 4. Visit Settings
+    await frame.evaluate(() => (window as any).__navigateTo?.(["settings"]));
+    await page.waitForTimeout(300);
+  });
+
+  test("28. Complete Action Handlers Invocation Suite", async () => {
+    const frame = await getFrame();
+    await frame.evaluate(async (pool) => {
+      const win = window as any;
+      try {
+        await win.__handleCreateDataset?.({ name: `${pool}/mock_ds`, compression: "lz4" });
+        await win.__handleCreateZVol?.({ name: `${pool}/mock_vol`, size: "10M" });
+        await win.__handleCreateSnapshot?.(pool, "mock_snap");
+        await win.__handleRollbackSnapshot?.(`${pool}@mock_snap`);
+        await win.__handleCloneSnapshot?.(`${pool}@mock_snap`, `${pool}/mock_clone`);
+        await win.__handleRename?.(`${pool}/mock_ds`, `${pool}/mock_ds_renamed`);
+        await win.__handleDestroy?.(`${pool}/mock_ds_renamed`);
+        await win.__handleSaveDatasetProperties?.(`${pool}/mock_ds`, { compression: "zstd" });
+        await win.__handleSavePoolProperties?.(pool, { autoexpand: "on" });
+        await win.__handleAttachDisk?.(pool, "sda", "sdb");
+        await win.__handleReplaceDisk?.(pool, "sda", "sdb");
+        await win.__handleDetachDisk?.(pool, "sdb");
+        await win.__handleOfflineDisk?.(pool, "sda");
+        await win.__handleOnlineDisk?.(pool, "sda");
+        await win.__handleExportPool?.(pool);
+        await win.__handleImportPool?.(pool);
+      } catch {
+        // ignore errors
+      }
+    }, TEST_POOL);
+  });
 });

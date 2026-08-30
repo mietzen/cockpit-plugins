@@ -378,6 +378,11 @@ export const App: React.FC = () => {
   useEffect(() => {
     if (typeof window !== "undefined") {
       (window as any).__setActiveModal = setActiveModal;
+      (window as any).__setDisks = setDisks;
+      (window as any).__setPools = setPools;
+      (window as any).__setDatasets = setDatasets;
+      (window as any).__setSnapshots = setSnapshots;
+      (window as any).__setSystemInfo = setSystemInfo;
       (window as any).__addAlert = addAlert;
       (window as any).__navigateTo = navigateTo;
       (window as any).__handleScrubAction = handleScrubAction;
@@ -386,6 +391,23 @@ export const App: React.FC = () => {
       (window as any).__handleViewSmartDetails = handleViewSmartDetails;
       (window as any).__handleSubTabChange = handleSubTabChange;
       (window as any).__handleSelectPool = handleSelectPool;
+      (window as any).__handleExportPool = handleExportPool;
+      (window as any).__handleImportPool = handleImportPool;
+      (window as any).__handleDestroyPool = handleDestroyPool;
+      (window as any).__handleCreateDataset = handleCreateDataset;
+      (window as any).__handleCreateZVol = handleCreateZVol;
+      (window as any).__handleCreateSnapshot = handleCreateSnapshot;
+      (window as any).__handleRollbackSnapshot = handleRollbackSnapshot;
+      (window as any).__handleCloneSnapshot = handleCloneSnapshot;
+      (window as any).__handleRename = handleRename;
+      (window as any).__handleDestroy = handleDestroy;
+      (window as any).__handleSaveDatasetProperties = handleSaveDatasetProperties;
+      (window as any).__handleSavePoolProperties = handleSavePoolProperties;
+      (window as any).__handleAttachDisk = handleAttachDisk;
+      (window as any).__handleReplaceDisk = handleReplaceDisk;
+      (window as any).__handleDetachDisk = handleDetachDisk;
+      (window as any).__handleOfflineDisk = handleOfflineDisk;
+      (window as any).__handleOnlineDisk = handleOnlineDisk;
     }
   });
 
