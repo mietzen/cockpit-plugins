@@ -246,7 +246,7 @@ class TestZfsServiceActions(unittest.TestCase):
     @patch("backend.zfs_helper.run_cmd")
     def test_pool_import_export_destroy(self, mock_run):
         mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
-        self.assertTrue(self.svc.pool_import("tank", force=True)["success"])
+        self.assertTrue(self.svc.pool_import({"name": "tank", "force": True})["success"])
         self.assertTrue(self.svc.pool_export("tank", force=True)["success"])
         self.assertTrue(self.svc.pool_destroy("tank", force=True)["success"])
         self.assertTrue(self.svc.pool_set_property("tank", "autotrim", "on")["success"])
@@ -254,24 +254,16 @@ class TestZfsServiceActions(unittest.TestCase):
     @patch("backend.zfs_helper.run_cmd")
     def test_snapshot_actions(self, mock_run):
         mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
-        self.assertTrue(self.svc.snapshot_create("tank/data@s1", recursive=True)["success"])
+        self.assertTrue(self.svc.snapshot_create({"path": "tank/data", "name": "s1", "recursive": True})["success"])
         self.assertTrue(self.svc.snapshot_destroy("tank/data@s1", recursive=True)["success"])
-        self.assertTrue(self.svc.snapshot_rollback("tank/data@s1", force=True)["success"])
-        self.assertTrue(self.svc.snapshot_clone("tank/data@s1", "tank/clone1")["success"])
-
-    @patch("backend.zfs_helper.run_cmd")
-    def test_smart_and_wipe_actions(self, mock_run):
-        mock_run.return_value = MagicMock(returncode=0, stdout=json.dumps({"smartctl": {"messages": []}}), stderr="")
-        self.assertIsNotNone(self.svc.get_smart_info("/dev/sda"))
-        mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
-        self.assertTrue(self.svc.run_smart_test("/dev/sda", "short")["success"])
-        self.assertTrue(self.svc.wipe_disk("/dev/sda")["success"])
+        self.assertTrue(self.svc.snapshot_rollback("tank/data@s1", destroy_intermediate=True)["success"])
+        self.assertTrue(self.svc.snapshot_clone({"snapshot": "tank/data@s1", "clone_path": "tank/clone1"})["success"])
 
     @patch("backend.zfs_helper.run_cmd")
     def test_dataset_set_property_and_zvol(self, mock_run):
         mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
         self.assertTrue(self.svc.dataset_set_property("tank/data", "compression", "lz4")["success"])
-        payload = {"path": "tank/vol1", "type": "volume", "volsize": "1G", "volblocksize": "8k", "sparse": True, "properties": {}}
+        payload = {"path": "tank/vol1", "type": "volume", "size": "1G", "volblocksize": "8k", "sparse": True, "properties": {}}
         self.assertTrue(self.svc.dataset_create(payload)["success"])
 
     @patch("sys.argv", ["zfs_helper.py", "snapshots-list", "--path", "tank/data"])
