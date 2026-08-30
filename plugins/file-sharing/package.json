@@ -1,6 +1,6 @@
 {
   "name": "cockpit-file-sharing",
-  "version": "1.1.0",
+  "version": "0.1.0",
   "description": "Open-source Cockpit plugin for SMB and NFS file sharing management",
   "main": "dist/index.html",
   "scripts": {
@@ -10,6 +10,7 @@
     "test:backend": "PYTHONPATH=. pytest backend/tests"
   },
   "dependencies": {
+    "@cockpit-plugins/common": "*",
     "@patternfly/patternfly": "^5.4.0",
     "@patternfly/react-core": "^5.4.0",
     "@patternfly/react-icons": "^5.4.0",

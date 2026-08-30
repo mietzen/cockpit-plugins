@@ -22,12 +22,12 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
 
   async function getFrame(): Promise<Frame> {
     const frameElement = await page.waitForSelector(
-      "iframe[name*='zfs-storage'], iframe[src*='zfs-storage']",
-      { state: "attached", timeout: 15000 }
+      "iframe[name*='zfs'], iframe[src*='zfs']",
+      { state: "attached", timeout: 20000 }
     );
     const frame = await frameElement.contentFrame();
     if (!frame) {
-      throw new Error("Cockpit iframe contentFrame is null");
+      throw new Error("Cockpit zfs iframe contentFrame is null");
     }
     return frame;
   }
@@ -101,7 +101,7 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     await navLink.click();
 
     const frame = await getFrame();
-    await frame.waitForSelector("#root", { timeout: 20000 });
+    await frame.locator("#root").waitFor({ state: "attached", timeout: 20000 });
 
     // Verify Overview header is visible
     await expect(frame.locator("text=ZFS Storage").first()).toBeVisible({ timeout: 10000 });

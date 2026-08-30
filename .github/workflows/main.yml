@@ -6,6 +6,7 @@ on:
       - main
     tags:
       - '*-v*'
+      - 'v*'
   pull_request:
     branches:
       - main
@@ -18,8 +19,12 @@ permissions:
 
 jobs:
   build:
-    name: Build Plugins, Test & Package (.deb & .rpm)
+    name: Build & Package Matrix (${{ matrix.plugin }})
     runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        plugin: [zfs-storage, file-sharing]
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v7
@@ -32,7 +37,7 @@ jobs:
         with:
           node-version: 24
           cache: "npm"
-          cache-dependency-path: "**/package-lock.json"
+          cache-dependency-path: "package-lock.json"
 
       - name: Setup Python
         uses: actions/setup-python@v7
@@ -47,44 +52,87 @@ jobs:
 
       - name: Run Backend Unit Tests
         run: |
-          PYTHONPATH=plugins/zfs-storage:plugins/file-sharing:tools pytest plugins/zfs-storage/backend/tests plugins/file-sharing/backend/tests tools/tests
+          PYTHONPATH=packages/common/python:plugins/${{ matrix.plugin }}:tools pytest plugins/${{ matrix.plugin }}/backend/tests tools/tests
 
       - name: Install Packaging Tools (RPM & DPKG)
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq rpm dpkg-dev
 
-      - name: Build Plugins & Packages (.deb & .rpm)
+      - name: Install Workspace Dependencies & Build Plugin
+        run: |
+          npm ci
+          npm --prefix plugins/${{ matrix.plugin }} run build
+
+      - name: Package Plugin (.deb & .rpm) - Build Pass 1
         run: |
           mkdir -p dist-debs dist-rpms
-          for plugin in plugins/*; do
-            if [ -d "$plugin" ] && [ -f "$plugin/package.json" ]; then
-              echo "==> Building and packaging plugin: $plugin"
-              npm --prefix "$plugin" install
-              npm --prefix "$plugin" run build
-              ./tools/build_deb.sh "$plugin" auto dist-debs
-              ./tools/build_rpm.sh "$plugin" auto dist-rpms
+          ./tools/build_deb.sh plugins/${{ matrix.plugin }} auto dist-debs
+          ./tools/build_rpm.sh plugins/${{ matrix.plugin }} auto dist-rpms
+
+      - name: Reproducible Build Gate - Build Pass 2 & Hash Verification
+        run: |
+          mkdir -p dist-debs-repro dist-rpms-repro
+          ./tools/build_deb.sh plugins/${{ matrix.plugin }} auto dist-debs-repro
+          ./tools/build_rpm.sh plugins/${{ matrix.plugin }} auto dist-rpms-repro
+
+          echo "==> Verifying bit-for-bit Debian package reproducibility..."
+          for deb in dist-debs/*.deb; do
+            base_deb=$(basename "$deb")
+            repro_deb="dist-debs-repro/$base_deb"
+            if [ -f "$repro_deb" ]; then
+              sha_orig=$(sha256sum "$deb" | awk '{print $1}')
+              sha_repro=$(sha256sum "$repro_deb" | awk '{print $1}')
+              echo "$base_deb Pass 1: $sha_orig"
+              echo "$base_deb Pass 2: $sha_repro"
+              if [ "$sha_orig" != "$sha_repro" ]; then
+                echo "❌ Non-reproducible Debian package detected for $base_deb"
+                cmp -l "$deb" "$repro_deb" | head -n 30
+                exit 1
+              fi
             fi
           done
 
-      - name: Upload Debian Packages
+          echo "==> Verifying bit-for-bit RPM package reproducibility..."
+          for rpm in dist-rpms/*.rpm; do
+            base_rpm=$(basename "$rpm")
+            repro_rpm="dist-rpms-repro/$base_rpm"
+            if [ -f "$repro_rpm" ]; then
+              sha_orig=$(sha256sum "$rpm" | awk '{print $1}')
+              sha_repro=$(sha256sum "$repro_rpm" | awk '{print $1}')
+              echo "$base_rpm Pass 1: $sha_orig"
+              echo "$base_rpm Pass 2: $sha_repro"
+              if [ "$sha_orig" != "$sha_repro" ]; then
+                echo "❌ Non-reproducible RPM package detected for $base_rpm"
+                cmp -l "$rpm" "$repro_rpm" | head -n 30
+                exit 1
+              fi
+            fi
+          done
+          echo "✅ Reproducibility gate passed: all packages are 100% deterministic bit-for-bit."
+
+      - name: Upload Scoped Debian Artifact
         uses: actions/upload-artifact@v7
         with:
-          name: deb-packages
+          name: deb-${{ matrix.plugin }}
           path: dist-debs/*.deb
           retention-days: 7
 
-      - name: Upload RPM Packages
+      - name: Upload Scoped RPM Artifact
         uses: actions/upload-artifact@v7
         with:
-          name: rpm-packages
+          name: rpm-${{ matrix.plugin }}
           path: dist-rpms/*.rpm
           retention-days: 7
 
   e2e:
-    name: End-to-End Playwright Tests (Live ZFS & Cockpit)
+    name: E2E Playwright Tests Matrix (${{ matrix.plugin }})
     runs-on: ubuntu-24.04
     needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        plugin: [zfs-storage, file-sharing]
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v7
@@ -94,7 +142,7 @@ jobs:
         with:
           node-version: 24
           cache: "npm"
-          cache-dependency-path: "**/package-lock.json"
+          cache-dependency-path: "package-lock.json"
 
       - name: Setup Python
         uses: actions/setup-python@v7
@@ -109,30 +157,30 @@ jobs:
           restore-keys: |
             playwright-${{ runner.os }}-
 
-      - name: Download Built .deb Packages
+      - name: Download Built .deb Package for Matrix Target
         uses: actions/download-artifact@v8
         with:
-          name: deb-packages
+          name: deb-${{ matrix.plugin }}
           path: dist-debs
 
-      - name: Setup ZFS & Cockpit Test Environment
+      - name: Setup Cockpit Test Environment
         run: |
-          sudo bash plugins/zfs-storage/e2e/setup_test_env.sh
+          sudo bash tools/setup_e2e_env.sh
 
       - name: Install Playwright & Browsers
         run: |
-          npm install
+          npm ci
           npx playwright install chromium --with-deps
 
-      - name: Run E2E Playwright Test Suite
+      - name: Run E2E Playwright Suite for ${{ matrix.plugin }}
         run: |
-          COCKPIT_URL=https://127.0.0.1:9090 npx playwright test
+          COCKPIT_URL=https://127.0.0.1:9090 npx playwright test plugins/${{ matrix.plugin }}/e2e/
 
       - name: Upload E2E Test Failure Artifacts
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: playwright-failure-results
+          name: playwright-failure-${{ matrix.plugin }}
           path: test-results/
           retention-days: 14
 
@@ -153,31 +201,33 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Download Built Packages
+      - name: Download All Built Debian Packages
         uses: actions/download-artifact@v8
         with:
-          name: deb-packages
-          path: dist-debs
+          path: all-debs
+          pattern: deb-*
+          merge-multiple: true
 
-      - name: Download Built RPM Packages
+      - name: Download All Built RPM Packages
         uses: actions/download-artifact@v8
         with:
-          name: rpm-packages
-          path: dist-rpms
+          path: all-rpms
+          pattern: rpm-*
+          merge-multiple: true
 
       - name: Verify Package Digests Against Published GitHub Releases
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          python3 tools/verify_release_digests.py --deb-dir dist-debs --rpm-dir dist-rpms
+          python3 tools/verify_release_digests.py --deb-dir all-debs --rpm-dir all-rpms
 
       - name: Assemble APT & RPM Repositories
         env:
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: |
-          python3 tools/generate_apt_repo.py --deb-dir dist-debs --rpm-dir dist-rpms --output-dir pages --owner ${{ github.repository_owner }} --repo ${{ github.event.repository.name }}
-          python3 tools/generate_rpm_repo.py --rpm-dir dist-rpms --output-dir pages/rpm --owner ${{ github.repository_owner }} --repo ${{ github.event.repository.name }}
+          python3 tools/generate_apt_repo.py --deb-dir all-debs --rpm-dir all-rpms --output-dir pages --owner ${{ github.repository_owner }} --repo ${{ github.event.repository.name }}
+          python3 tools/generate_rpm_repo.py --rpm-dir all-rpms --output-dir pages/rpm --owner ${{ github.repository_owner }} --repo ${{ github.event.repository.name }}
 
       - name: Upload GitHub Pages Artifact
         uses: actions/upload-pages-artifact@v5
@@ -197,17 +247,19 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v7
 
-      - name: Download Built Packages
+      - name: Download All Built Debian Packages
         uses: actions/download-artifact@v8
         with:
-          name: deb-packages
-          path: dist-debs
+          path: all-debs
+          pattern: deb-*
+          merge-multiple: true
 
-      - name: Download Built RPM Packages
+      - name: Download All Built RPM Packages
         uses: actions/download-artifact@v8
         with:
-          name: rpm-packages
-          path: dist-rpms
+          path: all-rpms
+          pattern: rpm-*
+          merge-multiple: true
 
       - name: Create GitHub Release
         env:
@@ -216,7 +268,7 @@ jobs:
           TAG_NAME="${{ github.ref_name }}"
           echo "Creating GitHub Release for $TAG_NAME..."
           gh release create "$TAG_NAME" \
-            dist-debs/*.deb \
-            dist-rpms/*.rpm \
+            all-debs/*.deb \
+            all-rpms/*.rpm \
             --title "$TAG_NAME" \
             --generate-notes

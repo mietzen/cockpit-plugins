@@ -1,6 +1,7 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import "@patternfly/react-core/dist/styles/base.css";
-import "./styles/cockpit-theme.css";
+import "@cockpit-plugins/common/src/styles/cockpit-theme.css";
+import { useCockpitTheme } from "@cockpit-plugins/common";
 import {
   Alert,
   AlertActionCloseButton,
@@ -22,6 +23,8 @@ import { SessionsTab } from "./components/SessionsTab";
 import { SettingsView } from "./components/SettingsView";
 
 export const App: React.FC = () => {
+  useCockpitTheme();
+
   const [activeView, setActiveView] = useState<string>("dashboard");
   const [data, setData] = useState<FileSharingOverview | null>(null);
   const [loading, setLoading] = useState(true);
@@ -53,95 +56,7 @@ export const App: React.FC = () => {
     }
   }, [ansibleBegin, ansibleEnd]);
 
-  // Sync theme with Cockpit shell
-  useEffect(() => {
-    try {
-      localStorage.removeItem("cockpit_zfs_theme");
-      localStorage.removeItem("cockpit_filesharing_theme");
-    } catch (e) {}
 
-    const applyTheme = (forcedTheme?: any) => {
-      let isDark = false;
-      let parentFound = false;
-
-      // 1. When inside Cockpit iframe, Cockpit host shell is the single source of truth
-      try {
-        if (window.parent && window.parent !== window && window.parent.document && window.parent.document.documentElement) {
-          parentFound = true;
-          const pCls = window.parent.document.documentElement.classList;
-          if (pCls.contains("pf-v6-theme-dark") || pCls.contains("pf-v5-theme-dark") || pCls.contains("theme-dark")) {
-            isDark = true;
-          } else {
-            isDark = false;
-          }
-        }
-      } catch (e) {}
-
-      // 2. Fallback when standalone or parent frame inaccessible
-      if (!parentFound) {
-        let shellStyle = forcedTheme;
-        if (typeof shellStyle !== "string") {
-          try {
-            shellStyle = localStorage.getItem("shell:style");
-          } catch (e) {}
-        }
-        if (shellStyle === "dark") {
-          isDark = true;
-        } else if (shellStyle === "light") {
-          isDark = false;
-        } else if (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) {
-          isDark = true;
-        }
-      }
-
-      const docEl = document.documentElement;
-      if (isDark) {
-        docEl.classList.add("pf-v5-theme-dark", "pf-v6-theme-dark", "theme-dark");
-        docEl.classList.remove("theme-light", "pf-m-light", "pf-v5-theme-light", "pf-v6-theme-light");
-      } else {
-        docEl.classList.remove("pf-v5-theme-dark", "pf-v6-theme-dark", "theme-dark");
-        docEl.classList.add("theme-light", "pf-m-light", "pf-v5-theme-light", "pf-v6-theme-light");
-      }
-    };
-
-    applyTheme();
-
-    const handleCockpitStyle = (e: any) => {
-      applyTheme(e.detail?.style || e.detail?.theme);
-    };
-
-    window.addEventListener("cockpit-style", handleCockpitStyle);
-    window.addEventListener("storage", applyTheme);
-
-    if (window.matchMedia) {
-      try {
-        const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-        if (mediaQuery.addEventListener) {
-          mediaQuery.addEventListener("change", applyTheme);
-        } else if ((mediaQuery as any).addListener) {
-          (mediaQuery as any).addListener(applyTheme);
-        }
-      } catch (e) {}
-    }
-
-    // Observe parent frame class changes in real time
-    let observer: MutationObserver | null = null;
-    try {
-      if (window.parent && window.parent !== window && window.parent.document && window.parent.document.documentElement) {
-        observer = new MutationObserver(() => applyTheme());
-        observer.observe(window.parent.document.documentElement, { attributes: true, attributeFilter: ["class"] });
-      }
-    } catch (e) {}
-
-    const intervalId = setInterval(applyTheme, 500);
-
-    return () => {
-      window.removeEventListener("cockpit-style", handleCockpitStyle);
-      window.removeEventListener("storage", applyTheme);
-      clearInterval(intervalId);
-      if (observer) observer.disconnect();
-    };
-  }, []);
 
   useEffect(() => {
     loadData();

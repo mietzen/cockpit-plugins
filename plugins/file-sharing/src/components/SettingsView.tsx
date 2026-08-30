@@ -245,7 +245,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </CardTitle>
               <CardBody>
                 <p style={{ marginBottom: "0.5rem" }}>
-                  <strong>Version:</strong> 1.1.0
+                  <strong>Version:</strong> 0.1.0
                 </p>
                 <p style={{ marginBottom: "0.5rem" }}>
                   <strong>License:</strong> MIT

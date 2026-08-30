@@ -4,9 +4,10 @@ A collection of plugins and extensions for Cockpit server administration.
 
 ## Available Plugins
 
-| Plugin | Package Name | Description | Status |
-| :--- | :--- | :--- | :--- |
-| [ZFS Storage](#zfs-storage) | `cockpit-zfs-storage` | Complete OpenZFS storage manager with pool creation wizards, dataset/zvol trees, snapshots, scrubs, trims, and SMART health monitoring. | Stable |
+| Plugin | Package Name | Version | Description | Status |
+| :--- | :--- | :--- | :--- | :--- |
+| [ZFS Storage](#zfs-storage) | `cockpit-zfs-storage` | `0.5.0` | Complete OpenZFS storage manager with pool creation wizards, dataset/zvol trees, snapshots, scrubs, trims, and SMART health monitoring. | Stable |
+| [File Sharing](#file-sharing) | `cockpit-file-sharing` | `0.1.0` | Comprehensive SMB (Samba) and NFS file sharing manager with user passdb management, effective permission matrix, and Ansible lock integration. | Stable |
 
 ## Installation
 
