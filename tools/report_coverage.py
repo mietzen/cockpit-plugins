@@ -50,14 +50,14 @@ def main():
     # 1. Search for Python unit test coverage (.lcov files)
     py_files = sorted(glob.glob(os.path.join(coverage_dir, "**/*python*.lcov"), recursive=True))
     for pf in py_files:
-        label = os.path.basename(pf).replace(".lcov", "").replace("coverage-", "")
+        label = os.path.basename(pf).replace(".lcov", "").replace("coverage-python-", "").replace("coverage-", "")
         data = parse_lcov(pf)
         if data and data["total"] > 0:
             pct = data["percentage"]
             status_emoji = "✅" if pct >= min_threshold else "❌"
             rows.append(("Python Unit Tests", label, f"{pct:.1f}%", f"{data['hit']}/{data['total']} lines", status_emoji))
             if pct < min_threshold:
-                failed_targets.append((label, pct))
+                failed_targets.append((f"python-{label}", pct))
             
     # 2. Search for Frontend E2E coverage (lcov.info or *e2e*.lcov)
     e2e_files = sorted(glob.glob(os.path.join(coverage_dir, "**/lcov.info"), recursive=True) + 
@@ -70,7 +70,12 @@ def main():
         if ef in seen:
             continue
         seen.add(ef)
-        target = "file-sharing" if "file-sharing" in ef else "zfs-storage" if "zfs-storage" in ef else os.path.basename(os.path.dirname(ef))
+        parent_dir = os.path.basename(os.path.dirname(ef))
+        filename = os.path.basename(ef)
+        target = parent_dir.replace("coverage-e2e-", "").replace("coverage-", "")
+        if target in ("coverage", "html", "lcov-report", ".") or not target:
+            target = filename.replace(".lcov", "").replace("coverage-e2e-", "").replace("coverage-", "")
+        
         data = parse_lcov(ef)
         if data and data["total"] > 0:
             pct = data["percentage"]
