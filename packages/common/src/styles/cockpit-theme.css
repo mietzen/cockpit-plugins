@@ -426,13 +426,19 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .pf-v5-c-table td,
-.pf-v5-c-table__td,
-.pf-v5-c-table td strong,
-.pf-v5-c-table td span,
-.pf-v5-c-table__text {
+.pf-v5-c-table__td {
   color: var(--zfs-text-primary) !important;
   --pf-v5-c-table__td--Color: var(--zfs-text-primary) !important;
   border-bottom: 1px solid var(--zfs-table-border) !important;
+}
+
+.pf-v5-c-table td strong,
+.pf-v5-c-table td span,
+.pf-v5-c-table__text,
+.pf-v5-c-table td .pf-v5-c-label,
+.pf-v5-c-table td .pf-v5-c-badge {
+  border-bottom: none !important;
+  text-decoration: none !important;
 }
 
 /* =========================================================
