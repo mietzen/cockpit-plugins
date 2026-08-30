@@ -165,25 +165,29 @@ export class ZfsApiClient {
     const cockpit = (window as any).cockpit;
     const helper = "/usr/libexec/cockpit-file-sharing/file_sharing_helper.py";
 
-    if (params.smb) {
-      const shareName = params.path.split("/").pop() || "share";
-      const smbData = JSON.stringify({
-        name: shareName,
-        path: params.path,
-        comment: `ZFS share ${params.path}`,
-        read_only: false,
-        browseable: true,
-        guest_ok: false
-      });
-      await cockpit.spawn(["python3", helper, "save_smb_share", "--data", smbData], { superuser: "require" });
-    }
+    try {
+      if (params.smb) {
+        const shareName = params.path.split("/").pop() || "share";
+        const smbData = JSON.stringify({
+          name: shareName,
+          path: params.path,
+          comment: `ZFS share ${params.path}`,
+          read_only: false,
+          browseable: true,
+          guest_ok: false,
+        });
+        await cockpit.spawn(["python3", helper, "save_smb_share", "--data", smbData], { superuser: "require" });
+      }
 
-    if (params.nfs) {
-      const nfsData = JSON.stringify({
-        path: params.path,
-        clients: [{ host: "*", read_only: false, sync: true, root_squash: true, no_subtree_check: true }]
-      });
-      await cockpit.spawn(["python3", helper, "save_nfs_export", "--data", nfsData], { superuser: "require" });
+      if (params.nfs) {
+        const nfsData = JSON.stringify({
+          path: params.path,
+          clients: [{ host: "*", read_only: false, sync: true, root_squash: true, no_subtree_check: true }],
+        });
+        await cockpit.spawn(["python3", helper, "save_nfs_export", "--data", nfsData], { superuser: "require" });
+      }
+    } catch {
+      // Gracefully handle if file sharing plugin helper is unavailable
     }
   }
 }

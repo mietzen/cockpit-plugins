@@ -174,11 +174,12 @@ jobs:
           restore-keys: |
             playwright-${{ runner.os }}-
 
-      - name: Download Built .deb Package for Matrix Target
+      - name: Download Built .deb Packages for Matrix Target
         uses: actions/download-artifact@v8
         with:
-          name: deb-${{ matrix.plugin }}
+          pattern: deb-*
           path: dist-debs
+          merge-multiple: true
 
       - name: Setup Cockpit Test Environment
         run: |
