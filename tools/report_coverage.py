@@ -29,10 +29,23 @@ def parse_lcov(file_path):
         "percentage": percentage
     }
 
+MIN_COVERAGE_THRESHOLD = 80.0
+
 def main():
     coverage_dir = sys.argv[1] if len(sys.argv) > 1 else "."
     
+    # Parse threshold argument if provided
+    min_threshold = MIN_COVERAGE_THRESHOLD
+    if "--min-coverage" in sys.argv:
+        idx = sys.argv.index("--min-coverage")
+        if idx + 1 < len(sys.argv):
+            try:
+                min_threshold = float(sys.argv[idx + 1])
+            except ValueError:
+                pass
+    
     rows = []
+    failed_targets = []
     
     # 1. Search for Python unit test coverage (.lcov files)
     py_files = sorted(glob.glob(os.path.join(coverage_dir, "**/*python*.lcov"), recursive=True))
@@ -40,7 +53,11 @@ def main():
         label = os.path.basename(pf).replace(".lcov", "").replace("coverage-", "")
         data = parse_lcov(pf)
         if data and data["total"] > 0:
-            rows.append(("Python Unit Tests", label, f"{data['percentage']:.1f}%", f"{data['hit']}/{data['total']} lines"))
+            pct = data["percentage"]
+            status_emoji = "✅" if pct >= min_threshold else "❌"
+            rows.append(("Python Unit Tests", label, f"{pct:.1f}%", f"{data['hit']}/{data['total']} lines", status_emoji))
+            if pct < min_threshold:
+                failed_targets.append((label, pct))
             
     # 2. Search for Frontend E2E coverage (lcov.info or *e2e*.lcov)
     e2e_files = sorted(glob.glob(os.path.join(coverage_dir, "**/lcov.info"), recursive=True) + 
@@ -56,17 +73,24 @@ def main():
         target = "file-sharing" if "file-sharing" in ef else "zfs-storage" if "zfs-storage" in ef else os.path.basename(os.path.dirname(ef))
         data = parse_lcov(ef)
         if data and data["total"] > 0:
-            rows.append(("Frontend E2E (Playwright)", target, f"{data['percentage']:.1f}%", f"{data['hit']}/{data['total']} lines"))
+            pct = data["percentage"]
+            status_emoji = "✅" if pct >= min_threshold else "❌"
+            rows.append(("Frontend E2E (Playwright)", target, f"{pct:.1f}%", f"{data['hit']}/{data['total']} lines", status_emoji))
+            if pct < min_threshold:
+                failed_targets.append((f"e2e-{target}", pct))
     
     md_output = []
     md_output.append("## 📊 Code Coverage Summary\n")
     if not rows:
         md_output.append("No coverage data files found.\n")
     else:
-        md_output.append("| Layer | Target / Plugin | Coverage | Covered Lines |")
-        md_output.append("| :--- | :--- | :--- | :--- |")
-        for layer, target, cov, lines in rows:
-            md_output.append(f"| **{layer}** | `{target}` | **{cov}** | {lines} |")
+        md_output.append("| Layer | Target / Plugin | Coverage | Covered Lines | Gate Status |")
+        md_output.append("| :--- | :--- | :--- | :--- | :--- |")
+        for layer, target, cov, lines, status in rows:
+            md_output.append(f"| **{layer}** | `{target}` | **{cov}** | {lines} | {status} |")
+        
+        gate_summary = "PASSED" if not failed_targets else "FAILED"
+        md_output.append(f"\n**Coverage Gate (>= {min_threshold:.1f}%)**: **{gate_summary}**")
         md_output.append("\n*Generated automatically from Python pytest-cov & Playwright Istanbul coverage metrics.*")
     
     summary_text = "\n".join(md_output)
@@ -80,6 +104,15 @@ def main():
     # Also write to comment markdown file
     with open("coverage-summary.md", "w", encoding="utf-8") as f:
         f.write(summary_text + "\n")
+
+    # Enforce minimum threshold gate
+    if failed_targets:
+        print(f"\n❌ Coverage Gate Failed: The following targets are below the {min_threshold:.1f}% threshold:")
+        for target, pct in failed_targets:
+            print(f"  - {target}: {pct:.1f}% (< {min_threshold:.1f}%)")
+        sys.exit(1)
+
+    print(f"\n✅ All test suites meet the minimum coverage threshold (>= {min_threshold:.1f}%).")
 
 if __name__ == "__main__":
     main()

@@ -241,10 +241,10 @@ jobs:
 
       - name: Aggregate & Generate Coverage Summary
         run: |
-          python3 tools/report_coverage.py coverage-data
+          python3 tools/report_coverage.py coverage-data --min-coverage 80.0
 
       - name: Post Sticky Coverage Comment on Pull Request
-        if: github.event_name == 'pull_request'
+        if: always() && github.event_name == 'pull_request'
         uses: actions/github-script@v7
         with:
           script: |
