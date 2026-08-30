@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   PageSection,
   Title,
@@ -7,8 +7,6 @@ import {
   CardBody,
   Form,
   FormGroup,
-  FormSelect,
-  FormSelectOption,
   Checkbox,
   Button,
   Alert,
@@ -20,38 +18,13 @@ interface SettingsViewProps {
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = ({ systemInfo }) => {
-  const [theme, setTheme] = useState(
-    localStorage.getItem("cockpit_zfs_theme") || "auto"
-  );
   const [enablePreview, setEnablePreview] = useState(
     localStorage.getItem("cockpit_zfs_preview") !== "false"
   );
   const [saved, setSaved] = useState(false);
 
-  useEffect(() => {
-    let isDark = false;
-    if (theme === "dark") {
-      isDark = true;
-    } else if (theme === "light") {
-      isDark = false;
-    } else {
-      const shellTheme = localStorage.getItem("shell:style") || "auto";
-      isDark =
-        shellTheme === "dark" ||
-        (window.matchMedia?.("(prefers-color-scheme: dark)").matches &&
-          shellTheme === "auto");
-    }
-
-    if (isDark) {
-      document.documentElement.classList.add("pf-v5-theme-dark");
-    } else {
-      document.documentElement.classList.remove("pf-v5-theme-dark");
-    }
-  }, [theme]);
-
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    localStorage.setItem("cockpit_zfs_theme", theme);
     localStorage.setItem("cockpit_zfs_preview", enablePreview ? "true" : "false");
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
@@ -71,21 +44,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ systemInfo }) => {
         )}
 
         <Card isPlain style={{ border: "1px solid var(--zfs-card-border)", maxWidth: "650px", marginBottom: "1.5rem" }}>
-          <CardTitle>Appearance &amp; Behavior</CardTitle>
+          <CardTitle>Behavior</CardTitle>
           <CardBody>
             <Form onSubmit={handleSave}>
-              <FormGroup label="Theme" fieldId="theme-pref">
-                <FormSelect
-                  id="theme-pref"
-                  value={theme}
-                  onChange={(_event, val) => setTheme(val)}
-                >
-                  <FormSelectOption value="auto" label="Follow Cockpit shell style" />
-                  <FormSelectOption value="light" label="Light" />
-                  <FormSelectOption value="dark" label="Dark" />
-                </FormSelect>
-              </FormGroup>
-
               <FormGroup fieldId="enable-preview" style={{ marginBottom: "0.75rem" }}>
                 <Checkbox
                   id="enable-preview"
@@ -108,10 +69,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ systemInfo }) => {
           <CardTitle>About Cockpit ZFS</CardTitle>
           <CardBody>
             <p style={{ marginBottom: "0.5rem" }}>
-              <strong>Version:</strong> 1.0.0 (Open Source)
+              <strong>Version:</strong> 1.1.0
             </p>
             <p style={{ marginBottom: "0.5rem" }}>
-              <strong>License:</strong> MIT / Free Software
+              <strong>License:</strong> MIT
             </p>
             <p style={{ marginBottom: "0.5rem" }}>
               <strong>Host OpenZFS:</strong>{" "}

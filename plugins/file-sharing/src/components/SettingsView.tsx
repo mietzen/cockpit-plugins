@@ -231,6 +231,26 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </CardBody>
             </Card>
           </GridItem>
+
+          {/* Card 3: About Cockpit File Sharing */}
+          <GridItem span={12}>
+            <Card isPlain style={{ border: "1px solid var(--zfs-card-border)", marginTop: "1rem" }}>
+              <CardTitle>
+                <Title headingLevel="h2" size="xl">About Cockpit File Sharing</Title>
+              </CardTitle>
+              <CardBody>
+                <p style={{ marginBottom: "0.5rem" }}>
+                  <strong>Version:</strong> 1.1.0
+                </p>
+                <p style={{ marginBottom: "0.5rem" }}>
+                  <strong>License:</strong> MIT
+                </p>
+                <p style={{ marginBottom: "0.5rem" }}>
+                  <strong>Features:</strong> SMB (Samba) shares, NFS kernel exports, Samba user management, permissions matrix, and Ansible lock integration.
+                </p>
+              </CardBody>
+            </Card>
+          </GridItem>
         </Grid>
       </PageSection>
     </>
