@@ -310,8 +310,11 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
     await expect(createdRow).toBeVisible({ timeout: 10000 });
 
     // Delete export
-    const deleteBtn = createdRow.locator("button:has-text('Delete')").or(createdRow.locator("button[aria-label*='Delete']")).first();
-    await deleteBtn.click();
+    const actionToggle = createdRow.locator("button[aria-label='Export actions']").first();
+    await actionToggle.click();
+    const deleteOption = frame.getByRole("menuitem", { name: /Delete export/ }).or(frame.getByText("Delete export")).first();
+    await deleteOption.click();
+
     const confirmBtn = frame.getByRole("button", { name: "Delete export" }).first();
     if (await confirmBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
       await confirmBtn.click();
