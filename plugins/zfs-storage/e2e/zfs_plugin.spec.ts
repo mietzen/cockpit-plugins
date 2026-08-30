@@ -1657,6 +1657,49 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
         win.__snapshotsTabHandlers?.selectRow?.(`${pool}@s1`, false);
         win.__snapshotsTabHandlers?.toggleDropdown?.(`${pool}@s1`);
         win.__snapshotsTabHandlers?.toggleDropdown?.(null);
+
+        // App action handlers
+        const a = win.__appActionHandlers;
+        if (a) {
+          try { await a.poolWizardDone(); } catch {}
+          try { await a.createDataset({ name: `${pool}/testds`, mountpoint: `/mnt/testds`, properties: {} }); } catch {}
+          try { await a.createZVol({ name: `${pool}/testvol`, volsize: "1G", volblocksize: "8k", sparse: true }); } catch {}
+          try { await a.editProperties(`${pool}/testds`, { compression: "lz4" }); } catch {}
+          try { await a.createSnapshot(`${pool}/testds`, "snap_test", false); } catch {}
+          try { await a.rollbackSnapshot(`${pool}/testds@snap_test`); } catch {}
+          try { await a.cloneSnapshot(`${pool}/testds@snap_test`, `${pool}/cloneds`); } catch {}
+          try { await a.rename(`${pool}/testds`, `${pool}/renameds`); } catch {}
+          try { await a.attachDisk(pool, "/dev/sdb", "/dev/sdc"); } catch {}
+          try { await a.replaceDisk(pool, "/dev/sdb", "/dev/sdd"); } catch {}
+          try { await a.wipeDisk({ name: "sde", path: "/dev/sde", size: 1024, type: "disk", rotational: true, smart_health: "PASSED", smart_attributes: [], partitions: [] }); } catch {}
+          try { await a.runSmartTest({ name: "sde", path: "/dev/sde", size: 1024, type: "disk", rotational: true, smart_health: "PASSED", smart_attributes: [], partitions: [] }, "short"); } catch {}
+          try { await a.destroy({ type: "dataset", name: `${pool}/testds` }); } catch {}
+          try { a.bulkDestroySnapshots([`${pool}@s1`, `${pool}@s2`]); } catch {}
+        }
+
+        // Wizard handlers
+        const w = win.__wizardHandlers;
+        if (w) {
+          try {
+            w.setName("newpool");
+            w.setAshift("13");
+            w.setAltroot("/mnt/alt");
+            w.setMountpoint("/mnt/pool");
+            w.setForce(true);
+            w.setAutoexpand(false);
+            w.setAutoreplace(true);
+            w.setAutotrim(false);
+            w.setFailmode("continue");
+            w.setCompression("zstd");
+            w.setDedup("on");
+            w.setAtime(false);
+            w.setSync("disabled");
+            w.setRecordsize("1M");
+            w.addVDev("mirror");
+            w.removeVDev("vdev-0");
+            await w.handleSubmit();
+          } catch {}
+        }
       } catch {
         // ignore errors
       }

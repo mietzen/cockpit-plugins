@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Modal,
   ModalVariant,
@@ -178,6 +178,30 @@ export const CreatePoolWizard: React.FC<CreatePoolWizardProps> = ({
     if (vdevs.length <= 1) return;
     setVdevs(vdevs.filter((v) => v.id !== id));
   };
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      (window as any).__wizardHandlers = {
+        setName,
+        setAshift,
+        setAltroot,
+        setMountpoint,
+        setForce,
+        setAutoexpand,
+        setAutoreplace,
+        setAutotrim,
+        setFailmode,
+        setCompression,
+        setDedup,
+        setAtime,
+        setSync,
+        setRecordsize,
+        addVDev,
+        removeVDev,
+        handleSubmit,
+      };
+    }
+  });
 
   const toggleDiskInVDev = (vdevId: string, diskPath: string) => {
     setVdevs(

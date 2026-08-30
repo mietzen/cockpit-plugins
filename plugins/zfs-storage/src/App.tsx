@@ -395,6 +395,25 @@ export const App: React.FC = () => {
       (window as any).__handleExportPool = handleExportPool;
       (window as any).__handleMountToggle = handleMountToggle;
       (window as any).__formatters = { formatBytes, formatPercentage, formatDate, getHealthBadgeColor };
+      (window as any).__appActionHandlers = {
+        poolWizardDone: handlePoolWizardDone,
+        createDataset: handleCreateDataset,
+        createZVol: handleCreateZVol,
+        editProperties: handleEditProperties,
+        createSnapshot: handleCreateSnapshot,
+        rollbackSnapshot: handleRollbackSnapshot,
+        cloneSnapshot: handleCloneSnapshot,
+        rename: handleRename,
+        attachDisk: handleAttachDisk,
+        replaceDisk: handleReplaceDisk,
+        wipeDisk: handleWipeDisk,
+        runSmartTest: handleRunSmartTest,
+        destroy: handleDestroy,
+        bulkDestroySnapshots: (names: string[]) => {
+          setSelectedDestroyTarget({ type: "snapshot", name: names.join(", "), snapshotCount: names.length });
+          setActiveModal("destroy");
+        },
+      };
     }
   });
 

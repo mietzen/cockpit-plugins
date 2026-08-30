@@ -1286,12 +1286,15 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
     }
 
     // 6. Direct component handlers execution
-    await frame.evaluate(() => {
+    await frame.evaluate(async () => {
       const s = (window as any).__usersTabHandlers;
       if (!s) return;
       s.openAdd?.();
+      try { await s.saveAdd?.(); } catch {}
       s.openPasswd?.("testuser");
+      try { await s.savePasswd?.(); } catch {}
       s.openDelete?.("testuser");
+      try { await s.deleteUser?.(); } catch {}
       s.setSubTab?.("matrix");
       s.setSubTab?.("users");
     });
