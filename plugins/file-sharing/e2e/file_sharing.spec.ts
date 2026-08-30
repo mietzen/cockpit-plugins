@@ -552,6 +552,12 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
         await readOnlyCheckbox.setChecked(false);
       }
 
+      const submitShareModal = frame.locator(".pf-v5-c-modal-box button:has-text('Create share'), .pf-v5-c-modal-box button:has-text('Save share')").first();
+      if (await submitShareModal.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await submitShareModal.click({ timeout: 1000 }).catch(() => {});
+        await page.waitForTimeout(300);
+      }
+
       const cancelModal = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
       if (await cancelModal.isVisible({ timeout: 1000 }).catch(() => false)) {
         await cancelModal.click({ timeout: 1000 }).catch(() => {});
@@ -581,6 +587,12 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
         await clientHostInput.fill("192.168.1.0/24");
       }
 
+      const submitNfsModal = frame.locator(".pf-v5-c-modal-box button:has-text('Create export'), .pf-v5-c-modal-box button:has-text('Save export')").first();
+      if (await submitNfsModal.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await submitNfsModal.click({ timeout: 1000 }).catch(() => {});
+        await page.waitForTimeout(300);
+      }
+
       const cancelModal = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
       if (await cancelModal.isVisible({ timeout: 1000 }).catch(() => false)) {
         await cancelModal.click({ timeout: 1000 }).catch(() => {});
@@ -608,6 +620,12 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
       const passInput = frame.locator("input#user-password, input[type='password']").first();
       if (await passInput.isVisible({ timeout: 1000 }).catch(() => false)) {
         await passInput.fill("SecretPassword123!");
+      }
+
+      const submitUserModal = frame.locator(".pf-v5-c-modal-box button:has-text('Add user')").first();
+      if (await submitUserModal.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await submitUserModal.click({ timeout: 1000 }).catch(() => {});
+        await page.waitForTimeout(300);
       }
 
       const cancelModal = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();

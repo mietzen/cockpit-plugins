@@ -734,60 +734,123 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
       await createPoolBtn.click({ timeout: 2000 }).catch(() => {});
       await page.waitForTimeout(300);
       
-      // Step 1: Fill name and altroot
-      const poolNameInput = frame.locator("input#wizard-pool-name, input#pool-name").first();
-      if (await poolNameInput.isVisible({ timeout: 2000 }).catch(() => false)) {
-        await poolNameInput.fill("wizard_test_pool");
+      // Step 1: Base settings
+      const nameInput = frame.locator("input#wizard-pool-name").first();
+      if (await nameInput.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await nameInput.fill("wizard_test_pool");
       }
-      const altrootInput = frame.locator("input#wizard-altroot, input#altroot").first();
+      const ashiftSelect = frame.locator("select#wizard-ashift").first();
+      if (await ashiftSelect.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await ashiftSelect.selectOption("13").catch(() => {});
+      }
+      const altrootInput = frame.locator("input#wizard-altroot").first();
       if (await altrootInput.isVisible({ timeout: 1000 }).catch(() => false)) {
-        await altrootInput.fill("/mnt/altroot");
+        await altrootInput.fill("/mnt/alt").catch(() => {});
       }
+      const mountInput = frame.locator("input#wizard-mountpoint").first();
+      if (await mountInput.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await mountInput.fill("/wizard_test_pool").catch(() => {});
+      }
+
       const nextBtn = frame.locator(".pf-v5-c-wizard__footer button:has-text('Next')").first();
       if (await nextBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
         await nextBtn.click({ timeout: 1000 }).catch(() => {});
         await page.waitForTimeout(300);
       }
 
-      // Step 2: VDEV - Select disk and add VDEV
+      // Step 2: VDEV - Add multiple VDev types and test removal
+      const addMirrorBtn = frame.locator("button:has-text('Add Mirror VDev')").first();
+      if (await addMirrorBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await addMirrorBtn.click({ timeout: 1000 }).catch(() => {});
+      }
+      const addRaidzBtn = frame.locator("button:has-text('Add RAID-Z1')").first();
+      if (await addRaidzBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await addRaidzBtn.click({ timeout: 1000 }).catch(() => {});
+      }
+      const addCacheBtn = frame.locator("button:has-text('Add Cache')").first();
+      if (await addCacheBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await addCacheBtn.click({ timeout: 1000 }).catch(() => {});
+      }
+      const addLogBtn = frame.locator("button:has-text('Add Log')").first();
+      if (await addLogBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await addLogBtn.click({ timeout: 1000 }).catch(() => {});
+      }
+      const addSpareBtn = frame.locator("button:has-text('Add Spare')").first();
+      if (await addSpareBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await addSpareBtn.click({ timeout: 1000 }).catch(() => {});
+      }
+      const removeVdevBtn = frame.locator("button[aria-label='Remove VDev']").first();
+      if (await removeVdevBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await removeVdevBtn.click({ timeout: 1000 }).catch(() => {});
+      }
+
       const diskCheck = frame.locator(".pf-v5-c-wizard input[type='checkbox']").first();
       if (await diskCheck.isVisible({ timeout: 1000 }).catch(() => false)) {
         await diskCheck.click().catch(() => {});
       }
-      const addVdevBtn = frame.locator("button:has-text('Add VDEV')").first();
-      if (await addVdevBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
-        await addVdevBtn.click({ timeout: 1000 }).catch(() => {});
-      }
+
       if (await nextBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
         await nextBtn.click({ timeout: 1000 }).catch(() => {});
         await page.waitForTimeout(300);
       }
 
       // Step 3: Pool Properties
-      const autoreplaceBox = frame.locator("input#wizard-autoreplace").first();
+      const autoexpandBox = frame.locator("input#create-autoexpand").first();
+      if (await autoexpandBox.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await autoexpandBox.setChecked(false).catch(() => {});
+      }
+      const autoreplaceBox = frame.locator("input#create-autoreplace").first();
       if (await autoreplaceBox.isVisible({ timeout: 1000 }).catch(() => false)) {
         await autoreplaceBox.setChecked(true).catch(() => {});
       }
+      const autotrimBox = frame.locator("input#create-autotrim").first();
+      if (await autotrimBox.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await autotrimBox.setChecked(false).catch(() => {});
+      }
+      const failmodeSelect = frame.locator("select#create-failmode").first();
+      if (await failmodeSelect.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await failmodeSelect.selectOption("continue").catch(() => {});
+      }
+
       if (await nextBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
         await nextBtn.click({ timeout: 1000 }).catch(() => {});
         await page.waitForTimeout(300);
       }
 
       // Step 4: Filesystem Properties
-      const dedupSelect = frame.locator("select#wizard-dedup").first();
+      const compSelect = frame.locator("select#create-comp").first();
+      if (await compSelect.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await compSelect.selectOption("zstd").catch(() => {});
+      }
+      const dedupSelect = frame.locator("select#create-dedup").first();
       if (await dedupSelect.isVisible({ timeout: 1000 }).catch(() => false)) {
         await dedupSelect.selectOption("on").catch(() => {});
       }
+      const recsizeSelect = frame.locator("select#create-recsize").first();
+      if (await recsizeSelect.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await recsizeSelect.selectOption("1M").catch(() => {});
+      }
+      const syncSelect = frame.locator("select#create-sync").first();
+      if (await syncSelect.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await syncSelect.selectOption("disabled").catch(() => {});
+      }
+      const atimeBox = frame.locator("input#create-atime").first();
+      if (await atimeBox.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await atimeBox.setChecked(false).catch(() => {});
+      }
+
       if (await nextBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
         await nextBtn.click({ timeout: 1000 }).catch(() => {});
         await page.waitForTimeout(300);
       }
 
-      // Step 5: Review - Click Back
+      // Step 5: Review - Click Back across steps
       const backBtn = frame.locator(".pf-v5-c-wizard__footer button:has-text('Back')").first();
-      if (await backBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
-        await backBtn.click({ timeout: 1000 }).catch(() => {});
-        await page.waitForTimeout(200);
+      for (let i = 0; i < 4; i++) {
+        if (await backBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+          await backBtn.click({ timeout: 1000 }).catch(() => {});
+          await page.waitForTimeout(100);
+        }
       }
 
       // Cancel wizard cleanly
@@ -865,6 +928,11 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     if (await dsQuotaInput.isVisible({ timeout: 1000 }).catch(() => false)) {
       await dsQuotaInput.fill("1G");
     }
+    const submitDsBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Create dataset')").first();
+    if (await submitDsBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await submitDsBtn.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
+    }
     const closeDsBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
     if (await closeDsBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
       await closeDsBtn.click().catch(() => {});
@@ -883,6 +951,11 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     if (await zvolSizeInput.isVisible({ timeout: 1000 }).catch(() => false)) {
       await zvolSizeInput.fill("500M");
     }
+    const submitZvolBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Create volume')").first();
+    if (await submitZvolBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await submitZvolBtn.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
+    }
     const closeZvolBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
     if (await closeZvolBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
       await closeZvolBtn.click().catch(() => {});
@@ -896,6 +969,11 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     const snapNameInput = frame.locator("input#snapshot-name, input[aria-label*='Snapshot name']").first();
     if (await snapNameInput.isVisible({ timeout: 1000 }).catch(() => false)) {
       await snapNameInput.fill("modal_snap_test");
+    }
+    const submitSnapBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Create snapshot')").first();
+    if (await submitSnapBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await submitSnapBtn.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
     }
     const closeSnapBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
     if (await closeSnapBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
