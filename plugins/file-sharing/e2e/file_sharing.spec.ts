@@ -637,6 +637,76 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
   test("18. NFS Client Mapping & Samba Access Matrix Subtabs", async () => {
     const frame = await getFrame();
 
+    // Populate rich dataset to exercise all table branches
+    await frame.evaluate(() => {
+      const mockFullData = {
+        services: {
+          smbd: { unit: "smbd", active: true, state: "active", enabled: true, installed: true },
+          nmbd: { unit: "nmbd", active: true, state: "active", enabled: true, installed: true },
+          nfs: { unit: "nfs-kernel-server", active: true, state: "active", enabled: true, installed: true },
+        },
+        smb: {
+          global: { workgroup: "WORKGROUP" },
+          shares: [
+            {
+              name: "matrix_share",
+              path: "/srv/samba/matrix",
+              comment: "Test matrix share",
+              read_only: false,
+              browseable: true,
+              guest_ok: true,
+              valid_users: "matrix_user",
+              write_list: "matrix_user",
+              is_managed: false,
+            },
+          ],
+        },
+        nfs: {
+          exports: [
+            {
+              path: "/srv/nfs/matrix",
+              clients: [{ host: "192.168.1.0/24", options: ["rw", "sync", "root_squash", "no_subtree_check"] }],
+              is_managed: false,
+            },
+          ],
+          client_map: [
+            {
+              path: "/srv/nfs/matrix",
+              client: "192.168.1.0/24",
+              options: ["rw", "sync"],
+              is_managed: false,
+            },
+          ],
+        },
+        users: {
+          smb_users: [{ username: "matrix_user", is_enabled: true }],
+          unix_users: ["matrix_user", "unix_user_2"],
+          access_matrix: [
+            {
+              username: "matrix_user",
+              is_enabled: true,
+              shares: [
+                { share_name: "matrix_share", access: "read_write" },
+              ],
+            },
+          ],
+        },
+        sessions: [
+          {
+            service: "matrix_share",
+            username: "matrix_user",
+            machine: "desktop.lan",
+            ip: "192.168.1.100",
+            pid: "9988",
+            protocol: "SMB3_11",
+          },
+        ],
+        zfs_mounts: [{ name: "e2epool/fs", mountpoint: "/srv/samba/matrix" }],
+      };
+      (window as any).__setFileSharingData?.(mockFullData);
+    });
+    await page.waitForTimeout(300);
+
     // NFS Client Mapping subtab
     await frame.evaluate(() => (window as any).__setActiveView?.("nfs"));
     await page.waitForTimeout(300);
@@ -664,6 +734,10 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
       await usersSubTab.click({ timeout: 2000 }).catch(() => {});
       await page.waitForTimeout(300);
     }
+
+    // Sessions View
+    await frame.evaluate(() => (window as any).__setActiveView?.("sessions"));
+    await page.waitForTimeout(300);
   });
 
   test("19. Dashboard Action Buttons & Client API Coverage", async () => {
