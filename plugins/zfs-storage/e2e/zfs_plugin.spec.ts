@@ -1125,15 +1125,24 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
       }
     }
 
-    // 3. Pool Settings Tab - Toggle controls
+    // 3. Pool Settings Tab - Toggle controls and submit
     await frame.evaluate((pool) => {
       (window as any).__navigateTo?.(["pools", pool, "settings"]);
     }, TEST_POOL);
     await page.waitForTimeout(300);
 
-    const autoexpandSwitch = frame.locator("input[aria-label*='Autoexpand'], input#pool-autoexpand").first();
+    const autoexpandSwitch = frame.locator("input#pool-autoexpand").first();
     if (await autoexpandSwitch.isVisible({ timeout: 1000 }).catch(() => false)) {
       await autoexpandSwitch.click({ timeout: 1000 }).catch(() => {});
+    }
+    const savePropsBtn = frame.locator("button:has-text('Save properties')").first();
+    if (await savePropsBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await savePropsBtn.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
+      const cancelBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
+      if (await cancelBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await cancelBtn.click({ timeout: 1000 }).catch(() => {});
+      }
     }
 
     // 4. Maintenance Tab - Scrub & Trim buttons
@@ -1141,5 +1150,25 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
       (window as any).__navigateTo?.(["pools", pool, "maintenance"]);
     }, TEST_POOL);
     await page.waitForTimeout(300);
+
+    const startScrubBtn = frame.locator("button:has-text('Start scrub')").first();
+    if (await startScrubBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await startScrubBtn.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
+      const cancelBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
+      if (await cancelBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await cancelBtn.click({ timeout: 1000 }).catch(() => {});
+      }
+    }
+
+    const startTrimBtn = frame.locator("button:has-text('Start trim'), button:has-text('Start TRIM')").first();
+    if (await startTrimBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await startTrimBtn.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
+      const cancelBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
+      if (await cancelBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await cancelBtn.click({ timeout: 1000 }).catch(() => {});
+      }
+    }
   });
 });

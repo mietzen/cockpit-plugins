@@ -911,7 +911,7 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
     // 1. Users Tab - Open Set Password & Delete modals
     await frame.evaluate(() => (window as any).__setActiveView?.("users"));
     await page.waitForTimeout(300);
-    const userKebab = frame.locator("table[aria-label*='Users'] button[aria-label*='Actions'], table button.pf-v5-c-menu-toggle").first();
+    const userKebab = frame.locator("button[aria-label='User actions']").first();
     if (await userKebab.isVisible({ timeout: 1000 }).catch(() => false)) {
       await userKebab.click({ timeout: 1000 }).catch(() => {});
       await page.waitForTimeout(200);
@@ -924,12 +924,24 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
           await cancelBtn.click({ timeout: 1000 }).catch(() => {});
         }
       }
+
+      await userKebab.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
+      const deleteUserItem = frame.locator("button.pf-v5-c-menu__item:has-text('Delete Samba user')").first();
+      if (await deleteUserItem.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await deleteUserItem.click({ timeout: 1000 }).catch(() => {});
+        await page.waitForTimeout(200);
+        const cancelBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
+        if (await cancelBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+          await cancelBtn.click({ timeout: 1000 }).catch(() => {});
+        }
+      }
     }
 
     // 2. SMB Shares Tab - Open Edit & Delete modals
     await frame.evaluate(() => (window as any).__setActiveView?.("smb"));
     await page.waitForTimeout(300);
-    const smbKebab = frame.locator("table[aria-label*='Shares'] button[aria-label*='Actions'], table button.pf-v5-c-menu-toggle").first();
+    const smbKebab = frame.locator("button[aria-label='Share actions']").first();
     if (await smbKebab.isVisible({ timeout: 1000 }).catch(() => false)) {
       await smbKebab.click({ timeout: 1000 }).catch(() => {});
       await page.waitForTimeout(200);
@@ -942,18 +954,42 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
           await cancelBtn.click({ timeout: 1000 }).catch(() => {});
         }
       }
+
+      await smbKebab.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
+      const deleteShareItem = frame.locator("button.pf-v5-c-menu__item:has-text('Delete share')").first();
+      if (await deleteShareItem.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await deleteShareItem.click({ timeout: 1000 }).catch(() => {});
+        await page.waitForTimeout(200);
+        const cancelBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
+        if (await cancelBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+          await cancelBtn.click({ timeout: 1000 }).catch(() => {});
+        }
+      }
     }
 
     // 3. NFS Exports Tab - Open Edit & Delete modals
     await frame.evaluate(() => (window as any).__setActiveView?.("nfs"));
     await page.waitForTimeout(300);
-    const nfsKebab = frame.locator("table[aria-label*='Exports'] button[aria-label*='Actions'], table button.pf-v5-c-menu-toggle").first();
+    const nfsKebab = frame.locator("button[aria-label='Export actions']").first();
     if (await nfsKebab.isVisible({ timeout: 1000 }).catch(() => false)) {
       await nfsKebab.click({ timeout: 1000 }).catch(() => {});
       await page.waitForTimeout(200);
       const editNfsItem = frame.locator("button.pf-v5-c-menu__item:has-text('Edit export')").first();
       if (await editNfsItem.isVisible({ timeout: 1000 }).catch(() => false)) {
         await editNfsItem.click({ timeout: 1000 }).catch(() => {});
+        await page.waitForTimeout(200);
+        const cancelBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
+        if (await cancelBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+          await cancelBtn.click({ timeout: 1000 }).catch(() => {});
+        }
+      }
+
+      await nfsKebab.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
+      const deleteExportItem = frame.locator("button.pf-v5-c-menu__item:has-text('Delete export')").first();
+      if (await deleteExportItem.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await deleteExportItem.click({ timeout: 1000 }).catch(() => {});
         await page.waitForTimeout(200);
         const cancelBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
         if (await cancelBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
