@@ -161,14 +161,36 @@ class TestCommandBuilder(unittest.TestCase):
 
     def test_build_pool_disk_operations(self):
         self.assertEqual(self.builder.build_pool_clear("tank", device="/dev/sda"), ["zpool", "clear", "tank", "/dev/sda"])
+        self.assertEqual(self.builder.build_pool_clear("tank"), ["zpool", "clear", "tank"])
         self.assertEqual(self.builder.build_pool_trim("tank", action=TrimAction.START, device="/dev/sda"), ["zpool", "trim", "tank", "/dev/sda"])
+        self.assertEqual(self.builder.build_pool_trim("tank", action=TrimAction.SUSPEND), ["zpool", "trim", "-d", "tank"])
         self.assertEqual(self.builder.build_pool_offline("tank", "/dev/sda"), ["zpool", "offline", "tank", "/dev/sda"])
         self.assertEqual(self.builder.build_pool_online("tank", "/dev/sda"), ["zpool", "online", "tank", "/dev/sda"])
         self.assertEqual(self.builder.build_pool_detach("tank", "/dev/sda"), ["zpool", "detach", "tank", "/dev/sda"])
         self.assertEqual(self.builder.build_pool_attach("tank", "/dev/sda", "/dev/sdb"), ["zpool", "attach", "tank", "/dev/sda", "/dev/sdb"])
         self.assertEqual(self.builder.build_pool_replace("tank", "/dev/sda", "/dev/sdb"), ["zpool", "replace", "tank", "/dev/sda", "/dev/sdb"])
 
+    def test_build_dataset_and_snapshot_all_branches(self):
+        # Pool destroy & export with force
+        self.assertEqual(self.builder.build_pool_destroy("tank", force=False), ["zpool", "destroy", "tank"])
+        self.assertEqual(self.builder.build_pool_export("tank", force=True), ["zpool", "export", "-f", "tank"])
+        self.assertEqual(self.builder.build_pool_import(name=None, force=False, altroot=None, directory=""), ["zpool", "import"])
+
+        # Dataset operations
+        self.assertEqual(self.builder.build_dataset_create("tank/d", properties={"compression": "lz4"}), ["zfs", "create", "-o", "compression=lz4", "tank/d"])
+        self.assertEqual(self.builder.build_dataset_create_zvol("tank/zv", "10G", volblocksize="8k", sparse=False, properties={"sync": "disabled"}), ["zfs", "create", "-V", "10G", "-b", "8k", "-o", "sync=disabled", "tank/zv"])
+        self.assertEqual(self.builder.build_dataset_destroy("tank/d", recursive=False, force=False), ["zfs", "destroy", "tank/d"])
+        self.assertEqual(self.builder.build_dataset_unmount("tank/d", force=True), ["zfs", "unmount", "-f", "tank/d"])
+
+        # Snapshot operations
+        self.assertEqual(self.builder.build_snapshot_create("tank/d", "s1", recursive=True), ["zfs", "snapshot", "-r", "tank/d@s1"])
+        self.assertEqual(self.builder.build_snapshot_rollback("tank/d@s1", destroy_intermediate=False), ["zfs", "rollback", "tank/d@s1"])
+        self.assertEqual(self.builder.build_snapshot_clone("tank/d@s1", "tank/clone", properties={"mountpoint": "/c"}), ["zfs", "clone", "-o", "mountpoint=/c", "tank/d@s1", "tank/clone"])
+        self.assertEqual(self.builder.build_snapshot_destroy("tank/d@s1", recursive=True), ["zfs", "destroy", "-r", "tank/d@s1"])
+        self.assertEqual(self.builder.build_snapshot_rename("tank/d@s1", "tank/d@s2"), ["zfs", "rename", "tank/d@s1", "tank/d@s2"])
+
 
 if __name__ == "__main__":
     unittest.main()
+
 
