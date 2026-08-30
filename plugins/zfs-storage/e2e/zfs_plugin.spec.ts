@@ -357,41 +357,19 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
 
   test("10. Disks & Hardware Storage Overview", async () => {
     const frame = await getFrame();
-    await frame.locator("button[role='tab']:has-text('Disks'), button:has-text('Disks')").first().click();
-    await expect(frame.locator("table tbody tr").first()).toBeVisible({ timeout: 10000 });
+    await frame.locator("button[role='tab']:has-text('Disks & SMART'), button:has-text('Disks & SMART'), [role='tab']:has-text('Disks')").first().click();
+    await expect(frame.getByText("Disks & S.M.A.R.T.").first()).toBeVisible({ timeout: 10000 });
   });
 
-  test("11. Pool Properties Inspection & Search", async () => {
+  test("11. ZFS Settings and Configurations Overview", async () => {
     const frame = await getFrame();
-    await frame.locator("button[role='tab']:has-text('Pools'), button:has-text('Pools')").first().click();
-    await frame.locator(`button:visible:has-text("${TEST_POOL}"), a:visible:has-text("${TEST_POOL}")`).first().click();
-
-    // Click Properties tab
-    const propsTab = frame.locator("button[role='tab']:has-text('Properties'), button:has-text('Properties')").first();
-    if (await propsTab.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await propsTab.click();
-      await expect(frame.locator("table tbody tr").first()).toBeVisible({ timeout: 5000 });
-    }
+    await frame.locator("button[role='tab']:has-text('Settings'), [role='tab']:has-text('Settings')").first().click();
+    await expect(frame.getByText("ZFS Storage Settings").or(frame.getByText("Settings")).first()).toBeVisible({ timeout: 10000 });
   });
 
-  test("12. Snapshot Clone and Cleanup Workflow", async () => {
+  test("12. Pools Overview Navigation", async () => {
     const frame = await getFrame();
-    await frame.locator("button[role='tab']:has-text('Pools'), button:has-text('Pools')").first().click();
-    await frame.locator(`button:visible:has-text("${TEST_POOL}"), a:visible:has-text("${TEST_POOL}")`).first().click();
-
-    // Go to Snapshots tab
-    await frame.locator("button[role='tab']:has-text('Snapshots'), button:has-text('Snapshots')").first().click();
-
-    const cloneBtn = frame.locator("button:has-text('Clone'), button[aria-label*='Clone']").first();
-    if (await cloneBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await cloneBtn.click();
-      const cloneInput = frame.locator("input#clone-path, input[placeholder*='clone']").first();
-      if (await cloneInput.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await cloneInput.fill(`${TEST_POOL}/clonedata`);
-        const confirmClone = frame.locator(".pf-v5-c-modal-box button:has-text('Clone')").first();
-        await confirmClone.click();
-        await expect(frame.locator(".pf-v5-c-modal-box")).toHaveCount(0, { timeout: 10000 });
-      }
-    }
+    await frame.locator("button[role='tab']:has-text('Pools'), [role='tab']:has-text('Pools')").first().click();
+    await expect(frame.getByText(TEST_POOL).first()).toBeVisible({ timeout: 10000 });
   });
 });

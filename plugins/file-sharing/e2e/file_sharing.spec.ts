@@ -280,7 +280,7 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
       await commentInput.fill("Updated Test Share Comment");
     }
 
-    const saveBtn = frame.getByRole("button", { name: /Save share/ }).or(frame.getByText("Save share")).first();
+    const saveBtn = frame.getByRole("button", { name: /Save changes/ }).or(frame.getByText("Save changes")).first();
     await saveBtn.click();
     await expect(frame.locator(".pf-v5-c-modal-box")).toHaveCount(0, { timeout: 10000 });
   });
