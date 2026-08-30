@@ -293,15 +293,15 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
     await createNfsBtn.click();
     await expect(frame.locator(".pf-v5-c-modal-box__title-text")).toBeVisible({ timeout: 5000 });
 
-    const pathInput = frame.locator("input#export-path, input[placeholder*='/srv']").first();
+    const pathInput = frame.locator("input#nfs-path, input[placeholder*='/srv']").first();
     await pathInput.fill("/srv/nfs/test_crud");
 
-    const hostInput = frame.locator("input#client-host, input[placeholder*='192.168']").first();
+    const hostInput = frame.locator("input#nfs-client, input[placeholder*='192.168']").first();
     if (await hostInput.isVisible({ timeout: 2000 }).catch(() => false)) {
       await hostInput.fill("10.0.0.0/24");
     }
 
-    const submitBtn = frame.getByRole("button", { name: "Save export" }).first();
+    const submitBtn = frame.getByRole("button", { name: /Create export/ }).first();
     await submitBtn.click();
     await expect(frame.locator(".pf-v5-c-modal-box")).toHaveCount(0, { timeout: 10000 });
 

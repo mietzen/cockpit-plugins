@@ -367,9 +367,9 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     await expect(frame.getByText("ZFS Storage Settings").or(frame.getByText("Settings")).first()).toBeVisible({ timeout: 10000 });
   });
 
-  test("12. Pools Overview Navigation", async () => {
+  test("12. Overview Navigation & Usage Card", async () => {
     const frame = await getFrame();
-    await frame.locator("button[role='tab']:has-text('Pools'), [role='tab']:has-text('Pools')").first().click();
-    await expect(frame.getByText(TEST_POOL).first()).toBeVisible({ timeout: 10000 });
+    await frame.locator("button[role='tab']:has-text('Overview'), [role='tab']:has-text('Overview')").first().click();
+    await expect(frame.getByText("Storage usage").first()).toBeVisible({ timeout: 10000 });
   });
 });
