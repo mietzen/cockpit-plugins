@@ -60,6 +60,10 @@ export const App: React.FC = () => {
 
   useEffect(() => {
     loadData();
+    if (typeof window !== "undefined") {
+      (window as any).__setActiveView = setActiveView;
+      (window as any).__setFileSharingData = setData;
+    }
   }, [loadData]);
 
   const handleSaveSmbShare = async (share: Partial<SmbShare>) => {

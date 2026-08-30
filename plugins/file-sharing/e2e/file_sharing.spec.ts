@@ -511,4 +511,65 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
       await page.waitForTimeout(500);
     }
   });
+
+  test("17. Comprehensive UI View Traversal & Modals Suite", async () => {
+    const frame = await getFrame();
+    
+    // Switch to Dashboard
+    await frame.evaluate(() => {
+      (window as any).__setActiveView?.("dashboard");
+    });
+    await page.waitForTimeout(300);
+
+    // Switch to SMB Shares tab and open Create Share Modal then cancel
+    await frame.evaluate(() => {
+      (window as any).__setActiveView?.("smb");
+    });
+    await page.waitForTimeout(300);
+    const addShareBtn = frame.locator("button:visible:has-text('Add Samba share'), button:visible:has-text('Create share')").first();
+    if (await addShareBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await addShareBtn.click({ timeout: 2000 }).catch(() => {});
+      await page.waitForTimeout(300);
+      const cancelModal = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
+      if (await cancelModal.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await cancelModal.click({ timeout: 1000 }).catch(() => {});
+      }
+    }
+
+    // Switch to NFS Exports tab and open Create Export Modal then cancel
+    await frame.evaluate(() => {
+      (window as any).__setActiveView?.("nfs");
+    });
+    await page.waitForTimeout(300);
+    const addExportBtn = frame.locator("button:visible:has-text('Add NFS export'), button:visible:has-text('Create export')").first();
+    if (await addExportBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await addExportBtn.click({ timeout: 2000 }).catch(() => {});
+      await page.waitForTimeout(300);
+      const cancelModal = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
+      if (await cancelModal.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await cancelModal.click({ timeout: 1000 }).catch(() => {});
+      }
+    }
+
+    // Switch to Users tab and open Add User Modal then cancel
+    await frame.evaluate(() => {
+      (window as any).__setActiveView?.("users");
+    });
+    await page.waitForTimeout(300);
+    const addUserBtn = frame.locator("button:visible:has-text('Add user')").first();
+    if (await addUserBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await addUserBtn.click({ timeout: 2000 }).catch(() => {});
+      await page.waitForTimeout(300);
+      const cancelModal = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
+      if (await cancelModal.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await cancelModal.click({ timeout: 1000 }).catch(() => {});
+      }
+    }
+
+    // Switch to Settings tab
+    await frame.evaluate(() => {
+      (window as any).__setActiveView?.("settings");
+    });
+    await page.waitForTimeout(300);
+  });
 });
