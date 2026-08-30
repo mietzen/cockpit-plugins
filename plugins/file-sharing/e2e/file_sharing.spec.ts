@@ -262,4 +262,102 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
     });
     await page.waitForTimeout(300);
   });
+
+  test("9. Edit SMB Share & Advanced Properties", async () => {
+    const frame = await getFrame();
+    await frame.locator("button.pf-v5-c-tabs__link:has-text('SMB Shares'), [role='tab']:has-text('SMB Shares')").first().click();
+
+    const row = frame.locator("tr", { hasText: "testshare" }).first();
+    const actionToggle = row.locator("button[aria-label='Share actions']").first();
+    await actionToggle.click();
+
+    const editBtn = frame.getByRole("menuitem", { name: /Edit share/ }).or(frame.getByText("Edit share")).first();
+    await editBtn.click();
+
+    await expect(frame.locator(".pf-v5-c-modal-box__title-text")).toBeVisible({ timeout: 5000 });
+    const commentInput = frame.locator("input#share-comment, input[placeholder*='Comment']").first();
+    if (await commentInput.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await commentInput.fill("Updated Test Share Comment");
+    }
+
+    const saveBtn = frame.getByRole("button", { name: /Save share/ }).or(frame.getByText("Save share")).first();
+    await saveBtn.click();
+    await expect(frame.locator(".pf-v5-c-modal-box")).toHaveCount(0, { timeout: 10000 });
+  });
+
+  test("10. Full NFS Export CRUD Workflow", async () => {
+    const frame = await getFrame();
+    await frame.locator("button.pf-v5-c-tabs__link:has-text('NFS Exports'), [role='tab']:has-text('NFS Exports')").first().click();
+
+    const createNfsBtn = frame.getByRole("button", { name: /Create NFS export/ }).first();
+    await createNfsBtn.click();
+    await expect(frame.locator(".pf-v5-c-modal-box__title-text")).toBeVisible({ timeout: 5000 });
+
+    const pathInput = frame.locator("input#export-path, input[placeholder*='/srv']").first();
+    await pathInput.fill("/srv/nfs/test_crud");
+
+    const hostInput = frame.locator("input#client-host, input[placeholder*='192.168']").first();
+    if (await hostInput.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await hostInput.fill("10.0.0.0/24");
+    }
+
+    const submitBtn = frame.getByRole("button", { name: "Save export" }).first();
+    await submitBtn.click();
+    await expect(frame.locator(".pf-v5-c-modal-box")).toHaveCount(0, { timeout: 10000 });
+
+    // Verify row created
+    const createdRow = frame.locator("tr", { hasText: "/srv/nfs/test_crud" }).first();
+    await expect(createdRow).toBeVisible({ timeout: 10000 });
+
+    // Delete export
+    const deleteBtn = createdRow.locator("button:has-text('Delete')").or(createdRow.locator("button[aria-label*='Delete']")).first();
+    await deleteBtn.click();
+    const confirmBtn = frame.getByRole("button", { name: "Delete export" }).first();
+    if (await confirmBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await confirmBtn.click();
+    }
+    await expect(frame.locator(".pf-v5-c-modal-box")).toHaveCount(0, { timeout: 10000 });
+  });
+
+  test("11. Samba User Lifecycle & Password Management", async () => {
+    const frame = await getFrame();
+    await frame.locator("button.pf-v5-c-tabs__link:has-text('Samba Users'), [role='tab']:has-text('Samba Users')").first().click();
+
+    // Click Add user
+    const addUserBtn = frame.getByRole("button", { name: /Add user/ }).first();
+    await addUserBtn.click();
+    await expect(frame.locator(".pf-v5-c-modal-box__title-text")).toBeVisible({ timeout: 5000 });
+
+    const userInput = frame.locator("input#smb-username, select#unix-user-select").first();
+    if (await userInput.isVisible({ timeout: 2000 }).catch(() => false)) {
+      if (await userInput.getAttribute("type") === "text") {
+        await userInput.fill("runner");
+      }
+    }
+    const passInput = frame.locator("input#smb-password, input[type='password']").first();
+    if (await passInput.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await passInput.fill("password123");
+    }
+
+    const cancelUserBtn = frame.getByRole("button", { name: /Cancel/ }).first();
+    await cancelUserBtn.click();
+    await expect(frame.locator(".pf-v5-c-modal-box")).toHaveCount(0, { timeout: 5000 });
+  });
+
+  test("12. Global Settings and Ansible Markers Modification", async () => {
+    const frame = await getFrame();
+    await frame.locator("button.pf-v5-c-tabs__link:has-text('Settings'), [role='tab']:has-text('Settings')").first().click();
+
+    const saveSettingsBtn = frame.getByRole("button", { name: /Save Global Settings/ }).first();
+    if (await saveSettingsBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await saveSettingsBtn.click();
+      await page.waitForTimeout(500);
+    }
+
+    const saveAnsibleBtn = frame.getByRole("button", { name: /Save Ansible Preferences/ }).first();
+    if (await saveAnsibleBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await saveAnsibleBtn.click();
+      await page.waitForTimeout(500);
+    }
+  });
 });

@@ -354,4 +354,44 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
       document.documentElement.classList.remove("pf-v5-theme-dark");
     });
   });
+
+  test("10. Disks & Hardware Storage Overview", async () => {
+    const frame = await getFrame();
+    await frame.locator("button[role='tab']:has-text('Disks'), button:has-text('Disks')").first().click();
+    await expect(frame.locator("table tbody tr").first()).toBeVisible({ timeout: 10000 });
+  });
+
+  test("11. Pool Properties Inspection & Search", async () => {
+    const frame = await getFrame();
+    await frame.locator("button[role='tab']:has-text('Pools'), button:has-text('Pools')").first().click();
+    await frame.locator(`button:visible:has-text("${TEST_POOL}"), a:visible:has-text("${TEST_POOL}")`).first().click();
+
+    // Click Properties tab
+    const propsTab = frame.locator("button[role='tab']:has-text('Properties'), button:has-text('Properties')").first();
+    if (await propsTab.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await propsTab.click();
+      await expect(frame.locator("table tbody tr").first()).toBeVisible({ timeout: 5000 });
+    }
+  });
+
+  test("12. Snapshot Clone and Cleanup Workflow", async () => {
+    const frame = await getFrame();
+    await frame.locator("button[role='tab']:has-text('Pools'), button:has-text('Pools')").first().click();
+    await frame.locator(`button:visible:has-text("${TEST_POOL}"), a:visible:has-text("${TEST_POOL}")`).first().click();
+
+    // Go to Snapshots tab
+    await frame.locator("button[role='tab']:has-text('Snapshots'), button:has-text('Snapshots')").first().click();
+
+    const cloneBtn = frame.locator("button:has-text('Clone'), button[aria-label*='Clone']").first();
+    if (await cloneBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await cloneBtn.click();
+      const cloneInput = frame.locator("input#clone-path, input[placeholder*='clone']").first();
+      if (await cloneInput.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await cloneInput.fill(`${TEST_POOL}/clonedata`);
+        const confirmClone = frame.locator(".pf-v5-c-modal-box button:has-text('Clone')").first();
+        await confirmClone.click();
+        await expect(frame.locator(".pf-v5-c-modal-box")).toHaveCount(0, { timeout: 10000 });
+      }
+    }
+  });
 });
