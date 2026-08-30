@@ -552,34 +552,34 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
       const scrubBtn = frame.locator("button:has-text('Start scrub')").first();
       if (await scrubBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
         await scrubBtn.click();
-        await page.waitForTimeout(500);
+        const modalExec = frame.locator(".pf-v5-c-modal-box button:has-text('Execute'), .pf-v5-c-modal-box button:has-text('Confirm')").first();
+        if (await modalExec.isVisible({ timeout: 1000 }).catch(() => false)) {
+          await modalExec.click();
+        }
+        await page.waitForTimeout(300);
       }
       const trimBtn = frame.locator("button:has-text('Start trim')").first();
       if (await trimBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
         await trimBtn.click();
-        await page.waitForTimeout(500);
+        const modalExec = frame.locator(".pf-v5-c-modal-box button:has-text('Execute'), .pf-v5-c-modal-box button:has-text('Confirm')").first();
+        if (await modalExec.isVisible({ timeout: 1000 }).catch(() => false)) {
+          await modalExec.click();
+        }
+        await page.waitForTimeout(300);
       }
       const clearBtn = frame.locator("button:has-text('Clear errors')").first();
       if (await clearBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
         await clearBtn.click();
-        await page.waitForTimeout(500);
-      }
-    }
-
-    // Settings subtab
-    const poolSettingsTab = frame.locator("button.pf-v5-c-tabs__link:has-text('Settings'), [role='tab']:has-text('Settings')").first();
-    if (await poolSettingsTab.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await poolSettingsTab.click();
-      await page.waitForTimeout(300);
-      const autoexpandSwitch = frame.locator("input#pool-autoexpand").first();
-      const saveSettingsBtn = frame.locator("button:has-text('Save changes')").first();
-      if (await saveSettingsBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
-        await saveSettingsBtn.click();
+        const modalExec = frame.locator(".pf-v5-c-modal-box button:has-text('Execute'), .pf-v5-c-modal-box button:has-text('Confirm')").first();
+        if (await modalExec.isVisible({ timeout: 1000 }).catch(() => false)) {
+          await modalExec.click();
+        }
+        await page.waitForTimeout(300);
       }
     }
 
     // Top-level Disks view
-    const disksTab = frame.locator("button.pf-v5-c-tabs__link:has-text('Disks & SMART'), [role='tab']:has-text('Disks')").first();
+    const disksTab = frame.locator(".cockpit-top-nav-bar button:has-text('Disks & SMART')").first();
     if (await disksTab.isVisible({ timeout: 3000 }).catch(() => false)) {
       await disksTab.click();
       await page.waitForTimeout(300);
