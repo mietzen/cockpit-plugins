@@ -138,7 +138,27 @@ class TestSmbParser(unittest.TestCase):
         ok, msg = self.parser.delete_share("nonexistent_share_name")
         self.assertFalse(ok)
 
+    def test_save_global_prepends_when_no_global_section(self):
+        with open(self.tmp.name, "w") as f:
+            f.write("[share1]\n   path = /srv/1\n")
+        ok, msg = self.parser.save_global({"workgroup": "NEWGROUP"})
+        self.assertTrue(ok)
+        data = self.parser.parse()
+        self.assertEqual(data["global"]["workgroup"], "NEWGROUP")
+
+    def test_missing_config_file_branches(self):
+        missing_parser = SmbParser(config_path="/tmp/nonexistent_smb_conf_for_test.conf")
+        ok, msg = missing_parser.delete_share("any")
+        self.assertFalse(ok)
+        self.assertIn("does not exist", msg)
+
+        ok, msg = missing_parser.save_share({"name": "new", "path": "/srv"})
+        self.assertTrue(ok)
+        if os.path.exists("/tmp/nonexistent_smb_conf_for_test.conf"):
+            os.remove("/tmp/nonexistent_smb_conf_for_test.conf")
+
 
 if __name__ == "__main__":
     unittest.main()
+
 
