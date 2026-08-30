@@ -287,9 +287,9 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
     // Create custom SMB share
     const createShareBtn = frame.getByRole("button", { name: /Create SMB share/ }).first();
     await createShareBtn.click();
-    await frame.locator("input#share-name").fill("custom_e2e_share");
-    await frame.locator("input#share-path").fill("/srv/samba/test");
-    const tmSwitch = frame.locator("input#share-timemachine").first();
+    await frame.locator("input#smb-name").fill("custom_e2e_share");
+    await frame.locator("input#smb-path").fill("/srv/samba/test");
+    const tmSwitch = frame.locator("input#smb-timemachine").first();
     if (await tmSwitch.isVisible({ timeout: 2000 }).catch(() => false)) {
       await tmSwitch.check();
     }
