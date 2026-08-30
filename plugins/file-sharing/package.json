@@ -1,6 +1,6 @@
 {
   "name": "cockpit-file-sharing",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "Open-source Cockpit plugin for SMB and NFS file sharing management",
   "main": "dist/index.html",
