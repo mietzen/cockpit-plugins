@@ -118,7 +118,7 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
     await page.waitForTimeout(1000);
 
     // Verify created share is in the list
-    await expect(frame.getByText("[e2e_crud_share]").first()).toBeVisible({ timeout: 10000 });
+    await expect(frame.locator("table").getByText("[e2e_crud_share]")).toBeVisible({ timeout: 10000 });
 
     // Delete the share
     const row = frame.locator("tr:has-text('[e2e_crud_share]')").first();
