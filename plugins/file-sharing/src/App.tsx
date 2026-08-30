@@ -183,7 +183,7 @@ export const App: React.FC = () => {
         isLoading={refreshing}
       />
 
-      <div style={{ display: activeView === "dashboard" ? "block" : "none" }}>
+      {activeView === "dashboard" && (
         <DashboardView
           overview={overview}
           onNavigate={(view) => setActiveView(view)}
@@ -191,18 +191,18 @@ export const App: React.FC = () => {
           onCreateNfsExport={() => setActiveView("nfs")}
           onAddUser={() => setActiveView("users")}
         />
-      </div>
+      )}
 
-      <div style={{ display: activeView === "smb" ? "block" : "none" }}>
+      {activeView === "smb" && (
         <SmbSharesTab
           shares={overview.smb.shares}
           zfsMounts={overview.zfs_mounts}
           onSaveShare={handleSaveSmbShare}
           onDeleteShare={handleDeleteSmbShare}
         />
-      </div>
+      )}
 
-      <div style={{ display: activeView === "nfs" ? "block" : "none" }}>
+      {activeView === "nfs" && (
         <NfsExportsTab
           exports={overview.nfs.exports}
           clientMap={overview.nfs.client_map}
@@ -210,9 +210,9 @@ export const App: React.FC = () => {
           onSaveExport={handleSaveNfsExport}
           onDeleteExport={handleDeleteNfsExport}
         />
-      </div>
+      )}
 
-      <div style={{ display: activeView === "users" ? "block" : "none" }}>
+      {activeView === "users" && (
         <UsersTab
           users={overview.users.smb_users}
           unixUsers={overview.users.unix_users}
@@ -222,18 +222,18 @@ export const App: React.FC = () => {
           onSetState={handleSetUserState}
           onDeleteUser={handleDeleteUser}
         />
-      </div>
+      )}
 
-      <div style={{ display: activeView === "sessions" ? "block" : "none" }}>
+      {activeView === "sessions" && (
         <SessionsTab
           services={overview.services}
           sessions={overview.sessions}
           onServiceAction={handleServiceAction}
           onRefresh={() => loadData(false)}
         />
-      </div>
+      )}
 
-      <div style={{ display: activeView === "settings" ? "block" : "none" }}>
+      {activeView === "settings" && (
         <SettingsView
           globalSettings={overview.smb.global}
           ansibleBegin={ansibleBegin}
@@ -242,7 +242,7 @@ export const App: React.FC = () => {
           onSaveGlobal={handleSaveSmbGlobal}
           onSaveAnsibleMarkers={handleSaveAnsibleMarkers}
         />
-      </div>
+      )}
     </Page>
   );
 };
