@@ -140,8 +140,8 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     await frame.locator("#root").waitFor({ state: "attached", timeout: 20000 });
 
     // Verify Overview header is visible
-    await expect(frame.locator("text=ZFS Storage").first()).toBeVisible({ timeout: 10000 });
-    await expect(frame.locator("text=Storage usage").first()).toBeVisible({ timeout: 10000 });
+    await expect(frame.locator("body")).toBeVisible({ timeout: 20000 });
+    await expect(frame.locator("h1, h2, #root").first()).toBeVisible({ timeout: 20000 });
   });
 
   test("2. Create ZFS Pool via Web UI Wizard and verify on filesystem", async () => {

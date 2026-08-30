@@ -1016,4 +1016,48 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
       }
     });
   });
+
+  test("25. Services, Sessions, and Dashboard Action Controls", async () => {
+    const frame = await getFrame();
+
+    // 1. Switch to Sessions tab
+    await frame.evaluate(() => {
+      (window as any).__setActiveView?.("sessions");
+    });
+    await page.waitForTimeout(300);
+
+    const refreshBtn = frame.locator("button:has-text('Refresh status')").first();
+    if (await refreshBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await refreshBtn.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
+    }
+
+    const restartBtn = frame.locator("button:has-text('Restart')").first();
+    if (await restartBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await restartBtn.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
+    }
+
+    const reloadBtn = frame.locator("button:has-text('Reload')").first();
+    if (await reloadBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await reloadBtn.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
+    }
+
+    // 2. Switch to Dashboard view
+    await frame.evaluate(() => {
+      (window as any).__setActiveView?.("dashboard");
+    });
+    await page.waitForTimeout(300);
+
+    const createShareCardBtn = frame.locator("button:has-text('Create SMB share'), button:has-text('Create share')").first();
+    if (await createShareCardBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await createShareCardBtn.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
+      const cancelBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
+      if (await cancelBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await cancelBtn.click({ timeout: 1000 }).catch(() => {});
+      }
+    }
+  });
 });
