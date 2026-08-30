@@ -15,6 +15,11 @@
 - **Parent-Authoritative Theming**: Query parent Cockpit shell DOM classes (`pf-v6-theme-dark` / `pf-v5-theme-dark`); never use raw `@media (prefers-color-scheme: dark)` overrides.
 - **Privilege Separation**: Frontend calls backend helper via `cockpit.spawn(['/usr/libexec/<helper>/<helper>.py', ...], { superuser: 'require' })`.
 - **Reproducible Builds**: All packages must build with clamped `SOURCE_DATE_EPOCH` and pass the CI reproducibility gate bit-for-bit.
+- **3-Tier Quality Gate**: All code must satisfy 3-tier coverage thresholds evaluated in `tools/report_coverage.py`:
+  - 🛡️ **Security & Destructive Operations** (`≥ 90.0%` Lines, `≥ 85.0%` Branches): Privileged backend helpers, command builders, configuration parsers/sanitizers, access control matrices, destructive action modals (`DestroyModal`, `ReplaceDiskModal`, `AttachDiskModal`), and API client bridges. Whenever creating security-critical logic, register its path in the `SECURITY` tier.
+  - ⚙️ **Backend Services & Business Logic** (`≥ 80.0%` Lines, `≥ 75.0%` Branches): Backend aggregators, query parsers, and data formatting services.
+  - 🖥️ **Frontend / UI Components** (`≥ 70.0%` Lines, `≥ 60.0%` Branches): UI views, navigation tabs, cards, wizards, and read-only dialogs.
 
 ## 3. Reference Skills
 - Cockpit Plugin Development: [.agents/skills/cockpit-plugin/SKILL.md](.agents/skills/cockpit-plugin/SKILL.md)
+
