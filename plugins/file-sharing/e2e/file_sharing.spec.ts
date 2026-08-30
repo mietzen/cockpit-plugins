@@ -97,7 +97,7 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
 
   test("2. Full SMB Share CRUD Workflow & Ansible Lock Check", async () => {
     const frame = await getFrame();
-    await frame.getByRole("tab", { name: /SMB Shares/ }).click();
+    await frame.locator("button.pf-v5-c-tabs__link:has-text('SMB Shares'), [role='tab']:has-text('SMB Shares')").first().click();
 
     // Verify Ansible lock badge in visible SMB table
     await expect(frame.getByText("Ansible: storage_cluster").and(frame.locator(":visible")).first()).toBeVisible({ timeout: 10000 });
@@ -115,10 +115,10 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
 
     const submitBtn = frame.getByRole("button", { name: "Create share" }).first();
     await submitBtn.click();
-    await page.waitForTimeout(1000);
 
-    // Verify created share row is present
-    const createdRow = frame.locator("tr:has-text('[e2e_crud_share]')").first();
+    // Wait for modal to close and row to appear in table
+    await expect(frame.locator(".pf-v5-c-modal-box")).toHaveCount(0, { timeout: 10000 });
+    const createdRow = frame.locator("table tbody tr", { hasText: "e2e_crud_share" }).first();
     await expect(createdRow).toBeVisible({ timeout: 10000 });
 
     // Delete the share
@@ -131,8 +131,8 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
     if (await confirmDeleteBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
       await confirmDeleteBtn.click();
     }
-    await page.waitForTimeout(1000);
-    await expect(frame.locator("tr:has-text('[e2e_crud_share]')")).toHaveCount(0, { timeout: 10000 });
+    await expect(frame.locator(".pf-v5-c-modal-box")).toHaveCount(0, { timeout: 10000 });
+    await expect(frame.locator("table tbody tr", { hasText: "e2e_crud_share" })).toHaveCount(0, { timeout: 10000 });
   });
 
   test("3. Verify NFS Exports & Client IP Access Map", async () => {
