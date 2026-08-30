@@ -976,6 +976,10 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
 
     // 1. Attach disk modal
     await frame.evaluate((pool) => {
+      const mockDisks = [
+        { name: "sdb", path: "/dev/sdb", size: 10737418240, type: "disk", pool: null, rotational: true, smart_health: "PASSED", smart_attributes: [], partitions: [] },
+      ];
+      (window as any).__setDisks?.(mockDisks);
       (window as any).__setActiveModal?.({
         type: "attach",
         poolName: pool,
@@ -983,6 +987,10 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
       });
     }, TEST_POOL);
     await page.waitForTimeout(200);
+    const attachBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Attach Device')").first();
+    if (await attachBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await attachBtn.click({ timeout: 1000 }).catch(() => {});
+    }
     const cancelAttach = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
     if (await cancelAttach.isVisible({ timeout: 1000 }).catch(() => false)) {
       await cancelAttach.click({ timeout: 1000 }).catch(() => {});
@@ -997,6 +1005,10 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
       });
     }, TEST_POOL);
     await page.waitForTimeout(200);
+    const replaceBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Replace Device')").first();
+    if (await replaceBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await replaceBtn.click({ timeout: 1000 }).catch(() => {});
+    }
     const cancelReplace = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
     if (await cancelReplace.isVisible({ timeout: 1000 }).catch(() => false)) {
       await cancelReplace.click({ timeout: 1000 }).catch(() => {});
@@ -1010,6 +1022,10 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
       });
     }, TEST_POOL);
     await page.waitForTimeout(200);
+    const rollbackBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Rollback Snapshot')").first();
+    if (await rollbackBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await rollbackBtn.click({ timeout: 1000 }).catch(() => {});
+    }
     const cancelRollback = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
     if (await cancelRollback.isVisible({ timeout: 1000 }).catch(() => false)) {
       await cancelRollback.click({ timeout: 1000 }).catch(() => {});
@@ -1026,6 +1042,10 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     const cloneInput = frame.locator("input#clone-path, input[aria-label*='Clone']").first();
     if (await cloneInput.isVisible({ timeout: 1000 }).catch(() => false)) {
       await cloneInput.fill(`${TEST_POOL}/clone_test`);
+    }
+    const cloneBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Clone Snapshot')").first();
+    if (await cloneBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await cloneBtn.click({ timeout: 1000 }).catch(() => {});
     }
     const cancelClone = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
     if (await cancelClone.isVisible({ timeout: 1000 }).catch(() => false)) {
@@ -1045,6 +1065,10 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     if (await renameInput.isVisible({ timeout: 1000 }).catch(() => false)) {
       await renameInput.fill("new_name");
     }
+    const renameBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Rename')").first();
+    if (await renameBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await renameBtn.click({ timeout: 1000 }).catch(() => {});
+    }
     const cancelRename = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
     if (await cancelRename.isVisible({ timeout: 1000 }).catch(() => false)) {
       await cancelRename.click({ timeout: 1000 }).catch(() => {});
@@ -1062,6 +1086,10 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     const confirmDestroyInput = frame.locator("input#destroy-confirm, input[aria-label*='Type']").first();
     if (await confirmDestroyInput.isVisible({ timeout: 1000 }).catch(() => false)) {
       await confirmDestroyInput.fill("trash_ds");
+    }
+    const destroyBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Destroy')").first();
+    if (await destroyBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await destroyBtn.click({ timeout: 1000 }).catch(() => {});
     }
     const cancelDestroy = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
     if (await cancelDestroy.isVisible({ timeout: 1000 }).catch(() => false)) {

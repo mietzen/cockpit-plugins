@@ -649,11 +649,15 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
       await frame.locator(".pf-v5-c-modal-box button:has-text('Add user')").first().click({ timeout: 1000 }).catch(() => {});
       await page.waitForTimeout(100);
 
-      const usernameInput = frame.locator("input#add-user-name, input#user-name, input[aria-label*='Username']").first();
+      const usernameInput = frame.locator("input#add-username, select#add-username, input#user-name").first();
       if (await usernameInput.isVisible({ timeout: 1000 }).catch(() => false)) {
-        await usernameInput.fill("modal_user");
+        if (await usernameInput.evaluate((el) => el.tagName.toLowerCase() === "select")) {
+          await usernameInput.selectOption({ index: 0 }).catch(() => {});
+        } else {
+          await usernameInput.fill("modal_user");
+        }
       }
-      const passInput = frame.locator("input#add-user-password, input#user-password, input[type='password']").first();
+      const passInput = frame.locator("input#add-password, input#user-password, input[type='password']").first();
       if (await passInput.isVisible({ timeout: 1000 }).catch(() => false)) {
         await passInput.fill("SecretPassword123!");
       }
