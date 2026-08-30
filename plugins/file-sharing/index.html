@@ -10,26 +10,30 @@
     <script src="../base1/cockpit.js"></script>
     <script type="text/javascript">
         (function () {
+            // Clean up legacy custom storage keys
+            try {
+                localStorage.removeItem('cockpit_zfs_theme');
+                localStorage.removeItem('cockpit_filesharing_theme');
+            } catch (e) {}
+
             function updateTheme(forcedTheme) {
                 var shellStyle = forcedTheme;
                 if (typeof shellStyle !== 'string') {
                     try {
-                        shellStyle = localStorage.getItem('shell:style') || localStorage.getItem('cockpit_filesharing_theme') || localStorage.getItem('cockpit_zfs_theme');
+                        shellStyle = localStorage.getItem('shell:style');
                     } catch (e) {}
                 }
-                if (!shellStyle) {
+                if (!shellStyle || shellStyle === 'null' || shellStyle === 'undefined') {
                     shellStyle = 'auto';
                 }
 
                 var isDark = false;
-                var isExplicitLight = false;
-
                 if (shellStyle === 'dark') {
                     isDark = true;
                 } else if (shellStyle === 'light') {
-                    isExplicitLight = true;
+                    isDark = false;
                 } else {
-                    // "auto" mode: check parent document class first, then prefers-color-scheme
+                    // "auto" mode: follow OS / Cockpit shell
                     try {
                         if (window.parent && window.parent !== window && window.parent.document && window.parent.document.documentElement) {
                             var pCls = window.parent.document.documentElement.classList;
@@ -54,21 +58,21 @@
                     docEl.classList.add('pf-v6-theme-dark');
                     docEl.classList.remove('theme-light');
                     docEl.classList.remove('pf-m-light');
-                } else if (isExplicitLight) {
-                    docEl.classList.remove('pf-v5-theme-dark');
-                    docEl.classList.remove('pf-v6-theme-dark');
-                    docEl.classList.add('theme-light');
-                    docEl.classList.add('pf-m-light');
                 } else {
                     docEl.classList.remove('pf-v5-theme-dark');
                     docEl.classList.remove('pf-v6-theme-dark');
-                    docEl.classList.remove('theme-light');
-                    docEl.classList.remove('pf-m-light');
+                    if (shellStyle === 'light') {
+                        docEl.classList.add('theme-light');
+                        docEl.classList.add('pf-m-light');
+                    } else {
+                        docEl.classList.remove('theme-light');
+                        docEl.classList.remove('pf-m-light');
+                    }
                 }
             }
 
             window.addEventListener('storage', function (e) {
-                if (e.key === 'shell:style' || e.key === 'cockpit_filesharing_theme' || e.key === 'cockpit_zfs_theme') {
+                if (e.key === 'shell:style') {
                     updateTheme();
                 }
             });
@@ -92,7 +96,6 @@
                 } catch (e) {}
             }
 
-            // Sync parent frame DOM class changes in real time
             try {
                 if (window.parent && window.parent !== window && window.parent.document && window.parent.document.documentElement) {
                     var observer = new MutationObserver(function () {
@@ -102,7 +105,6 @@
                 }
             } catch (e) {}
 
-            // Periodic polling fallback for cross-browser isolation (Firefox)
             setInterval(updateTheme, 1000);
 
             updateTheme();

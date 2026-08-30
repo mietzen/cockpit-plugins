@@ -55,24 +55,28 @@ export const App: React.FC = () => {
 
   // Sync theme with Cockpit shell
   useEffect(() => {
+    try {
+      localStorage.removeItem("cockpit_zfs_theme");
+      localStorage.removeItem("cockpit_filesharing_theme");
+    } catch (e) {}
+
     const applyTheme = (forcedTheme?: any) => {
       let shellStyle = forcedTheme;
       if (typeof shellStyle !== "string") {
         try {
-          shellStyle = localStorage.getItem("shell:style") || localStorage.getItem("cockpit_filesharing_theme") || localStorage.getItem("cockpit_zfs_theme");
+          shellStyle = localStorage.getItem("shell:style");
         } catch (e) {}
       }
-      if (!shellStyle) {
+      if (!shellStyle || shellStyle === "null" || shellStyle === "undefined") {
         shellStyle = "auto";
       }
 
       let isDark = false;
-      let isExplicitLight = false;
 
       if (shellStyle === "dark") {
         isDark = true;
       } else if (shellStyle === "light") {
-        isExplicitLight = true;
+        isDark = false;
       } else {
         // "auto" mode: check parent frame class list first, then OS prefers-color-scheme
         try {
@@ -99,16 +103,16 @@ export const App: React.FC = () => {
         docEl.classList.add("pf-v6-theme-dark");
         docEl.classList.remove("theme-light");
         docEl.classList.remove("pf-m-light");
-      } else if (isExplicitLight) {
-        docEl.classList.remove("pf-v5-theme-dark");
-        docEl.classList.remove("pf-v6-theme-dark");
-        docEl.classList.add("theme-light");
-        docEl.classList.add("pf-m-light");
       } else {
         docEl.classList.remove("pf-v5-theme-dark");
         docEl.classList.remove("pf-v6-theme-dark");
-        docEl.classList.remove("theme-light");
-        docEl.classList.remove("pf-m-light");
+        if (shellStyle === "light") {
+          docEl.classList.add("theme-light");
+          docEl.classList.add("pf-m-light");
+        } else {
+          docEl.classList.remove("theme-light");
+          docEl.classList.remove("pf-m-light");
+        }
       }
     };
 
