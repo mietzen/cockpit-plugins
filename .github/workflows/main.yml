@@ -58,6 +58,7 @@ jobs:
           PYTHONPATH=packages/common/python:plugins/${{ matrix.plugin }}:plugins/${{ matrix.plugin }}/backend:tools pytest \
             --cov=plugins/${{ matrix.plugin }}/backend \
             --cov=packages/common/python/cockpit_common \
+            --cov-branch \
             --cov-report=lcov:coverage-python/coverage-python-${{ matrix.plugin }}.lcov \
             --cov-report=xml:coverage-python/coverage-python-${{ matrix.plugin }}.xml \
             --cov-report=term-missing \

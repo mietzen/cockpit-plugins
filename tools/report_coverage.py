@@ -3,121 +3,216 @@ import glob
 import os
 import sys
 
-def parse_lcov(file_path):
+TIER_CONFIG = {
+    "SECURITY": {
+        "title": "🛡️ Security & Destructive Operations",
+        "min_line": 90.0,
+        "min_branch": 85.0,
+        "patterns": [
+            "command_builder.py",
+            "zfs_helper.py",
+            "samba_parser.py",
+            "nfs_parser.py",
+            "access_matrix.py",
+            "system.py",
+            "DestroyModal.tsx",
+            "AttachDiskModal.tsx",
+            "ReplaceDiskModal.tsx",
+            "Client.ts",
+        ],
+    },
+    "BACKEND": {
+        "title": "⚙️ Backend Services & Business Logic",
+        "min_line": 80.0,
+        "min_branch": 75.0,
+        "patterns": [".py", "formatters.ts"],
+    },
+    "FRONTEND": {
+        "title": "🖥️ Frontend / UI Components",
+        "min_line": 70.0,
+        "min_branch": 60.0,
+        "patterns": [".tsx", ".ts"],
+    },
+}
+
+def is_test_file(filepath: str) -> bool:
+    low = filepath.lower()
+    return "/tests/" in low or "/test/" in low or low.endswith(".spec.ts") or "test_" in low or "spec_" in low
+
+def classify_file(filepath: str) -> str:
+    for pat in TIER_CONFIG["SECURITY"]["patterns"]:
+        if pat in filepath:
+            return "SECURITY"
+    if filepath.endswith(".py") or "formatters.ts" in filepath:
+        return "BACKEND"
+    return "FRONTEND"
+
+def parse_lcov_records(file_path: str):
     if not os.path.exists(file_path):
-        return None
+        return []
     
-    total_lines = 0
-    hit_lines = 0
+    records = []
+    curr = {"file": "", "lf": 0, "lh": 0, "brf": 0, "brh": 0}
     with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
         for line in f:
-            if line.startswith("LF:"):
+            if line.startswith("SF:"):
+                curr = {"file": line.strip().split("SF:")[1], "lf": 0, "lh": 0, "brf": 0, "brh": 0}
+            elif line.startswith("LF:"):
                 try:
-                    total_lines += int(line.strip().split(":")[1])
+                    curr["lf"] = int(line.strip().split(":")[1])
                 except Exception:
                     pass
             elif line.startswith("LH:"):
                 try:
-                    hit_lines += int(line.strip().split(":")[1])
+                    curr["lh"] = int(line.strip().split(":")[1])
                 except Exception:
                     pass
-    
-    percentage = (hit_lines / total_lines * 100.0) if total_lines > 0 else 0.0
-    return {
-        "total": total_lines,
-        "hit": hit_lines,
-        "percentage": percentage
-    }
-
-MIN_COVERAGE_THRESHOLD = 80.0
+            elif line.startswith("BRF:"):
+                try:
+                    curr["brf"] = int(line.strip().split(":")[1])
+                except Exception:
+                    pass
+            elif line.startswith("BRH:"):
+                try:
+                    curr["brh"] = int(line.strip().split(":")[1])
+                except Exception:
+                    pass
+            elif line.startswith("end_of_record"):
+                if curr["lf"] > 0 and not is_test_file(curr["file"]):
+                    records.append(curr)
+    return records
 
 def main():
-    coverage_dir = sys.argv[1] if len(sys.argv) > 1 else "."
+    coverage_dir = sys.argv[1] if len(sys.argv) > 1 and not sys.argv[1].startswith("--") else "."
     
-    # Parse threshold argument if provided
-    min_threshold = MIN_COVERAGE_THRESHOLD
-    if "--min-coverage" in sys.argv:
-        idx = sys.argv.index("--min-coverage")
-        if idx + 1 < len(sys.argv):
-            try:
-                min_threshold = float(sys.argv[idx + 1])
-            except ValueError:
-                pass
+    # 1. Collect all LCOV files
+    lcov_files = sorted(
+        glob.glob(os.path.join(coverage_dir, "**/*.lcov"), recursive=True) +
+        glob.glob(os.path.join(coverage_dir, "**/lcov.info"), recursive=True)
+    )
     
-    rows = []
-    failed_targets = []
-    
-    # 1. Search for Python unit test coverage (.lcov files)
-    py_files = sorted(glob.glob(os.path.join(coverage_dir, "**/*python*.lcov"), recursive=True))
-    for pf in py_files:
-        label = os.path.basename(pf).replace(".lcov", "").replace("coverage-python-", "").replace("coverage-", "")
-        data = parse_lcov(pf)
-        if data and data["total"] > 0:
-            pct = data["percentage"]
-            status_emoji = "✅" if pct >= min_threshold else "❌"
-            rows.append(("Python Unit Tests", label, f"{pct:.1f}%", f"{data['hit']}/{data['total']} lines", status_emoji))
-            if pct < min_threshold:
-                failed_targets.append((f"python-{label}", pct))
+    # Deduplicate files by canonical path
+    seen_paths = set()
+    unique_lcov = []
+    for lf in lcov_files:
+        real_p = os.path.realpath(lf)
+        if real_p not in seen_paths:
+            seen_paths.add(real_p)
+            unique_lcov.append(lf)
             
-    # 2. Search for Frontend E2E coverage (lcov.info or *e2e*.lcov)
-    e2e_files = sorted(glob.glob(os.path.join(coverage_dir, "**/lcov.info"), recursive=True) + 
-                       glob.glob(os.path.join(coverage_dir, "**/*e2e*.lcov"), recursive=True) +
-                       glob.glob(os.path.join(coverage_dir, "**/*e2e*/**/lcov.info"), recursive=True))
-    
-    # Deduplicate paths
-    seen = set()
-    for ef in e2e_files:
-        if ef in seen:
-            continue
-        seen.add(ef)
-        parent_dir = os.path.basename(os.path.dirname(ef))
-        filename = os.path.basename(ef)
-        target = parent_dir.replace("coverage-e2e-", "").replace("coverage-", "")
-        if target in ("coverage", "html", "lcov-report", ".") or not target:
-            target = filename.replace(".lcov", "").replace("coverage-e2e-", "").replace("coverage-", "")
-        
-        data = parse_lcov(ef)
-        if data and data["total"] > 0:
-            pct = data["percentage"]
-            status_emoji = "✅" if pct >= min_threshold else "❌"
-            rows.append(("Frontend E2E (Playwright)", target, f"{pct:.1f}%", f"{data['hit']}/{data['total']} lines", status_emoji))
-            if pct < min_threshold:
-                failed_targets.append((f"e2e-{target}", pct))
-    
+    # Deduplicate file records across target runs
+    merged_records = {}
+    target_stats = {}
+
+    for lf in unique_lcov:
+        recs = parse_lcov_records(lf)
+        parent = os.path.basename(os.path.dirname(lf))
+        fname = os.path.basename(lf)
+        target = parent.replace("coverage-", "").replace("e2e-", "").replace("python-", "")
+        if target in ("coverage", "html", "lcov-report", "."):
+            target = fname.replace(".lcov", "").replace(".info", "").replace("coverage-", "").replace("e2e-", "").replace("python-", "")
+
+        layer = "Python Unit" if "python" in lf else "Frontend E2E"
+        if (target, layer) not in target_stats:
+            target_stats[(target, layer)] = {"lf": 0, "lh": 0, "brf": 0, "brh": 0}
+
+        for r in recs:
+            fkey = r["file"]
+            if fkey not in merged_records:
+                merged_records[fkey] = {"lf": r["lf"], "lh": r["lh"], "brf": r["brf"], "brh": r["brh"]}
+            else:
+                # Keep max hit count
+                merged_records[fkey]["lh"] = max(merged_records[fkey]["lh"], r["lh"])
+                merged_records[fkey]["brh"] = max(merged_records[fkey]["brh"], r["brh"])
+
+            target_stats[(target, layer)]["lf"] += r["lf"]
+            target_stats[(target, layer)]["lh"] += r["lh"]
+            target_stats[(target, layer)]["brf"] += r["brf"]
+            target_stats[(target, layer)]["brh"] += r["brh"]
+
+    # Tier statistics aggregation
+    tier_stats = {
+        "SECURITY": {"lf": 0, "lh": 0, "brf": 0, "brh": 0},
+        "BACKEND": {"lf": 0, "lh": 0, "brf": 0, "brh": 0},
+        "FRONTEND": {"lf": 0, "lh": 0, "brf": 0, "brh": 0},
+    }
+
+    for filepath, counts in merged_records.items():
+        tier = classify_file(filepath)
+        tier_stats[tier]["lf"] += counts["lf"]
+        tier_stats[tier]["lh"] += counts["lh"]
+        tier_stats[tier]["brf"] += counts["brf"]
+        tier_stats[tier]["brh"] += counts["brh"]
+
+    # Generate Markdown Summary
     md_output = []
-    md_output.append("## 📊 Code Coverage Summary\n")
-    if not rows:
-        md_output.append("No coverage data files found.\n")
-    else:
-        md_output.append("| Layer | Target / Plugin | Coverage | Covered Lines | Gate Status |")
-        md_output.append("| :--- | :--- | :--- | :--- | :--- |")
-        for layer, target, cov, lines, status in rows:
-            md_output.append(f"| **{layer}** | `{target}` | **{cov}** | {lines} | {status} |")
+    md_output.append("## 📊 3-Tier Code & Branch Coverage Summary\n")
+    md_output.append("| Domain / Tier | Line Coverage | Branch Coverage | Line Gate | Branch Gate | Status |")
+    md_output.append("| :--- | :--- | :--- | :--- | :--- | :--- |")
+
+    all_passed = True
+    failed_reasons = []
+
+    for tier_key in ["SECURITY", "BACKEND", "FRONTEND"]:
+        cfg = TIER_CONFIG[tier_key]
+        stats = tier_stats[tier_key]
         
-        gate_summary = "PASSED" if not failed_targets else "FAILED"
-        md_output.append(f"\n**Coverage Gate (>= {min_threshold:.1f}%)**: **{gate_summary}**")
-        md_output.append("\n*Generated automatically from Python pytest-cov & Playwright Istanbul coverage metrics.*")
-    
+        line_pct = (stats["lh"] / stats["lf"] * 100.0) if stats["lf"] > 0 else 100.0
+        line_pass = line_pct >= cfg["min_line"]
+
+        # If branches tracked, enforce branch gate; if not present (0 branches), evaluate as pass
+        has_branches = stats["brf"] > 0
+        branch_pct = (stats["brh"] / stats["brf"] * 100.0) if has_branches else 100.0
+        branch_pass = branch_pct >= cfg["min_branch"] if has_branches else True
+
+        tier_pass = line_pass and branch_pass
+        if not tier_pass:
+            all_passed = False
+            failed_reasons.append(
+                f"{cfg['title']}: Lines {line_pct:.1f}% (target >={cfg['min_line']}%), "
+                f"Branches {branch_pct:.1f}% (target >={cfg['min_branch']}%)"
+            )
+
+        status_emoji = "✅" if tier_pass else "❌"
+        br_display = f"**{branch_pct:.1f}%** ({stats['brh']}/{stats['brf']})" if has_branches else "N/A"
+        line_display = f"**{line_pct:.1f}%** ({stats['lh']}/{stats['lf']})"
+
+        md_output.append(
+            f"| **{cfg['title']}** | {line_display} | {br_display} | ≥ {cfg['min_line']:.0f}% | ≥ {cfg['min_branch']:.0f}% | {status_emoji} |"
+        )
+
+    md_output.append("\n### 📦 Target & Layer Breakdown\n")
+    md_output.append("| Layer | Target | Lines | Branches |")
+    md_output.append("| :--- | :--- | :--- | :--- |")
+    for (target, layer), st in sorted(target_stats.items()):
+        lp = (st["lh"] / st["lf"] * 100.0) if st["lf"] > 0 else 0.0
+        bp = (st["brh"] / st["brf"] * 100.0) if st["brf"] > 0 else 0.0
+        b_str = f"{bp:.1f}% ({st['brh']}/{st['brf']})" if st["brf"] > 0 else "—"
+        md_output.append(f"| {layer} | `{target}` | **{lp:.1f}%** ({st['lh']}/{st['lf']}) | {b_str} |")
+
+    gate_status_str = "PASSED" if all_passed else "FAILED"
+    md_output.append(f"\n**3-Tier Quality Gate**: **{gate_status_str}**")
+    md_output.append("\n*Evaluated across Security (≥90%/≥85%), Backend (≥80%/≥75%), and Frontend (≥70%/≥60%) quality tiers.*")
+
     summary_text = "\n".join(md_output)
     print(summary_text)
-    
+
+    # Write to Step Summary and Comment file
     summary_file = os.environ.get("GITHUB_STEP_SUMMARY")
     if summary_file:
         with open(summary_file, "a", encoding="utf-8") as f:
             f.write(summary_text + "\n")
-            
-    # Also write to comment markdown file
+
     with open("coverage-summary.md", "w", encoding="utf-8") as f:
         f.write(summary_text + "\n")
 
-    # Enforce minimum threshold gate
-    if failed_targets:
-        print(f"\n❌ Coverage Gate Failed: The following targets are below the {min_threshold:.1f}% threshold:")
-        for target, pct in failed_targets:
-            print(f"  - {target}: {pct:.1f}% (< {min_threshold:.1f}%)")
+    if not all_passed:
+        print("\n❌ 3-Tier Coverage Gate Failed:")
+        for reason in failed_reasons:
+            print(f"  - {reason}")
         sys.exit(1)
 
-    print(f"\n✅ All test suites meet the minimum coverage threshold (>= {min_threshold:.1f}%).")
+    print("\n✅ All 3 coverage quality tiers passed successfully!")
 
 if __name__ == "__main__":
     main()

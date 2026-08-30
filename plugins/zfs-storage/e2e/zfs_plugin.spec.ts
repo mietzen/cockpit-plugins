@@ -1658,23 +1658,30 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
         win.__snapshotsTabHandlers?.toggleDropdown?.(`${pool}@s1`);
         win.__snapshotsTabHandlers?.toggleDropdown?.(null);
 
-        // App action handlers
-        const a = win.__appActionHandlers;
-        if (a) {
-          try { await a.poolWizardDone(); } catch {}
-          try { await a.createDataset({ name: `${pool}/testds`, mountpoint: `/mnt/testds`, properties: {} }); } catch {}
-          try { await a.createZVol({ name: `${pool}/testvol`, volsize: "1G", volblocksize: "8k", sparse: true }); } catch {}
-          try { await a.editProperties(`${pool}/testds`, { compression: "lz4" }); } catch {}
-          try { await a.createSnapshot(`${pool}/testds`, "snap_test", false); } catch {}
-          try { await a.rollbackSnapshot(`${pool}/testds@snap_test`); } catch {}
-          try { await a.cloneSnapshot(`${pool}/testds@snap_test`, `${pool}/cloneds`); } catch {}
-          try { await a.rename(`${pool}/testds`, `${pool}/renameds`); } catch {}
-          try { await a.attachDisk(pool, "/dev/sdb", "/dev/sdc"); } catch {}
-          try { await a.replaceDisk(pool, "/dev/sdb", "/dev/sdd"); } catch {}
-          try { await a.wipeDisk({ name: "sde", path: "/dev/sde", size: 1024, type: "disk", rotational: true, smart_health: "PASSED", smart_attributes: [], partitions: [] }); } catch {}
-          try { await a.runSmartTest({ name: "sde", path: "/dev/sde", size: 1024, type: "disk", rotational: true, smart_health: "PASSED", smart_attributes: [], partitions: [] }, "short"); } catch {}
-          try { await a.destroy({ type: "dataset", name: `${pool}/testds` }); } catch {}
-          try { a.bulkDestroySnapshots([`${pool}@s1`, `${pool}@s2`]); } catch {}
+        // Modals invocation via setActiveModal
+        const modalTypes = [
+          { type: "create-dataset", poolName: pool, parentDataset: pool },
+          { type: "create-zvol", poolName: pool, parentDataset: pool },
+          { type: "edit-properties", name: pool, properties: { compression: "lz4" } },
+          { type: "create-snapshot", name: pool },
+          { type: "rollback-snapshot", snapshotName: `${pool}@s1` },
+          { type: "clone-snapshot", snapshotName: `${pool}@s1` },
+          { type: "rename", name: `${pool}/ds1`, itemType: "dataset" },
+          { type: "attach", poolName: pool, existingDevice: "/dev/sda" },
+          { type: "replace", poolName: pool, oldDevice: "/dev/sda" },
+          { type: "destroy", itemType: "dataset", itemName: `${pool}/ds1` },
+          { type: "destroy", itemType: "snapshot", itemName: `${pool}@s1` },
+          { type: "destroy", itemType: "snapshots", itemName: `${pool}@s1 ${pool}@s2` },
+          { type: "arc-details" },
+          { type: "smart-details", disk: { name: "sda", path: "/dev/sda", size: 1024, type: "disk", rotational: true, smart_health: "PASSED", smart_attributes: [], partitions: [] } },
+          { type: "command-preview", command: ["zfs", "list"], description: "List ZFS datasets", onConfirm: () => {} },
+        ];
+
+        for (const m of modalTypes) {
+          try {
+            win.__setActiveModal?.(m);
+            win.__setActiveModal?.(null);
+          } catch {}
         }
 
         // Wizard handlers

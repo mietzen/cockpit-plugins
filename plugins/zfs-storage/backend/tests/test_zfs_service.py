@@ -243,6 +243,56 @@ class TestZfsServiceActions(unittest.TestCase):
             res = json.loads(mock_print.call_args[0][0])
             self.assertTrue(res["smb"])
 
+    @patch("backend.zfs_helper.run_cmd")
+    def test_pool_import_export_destroy(self, mock_run):
+        mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
+        self.assertTrue(self.svc.pool_import("tank", force=True)["success"])
+        self.assertTrue(self.svc.pool_export("tank", force=True)["success"])
+        self.assertTrue(self.svc.pool_destroy("tank", force=True)["success"])
+        self.assertTrue(self.svc.pool_set_property("tank", "autotrim", "on")["success"])
+
+    @patch("backend.zfs_helper.run_cmd")
+    def test_snapshot_actions(self, mock_run):
+        mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
+        self.assertTrue(self.svc.snapshot_create("tank/data@s1", recursive=True)["success"])
+        self.assertTrue(self.svc.snapshot_destroy("tank/data@s1", recursive=True)["success"])
+        self.assertTrue(self.svc.snapshot_rollback("tank/data@s1", force=True)["success"])
+        self.assertTrue(self.svc.snapshot_clone("tank/data@s1", "tank/clone1")["success"])
+
+    @patch("backend.zfs_helper.run_cmd")
+    def test_smart_and_wipe_actions(self, mock_run):
+        mock_run.return_value = MagicMock(returncode=0, stdout=json.dumps({"smartctl": {"messages": []}}), stderr="")
+        self.assertIsNotNone(self.svc.get_smart_info("/dev/sda"))
+        mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
+        self.assertTrue(self.svc.run_smart_test("/dev/sda", "short")["success"])
+        self.assertTrue(self.svc.wipe_disk("/dev/sda")["success"])
+
+    @patch("backend.zfs_helper.run_cmd")
+    def test_dataset_set_property_and_zvol(self, mock_run):
+        mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
+        self.assertTrue(self.svc.dataset_set_property("tank/data", "compression", "lz4")["success"])
+        payload = {"path": "tank/vol1", "type": "volume", "volsize": "1G", "volblocksize": "8k", "sparse": True, "properties": {}}
+        self.assertTrue(self.svc.dataset_create(payload)["success"])
+
+    @patch("sys.argv", ["zfs_helper.py", "snapshots-list", "--path", "tank/data"])
+    @patch("backend.zfs_helper.ZfsService.get_snapshots", return_value=[{"name": "tank/data@s1"}])
+    def test_main_cli_snapshots_list(self, mock_snaps):
+        with patch("builtins.print") as mock_print:
+            main()
+            mock_print.assert_called_once()
+            res = json.loads(mock_print.call_args[0][0])
+            self.assertEqual(len(res), 1)
+
+    @patch("sys.argv", ["zfs_helper.py", "pool-status", "tank"])
+    @patch("backend.zfs_helper.ZfsService.get_pool_status", return_value={"state": "ONLINE"})
+    def test_main_cli_pool_status(self, mock_status):
+        with patch("builtins.print") as mock_print:
+            main()
+            mock_print.assert_called_once()
+            res = json.loads(mock_print.call_args[0][0])
+            self.assertEqual(res["state"], "ONLINE")
+
 
 if __name__ == "__main__":
     unittest.main()
+
