@@ -193,7 +193,8 @@ jobs:
       - name: Generate E2E Code Coverage Report
         if: always()
         run: |
-          if [ -d ".nyc_output" ]; then
+          mkdir -p coverage-e2e-${{ matrix.plugin }}
+          if [ -d ".nyc_output" ] && [ "$(ls -A .nyc_output 2>/dev/null)" ]; then
             npx nyc report --reporter=lcov --reporter=text-summary --report-dir=coverage-e2e-${{ matrix.plugin }} || true
           fi
 
@@ -202,7 +203,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: coverage-e2e-${{ matrix.plugin }}
-          path: coverage-e2e-${{ matrix.plugin }}/**
+          path: coverage-e2e-${{ matrix.plugin }}
           retention-days: 7
 
       - name: Upload E2E Test Failure Artifacts

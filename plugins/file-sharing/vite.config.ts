@@ -2,6 +2,8 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import istanbul from 'vite-plugin-istanbul';
 
+const isCoverage = process.env.VITE_COVERAGE === 'true';
+
 export default defineConfig({
   plugins: [
     react(),
@@ -9,14 +11,15 @@ export default defineConfig({
       include: 'src/*',
       exclude: ['node_modules', 'e2e'],
       extension: ['.js', '.ts', '.tsx'],
-      requireEnv: true,
+      requireEnv: false,
+      forceBuildInstrument: isCoverage,
     }),
   ],
   base: './',
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
-    sourcemap: process.env.VITE_COVERAGE === 'true' ? 'inline' : false,
+    sourcemap: isCoverage ? 'inline' : false,
     rollupOptions: {
       output: {
         entryFileNames: 'assets/[name].js',
