@@ -77,13 +77,13 @@ if command -v rpmbuild >/dev/null 2>&1; then
     RPM_DESC="Cockpit plugin ${PLUGIN_NAME}"
     RPM_REQUIRES="cockpit-bridge, python3"
     if [ "$PLUGIN_NAME" = "zfs-storage" ]; then
-        RPM_SUMMARY="Advanced OpenZFS storage manager for Cockpit"
+        RPM_SUMMARY="OpenZFS storage management plugin for Cockpit"
         RPM_REQUIRES="cockpit-bridge, python3"
-        RPM_DESC="Advanced OpenZFS storage manager for Cockpit.\nManage ZFS pools, datasets, zvols, snapshots, scrubs, trims,\nand SMART disk health with PatternFly v5 UI."
+        RPM_DESC="OpenZFS storage management plugin for Cockpit."
     elif [ "$PLUGIN_NAME" = "file-sharing" ]; then
-        RPM_SUMMARY="Advanced SMB and NFS file sharing manager for Cockpit"
+        RPM_SUMMARY="SMB and NFS file sharing management plugin for Cockpit"
         RPM_REQUIRES="cockpit-bridge, python3, samba, nfs-utils"
-        RPM_DESC="Advanced SMB (Samba) and NFS file sharing manager for Cockpit.\nManage Samba shares, NFS exports, Samba users, permissions matrix,\nand live client connection monitoring with PatternFly v5 UI."
+        RPM_DESC="SMB and NFS file sharing management plugin for Cockpit."
     fi
 
     SPEC_FILE="$RPMBUILD_DIR/SPECS/${PKG_NAME}.spec"

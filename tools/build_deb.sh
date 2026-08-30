@@ -84,10 +84,10 @@ if [ -n "$DPKG_DEB" ]; then
     DEB_DESC="Cockpit plugin ${PLUGIN_NAME}"
     if [ "$PLUGIN_NAME" = "zfs-storage" ]; then
         DEB_DEPENDS="cockpit-bridge | cockpit, zfsutils-linux, python3, smartmontools"
-        DEB_DESC="Advanced OpenZFS storage manager for Cockpit.\n Manage ZFS pools, datasets, zvols, snapshots, scrubs, trims,\n and SMART disk health with PatternFly v5 UI."
+        DEB_DESC="OpenZFS storage management plugin for Cockpit"
     elif [ "$PLUGIN_NAME" = "file-sharing" ]; then
         DEB_DEPENDS="cockpit-bridge | cockpit, python3, samba, nfs-kernel-server | nfs-common"
-        DEB_DESC="Advanced SMB (Samba) and NFS file sharing manager for Cockpit.\n Manage Samba shares, NFS exports, Samba users, permissions matrix,\n and live client connection monitoring with PatternFly v5 UI."
+        DEB_DESC="SMB and NFS file sharing management plugin for Cockpit"
     fi
 
     mkdir -p "$STAGE_DIR/usr/share/cockpit/${PLUGIN_NAME}"

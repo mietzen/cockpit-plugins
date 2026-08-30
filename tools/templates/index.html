@@ -85,6 +85,68 @@
         a.download-link:hover {
             text-decoration: underline;
         }
+        .download-cell {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+        .download-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            white-space: nowrap;
+        }
+        .pkg-size {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+        .sha-cell {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+        .sha-box {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            white-space: nowrap;
+        }
+        .sha-box code {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 0.85rem;
+            color: var(--text);
+            background: var(--code-bg);
+            padding: 2px 6px;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+        }
+        .copy-btn {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            color: var(--text-secondary);
+            padding: 3px 4px;
+            border-radius: 4px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+            transition: color 0.15s ease, background-color 0.15s ease;
+        }
+        .copy-btn:hover {
+            color: var(--accent);
+            background-color: var(--border);
+        }
+        .copy-btn .check-icon {
+            display: none;
+        }
+        .copy-btn.copied .copy-icon {
+            display: none;
+        }
+        .copy-btn.copied .check-icon {
+            display: inline-block;
+            stroke: #3fb950;
+        }
         .card-header-with-logo {
             display: flex;
             align-items: center;

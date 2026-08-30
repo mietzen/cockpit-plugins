@@ -10,6 +10,8 @@ import argparse
 import subprocess
 from datetime import datetime, timezone, timedelta
 
+import re
+
 def get_hashes(data):
     return {
         "md5": hashlib.md5(data).hexdigest(),
@@ -17,6 +19,30 @@ def get_hashes(data):
         "sha256": hashlib.sha256(data).hexdigest(),
         "size": len(data)
     }
+
+def format_size_mib(size_bytes: int) -> str:
+    mib = size_bytes / (1024 * 1024)
+    return f"{mib:.1f} MiB"
+
+def sanitize_description(pkg_name: str, desc: str) -> str:
+    clean = desc.replace("\\n", " ").replace("\n", " ").strip()
+    if "." in clean:
+        clean = clean.split(".")[0].strip()
+    if not clean or clean.lower() == "cockpit plugin":
+        if "zfs" in pkg_name:
+            clean = "OpenZFS storage management plugin for Cockpit"
+        elif "sharing" in pkg_name:
+            clean = "SMB and NFS file sharing management plugin for Cockpit"
+        else:
+            clean = "Cockpit plugin extension"
+    return clean
+
+def parse_rpm_pkg_name(filename: str) -> str:
+    base = filename.replace(".noarch.rpm", "").replace(".rpm", "")
+    parts = base.rsplit("-", 2)
+    if len(parts) >= 2 and parts[1] and parts[1][0].isdigit():
+        return parts[0]
+    return base
 
 def parse_deb_control(deb_path):
     """Extract control file content from .deb archive."""
@@ -109,9 +135,9 @@ SHA256: {hashes['sha256']}
             "name": pkg_name,
             "version": pkg_version,
             "filename": dest_deb_rel_path,
-            "size": f"{hashes['size'] / 1024:.1f} KiB",
+            "size": format_size_mib(hashes['size']),
             "sha256": hashes['sha256'],
-            "description": pkg_desc
+            "description": sanitize_description(pkg_name, pkg_desc)
         })
 
     # Write Packages & Packages.gz
@@ -269,32 +295,54 @@ echo "==> Installation complete! Access Cockpit at https://<server-ip>:9090 and 
     # Check for RPM packages and build map
     rpm_map = {}
     if rpm_dir and os.path.exists(rpm_dir):
-        for rpm_f in os.listdir(rpm_dir):
+        for rpm_f in sorted(os.listdir(rpm_dir)):
             if rpm_f.endswith(".rpm"):
                 rpm_path = os.path.join(rpm_dir, rpm_f)
                 with open(rpm_path, "rb") as rf:
-                    rpm_sha256 = hashlib.sha256(rf.read()).hexdigest()
-                stat_res = os.stat(rpm_path)
-                pkg_key = rpm_f.split("-1.")[0] if "-1." in rpm_f else rpm_f.rsplit("-", 2)[0]
+                    rpm_bytes = rf.read()
+                rpm_sha256 = hashlib.sha256(rpm_bytes).hexdigest()
+                pkg_key = parse_rpm_pkg_name(rpm_f)
                 rpm_map[pkg_key] = {
                     "filename": f"rpm/{rpm_f}",
-                    "size": f"{stat_res.st_size / 1024:.1f} KiB",
+                    "size": format_size_mib(len(rpm_bytes)),
                     "sha256": rpm_sha256,
                 }
 
     # Generate modern HTML index for GitHub Pages
     def format_row(p):
-        deb_link = f'<a href="{p["filename"]}" class="download-link">.deb</a> ({p["size"]})'
-        rpm_info = rpm_map.get(p["name"]) or (rpm_map.get(list(rpm_map.keys())[0]) if len(rpm_map) == 1 else None)
-        rpm_link = f'<br><a href="{rpm_info["filename"]}" class="download-link">.rpm</a> ({rpm_info["size"]})' if rpm_info else ""
-        deb_sha = f'<code title="{p["sha256"]}">{p["sha256"][:12]}...</code>'
-        rpm_sha = f'<br><code title="{rpm_info["sha256"]}">{rpm_info["sha256"][:12]}...</code>' if rpm_info else ""
+        rpm_info = rpm_map.get(p["name"])
+        
+        # Deb download & SHA
+        deb_download = f'<div class="download-item"><a href="{p["filename"]}" class="download-link">.deb</a> <span class="pkg-size">({p["size"]})</span></div>'
+        deb_sha_short = p["sha256"][:8]
+        deb_sha_block = f'''<div class="sha-box">
+            <code>{deb_sha_short}…</code>
+            <button class="copy-btn" onclick="navigator.clipboard.writeText('{p["sha256"]}');this.classList.add('copied');setTimeout(()=>this.classList.remove('copied'),1500)" title="Copy .deb SHA256" aria-label="Copy .deb SHA256">
+                <svg class="copy-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                <svg class="check-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            </button>
+        </div>'''
+
+        # RPM download & SHA
+        rpm_download = ""
+        rpm_sha_block = ""
+        if rpm_info:
+            rpm_download = f'<div class="download-item"><a href="{rpm_info["filename"]}" class="download-link">.rpm</a> <span class="pkg-size">({rpm_info["size"]})</span></div>'
+            rpm_sha_short = rpm_info["sha256"][:8]
+            rpm_sha_block = f'''<div class="sha-box">
+                <code>{rpm_sha_short}…</code>
+                <button class="copy-btn" onclick="navigator.clipboard.writeText('{rpm_info["sha256"]}');this.classList.add('copied');setTimeout(()=>this.classList.remove('copied'),1500)" title="Copy .rpm SHA256" aria-label="Copy .rpm SHA256">
+                    <svg class="copy-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                    <svg class="check-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </button>
+            </div>'''
+
         return f"""<tr>
             <td><strong><code>{p['name']}</code></strong></td>
             <td style="text-align: center;"><code>{p['version']}</code></td>
             <td>{p['description']}</td>
-            <td>{deb_link}{rpm_link}</td>
-            <td>{deb_sha}{rpm_sha}</td>
+            <td><div class="download-cell">{deb_download}{rpm_download}</div></td>
+            <td><div class="sha-cell">{deb_sha_block}{rpm_sha_block}</div></td>
         </tr>"""
 
     packages_table_rows = "".join([format_row(p) for p in packages_summary])

@@ -15,6 +15,13 @@ def get_hashes(data: bytes):
         "size": len(data)
     }
 
+def parse_rpm_pkg_name(filename: str) -> str:
+    base = filename.replace(".noarch.rpm", "").replace(".rpm", "")
+    parts = base.rsplit("-", 2)
+    if len(parts) >= 2 and parts[1] and parts[1][0].isdigit():
+        return parts[0]
+    return base
+
 def generate_rpm_repo(rpm_dir: str, output_dir: str, owner: str = "mietzen", repo: str = "cockpit-plugins"):
     os.makedirs(output_dir, exist_ok=True)
     repodata_dir = os.path.join(output_dir, "repodata")
@@ -33,9 +40,9 @@ def generate_rpm_repo(rpm_dir: str, output_dir: str, owner: str = "mietzen", rep
             data = f.read()
         hashes = get_hashes(data)
         packages_summary.append({
-            "name": filename.split("-")[0],
+            "name": parse_rpm_pkg_name(filename),
             "filename": filename,
-            "size": f"{hashes['size'] / 1024:.1f} KiB",
+            "size": f"{len(data) / (1024 * 1024):.1f} MiB",
             "sha256": hashes['sha256']
         })
 
