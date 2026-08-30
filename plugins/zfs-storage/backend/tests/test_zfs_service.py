@@ -17,6 +17,16 @@ class TestZfsServiceActions(unittest.TestCase):
         self.assertEqual(validate_name("pool@snap-1"), "pool@snap-1")
         with self.assertRaises(ValueError):
             validate_name("tank; rm -rf /")
+        with self.assertRaises(ValueError):
+            validate_name("")
+
+    @patch("backend.zfs_helper.run_cmd")
+    @patch("os.path.exists", return_value=False)
+    def test_get_system_info_unloaded(self, mock_exists, mock_run):
+        mock_run.return_value = MagicMock(returncode=1, stdout="", stderr="")
+        info = self.svc.get_system_info()
+        self.assertFalse(info["kernel_module_loaded"])
+        self.assertEqual(info["version"], "")
 
     @patch("backend.zfs_helper.run_cmd")
     def test_pool_create_action(self, mock_run):
@@ -481,17 +491,36 @@ class TestZfsServiceActions(unittest.TestCase):
             res = json.loads(mock_print.call_args[0][0])
             self.assertTrue(res["success"])
 
-    @patch("sys.argv", ["zfs_helper.py", "disk-action", "offline", "tank", "/dev/sda"])
-    @patch("backend.zfs_helper.ZfsService.disk_action", return_value={"success": True})
-    def test_main_cli_disk_action(self, mock_act):
+    @patch("backend.zfs_helper.run_cmd")
+    def test_disk_action_variants(self, mock_run):
+        mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
+        self.assertTrue(self.svc.disk_action("online", "tank", "/dev/sdb")["success"])
+        self.assertTrue(self.svc.disk_action("detach", "tank", "/dev/sdb")["success"])
+        with self.assertRaises(ValueError):
+            self.svc.disk_action("invalid_action", "tank", "/dev/sdb")
+
+    @patch("subprocess.run")
+    @patch("sys.argv", ["zfs_helper.py", "probe-sharing-services"])
+    def test_main_cli_probe_sharing_services(self, mock_run):
+        mock_run.return_value = MagicMock(returncode=0)
         with patch("builtins.print") as mock_print:
             main()
             mock_print.assert_called_once()
             res = json.loads(mock_print.call_args[0][0])
-            self.assertTrue(res["success"])
+            self.assertTrue(res["smb"])
+            self.assertTrue(res["nfs"])
+
+    @patch("sys.argv", ["zfs_helper.py", "unknown-action"])
+    def test_main_cli_unknown_action(self):
+        with patch("builtins.print") as mock_print:
+            main()
+            mock_print.assert_called_once()
+            res = json.loads(mock_print.call_args[0][0])
+            self.assertIn("error", res)
 
 
 if __name__ == "__main__":
     unittest.main()
+
 
 

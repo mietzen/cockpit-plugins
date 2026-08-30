@@ -1754,4 +1754,71 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
       f.getHealthBadgeColor(undefined);
     });
   });
+
+  test("30. Comprehensive Destructive and Disk Modals Suite", async () => {
+    const frame = await getFrame();
+
+    // Test DestroyModal for pool
+    await frame.evaluate(() => {
+      (window as any).__setActiveModal?.({
+        type: "destroy",
+        itemType: "pool",
+        itemName: "tank",
+      });
+    });
+    await page.waitForTimeout(300);
+    await frame.locator("input#destroy-confirm-input, input[aria-label*='confirm']").fill("tank");
+    await page.waitForTimeout(100);
+
+    // Test DestroyModal for dataset
+    await frame.evaluate(() => {
+      (window as any).__setActiveModal?.({
+        type: "destroy",
+        itemType: "dataset",
+        itemName: "tank/data",
+      });
+    });
+    await page.waitForTimeout(300);
+    await frame.locator("input#destroy-confirm-input, input[aria-label*='confirm']").fill("tank/data");
+    await page.waitForTimeout(100);
+
+    // Test DestroyModal for snapshot
+    await frame.evaluate(() => {
+      (window as any).__setActiveModal?.({
+        type: "destroy",
+        itemType: "snapshot",
+        itemName: "tank@snap1",
+      });
+    });
+    await page.waitForTimeout(300);
+    await frame.locator("input#destroy-confirm-input, input[aria-label*='confirm']").fill("tank@snap1");
+    await page.waitForTimeout(100);
+
+    // Test AttachDiskModal
+    await frame.evaluate(() => {
+      (window as any).__setActiveModal?.({
+        type: "attach",
+        poolName: "tank",
+        existingDevice: "/dev/sdb",
+      });
+    });
+    await page.waitForTimeout(300);
+
+    // Test ReplaceDiskModal
+    await frame.evaluate(() => {
+      (window as any).__setActiveModal?.({
+        type: "replace",
+        poolName: "tank",
+        oldDevice: "/dev/sdb",
+      });
+    });
+    await page.waitForTimeout(300);
+
+    // Close modal
+    await frame.evaluate(() => {
+      (window as any).__setActiveModal?.(null);
+    });
+    await page.waitForTimeout(100);
+  });
 });
+
