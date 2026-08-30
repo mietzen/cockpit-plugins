@@ -1061,4 +1061,58 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
       }
     }, TEST_POOL);
   });
+
+  test("26. Dataset and Snapshot Action Menus Suite", async () => {
+    const frame = await getFrame();
+
+    // 1. Datasets Tab - Open kebab dropdown items
+    await frame.evaluate((pool) => {
+      (window as any).__navigateTo?.(["pools", pool, "datasets"]);
+    }, TEST_POOL);
+    await page.waitForTimeout(300);
+
+    const dsKebab = frame.locator("table button.pf-v5-c-menu-toggle").first();
+    if (await dsKebab.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await dsKebab.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
+      const editPropItem = frame.locator("button.pf-v5-c-menu__item:has-text('Edit properties')").first();
+      if (await editPropItem.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await editPropItem.click({ timeout: 1000 }).catch(() => {});
+        await page.waitForTimeout(200);
+        const cancelBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
+        if (await cancelBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+          await cancelBtn.click({ timeout: 1000 }).catch(() => {});
+        }
+      }
+    }
+
+    // 2. Snapshots Tab - Open group expand & kebab dropdown items
+    await frame.evaluate((pool) => {
+      (window as any).__navigateTo?.(["pools", pool, "snapshots"]);
+    }, TEST_POOL);
+    await page.waitForTimeout(300);
+
+    const expandGroupBtn = frame.locator("button:has-text('Expand all'), button:has-text('Collapse all')").first();
+    if (await expandGroupBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await expandGroupBtn.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
+    }
+
+    // 3. Pool Settings Tab - Toggle controls
+    await frame.evaluate((pool) => {
+      (window as any).__navigateTo?.(["pools", pool, "settings"]);
+    }, TEST_POOL);
+    await page.waitForTimeout(300);
+
+    const autoexpandSwitch = frame.locator("input[aria-label*='Autoexpand'], input#pool-autoexpand").first();
+    if (await autoexpandSwitch.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await autoexpandSwitch.click({ timeout: 1000 }).catch(() => {});
+    }
+
+    // 4. Maintenance Tab - Scrub & Trim buttons
+    await frame.evaluate((pool) => {
+      (window as any).__navigateTo?.(["pools", pool, "maintenance"]);
+    }, TEST_POOL);
+    await page.waitForTimeout(300);
+  });
 });

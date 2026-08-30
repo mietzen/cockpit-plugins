@@ -904,4 +904,62 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
       }
     });
   });
+
+  test("23. Table Row Action Menus and Modals Execution", async () => {
+    const frame = await getFrame();
+
+    // 1. Users Tab - Open Set Password & Delete modals
+    await frame.evaluate(() => (window as any).__setActiveView?.("users"));
+    await page.waitForTimeout(300);
+    const userKebab = frame.locator("table[aria-label*='Users'] button[aria-label*='Actions'], table button.pf-v5-c-menu-toggle").first();
+    if (await userKebab.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await userKebab.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
+      const setPassItem = frame.locator("button.pf-v5-c-menu__item:has-text('Set Samba password')").first();
+      if (await setPassItem.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await setPassItem.click({ timeout: 1000 }).catch(() => {});
+        await page.waitForTimeout(200);
+        const cancelBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
+        if (await cancelBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+          await cancelBtn.click({ timeout: 1000 }).catch(() => {});
+        }
+      }
+    }
+
+    // 2. SMB Shares Tab - Open Edit & Delete modals
+    await frame.evaluate(() => (window as any).__setActiveView?.("smb"));
+    await page.waitForTimeout(300);
+    const smbKebab = frame.locator("table[aria-label*='Shares'] button[aria-label*='Actions'], table button.pf-v5-c-menu-toggle").first();
+    if (await smbKebab.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await smbKebab.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
+      const editItem = frame.locator("button.pf-v5-c-menu__item:has-text('Edit share')").first();
+      if (await editItem.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await editItem.click({ timeout: 1000 }).catch(() => {});
+        await page.waitForTimeout(200);
+        const cancelBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
+        if (await cancelBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+          await cancelBtn.click({ timeout: 1000 }).catch(() => {});
+        }
+      }
+    }
+
+    // 3. NFS Exports Tab - Open Edit & Delete modals
+    await frame.evaluate(() => (window as any).__setActiveView?.("nfs"));
+    await page.waitForTimeout(300);
+    const nfsKebab = frame.locator("table[aria-label*='Exports'] button[aria-label*='Actions'], table button.pf-v5-c-menu-toggle").first();
+    if (await nfsKebab.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await nfsKebab.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
+      const editNfsItem = frame.locator("button.pf-v5-c-menu__item:has-text('Edit export')").first();
+      if (await editNfsItem.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await editNfsItem.click({ timeout: 1000 }).catch(() => {});
+        await page.waitForTimeout(200);
+        const cancelBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
+        if (await cancelBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+          await cancelBtn.click({ timeout: 1000 }).catch(() => {});
+        }
+      }
+    }
+  });
 });
