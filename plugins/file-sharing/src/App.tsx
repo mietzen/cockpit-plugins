@@ -323,6 +323,7 @@ export const App: React.FC = () => {
           globalSettings={overview.smb.global}
           ansibleBegin={ansibleBegin}
           ansibleEnd={ansibleEnd}
+          versions={overview.versions}
           onSaveGlobal={handleSaveSmbGlobal}
           onSaveAnsibleMarkers={handleSaveAnsibleMarkers}
         />

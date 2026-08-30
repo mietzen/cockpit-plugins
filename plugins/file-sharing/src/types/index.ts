@@ -133,4 +133,8 @@ export interface FileSharingOverview {
   };
   sessions: SmbSession[];
   zfs_mounts: ZfsMount[];
+  versions?: {
+    smb: string;
+    nfs: string;
+  };
 }

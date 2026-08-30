@@ -188,6 +188,35 @@ def reload_nfs() -> Tuple[bool, str]:
     return True, "NFS exports reloaded"
 
 
+def get_system_versions() -> Dict[str, str]:
+    smb_ver = "Not installed"
+    for bin_path in ["/usr/sbin/smbd", "/usr/bin/smbd", "smbd"]:
+        rc, out, _ = run_cmd([bin_path, "-V"])
+        if rc == 0 and out:
+            smb_ver = out.replace("Version ", "").strip()
+            break
+
+    nfs_ver = "Not installed"
+    for bin_path in ["/usr/sbin/rpc.nfsd", "/usr/sbin/rpc.mountd", "rpc.nfsd", "rpc.mountd"]:
+        rc, out, _ = run_cmd([bin_path, "-V"])
+        if rc == 0 and out:
+            nfs_ver = out.replace("Version ", "").strip()
+            break
+    if nfs_ver == "Not installed":
+        rc_dpkg, out_dpkg, _ = run_cmd(["dpkg-query", "-W", "-f=${Version}", "nfs-kernel-server"])
+        if rc_dpkg == 0 and out_dpkg:
+            nfs_ver = out_dpkg.strip()
+        else:
+            rc_rpm, out_rpm, _ = run_cmd(["rpm", "-q", "--qf", "%{VERSION}-%{RELEASE}", "nfs-utils"])
+            if rc_rpm == 0 and out_rpm and "not installed" not in out_rpm:
+                nfs_ver = out_rpm.strip()
+
+    return {
+        "smb": smb_ver,
+        "nfs": nfs_ver,
+    }
+
+
 def handle_get_overview(args: argparse.Namespace) -> Dict[str, Any]:
     begin_p = getattr(args, "ansible_begin", None) or SmbParser().begin_pattern
     end_p = getattr(args, "ansible_end", None) or SmbParser().end_pattern
@@ -225,6 +254,7 @@ def handle_get_overview(args: argparse.Namespace) -> Dict[str, Any]:
         },
         "sessions": sessions,
         "zfs_mounts": zfs_mounts,
+        "versions": get_system_versions(),
     }
 
 

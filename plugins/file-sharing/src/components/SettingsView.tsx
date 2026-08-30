@@ -25,6 +25,10 @@ interface SettingsViewProps {
   globalSettings: SmbGlobal;
   ansibleBegin: string;
   ansibleEnd: string;
+  versions?: {
+    smb: string;
+    nfs: string;
+  };
   onSaveGlobal: (global: Record<string, string>) => Promise<void>;
   onSaveAnsibleMarkers: (begin: string, end: string) => void;
 }
@@ -33,6 +37,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   globalSettings,
   ansibleBegin,
   ansibleEnd,
+  versions,
   onSaveGlobal,
   onSaveAnsibleMarkers,
 }) => {
@@ -246,7 +251,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   <strong>License:</strong> MIT
                 </p>
                 <p style={{ marginBottom: "0.5rem" }}>
-                  <strong>Features:</strong> SMB (Samba) shares, NFS kernel exports, Samba user management, permissions matrix, and Ansible lock integration.
+                  <strong>Host Samba:</strong>{" "}
+                  <span style={{ fontFamily: "monospace" }}>{versions?.smb || "Samba"}</span>
+                </p>
+                <p style={{ marginBottom: "0.5rem" }}>
+                  <strong>Host NFS:</strong>{" "}
+                  <span style={{ fontFamily: "monospace" }}>{versions?.nfs || "NFS Server"}</span>
                 </p>
               </CardBody>
             </Card>
