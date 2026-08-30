@@ -386,8 +386,14 @@ jobs:
         run: |
           TAG_NAME="${{ github.ref_name }}"
           echo "Creating GitHub Release for $TAG_NAME..."
+          if [[ "$TAG_NAME" == zfs-storage-* ]]; then
+            RELEASE_FILES=(all-debs/cockpit-zfs-storage_*.deb all-rpms/cockpit-zfs-storage-*.rpm)
+          elif [[ "$TAG_NAME" == file-sharing-* ]]; then
+            RELEASE_FILES=(all-debs/cockpit-file-sharing_*.deb all-rpms/cockpit-file-sharing-*.rpm)
+          else
+            RELEASE_FILES=(all-debs/*.deb all-rpms/*.rpm)
+          fi
           gh release create "$TAG_NAME" \
-            all-debs/*.deb \
-            all-rpms/*.rpm \
+            "${RELEASE_FILES[@]}" \
             --title "$TAG_NAME" \
             --generate-notes
