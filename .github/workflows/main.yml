@@ -17,6 +17,7 @@ permissions:
   pages: write
   id-token: write
   pull-requests: write
+  code-quality: write
 
 jobs:
   build:
@@ -58,8 +59,18 @@ jobs:
             --cov=plugins/${{ matrix.plugin }}/backend \
             --cov=packages/common/python/cockpit_common \
             --cov-report=lcov:coverage-python/coverage-python-${{ matrix.plugin }}.lcov \
+            --cov-report=xml:coverage-python/coverage-python-${{ matrix.plugin }}.xml \
             --cov-report=term-missing \
             plugins/${{ matrix.plugin }}/backend/tests packages/common/python/tests tools/tests
+
+      - name: Upload Python Coverage to GitHub Code Quality
+        uses: actions/upload-code-coverage@v1
+        if: always()
+        continue-on-error: true
+        with:
+          file: coverage-python/coverage-python-${{ matrix.plugin }}.xml
+          language: Python
+          label: python-${{ matrix.plugin }}
 
       - name: Upload Python Coverage Artifact
         uses: actions/upload-artifact@v7
@@ -195,8 +206,17 @@ jobs:
         run: |
           mkdir -p coverage-e2e-${{ matrix.plugin }}
           if [ -d ".nyc_output" ] && [ "$(ls -A .nyc_output 2>/dev/null)" ]; then
-            npx nyc report --reporter=lcov --reporter=text-summary --report-dir=coverage-e2e-${{ matrix.plugin }} || true
+            npx nyc report --reporter=lcov --reporter=cobertura --reporter=text-summary --report-dir=coverage-e2e-${{ matrix.plugin }} || true
           fi
+
+      - name: Upload E2E Coverage to GitHub Code Quality
+        uses: actions/upload-code-coverage@v1
+        if: always()
+        continue-on-error: true
+        with:
+          file: coverage-e2e-${{ matrix.plugin }}/cobertura-coverage.xml
+          language: JavaScript
+          label: e2e-${{ matrix.plugin }}
 
       - name: Upload E2E Coverage Artifact
         if: always()
