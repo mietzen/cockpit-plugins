@@ -45,19 +45,16 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
   test.afterEach(async ({}, testInfo) => {
     try {
       if (!page) return;
-      const coverageData = await page.evaluate(() => {
+      let coverageData = null;
+      for (const f of page.frames()) {
         try {
-          const iframes = Array.from(document.querySelectorAll("iframe"));
-          for (const f of iframes) {
-            if (f.contentWindow && (f.contentWindow as any).__coverage__) {
-              return (f.contentWindow as any).__coverage__;
-            }
+          const cov = await f.evaluate(() => (window as any).__coverage__);
+          if (cov && Object.keys(cov).length > 0) {
+            coverageData = cov;
+            break;
           }
-          return (window as any).__coverage__ || null;
-        } catch {
-          return null;
-        }
-      });
+        } catch {}
+      }
       if (coverageData) {
         const nycDir = path.join(process.cwd(), ".nyc_output");
         fs.mkdirSync(nycDir, { recursive: true });
