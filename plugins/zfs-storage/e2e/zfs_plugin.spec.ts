@@ -539,4 +539,55 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
       }
     }
   });
+
+  test("19. Maintenance, Topology & Disks Comprehensive UI Coverage", async () => {
+    const frame = await getFrame();
+    
+    // Go to pool details -> Maintenance tab
+    await frame.locator(`button:visible:has-text("${TEST_POOL}"), a:visible:has-text("${TEST_POOL}")`).first().click().catch(() => {});
+    const maintTab = frame.locator("button.pf-v5-c-tabs__link:has-text('Maintenance'), [role='tab']:has-text('Maintenance')").first();
+    if (await maintTab.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await maintTab.click();
+      await page.waitForTimeout(300);
+      const scrubBtn = frame.locator("button:has-text('Start scrub')").first();
+      if (await scrubBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await scrubBtn.click();
+        await page.waitForTimeout(500);
+      }
+      const trimBtn = frame.locator("button:has-text('Start trim')").first();
+      if (await trimBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await trimBtn.click();
+        await page.waitForTimeout(500);
+      }
+      const clearBtn = frame.locator("button:has-text('Clear errors')").first();
+      if (await clearBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await clearBtn.click();
+        await page.waitForTimeout(500);
+      }
+    }
+
+    // Settings subtab
+    const poolSettingsTab = frame.locator("button.pf-v5-c-tabs__link:has-text('Settings'), [role='tab']:has-text('Settings')").first();
+    if (await poolSettingsTab.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await poolSettingsTab.click();
+      await page.waitForTimeout(300);
+      const autoexpandSwitch = frame.locator("input#pool-autoexpand").first();
+      if (await autoexpandSwitch.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await autoexpandSwitch.click();
+      }
+      const saveSettingsBtn = frame.locator("button:has-text('Save changes')").first();
+      if (await saveSettingsBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await saveSettingsBtn.click();
+      }
+    }
+
+    // Top-level Disks view
+    await frame.locator("button.pf-v5-c-nav__link:has-text('Disks'), [role='menuitem']:has-text('Disks')").first().click();
+    await page.waitForTimeout(300);
+    const filterInput = frame.locator("input[placeholder*='Filter'], input[aria-label*='Search']").first();
+    if (await filterInput.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await filterInput.fill("loop");
+      await page.waitForTimeout(300);
+    }
+  });
 });

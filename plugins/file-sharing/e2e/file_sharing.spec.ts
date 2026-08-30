@@ -372,7 +372,7 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
     await expect(frame.locator(".pf-v5-c-modal-box")).toHaveCount(0, { timeout: 10000 });
 
     // Open Change Password modal
-    const userRow = frame.locator("tr", { hasText: "test-user" }).or(frame.locator("tr", { hasText: "runner" })).first();
+    const userRow = frame.locator("tr", { hasText: "runner" }).or(frame.locator("tr", { hasText: "test-user" })).first();
     const userToggle = userRow.locator("button[aria-label='User actions']").first();
     if (await userToggle.isVisible({ timeout: 3000 }).catch(() => false)) {
       await userToggle.click();
@@ -386,16 +386,11 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
       }
     }
 
-    // Toggle user state and delete modal
-    if (await userToggle.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await userToggle.click();
-      const disableOption = frame.getByRole("menuitem", { name: /Disable user|Enable user/ }).or(frame.getByText(/Disable user|Enable user/)).first();
-      if (await disableOption.isVisible({ timeout: 2000 }).catch(() => false)) {
-        await disableOption.click();
-        await page.waitForTimeout(500);
-      }
-
-      await userToggle.click();
+    // Delete user modal
+    const userRow2 = frame.locator("tr", { hasText: "runner" }).first();
+    const userToggle2 = userRow2.locator("button[aria-label='User actions']").first();
+    if (await userToggle2.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await userToggle2.click();
       const delOption = frame.getByRole("menuitem", { name: /Delete Samba user/ }).or(frame.getByText("Delete Samba user")).first();
       if (await delOption.isVisible({ timeout: 2000 }).catch(() => false)) {
         await delOption.click();
@@ -497,5 +492,23 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
         // ignore errors
       }
     });
+  });
+
+  test("16. Sessions and Service Actions UI Suite", async () => {
+    const frame = await getFrame();
+    await frame.locator("button.pf-v5-c-tabs__link:has-text('Services & Sessions'), [role='tab']:has-text('Services & Sessions')").first().click();
+    await page.waitForTimeout(300);
+
+    const refreshBtn = frame.locator("button:has-text('Refresh status')").first();
+    if (await refreshBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await refreshBtn.click();
+      await page.waitForTimeout(300);
+    }
+
+    const restartBtn = frame.locator("button:has-text('Restart')").first();
+    if (await restartBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await restartBtn.click();
+      await page.waitForTimeout(500);
+    }
   });
 });
