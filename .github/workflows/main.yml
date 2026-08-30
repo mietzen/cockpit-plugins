@@ -252,7 +252,6 @@ jobs:
             const fs = require('fs');
             if (!fs.existsSync('coverage-summary.md')) return;
             const body = fs.readFileSync('coverage-summary.md', 'utf8');
-            const commentHeader = '## 📊 Code Coverage Summary';
             const { owner, repo } = context.repo;
             const issue_number = context.payload.pull_request.number;
 
@@ -261,15 +260,25 @@ jobs:
               repo,
               issue_number,
             });
-            const botComment = comments.data.find(c => c.body.includes(commentHeader));
+            const botComments = comments.data.filter(c => c.body && (c.body.includes('<!-- sticky-coverage-report -->') || c.body.includes('## 📊')));
 
-            if (botComment) {
+            if (botComments.length > 0) {
+              const primaryComment = botComments[0];
               await github.rest.issues.updateComment({
                 owner,
                 repo,
-                comment_id: botComment.id,
+                comment_id: primaryComment.id,
                 body,
               });
+              for (let i = 1; i < botComments.length; i++) {
+                try {
+                  await github.rest.issues.deleteComment({
+                    owner,
+                    repo,
+                    comment_id: botComments[i].id,
+                  });
+                } catch (e) {}
+              }
             } else {
               await github.rest.issues.createComment({
                 owner,

@@ -146,7 +146,7 @@ def main():
 
     # Generate Markdown Summary
     md_output = []
-    md_output.append("## 📊 3-Tier Code & Branch Coverage Summary\n")
+    md_output.append("<!-- sticky-coverage-report -->\n## 📊 3-Tier Code & Branch Coverage Summary\n")
     md_output.append("| Domain / Tier | Line Coverage | Branch Coverage | Line Gate | Branch Gate | Status |")
     md_output.append("| :--- | :--- | :--- | :--- | :--- | :--- |")
 
