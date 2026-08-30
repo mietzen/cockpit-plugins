@@ -99,7 +99,7 @@ sudo chmod -R 755 /usr/share/cockpit/* || true
 sudo chmod -R 755 /usr/libexec/cockpit-* || true
 
 # Pre-configure test file sharing fixtures
-sudo mkdir -p /srv/samba/test /srv/nfs/test /tank/ansible
+sudo mkdir -p /srv/samba/test /srv/nfs/test /srv/nfs/test_crud /tank/ansible
 if [ -f /etc/samba/smb.conf ]; then
     sudo bash -c 'cat << "EOF" >> /etc/samba/smb.conf
 
