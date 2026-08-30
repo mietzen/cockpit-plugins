@@ -592,33 +592,25 @@ select:focus-visible {
 }
 
 /* =========================================================
-   Labels & Badges: Pill Geometry & Single Clean Border
+   Labels & Badges: Single Clean Pill Geometry & Contrast
    ========================================================= */
-.pf-v5-c-label,
-.pf-v5-c-badge {
+.pf-v5-c-label {
   --pf-v5-c-label--BorderRadius: 999px !important;
-  --pf-v5-c-badge--BorderRadius: 999px !important;
+  --pf-v5-c-label--PaddingTop: 2px !important;
+  --pf-v5-c-label--PaddingBottom: 2px !important;
+  --pf-v5-c-label--PaddingLeft: 10px !important;
+  --pf-v5-c-label--PaddingRight: 10px !important;
+  --pf-v5-c-label__content--before--BorderWidth: 1px !important;
   border-radius: 999px !important;
-  overflow: hidden !important;
-  background-clip: padding-box !important;
   font-weight: 500 !important;
-  padding: 2px 10px !important;
   box-shadow: none !important;
   outline: none !important;
+  border: none !important;
 }
 
-/* Eliminate PatternFly nested pseudo-element borders that cause double outlines */
 .pf-v5-c-label::before,
-.pf-v5-c-label::after,
-.pf-v5-c-label__content::before,
-.pf-v5-c-label__content::after,
-.pf-v5-c-badge::before,
-.pf-v5-c-badge::after {
+.pf-v5-c-label::after {
   display: none !important;
-  content: none !important;
-  border: none !important;
-  box-shadow: none !important;
-  outline: none !important;
 }
 
 .pf-v5-c-label__content {
@@ -627,155 +619,213 @@ select:focus-visible {
   border: none !important;
   box-shadow: none !important;
   outline: none !important;
-  padding: 0 !important;
-  overflow: hidden !important;
-  border-radius: 999px !important;
 }
 
-/* Light Mode Badges */
-.pf-v5-c-label.pf-m-blue,
-.pf-v5-c-badge.pf-m-blue {
+.pf-v5-c-label__content::before {
+  border-radius: 999px !important;
+  border-width: 1px !important;
+  border-style: solid !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+/* Light Mode Labels */
+.pf-v5-c-label.pf-m-blue {
+  --pf-v5-c-label--BackgroundColor: rgba(0, 102, 204, 0.12) !important;
+  --pf-v5-c-label__content--Color: #004080 !important;
+  --pf-v5-c-label__content--before--BorderColor: rgba(0, 102, 204, 0.3) !important;
   background-color: rgba(0, 102, 204, 0.12) !important;
   color: #004080 !important;
-  border: 1px solid rgba(0, 102, 204, 0.3) !important;
 }
 
-.pf-v5-c-label.pf-m-green,
-.pf-v5-c-badge.pf-m-green {
+.pf-v5-c-label.pf-m-green {
+  --pf-v5-c-label--BackgroundColor: rgba(62, 134, 53, 0.12) !important;
+  --pf-v5-c-label__content--Color: #1e5a1b !important;
+  --pf-v5-c-label__content--before--BorderColor: rgba(62, 134, 53, 0.3) !important;
   background-color: rgba(62, 134, 53, 0.12) !important;
   color: #1e5a1b !important;
-  border: 1px solid rgba(62, 134, 53, 0.3) !important;
 }
 
-.pf-v5-c-label.pf-m-orange,
-.pf-v5-c-badge.pf-m-orange {
+.pf-v5-c-label.pf-m-orange {
+  --pf-v5-c-label--BackgroundColor: rgba(240, 171, 0, 0.12) !important;
+  --pf-v5-c-label__content--Color: #8f6200 !important;
+  --pf-v5-c-label__content--before--BorderColor: rgba(240, 171, 0, 0.3) !important;
   background-color: rgba(240, 171, 0, 0.12) !important;
   color: #8f6200 !important;
-  border: 1px solid rgba(240, 171, 0, 0.3) !important;
 }
 
-.pf-v5-c-label.pf-m-red,
-.pf-v5-c-badge.pf-m-red {
+.pf-v5-c-label.pf-m-red {
+  --pf-v5-c-label--BackgroundColor: rgba(201, 25, 11, 0.12) !important;
+  --pf-v5-c-label__content--Color: #a30000 !important;
+  --pf-v5-c-label__content--before--BorderColor: rgba(201, 25, 11, 0.3) !important;
   background-color: rgba(201, 25, 11, 0.12) !important;
   color: #a30000 !important;
-  border: 1px solid rgba(201, 25, 11, 0.3) !important;
 }
 
-.pf-v5-c-label.pf-m-purple,
-.pf-v5-c-badge.pf-m-purple {
+.pf-v5-c-label.pf-m-purple {
+  --pf-v5-c-label--BackgroundColor: rgba(154, 85, 255, 0.12) !important;
+  --pf-v5-c-label__content--Color: #6a2eb8 !important;
+  --pf-v5-c-label__content--before--BorderColor: rgba(154, 85, 255, 0.3) !important;
   background-color: rgba(154, 85, 255, 0.12) !important;
   color: #6a2eb8 !important;
-  border: 1px solid rgba(154, 85, 255, 0.3) !important;
 }
 
 .pf-v5-c-label.pf-m-grey,
-.pf-v5-c-badge.pf-m-grey {
+.pf-v5-c-label:not([class*="pf-m-"]) {
+  --pf-v5-c-label--BackgroundColor: rgba(128, 128, 128, 0.12) !important;
+  --pf-v5-c-label__content--Color: var(--zfs-text-secondary) !important;
+  --pf-v5-c-label__content--before--BorderColor: var(--zfs-card-border) !important;
   background-color: rgba(128, 128, 128, 0.12) !important;
   color: var(--zfs-text-secondary) !important;
-  border: 1px solid var(--zfs-card-border) !important;
 }
 
-.pf-v5-c-label.pf-m-cyan,
-.pf-v5-c-badge.pf-m-cyan {
+.pf-v5-c-label.pf-m-cyan {
+  --pf-v5-c-label--BackgroundColor: rgba(0, 150, 180, 0.12) !important;
+  --pf-v5-c-label__content--Color: #006070 !important;
+  --pf-v5-c-label__content--before--BorderColor: rgba(0, 150, 180, 0.3) !important;
   background-color: rgba(0, 150, 180, 0.12) !important;
   color: #006070 !important;
-  border: 1px solid rgba(0, 150, 180, 0.3) !important;
 }
 
-.pf-v5-c-label.pf-m-gold,
-.pf-v5-c-badge.pf-m-gold {
+.pf-v5-c-label.pf-m-gold {
+  --pf-v5-c-label--BackgroundColor: rgba(240, 171, 0, 0.12) !important;
+  --pf-v5-c-label__content--Color: #8f6200 !important;
+  --pf-v5-c-label__content--before--BorderColor: rgba(240, 171, 0, 0.3) !important;
   background-color: rgba(240, 171, 0, 0.12) !important;
   color: #8f6200 !important;
-  border: 1px solid rgba(240, 171, 0, 0.3) !important;
 }
 
-/* Dark Mode Badges */
+/* Dark Mode Labels */
 .pf-v5-theme-dark .pf-v5-c-label.pf-m-blue,
 .pf-v6-theme-dark .pf-v5-c-label.pf-m-blue,
-.theme-dark .pf-v5-c-label.pf-m-blue,
-.pf-v5-theme-dark .pf-v5-c-badge.pf-m-blue,
-.pf-v6-theme-dark .pf-v5-c-badge.pf-m-blue,
-.theme-dark .pf-v5-c-badge.pf-m-blue {
+.theme-dark .pf-v5-c-label.pf-m-blue {
+  --pf-v5-c-label--BackgroundColor: rgba(0, 102, 204, 0.25) !important;
+  --pf-v5-c-label__content--Color: #73bcf7 !important;
+  --pf-v5-c-label__content--before--BorderColor: rgba(115, 188, 247, 0.4) !important;
   background-color: rgba(0, 102, 204, 0.25) !important;
   color: #73bcf7 !important;
-  border: 1px solid rgba(115, 188, 247, 0.4) !important;
 }
 
 .pf-v5-theme-dark .pf-v5-c-label.pf-m-green,
 .pf-v6-theme-dark .pf-v5-c-label.pf-m-green,
-.theme-dark .pf-v5-c-label.pf-m-green,
-.pf-v5-theme-dark .pf-v5-c-badge.pf-m-green,
-.pf-v6-theme-dark .pf-v5-c-badge.pf-m-green,
-.theme-dark .pf-v5-c-badge.pf-m-green {
+.theme-dark .pf-v5-c-label.pf-m-green {
+  --pf-v5-c-label--BackgroundColor: rgba(62, 134, 53, 0.25) !important;
+  --pf-v5-c-label__content--Color: #70db70 !important;
+  --pf-v5-c-label__content--before--BorderColor: rgba(112, 219, 112, 0.4) !important;
   background-color: rgba(62, 134, 53, 0.25) !important;
   color: #70db70 !important;
-  border: 1px solid rgba(112, 219, 112, 0.4) !important;
 }
 
 .pf-v5-theme-dark .pf-v5-c-label.pf-m-orange,
 .pf-v6-theme-dark .pf-v5-c-label.pf-m-orange,
-.theme-dark .pf-v5-c-label.pf-m-orange,
-.pf-v5-theme-dark .pf-v5-c-badge.pf-m-orange,
-.pf-v6-theme-dark .pf-v5-c-badge.pf-m-orange,
-.theme-dark .pf-v5-c-badge.pf-m-orange {
+.theme-dark .pf-v5-c-label.pf-m-orange {
+  --pf-v5-c-label--BackgroundColor: rgba(240, 171, 0, 0.25) !important;
+  --pf-v5-c-label__content--Color: #f0ab00 !important;
+  --pf-v5-c-label__content--before--BorderColor: rgba(240, 171, 0, 0.4) !important;
   background-color: rgba(240, 171, 0, 0.25) !important;
   color: #f0ab00 !important;
-  border: 1px solid rgba(240, 171, 0, 0.4) !important;
 }
 
 .pf-v5-theme-dark .pf-v5-c-label.pf-m-red,
 .pf-v6-theme-dark .pf-v5-c-label.pf-m-red,
-.theme-dark .pf-v5-c-label.pf-m-red,
-.pf-v5-theme-dark .pf-v5-c-badge.pf-m-red,
-.pf-v6-theme-dark .pf-v5-c-badge.pf-m-red,
-.theme-dark .pf-v5-c-badge.pf-m-red {
+.theme-dark .pf-v5-c-label.pf-m-red {
+  --pf-v5-c-label--BackgroundColor: rgba(201, 25, 11, 0.25) !important;
+  --pf-v5-c-label__content--Color: #ff6b6b !important;
+  --pf-v5-c-label__content--before--BorderColor: rgba(255, 107, 107, 0.4) !important;
   background-color: rgba(201, 25, 11, 0.25) !important;
   color: #ff6b6b !important;
-  border: 1px solid rgba(255, 107, 107, 0.4) !important;
 }
 
 .pf-v5-theme-dark .pf-v5-c-label.pf-m-purple,
 .pf-v6-theme-dark .pf-v5-c-label.pf-m-purple,
-.theme-dark .pf-v5-c-label.pf-m-purple,
-.pf-v5-theme-dark .pf-v5-c-badge.pf-m-purple,
-.pf-v6-theme-dark .pf-v5-c-badge.pf-m-purple,
-.theme-dark .pf-v5-c-badge.pf-m-purple {
+.theme-dark .pf-v5-c-label.pf-m-purple {
+  --pf-v5-c-label--BackgroundColor: rgba(154, 85, 255, 0.25) !important;
+  --pf-v5-c-label__content--Color: #c499ff !important;
+  --pf-v5-c-label__content--before--BorderColor: rgba(196, 153, 255, 0.4) !important;
   background-color: rgba(154, 85, 255, 0.25) !important;
   color: #c499ff !important;
-  border: 1px solid rgba(196, 153, 255, 0.4) !important;
 }
 
 .pf-v5-theme-dark .pf-v5-c-label.pf-m-grey,
 .pf-v6-theme-dark .pf-v5-c-label.pf-m-grey,
 .theme-dark .pf-v5-c-label.pf-m-grey,
-.pf-v5-theme-dark .pf-v5-c-badge.pf-m-grey,
-.pf-v6-theme-dark .pf-v5-c-badge.pf-m-grey,
-.theme-dark .pf-v5-c-badge.pf-m-grey {
+.pf-v5-theme-dark .pf-v5-c-label:not([class*="pf-m-"]),
+.pf-v6-theme-dark .pf-v5-c-label:not([class*="pf-m-"]),
+.theme-dark .pf-v5-c-label:not([class*="pf-m-"]) {
+  --pf-v5-c-label--BackgroundColor: rgba(128, 128, 128, 0.25) !important;
+  --pf-v5-c-label__content--Color: var(--zfs-text-secondary) !important;
+  --pf-v5-c-label__content--before--BorderColor: var(--zfs-card-border) !important;
+  background-color: rgba(128, 128, 128, 0.25) !important;
+  color: var(--zfs-text-secondary) !important;
+}
+
+.pf-v5-theme-dark .pf-v5-c-label.pf-m-cyan,
+.pf-v6-theme-dark .pf-v5-c-label.pf-m-cyan,
+.theme-dark .pf-v5-c-label.pf-m-cyan {
+  --pf-v5-c-label--BackgroundColor: rgba(0, 150, 180, 0.25) !important;
+  --pf-v5-c-label__content--Color: #5edbfa !important;
+  --pf-v5-c-label__content--before--BorderColor: rgba(94, 219, 250, 0.4) !important;
+  background-color: rgba(0, 150, 180, 0.25) !important;
+  color: #5edbfa !important;
+}
+
+.pf-v5-theme-dark .pf-v5-c-label.pf-m-gold,
+.pf-v6-theme-dark .pf-v5-c-label.pf-m-gold,
+.theme-dark .pf-v5-c-label.pf-m-gold {
+  --pf-v5-c-label--BackgroundColor: rgba(240, 171, 0, 0.25) !important;
+  --pf-v5-c-label__content--Color: #f0ab00 !important;
+  --pf-v5-c-label__content--before--BorderColor: rgba(240, 171, 0, 0.4) !important;
+  background-color: rgba(240, 171, 0, 0.25) !important;
+  color: #f0ab00 !important;
+}
+
+/* Badges */
+.pf-v5-c-badge {
+  --pf-v5-c-badge--BorderRadius: 999px !important;
+  border-radius: 999px !important;
+  font-weight: 500 !important;
+  padding: 2px 8px !important;
+  border: 1px solid var(--zfs-card-border) !important;
+  background-color: rgba(128, 128, 128, 0.12) !important;
+  color: var(--zfs-text-secondary) !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.pf-v5-c-badge.pf-m-read {
+  background-color: rgba(128, 128, 128, 0.12) !important;
+  color: var(--zfs-text-secondary) !important;
+  border: 1px solid var(--zfs-card-border) !important;
+}
+
+.pf-v5-c-badge.pf-m-unread {
+  background-color: rgba(0, 102, 204, 0.15) !important;
+  color: #004080 !important;
+  border: 1px solid rgba(0, 102, 204, 0.3) !important;
+}
+
+.pf-v5-theme-dark .pf-v5-c-badge,
+.pf-v6-theme-dark .pf-v5-c-badge,
+.theme-dark .pf-v5-c-badge {
   background-color: rgba(128, 128, 128, 0.25) !important;
   color: var(--zfs-text-secondary) !important;
   border: 1px solid var(--zfs-card-border) !important;
 }
 
-.pf-v5-theme-dark .pf-v5-c-label.pf-m-cyan,
-.pf-v6-theme-dark .pf-v5-c-label.pf-m-cyan,
-.theme-dark .pf-v5-c-label.pf-m-cyan,
-.pf-v5-theme-dark .pf-v5-c-badge.pf-m-cyan,
-.pf-v6-theme-dark .pf-v5-c-badge.pf-m-cyan,
-.theme-dark .pf-v5-c-badge.pf-m-cyan {
-  background-color: rgba(0, 150, 180, 0.25) !important;
-  color: #5edbfa !important;
-  border: 1px solid rgba(94, 219, 250, 0.4) !important;
+.pf-v5-theme-dark .pf-v5-c-badge.pf-m-read,
+.pf-v6-theme-dark .pf-v5-c-badge.pf-m-read,
+.theme-dark .pf-v5-c-badge.pf-m-read {
+  background-color: rgba(128, 128, 128, 0.25) !important;
+  color: var(--zfs-text-secondary) !important;
+  border: 1px solid var(--zfs-card-border) !important;
 }
 
-.pf-v5-theme-dark .pf-v5-c-label.pf-m-gold,
-.pf-v6-theme-dark .pf-v5-c-label.pf-m-gold,
-.theme-dark .pf-v5-c-label.pf-m-gold,
-.pf-v5-theme-dark .pf-v5-c-badge.pf-m-gold,
-.pf-v6-theme-dark .pf-v5-c-badge.pf-m-gold,
-.theme-dark .pf-v5-c-badge.pf-m-gold {
-  background-color: rgba(240, 171, 0, 0.25) !important;
-  color: #f0ab00 !important;
-  border: 1px solid rgba(240, 171, 0, 0.4) !important;
+.pf-v5-theme-dark .pf-v5-c-badge.pf-m-unread,
+.pf-v6-theme-dark .pf-v5-c-badge.pf-m-unread,
+.theme-dark .pf-v5-c-badge.pf-m-unread {
+  background-color: rgba(0, 102, 204, 0.25) !important;
+  color: #73bcf7 !important;
+  border: 1px solid rgba(115, 188, 247, 0.4) !important;
 }
 
 /* =========================================================
