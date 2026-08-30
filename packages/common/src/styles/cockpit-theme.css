@@ -596,7 +596,11 @@ select:focus-visible {
    ========================================================= */
 .pf-v5-c-label,
 .pf-v5-c-badge {
+  --pf-v5-c-label--BorderRadius: 999px !important;
+  --pf-v5-c-badge--BorderRadius: 999px !important;
   border-radius: 999px !important;
+  overflow: hidden !important;
+  background-clip: padding-box !important;
   font-weight: 500 !important;
   padding: 2px 10px !important;
   box-shadow: none !important;
@@ -619,10 +623,13 @@ select:focus-visible {
 
 .pf-v5-c-label__content {
   background-color: transparent !important;
+  background: transparent !important;
   border: none !important;
   box-shadow: none !important;
   outline: none !important;
   padding: 0 !important;
+  overflow: hidden !important;
+  border-radius: 999px !important;
 }
 
 /* Light Mode Badges */
