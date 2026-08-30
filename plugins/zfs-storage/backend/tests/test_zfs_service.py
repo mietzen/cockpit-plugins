@@ -564,10 +564,53 @@ class TestZfsServiceActions(unittest.TestCase):
         sda = next(d for d in disks if d["name"] == "sda")
         self.assertIn("tank", sda["pool"])
 
+    @patch("backend.zfs_helper.run_cmd")
+    def test_main_cli_dataset_and_snapshot_commands(self, mock_run):
+        mock_run.return_value = MagicMock(returncode=0, stdout="{}", stderr="")
+
+        cli_calls = [
+            ["zfs_helper.py", "dataset-unmount", "tank/d", "true"],
+            ["zfs_helper.py", "dataset-unmount", "tank/d"],
+            ["zfs_helper.py", "dataset-set-property", "tank/d", "compression", "lz4"],
+            ["zfs_helper.py", "dataset-inherit-property", "tank/d", "compression"],
+            ["zfs_helper.py", "snapshots-list", "tank/d"],
+            ["zfs_helper.py", "snapshots-list"],
+            ["zfs_helper.py", "snapshot-create", json.dumps({"path": "tank/d", "name": "s1"})],
+            ["zfs_helper.py", "snapshot-destroy", "tank/d@s1", "true"],
+            ["zfs_helper.py", "snapshot-destroy", "tank/d@s1"],
+            ["zfs_helper.py", "snapshot-rollback", "tank/d@s1", "false"],
+            ["zfs_helper.py", "snapshot-rollback", "tank/d@s1"],
+            ["zfs_helper.py", "snapshot-clone", json.dumps({"snapshot": "tank/d@s1", "clone_path": "tank/c"})],
+            ["zfs_helper.py", "disks-list"],
+        ]
+        for args in cli_calls:
+            with patch("sys.argv", args), patch("builtins.print") as mock_print:
+                main()
+                mock_print.assert_called_once()
+
+    @patch("backend.zfs_helper.run_cmd")
+    def test_get_datasets_with_snapshots(self, mock_run):
+        zfs_list_out = "tank/data\tfilesystem\t1000\t2000\t1000\t/tank/data\tyes\ton\t1.50x\toff\toff\tnone\ton\tstandard\tnone\tnone\t131072\t-\t-\t-"
+        snap_list_out = "tank/data@snap1\ntank/data@snap2\n"
+        mock_run.side_effect = [
+            MagicMock(returncode=0, stdout=zfs_list_out, stderr=""),
+            MagicMock(returncode=0, stdout=snap_list_out, stderr=""),
+        ]
+        datasets = self.svc.get_datasets("tank")
+        self.assertEqual(len(datasets), 1)
+        self.assertEqual(datasets[0]["snapshot_count"], 2)
+
+        # Failure path
+        mock_run.side_effect = [
+            MagicMock(returncode=1, stdout="", stderr="error"),
+        ]
+        self.assertEqual(self.svc.get_datasets("tank"), [])
+
+    @patch("backend.zfs_helper.run_cmd")
+    def test_get_pools_error(self, mock_run):
+        mock_run.return_value = MagicMock(returncode=1, stdout="", stderr="zpool not available")
+        self.assertEqual(self.svc.get_pools(), [])
+
 
 if __name__ == "__main__":
     unittest.main()
-
-
-
-
