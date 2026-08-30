@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Card,
   CardTitle,
@@ -53,6 +53,14 @@ export const TopologyTab: React.FC<TopologyTabProps> = ({
     setOpenDropdown(openDropdown === devName ? null : devName);
   };
 
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      (window as any).__topologyTabHandlers = {
+        toggleDropdown: toggleDropdown,
+      };
+    }
+  });
+
   const renderVDevTable = (title: string, vdevList?: VDevItem[], isData = false) => {
     if (!vdevList || vdevList.length === 0) {
       return null;
@@ -81,7 +89,7 @@ export const TopologyTab: React.FC<TopologyTabProps> = ({
                 <Th>Read errors</Th>
                 <Th>Write errors</Th>
                 <Th>Checksum errors</Th>
-                <Th aria-label="Actions" />
+                <Th screenReaderText="Actions" />
               </Tr>
             </Thead>
             <Tbody>

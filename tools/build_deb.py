@@ -48,6 +48,18 @@ def build_deb(plugin_dir, output_dir, version="1.0.0"):
         print(f"Error: {dist_dir} does not exist. Run build first.")
         sys.exit(1)
 
+    helper_dir_name = f"cockpit-{plugin_name}"
+    if plugin_name == "zfs-storage":
+        helper_dir_name = "cockpit-zfs"
+        deb_depends = "cockpit-bridge | cockpit, zfsutils-linux, python3, smartmontools"
+        description = "Advanced OpenZFS storage manager for Cockpit.\n Manage ZFS pools, datasets, zvols, snapshots, scrubs, trims,\n and SMART disk health with PatternFly v5 UI."
+    elif plugin_name == "file-sharing":
+        deb_depends = "cockpit-bridge | cockpit, python3, samba, nfs-kernel-server | nfs-common"
+        description = "Advanced SMB (Samba) and NFS file sharing manager for Cockpit.\n Manage Samba shares, NFS exports, Samba users, permissions matrix,\n and live client connection monitoring with PatternFly v5 UI."
+    else:
+        deb_depends = "cockpit-bridge | cockpit, python3"
+        description = f"Cockpit plugin {plugin_name}"
+
     # 1. debian-binary
     debian_binary = b"2.0\n"
 
@@ -58,17 +70,14 @@ Section: admin
 Priority: optional
 Architecture: all
 Maintainer: Nils Stein <github.nstein@mailbox.org>
-Depends: cockpit-bridge | cockpit, zfsutils-linux, python3, smartmontools
+Depends: {deb_depends}
 Homepage: https://github.com/mietzen/cockpit-plugins
 Description: {description}
- Advanced OpenZFS storage manager for Cockpit.
- Manage ZFS pools, datasets, zvols, snapshots, scrubs, trims,
- and SMART disk health with PatternFly v5 UI.
 """
-    postinst_content = """#!/bin/sh
+    postinst_content = f"""#!/bin/sh
 set -e
-if [ -f /usr/libexec/cockpit-zfs/zfs_helper.py ]; then
-    chmod +x /usr/libexec/cockpit-zfs/zfs_helper.py
+if [ -d /usr/libexec/{helper_dir_name} ]; then
+    chmod -R 755 /usr/libexec/{helper_dir_name}
 fi
 exit 0
 """
@@ -172,8 +181,8 @@ exit 0
                     arcname = f"{target_dir}/{f}"
                     add_file_to_tar(file_path, arcname)
 
-            # Add backend files to /usr/libexec/cockpit-zfs/
-            libexec_target = "usr/libexec/cockpit-zfs"
+            # Add backend files to /usr/libexec/<helper_dir_name>/
+            libexec_target = f"usr/libexec/{helper_dir_name}"
             if os.path.exists(backend_dir):
                 for root, dirs, files in os.walk(backend_dir):
                     dirs[:] = [d for d in dirs if d != "__pycache__" and d != "tests"]

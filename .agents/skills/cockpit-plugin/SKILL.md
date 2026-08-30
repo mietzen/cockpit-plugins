@@ -136,24 +136,83 @@ The plugin manifest registers navigation items with the Cockpit host shell:
 
 ---
 
-### Pitfall 5: Dark & Light Mode Theme Synchronization
-- **Problem**: If the theme is checked only inside React `useEffect`, light mode flashes white before switching to dark mode during page refresh.
-- **Solution**:
-  - Add an inline blocking script in `<head>` of `index.html`:
+### Pitfall 5: Dark & Light Mode Theme Synchronization & Contrast
+- **Problem**:
+  1. **OS Theme Leakage**: If plugin CSS uses `@media (prefers-color-scheme: dark)` root overrides, an OS in dark mode will force the iframe dark even when the Cockpit host shell is set to light mode, resulting in jarring theme mismatches.
+  2. **Initial Flash**: Checking theme only inside React `useEffect` causes a white/dark flash on page reload.
+  3. **Unreadable Badges**: Static dark text colors on status badges (e.g. `#004080` text on blue tint) become completely illegible against dark mode backgrounds.
+  4. **PatternFly Variable Shadowing**: PatternFly components (`<Title>`, `<CardTitle>`, `<Th>`) use internal CSS variables that fall back to default white/black unless explicitly overridden for both light and dark classes.
+- **Engineering Solutions**:
+  - **Parent Cockpit Shell is Single Source of Truth**:
+    Inside the `<head>` of `index.html`, add a blocking synchronization script:
     ```html
     <script type="text/javascript">
       (function () {
-        const theme = localStorage.getItem("cockpit_zfs_theme") || localStorage.getItem("shell:style") || "auto";
-        const isDark = theme === "dark" || (theme === "auto" && window.matchMedia("(prefers-color-scheme: dark)").matches);
-        if (isDark) {
-          document.documentElement.classList.add("pf-v5-theme-dark");
-        } else {
-          document.documentElement.classList.remove("pf-v5-theme-dark");
+        function updateTheme() {
+          let isDark = false;
+          try {
+            if (window.parent && window.parent !== window && window.parent.document) {
+              const pClasses = window.parent.document.documentElement.classList;
+              isDark = pClasses.contains("pf-v6-theme-dark") || pClasses.contains("pf-v5-theme-dark") || pClasses.contains("theme-dark");
+            } else {
+              isDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+            }
+          } catch {
+            isDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+          }
+          if (isDark) {
+            document.documentElement.classList.add("pf-v5-theme-dark", "pf-v6-theme-dark", "theme-dark");
+            document.documentElement.classList.remove("theme-light", "pf-m-light");
+          } else {
+            document.documentElement.classList.remove("pf-v5-theme-dark", "pf-v6-theme-dark", "theme-dark");
+            document.documentElement.classList.add("theme-light", "pf-m-light");
+          }
         }
+        updateTheme();
+        try {
+          if (window.parent && window.parent.document) {
+            const observer = new MutationObserver(updateTheme);
+            observer.observe(window.parent.document.documentElement, { attributes: true, attributeFilter: ["class"] });
+          }
+        } catch {}
+        setInterval(updateTheme, 500);
       })();
     </script>
     ```
-  - Listen to `storage` and `cockpit-style` events in React.
+  - **Purge Raw CSS `@media (prefers-color-scheme: dark)` Root Blocks**:
+    Theme variables must be strictly governed by CSS classes (`:root` for light, `:root.pf-v5-theme-dark, :root.pf-v6-theme-dark, :root.theme-dark` for dark), never raw media queries.
+  - **Explicit High-Contrast Dual-Mode Badge Tokens**:
+    ```css
+    /* Light mode badges: dark colored text on soft tint */
+    .pf-v5-c-label.pf-m-blue, .pf-v5-c-badge.pf-m-blue {
+      background-color: rgba(0, 102, 204, 0.12) !important;
+      color: #004080 !important;
+      border: 1px solid rgba(0, 102, 204, 0.3) !important;
+    }
+    /* Dark mode badges: bright pastel text on deep tint with matching border */
+    .pf-v5-theme-dark .pf-v5-c-label.pf-m-blue,
+    .pf-v6-theme-dark .pf-v5-c-label.pf-m-blue,
+    .theme-dark .pf-v5-c-label.pf-m-blue {
+      background-color: rgba(0, 102, 204, 0.25) !important;
+      color: #73bcf7 !important;
+      border: 1px solid rgba(115, 188, 247, 0.4) !important;
+    }
+    ```
+  - **Modal Backdrop Edge Fadeout Mask**:
+    Prevent hard dark borders over the Cockpit shell using a gradient mask:
+    ```css
+    .pf-v5-c-backdrop::before {
+      content: "" !important;
+      position: absolute !important;
+      inset: 0 !important;
+      z-index: -1 !important;
+      background-color: rgba(0, 0, 0, 0.6) !important;
+      mask-image:
+        linear-gradient(to right, transparent 0px, black 10px, black calc(100% - 10px), transparent 100%),
+        linear-gradient(to bottom, transparent 0px, black 10px, black calc(100% - 10px), transparent 100%) !important;
+      mask-composite: intersect !important;
+    }
+    ```
 
 ---
 

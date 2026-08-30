@@ -4,9 +4,10 @@ A collection of plugins and extensions for Cockpit server administration.
 
 ## Available Plugins
 
-| Plugin | Package Name | Description | Status |
-| :--- | :--- | :--- | :--- |
-| [ZFS Storage](#zfs-storage) | `cockpit-zfs-storage` | Complete OpenZFS storage manager with pool creation wizards, dataset/zvol trees, snapshots, scrubs, trims, and SMART health monitoring. | Stable |
+| Plugin | Package Name | Version | Description | Status |
+| :--- | :--- | :--- | :--- | :--- |
+| [ZFS Storage](#zfs-storage) | `cockpit-zfs-storage` | `0.5.0` | Complete OpenZFS storage manager with pool creation wizards, dataset/zvol trees, snapshots, scrubs, trims, and SMART health monitoring. | Stable |
+| [File Sharing](#file-sharing) | `cockpit-file-sharing` | `0.1.0` | Comprehensive SMB (Samba) and NFS file sharing manager with user passdb management, effective permission matrix, and Ansible lock integration. | Stable |
 
 ## Installation
 
@@ -34,7 +35,7 @@ EOF
 
 # 3. Update and install
 sudo apt update
-sudo apt install cockpit-zfs-storage
+sudo apt install cockpit-zfs-storage cockpit-file-sharing
 ```
 
 ### Rocky Linux, RHEL & Fedora (DNF / YUM)
@@ -58,7 +59,7 @@ repo_gpgcheck=1
 gpgkey=https://mietzen.github.io/cockpit-plugins/key.gpg
 EOF
 
-sudo dnf install -y cockpit-zfs-storage
+sudo dnf install -y cockpit-zfs-storage cockpit-file-sharing
 ```
 
 ## Plugins
@@ -139,6 +140,83 @@ Advanced OpenZFS storage manager for Cockpit built with PatternFly v5.
 | Light Theme | Dark Theme |
 | :---: | :---: |
 | ![Create Pool Light](docs/screenshots/08-create-pool-modal-light.png) | ![Create Pool Dark](docs/screenshots/08-create-pool-modal-dark.png) |
+
+### File Sharing
+
+Comprehensive SMB (Samba) and NFS file sharing manager for Cockpit built with PatternFly v5.
+
+#### Features
+
+- **Samba (SMB) Shares**:
+  - Full lifecycle management of Samba shares (`smb.conf`).
+  - Read/Write, Read-Only, Guest/Public access, and browseable flags.
+  - Apple macOS Time Machine integration (`vfs_objects = fruit streams_xattr`).
+  - Quick-pick selector for existing ZFS dataset mountpoints.
+  - One-click copy UNC share paths (`\\server\share`).
+
+- **NFS Exports**:
+  - Multi-client NFS export configuration (`/etc/exports`).
+  - Granular client rules with CIDR host formatting, read/write modes, sync flags, and squash options.
+  - Interactive client mapping overview.
+
+- **Samba Users & Passdb**:
+  - Unix user discovery and Samba passdb synchronization.
+  - Create Samba accounts, update passwords, and enable/disable users.
+  - Live account status badges and password validation.
+
+- **User Access Matrix**:
+  - Dynamic 2D permission matrix evaluating effective access rights across all users and shares.
+  - Color-coded badges for Read/Write, Read-Only, Guest Only, and Denied states.
+
+- **Live Sessions & Services**:
+  - Real-time client session monitoring and active file locks (`smbstatus`).
+  - Service lifecycle controls (Restart/Reload for `smbd`, `nmbd`, and `nfs-server`).
+
+- **Global Settings & Ansible Safety**:
+  - Global Samba configuration editor (Workgroup, Server string, Security mode, Logging).
+  - Automatic detection and preservation of Ansible-managed blocks (`# <-- BEGIN ANSIBLE MANAGED -->`) with read-only safeguards.
+
+#### Screenshots
+
+##### Overview & Dashboard
+| Light Theme | Dark Theme |
+| :---: | :---: |
+| ![Overview Light](docs/screenshots/fs-01-dashboard-light.png) | ![Overview Dark](docs/screenshots/fs-01-dashboard-dark.png) |
+
+##### SMB Shares
+| Light Theme | Dark Theme |
+| :---: | :---: |
+| ![SMB Shares Light](docs/screenshots/fs-02-smb-shares-light.png) | ![SMB Shares Dark](docs/screenshots/fs-02-smb-shares-dark.png) |
+
+##### NFS Exports
+| Light Theme | Dark Theme |
+| :---: | :---: |
+| ![NFS Exports Light](docs/screenshots/fs-03-nfs-exports-light.png) | ![NFS Exports Dark](docs/screenshots/fs-03-nfs-exports-dark.png) |
+
+##### Samba Users
+| Light Theme | Dark Theme |
+| :---: | :---: |
+| ![Samba Users Light](docs/screenshots/fs-04-users-light.png) | ![Samba Users Dark](docs/screenshots/fs-04-users-dark.png) |
+
+##### User Access Matrix
+| Light Theme | Dark Theme |
+| :---: | :---: |
+| ![User Access Matrix Light](docs/screenshots/fs-05-permissions-matrix-light.png) | ![User Access Matrix Dark](docs/screenshots/fs-05-permissions-matrix-dark.png) |
+
+##### Services & Live Sessions
+| Light Theme | Dark Theme |
+| :---: | :---: |
+| ![Services & Sessions Light](docs/screenshots/fs-06-live-sessions-light.png) | ![Services & Sessions Dark](docs/screenshots/fs-06-live-sessions-dark.png) |
+
+##### Settings & Server Configuration
+| Light Theme | Dark Theme |
+| :---: | :---: |
+| ![Settings Light](docs/screenshots/fs-07-global-settings-light.png) | ![Settings Dark](docs/screenshots/fs-07-global-settings-dark.png) |
+
+##### Create SMB Share Modal
+| Light Theme | Dark Theme |
+| :---: | :---: |
+| ![Create Share Light](docs/screenshots/fs-08-create-share-modal-light.png) | ![Create Share Dark](docs/screenshots/fs-08-create-share-modal-dark.png) |
 
 ## Building From Source
 

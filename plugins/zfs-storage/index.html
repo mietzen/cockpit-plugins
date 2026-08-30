@@ -4,52 +4,10 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ZFS Storage</title>
-    <script type="text/javascript">
-        document.write('<base href="' + window.location.pathname.slice(0,-('index.html').length) + '"/>');
-    </script>
     <script src="../base1/cockpit.js"></script>
-    <script type="text/javascript">
-        (function () {
-            function updateTheme(theme) {
-                const preference = localStorage.getItem('cockpit_zfs_theme') || 'auto';
-                let isDark = false;
-                if (preference === 'dark') {
-                    isDark = true;
-                } else if (preference === 'light') {
-                    isDark = false;
-                } else {
-                    const shellTheme = theme || localStorage.getItem('shell:style') || 'auto';
-                    isDark = shellTheme === 'dark' || (window.matchMedia?.('(prefers-color-scheme: dark)').matches && shellTheme === 'auto');
-                }
-                if (isDark) {
-                    document.documentElement.classList.add('pf-v5-theme-dark');
-                } else {
-                    document.documentElement.classList.remove('pf-v5-theme-dark');
-                }
-            }
-
-            window.addEventListener('storage', function (e) {
-                if (e.key === 'shell:style' || e.key === 'cockpit_zfs_theme') {
-                    updateTheme();
-                }
-            });
-
-            window.addEventListener('cockpit-style', function (e) {
-                if (e instanceof CustomEvent) {
-                    updateTheme(e.detail.style);
-                }
-            });
-
-            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function () {
-                updateTheme();
-            });
-
-            updateTheme();
-        })();
-    </script>
 </head>
-<body class="pf-m-tabular-nums">
+<body>
     <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <script type="module" src="./src/main.tsx"></script>
 </body>
 </html>

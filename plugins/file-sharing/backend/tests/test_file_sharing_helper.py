@@ -1,0 +1,396 @@
+import json
+import os
+import sys
+import unittest
+from unittest.mock import MagicMock, patch
+
+import file_sharing_helper
+
+
+class TestFileSharingHelper(unittest.TestCase):
+    @patch("subprocess.run")
+    def test_run_cmd_success(self, mock_run):
+        mock_run.return_value = MagicMock(returncode=0, stdout="hello\n", stderr="")
+        rc, out, err = file_sharing_helper.run_cmd(["echo", "hello"])
+        self.assertEqual(rc, 0)
+        self.assertEqual(out, "hello")
+        self.assertEqual(err, "")
+
+    @patch("subprocess.run", side_effect=Exception("Execution failed"))
+    def test_run_cmd_exception(self, mock_run):
+        rc, out, err = file_sharing_helper.run_cmd(["bad_cmd"])
+        self.assertEqual(rc, -1)
+        self.assertIn("Execution failed", err)
+
+    @patch("file_sharing_helper.run_cmd")
+    @patch("shutil.which", return_value="/bin/systemctl")
+    def test_get_service_status_active(self, mock_which, mock_cmd):
+        mock_cmd.side_effect = [
+            (0, "active", ""),
+            (0, "enabled", ""),
+        ]
+        status = file_sharing_helper.get_service_status("smbd")
+        self.assertTrue(status["active"])
+        self.assertTrue(status["enabled"])
+        self.assertEqual(status["state"], "active")
+
+    @patch("file_sharing_helper.run_cmd")
+    @patch("shutil.which", return_value="/bin/systemctl")
+    def test_get_service_status_inactive(self, mock_which, mock_cmd):
+        mock_cmd.side_effect = [
+            (3, "inactive", ""),
+            (1, "disabled", ""),
+        ]
+        status = file_sharing_helper.get_service_status("smbd")
+        self.assertFalse(status["active"])
+        self.assertFalse(status["enabled"])
+        self.assertEqual(status["state"], "inactive")
+
+    @patch("file_sharing_helper.get_service_status")
+    @patch("os.path.exists", return_value=True)
+    def test_get_all_services_status(self, mock_exists, mock_svc):
+        mock_svc.return_value = {"active": True}
+        res = file_sharing_helper.get_all_services_status()
+        self.assertIn("smbd", res)
+        self.assertIn("nfs", res)
+
+    @patch("shutil.which", return_value=None)
+    def test_get_smb_users_not_installed(self, mock_which):
+        self.assertEqual(file_sharing_helper.get_smb_users(), [])
+
+    @patch("file_sharing_helper.run_cmd")
+    @patch("shutil.which", return_value="/usr/bin/pdbedit")
+    def test_get_smb_users_parsed(self, mock_which, mock_cmd):
+        pdbedit_output = """---------------
+Unix username:        alice
+Full Name:            Alice Wonderland
+User SID:             S-1-5-21-12345
+Account Flags:        [U          ]
+---------------
+Unix username:        bob
+Full Name:            Bob Marley
+User SID:             S-1-5-21-67890
+Account Flags:        [UD         ]
+"""
+        mock_cmd.return_value = (0, pdbedit_output, "")
+        users = file_sharing_helper.get_smb_users()
+        self.assertEqual(len(users), 2)
+        self.assertEqual(users[0]["username"], "alice")
+        self.assertTrue(users[0]["is_enabled"])
+        self.assertEqual(users[1]["username"], "bob")
+        self.assertFalse(users[1]["is_enabled"])
+
+    @patch("pwd.getpwall")
+    def test_get_system_unix_users(self, mock_pwall):
+        mock_pwall.return_value = [
+            MagicMock(pw_name="root", pw_uid=0, pw_shell="/bin/bash"),
+            MagicMock(pw_name="nobody", pw_uid=65534, pw_shell="/usr/sbin/nologin"),
+            MagicMock(pw_name="alice", pw_uid=1000, pw_shell="/bin/bash"),
+            MagicMock(pw_name="bob", pw_uid=1001, pw_shell="/bin/zsh"),
+        ]
+        users = file_sharing_helper.get_system_unix_users()
+        self.assertEqual(users, ["alice", "bob"])
+
+    @patch("shutil.which", return_value="/usr/bin/smbstatus")
+    @patch("file_sharing_helper.run_cmd")
+    def test_get_smb_sessions(self, mock_cmd, mock_which):
+        smbstatus_output = """PID     Username     Group        Machine               Protocol Version
+------------------------------------------------------------------------------
+12345   alice        users        192.168.1.50          SMB3_11
+67890   bob          users        192.168.1.60          SMB3_02
+"""
+        mock_cmd.return_value = (0, smbstatus_output, "")
+        sessions = file_sharing_helper.get_smb_sessions()
+        self.assertEqual(len(sessions), 2)
+        self.assertEqual(sessions[0]["pid"], "12345")
+        self.assertEqual(sessions[0]["username"], "alice")
+        self.assertEqual(sessions[0]["machine"], "192.168.1.50")
+
+    @patch("shutil.which", return_value="/sbin/zfs")
+    @patch("file_sharing_helper.run_cmd")
+    def test_get_zfs_mountpoints(self, mock_cmd, mock_which):
+        mock_cmd.return_value = (0, "tank/data\t/tank/data\tfilesystem\ntank/vol\t-\tvolume", "")
+        mounts = file_sharing_helper.get_zfs_mountpoints()
+        self.assertEqual(len(mounts), 1)
+        self.assertEqual(mounts[0]["dataset"], "tank/data")
+        self.assertEqual(mounts[0]["mountpoint"], "/tank/data")
+
+    @patch("shutil.which", return_value="/usr/bin/testparm")
+    @patch("file_sharing_helper.run_cmd")
+    def test_testparm_verify(self, mock_cmd, mock_which):
+        mock_cmd.return_value = (0, "Loaded services file OK.", "")
+        ok, msg = file_sharing_helper.testparm_verify()
+        self.assertTrue(ok)
+
+        mock_cmd.return_value = (1, "", "Syntax error on line 42")
+        ok, msg = file_sharing_helper.testparm_verify()
+        self.assertFalse(ok)
+        self.assertIn("Syntax error", msg)
+
+    @patch("shutil.which", return_value="/usr/sbin/exportfs")
+    @patch("file_sharing_helper.run_cmd")
+    def test_reload_nfs(self, mock_cmd, mock_which):
+        mock_cmd.return_value = (0, "", "")
+        ok, msg = file_sharing_helper.reload_nfs()
+        self.assertTrue(ok)
+
+        mock_cmd.return_value = (1, "", "exportfs: Failed")
+        ok, msg = file_sharing_helper.reload_nfs()
+        self.assertFalse(ok)
+
+    @patch("file_sharing_helper.run_cmd")
+    def test_get_system_versions_fallbacks(self, mock_cmd):
+        # smb ok, nfs binary fails -> dpkg query success
+        mock_cmd.side_effect = [
+            (0, "Version 4.19.5", ""),
+            (1, "", "not found"),
+            (1, "", "not found"),
+            (1, "", "not found"),
+            (1, "", "not found"),
+            (0, "1:2.6.4-1ubuntu1\n", ""),
+        ]
+        versions = file_sharing_helper.get_system_versions()
+        self.assertEqual(versions["smb"], "4.19.5")
+        self.assertEqual(versions["nfs"], "1:2.6.4-1ubuntu1")
+
+        # dpkg fails -> rpm query success
+        mock_cmd.side_effect = [
+            (1, "", "not found"),
+            (1, "", "not found"),
+            (1, "", "not found"),
+            (1, "", "not found"),
+            (1, "", "not found"),
+            (1, "", "not found"),
+            (0, "2.6.4-1.el9\n", ""),
+        ]
+        versions = file_sharing_helper.get_system_versions()
+        self.assertEqual(versions["smb"], "Not installed")
+        self.assertEqual(versions["nfs"], "2.6.4-1.el9")
+
+    @patch("shutil.which", return_value=None)
+    def test_tool_not_found_branches(self, mock_which):
+        self.assertEqual(file_sharing_helper.get_smb_sessions(), [])
+        self.assertEqual(file_sharing_helper.get_zfs_mountpoints(), [])
+        self.assertTrue(file_sharing_helper.testparm_verify()[0])
+        self.assertTrue(file_sharing_helper.reload_nfs()[0])
+        file_sharing_helper.reload_smb()
+
+    @patch("file_sharing_helper.SmbParser")
+    @patch("file_sharing_helper.NfsParser")
+    @patch("file_sharing_helper.get_smb_users", return_value=[])
+    @patch("file_sharing_helper.get_system_unix_users", return_value=[])
+    @patch("file_sharing_helper.get_all_services_status", return_value={})
+    @patch("file_sharing_helper.get_smb_sessions", return_value=[])
+    @patch("file_sharing_helper.get_zfs_mountpoints", return_value=[])
+    @patch("file_sharing_helper.get_system_versions", return_value={"smb": "4.19", "nfs": "2.6"})
+    def test_handle_get_overview(self, *mocks):
+        args = MagicMock(ansible_begin=None, ansible_end=None)
+        res = file_sharing_helper.handle_get_overview(args)
+        self.assertEqual(res["status"], "success")
+        self.assertIn("services", res)
+        self.assertIn("smb", res)
+        self.assertIn("nfs", res)
+        self.assertIn("users", res)
+
+    @patch("sys.argv", ["file_sharing_helper.py", "get_overview"])
+    @patch("file_sharing_helper.handle_get_overview", return_value={"status": "success"})
+    def test_main_get_overview(self, mock_overview):
+        with patch("builtins.print") as mock_print:
+            file_sharing_helper.main()
+            mock_print.assert_called_once()
+            res = json.loads(mock_print.call_args[0][0])
+            self.assertEqual(res["status"], "success")
+
+    @patch("sys.argv", ["file_sharing_helper.py", "save_smb_share", "--data", json.dumps({"name": "data", "path": "/srv/data"})])
+    @patch("file_sharing_helper.SmbParser.save_share", return_value=(True, "Saved"))
+    @patch("file_sharing_helper.testparm_verify", return_value=(True, "OK"))
+    @patch("file_sharing_helper.reload_smb")
+    def test_main_save_smb_share(self, mock_reload, mock_testparm, mock_save):
+        with patch("builtins.print") as mock_print:
+            file_sharing_helper.main()
+            mock_print.assert_called_once()
+            res = json.loads(mock_print.call_args[0][0])
+            self.assertEqual(res["status"], "success")
+
+    @patch("sys.argv", ["file_sharing_helper.py", "delete_smb_share", "--name", "data"])
+    @patch("file_sharing_helper.SmbParser.delete_share", return_value=(True, "Deleted"))
+    @patch("file_sharing_helper.reload_smb")
+    def test_main_delete_smb_share(self, mock_reload, mock_del):
+        with patch("builtins.print") as mock_print:
+            file_sharing_helper.main()
+            mock_print.assert_called_once()
+            res = json.loads(mock_print.call_args[0][0])
+            self.assertEqual(res["status"], "success")
+
+    @patch("sys.argv", ["file_sharing_helper.py", "save_nfs_export", "--data", json.dumps({"path": "/srv/nfs", "clients": []})])
+    @patch("file_sharing_helper.NfsParser.save_export", return_value=(True, "Export saved"))
+    @patch("file_sharing_helper.reload_nfs", return_value=(True, "Reloaded"))
+    def test_main_save_nfs_export(self, mock_reload, mock_save):
+        with patch("builtins.print") as mock_print:
+            file_sharing_helper.main()
+            mock_print.assert_called_once()
+            res = json.loads(mock_print.call_args[0][0])
+            self.assertEqual(res["status"], "success")
+
+    @patch("sys.argv", ["file_sharing_helper.py", "create_smb_user", "--username", "testuser", "--password", "secret"])
+    @patch("file_sharing_helper.run_cmd", return_value=(0, "", ""))
+    def test_main_create_smb_user(self, mock_cmd):
+        with patch("builtins.print") as mock_print:
+            file_sharing_helper.main()
+            mock_print.assert_called_once()
+            res = json.loads(mock_print.call_args[0][0])
+            self.assertEqual(res["status"], "success")
+
+    @patch("sys.argv", ["file_sharing_helper.py", "set_smb_user_state", "--username", "testuser", "--enable"])
+    @patch("file_sharing_helper.run_cmd", return_value=(0, "", ""))
+    def test_main_set_smb_user_state(self, mock_cmd):
+        with patch("builtins.print") as mock_print:
+            file_sharing_helper.main()
+            mock_print.assert_called_once()
+            res = json.loads(mock_print.call_args[0][0])
+            self.assertEqual(res["status"], "success")
+
+    @patch("sys.argv", ["file_sharing_helper.py", "delete_smb_user", "--username", "testuser"])
+    @patch("file_sharing_helper.run_cmd", return_value=(0, "", ""))
+    def test_main_delete_smb_user(self, mock_cmd):
+        with patch("builtins.print") as mock_print:
+            file_sharing_helper.main()
+            mock_print.assert_called_once()
+            res = json.loads(mock_print.call_args[0][0])
+            self.assertEqual(res["status"], "success")
+
+    @patch("sys.argv", ["file_sharing_helper.py", "service_action", "--service", "smbd", "--verb", "restart"])
+    @patch("file_sharing_helper.run_cmd", return_value=(0, "", ""))
+    def test_main_service_action(self, mock_cmd):
+        with patch("builtins.print") as mock_print:
+            file_sharing_helper.main()
+            mock_print.assert_called_once()
+            res = json.loads(mock_print.call_args[0][0])
+            self.assertEqual(res["status"], "success")
+
+    @patch("sys.argv", ["file_sharing_helper.py", "service_action", "--service", "nfs", "--verb", "restart"])
+    @patch("file_sharing_helper.run_cmd", return_value=(0, "", ""))
+    @patch("os.path.exists", return_value=True)
+    def test_main_service_action_nfs(self, mock_exists, mock_cmd):
+        with patch("builtins.print") as mock_print:
+            file_sharing_helper.main()
+            mock_print.assert_called_once()
+            res = json.loads(mock_print.call_args[0][0])
+            self.assertEqual(res["status"], "success")
+
+    @patch("sys.argv", ["file_sharing_helper.py", "save_smb_global", "--data", json.dumps({"workgroup": "WORKGROUP"})])
+    @patch("file_sharing_helper.SmbParser.save_global", return_value=(True, "Saved global"))
+    @patch("file_sharing_helper.testparm_verify", return_value=(True, "OK"))
+    @patch("file_sharing_helper.reload_smb")
+    def test_main_save_smb_global(self, mock_reload, mock_tp, mock_save):
+        with patch("builtins.print") as mock_print:
+            file_sharing_helper.main()
+            mock_print.assert_called_once()
+            res = json.loads(mock_print.call_args[0][0])
+            self.assertEqual(res["status"], "success")
+
+    @patch("sys.argv", ["file_sharing_helper.py", "delete_nfs_export", "--path", "/srv/nfs"])
+    @patch("file_sharing_helper.NfsParser.delete_export", return_value=(True, "Deleted"))
+    @patch("file_sharing_helper.reload_nfs")
+    def test_main_delete_nfs_export(self, mock_reload, mock_del):
+        with patch("builtins.print") as mock_print:
+            file_sharing_helper.main()
+            mock_print.assert_called_once()
+            res = json.loads(mock_print.call_args[0][0])
+            self.assertEqual(res["status"], "success")
+
+    @patch("sys.argv", ["file_sharing_helper.py", "get_zfs_mounts"])
+    @patch("file_sharing_helper.get_zfs_mountpoints", return_value=[{"pool": "tank", "path": "/tank"}])
+    def test_main_get_zfs_mounts(self, mock_get):
+        with patch("builtins.print") as mock_print:
+            file_sharing_helper.main()
+            mock_print.assert_called_once()
+            res = json.loads(mock_print.call_args[0][0])
+            self.assertEqual(len(res["zfs_mounts"]), 1)
+
+    @patch("sys.argv", ["file_sharing_helper.py", "set_smb_user_password", "--username", "testuser", "--password", "newpass"])
+    @patch("file_sharing_helper.run_cmd", return_value=(0, "", ""))
+    def test_main_set_smb_password(self, mock_cmd):
+        with patch("builtins.print") as mock_print:
+            file_sharing_helper.main()
+            mock_print.assert_called_once()
+            res = json.loads(mock_print.call_args[0][0])
+            self.assertEqual(res["status"], "success")
+
+    @patch("sys.argv", ["file_sharing_helper.py", "save_smb_share", "--data", json.dumps({"name": "data", "path": "/data"})])
+    @patch("file_sharing_helper.testparm_verify", return_value=(False, "Syntax error"))
+    @patch("file_sharing_helper.SmbParser.save_share", return_value=(True, "Saved"))
+    def test_main_save_smb_share_testparm_error(self, mock_save, mock_testparm):
+        with patch("builtins.print") as mock_print, self.assertRaises(SystemExit):
+            file_sharing_helper.main()
+        res = json.loads(mock_print.call_args[0][0])
+        self.assertEqual(res["status"], "error")
+
+    @patch("sys.argv", ["file_sharing_helper.py", "delete_smb_share", "--name", "data"])
+    @patch("file_sharing_helper.SmbParser.delete_share", return_value=(False, "Failed to delete"))
+    def test_main_delete_smb_share_error(self, mock_del):
+        with patch("builtins.print") as mock_print, self.assertRaises(SystemExit):
+            file_sharing_helper.main()
+        res = json.loads(mock_print.call_args[0][0])
+        self.assertEqual(res["status"], "error")
+
+    @patch("sys.argv", ["file_sharing_helper.py", "save_smb_global", "--data", json.dumps({"workgroup": "NEW"})])
+    @patch("file_sharing_helper.SmbParser.save_global", return_value=(False, "Global error"))
+    def test_main_save_smb_global_error(self, mock_save):
+        with patch("builtins.print") as mock_print, self.assertRaises(SystemExit):
+            file_sharing_helper.main()
+        res = json.loads(mock_print.call_args[0][0])
+        self.assertEqual(res["status"], "error")
+
+    @patch("sys.argv", ["file_sharing_helper.py", "save_nfs_export", "--data", json.dumps({"path": "/srv", "clients": []})])
+    @patch("file_sharing_helper.NfsParser.save_export", return_value=(False, "NFS save error"))
+    def test_main_save_nfs_export_error(self, mock_save):
+        with patch("builtins.print") as mock_print, self.assertRaises(SystemExit):
+            file_sharing_helper.main()
+        res = json.loads(mock_print.call_args[0][0])
+        self.assertEqual(res["status"], "error")
+
+    @patch("sys.argv", ["file_sharing_helper.py", "delete_nfs_export", "--path", "/srv"])
+    @patch("file_sharing_helper.NfsParser.delete_export", return_value=(False, "NFS del error"))
+    def test_main_delete_nfs_export_error(self, mock_del):
+        with patch("builtins.print") as mock_print, self.assertRaises(SystemExit):
+            file_sharing_helper.main()
+        res = json.loads(mock_print.call_args[0][0])
+        self.assertEqual(res["status"], "error")
+
+    @patch("sys.argv", ["file_sharing_helper.py", "create_smb_user", "--username", "u1", "--password", "p1"])
+    @patch("file_sharing_helper.run_cmd", return_value=(1, "", "User not found"))
+    def test_main_create_smb_user_error(self, mock_cmd):
+        with patch("builtins.print") as mock_print, self.assertRaises(SystemExit):
+            file_sharing_helper.main()
+        res = json.loads(mock_print.call_args[0][0])
+        self.assertEqual(res["status"], "error")
+
+    @patch("sys.argv", ["file_sharing_helper.py", "set_smb_user_state", "--username", "u1"])
+    @patch("file_sharing_helper.run_cmd", return_value=(1, "", "Failed"))
+    def test_main_set_smb_user_state_error(self, mock_cmd):
+        with patch("builtins.print") as mock_print, self.assertRaises(SystemExit):
+            file_sharing_helper.main()
+        res = json.loads(mock_print.call_args[0][0])
+        self.assertEqual(res["status"], "error")
+
+    @patch("sys.argv", ["file_sharing_helper.py", "delete_smb_user", "--username", "u1"])
+    @patch("file_sharing_helper.run_cmd", return_value=(1, "", "Failed"))
+    def test_main_delete_smb_user_error(self, mock_cmd):
+        with patch("builtins.print") as mock_print, self.assertRaises(SystemExit):
+            file_sharing_helper.main()
+        res = json.loads(mock_print.call_args[0][0])
+        self.assertEqual(res["status"], "error")
+
+    @patch("sys.argv", ["file_sharing_helper.py", "service_action", "--service", "smbd", "--verb", "restart"])
+    @patch("file_sharing_helper.run_cmd", return_value=(1, "", "Unit not found"))
+    def test_main_service_action_error(self, mock_cmd):
+        with patch("builtins.print") as mock_print, self.assertRaises(SystemExit):
+            file_sharing_helper.main()
+        res = json.loads(mock_print.call_args[0][0])
+        self.assertEqual(res["status"], "error")
+
+
+if __name__ == "__main__":
+    unittest.main()
+

@@ -139,6 +139,117 @@ demand_data_misses              4    800
         self.assertEqual(stats["size"], 3145728000)
         self.assertAlmostEqual(stats["hit_ratio"], 0.909, places=2)
 
+    def test_parse_zpool_properties(self):
+        raw = "testpool\tashift\t12\tlocal\ntestpool\tautotrim\ton\tlocal\n"
+        props = parse_zpool_properties(raw)
+        self.assertEqual(props["ashift"], "12")
+        self.assertEqual(props["autotrim"], "on")
+
+    def test_parse_lsblk(self):
+        raw = """{
+            "blockdevices": [
+                {
+                    "name": "sda",
+                    "kname": "sda",
+                    "path": "/dev/sda",
+                    "size": 107374182400,
+                    "rota": false,
+                    "type": "disk",
+                    "tran": "sata",
+                    "serial": "123456",
+                    "wwn": "0x5002538",
+                    "model": "Samsung SSD",
+                    "mountpoint": null,
+                    "fstype": "zfs_member",
+                    "uuid": "abcdef",
+                    "hotplug": false,
+                    "children": [
+                        {
+                            "name": "sda1",
+                            "kname": "sda1",
+                            "path": "/dev/sda1",
+                            "size": 10737418240,
+                            "rota": false,
+                            "type": "part",
+                            "mountpoint": "/boot"
+                        }
+                    ]
+                }
+            ]
+        }"""
+        disks = parse_lsblk(raw)
+        self.assertEqual(len(disks), 1)
+        self.assertEqual(disks[0]["name"], "sda")
+        self.assertEqual(len(disks[0]["children"]), 1)
+
+    def test_parse_smartctl(self):
+        smart_data = {
+            "smartctl": {"messages": [{"string": "PASSED"}]},
+            "device": {"type": "sat"},
+            "smart_status": {"passed": True},
+            "temperature": {"current": 35},
+            "model_name": "Samsung SSD",
+            "serial_number": "S123",
+        }
+        import json
+        res = parse_smartctl(json.dumps(smart_data))
+        self.assertEqual(res["health"], "PASSED")
+        self.assertEqual(res["temperature"], 35)
+        self.assertEqual(res["model"], "Samsung SSD")
+
+    def test_parse_zpool_status_resilver_and_special_vdevs(self):
+        raw = """  pool: tank
+ state: DEGRADED
+status: One or more devices has experienced an unrecoverable error.
+action: Replace the device using 'zpool replace'.
+  scan: resilver in progress since Sun Aug 30 12:00:00 2026
+	45.5% done, 01:23:45 to go
+config:
+
+	NAME        STATE     READ WRITE CKSUM
+	tank        DEGRADED     0     0     0
+	  mirror-0  DEGRADED     0     0     0
+	    sda     ONLINE       0     0     0
+	    sdb     UNAVAIL      0     0     0
+	special
+	  sdc       ONLINE       0     0     0
+	dedup
+	  sdd       ONLINE       0     0     0
+	spares
+	  sde       AVAIL        0     0     0
+
+errors: No known data errors
+"""
+        parsed = parse_zpool_status(raw)
+        self.assertEqual(parsed["state"], "DEGRADED")
+        self.assertIn("One or more devices", parsed["status"])
+        self.assertIn("Replace the device", parsed["action"])
+        self.assertEqual(parsed["scan"]["function"], "resilver")
+        self.assertEqual(parsed["scan"]["percentage"], 45.5)
+        self.assertEqual(len(parsed["special"]), 1)
+        self.assertEqual(len(parsed["dedup"]), 1)
+        self.assertEqual(len(parsed["spares"]), 1)
+        self.assertEqual(parsed["errors"], "No known data errors")
+
+    def test_parse_zpool_status_scan_none(self):
+        raw = """  pool: tank
+ state: ONLINE
+  scan: none requested
+config:
+
+	NAME        STATE     READ WRITE CKSUM
+	tank        ONLINE       0     0     0
+	  sda       ONLINE       0     0     0
+
+errors: No known data errors
+"""
+        parsed = parse_zpool_status(raw)
+        self.assertEqual(parsed["scan"]["function"], "none")
+        self.assertEqual(parsed["scan"]["state"], "none")
+
 
 if __name__ == "__main__":
     unittest.main()
+
+
+

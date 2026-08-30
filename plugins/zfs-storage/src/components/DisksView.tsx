@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   PageSection,
   Title,
@@ -48,6 +48,15 @@ export const DisksView: React.FC<DisksViewProps> = ({
     }
   };
 
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      (window as any).__disksViewHandlers = {
+        toggleDropdown: toggleDropdown,
+        showSmart: handleShowSmart,
+      };
+    }
+  });
+
   const filteredDisks = disks.filter(
     (d) =>
       d.name.toLowerCase().includes(searchValue.toLowerCase()) ||
@@ -88,7 +97,7 @@ export const DisksView: React.FC<DisksViewProps> = ({
               <Th>SMART status</Th>
               <Th>Temperature</Th>
               <Th>Pool assignment</Th>
-              <Th aria-label="Actions" />
+              <Th screenReaderText="Actions" />
             </Tr>
           </Thead>
           <Tbody>

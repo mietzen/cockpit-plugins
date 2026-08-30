@@ -165,6 +165,20 @@ export const SnapshotsTab: React.FC<SnapshotsTabProps> = ({
 
   const selectedObjects = poolSnaps.filter((s) => selectedSnaps.includes(s.name));
 
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      (window as any).__snapshotsTabHandlers = {
+        toggleCollapse: toggleDatasetCollapse,
+        expandAll: handleExpandAll,
+        collapseAll: handleCollapseAll,
+        selectAll: handleSelectAll,
+        selectGroup: handleSelectGroup,
+        selectRow: handleSelectRow,
+        toggleDropdown: toggleDropdown,
+      };
+    }
+  });
+
   return (
     <div>
       <Flex
@@ -336,6 +350,7 @@ export const SnapshotsTab: React.FC<SnapshotsTabProps> = ({
                         <Thead>
                           <Tr>
                             <Th
+                              aria-label="Select all snapshots in group"
                               select={{
                                 onSelect: (_event, isSelecting) =>
                                   handleSelectGroup(group.snapshots, isSelecting),
@@ -347,7 +362,7 @@ export const SnapshotsTab: React.FC<SnapshotsTabProps> = ({
                             <Th>Used</Th>
                             <Th>Referenced</Th>
                             <Th>Clones</Th>
-                            <Th aria-label="Actions" />
+                            <Th screenReaderText="Actions" />
                           </Tr>
                         </Thead>
                         <Tbody>

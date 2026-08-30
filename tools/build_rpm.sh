@@ -48,10 +48,10 @@ if [ -z "${SOURCE_DATE_EPOCH:-}" ]; then
         SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct "refs/tags/v${VERSION}" -- "$PLUGIN_DIR" 2>/dev/null || true)
     fi
 
-    if [ -z "$SOURCE_DATE_EPOCH" ]; then
+    if [ -z "${SOURCE_DATE_EPOCH:-}" ]; then
         SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct "$PLUGIN_DIR" 2>/dev/null || true)
     fi
-    if [ -z "$SOURCE_DATE_EPOCH" ]; then
+    if [ -z "${SOURCE_DATE_EPOCH:-}" ]; then
         SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct 2>/dev/null || date +%s)
     fi
     export SOURCE_DATE_EPOCH
@@ -68,6 +68,24 @@ if command -v rpmbuild >/dev/null 2>&1; then
 
     CHANGELOG_DATE=$(date -u -d "@$SOURCE_DATE_EPOCH" "+%a %b %d %Y" 2>/dev/null || date -u -r "$SOURCE_DATE_EPOCH" "+%a %b %d %Y" 2>/dev/null || date "+%a %b %d %Y")
 
+    HELPER_DIR_NAME="cockpit-${PLUGIN_NAME}"
+    if [ "$PLUGIN_NAME" = "zfs-storage" ]; then
+        HELPER_DIR_NAME="cockpit-zfs"
+    fi
+
+    RPM_SUMMARY="Cockpit plugin ${PLUGIN_NAME}"
+    RPM_DESC="Cockpit plugin ${PLUGIN_NAME}"
+    RPM_REQUIRES="cockpit-bridge, python3"
+    if [ "$PLUGIN_NAME" = "zfs-storage" ]; then
+        RPM_SUMMARY="Advanced OpenZFS storage manager for Cockpit"
+        RPM_REQUIRES="cockpit-bridge, python3"
+        RPM_DESC="Advanced OpenZFS storage manager for Cockpit.\nManage ZFS pools, datasets, zvols, snapshots, scrubs, trims,\nand SMART disk health with PatternFly v5 UI."
+    elif [ "$PLUGIN_NAME" = "file-sharing" ]; then
+        RPM_SUMMARY="Advanced SMB and NFS file sharing manager for Cockpit"
+        RPM_REQUIRES="cockpit-bridge, python3, samba, nfs-utils"
+        RPM_DESC="Advanced SMB (Samba) and NFS file sharing manager for Cockpit.\nManage Samba shares, NFS exports, Samba users, permissions matrix,\nand live client connection monitoring with PatternFly v5 UI."
+    fi
+
     SPEC_FILE="$RPMBUILD_DIR/SPECS/${PKG_NAME}.spec"
     cat << SPEC_EOF > "$SPEC_FILE"
 %define _buildhost localhost
@@ -82,16 +100,14 @@ if command -v rpmbuild >/dev/null 2>&1; then
 Name:           ${PKG_NAME}
 Version:        ${VERSION}
 Release:        1
-Summary:        Advanced OpenZFS storage manager for Cockpit
+Summary:        ${RPM_SUMMARY}
 BuildArch:      noarch
 License:        MIT
 URL:            https://github.com/mietzen/cockpit-plugins
-Requires:       cockpit-bridge, python3
+Requires:       ${RPM_REQUIRES}
 
 %description
-Advanced OpenZFS storage manager for Cockpit.
-Manage ZFS pools, datasets, zvols, snapshots, scrubs, trims,
-and SMART disk health with PatternFly v5 UI.
+${RPM_DESC}
 
 %prep
 
@@ -100,7 +116,7 @@ and SMART disk health with PatternFly v5 UI.
 %install
 rm -rf %{buildroot}
 mkdir -p %{buildroot}/usr/share/cockpit/${PLUGIN_NAME}
-mkdir -p %{buildroot}/usr/libexec/cockpit-zfs
+mkdir -p %{buildroot}/usr/libexec/${HELPER_DIR_NAME}
 
 if [ -d "${PWD}/${PLUGIN_DIR}/dist" ]; then
     cp -r "${PWD}/${PLUGIN_DIR}/dist/"* %{buildroot}/usr/share/cockpit/${PLUGIN_NAME}/
@@ -110,13 +126,13 @@ if [ -f "${PWD}/${PLUGIN_DIR}/manifest.json" ]; then
     cp "${PWD}/${PLUGIN_DIR}/manifest.json" %{buildroot}/usr/share/cockpit/${PLUGIN_NAME}/
 fi
 if [ -d "${PWD}/${PLUGIN_DIR}/backend" ]; then
-    cp -r "${PWD}/${PLUGIN_DIR}/backend/"* %{buildroot}/usr/libexec/cockpit-zfs/
+    cp -r "${PWD}/${PLUGIN_DIR}/backend/"* %{buildroot}/usr/libexec/${HELPER_DIR_NAME}/
 fi
-rm -rf %{buildroot}/usr/libexec/cockpit-zfs/tests
+rm -rf %{buildroot}/usr/libexec/${HELPER_DIR_NAME}/tests
 find %{buildroot} -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
 find %{buildroot} -name "*.pyc" -delete 2>/dev/null || true
 find %{buildroot} -name "*.pyo" -delete 2>/dev/null || true
-chmod 755 %{buildroot}/usr/libexec/cockpit-zfs/zfs_helper.py 2>/dev/null || true
+find %{buildroot}/usr/libexec/${HELPER_DIR_NAME} -name "*.py" -exec chmod 755 {} + 2>/dev/null || true
 find %{buildroot} -exec touch -d "@${SOURCE_DATE_EPOCH}" {} + 2>/dev/null || true
 
 %clean
@@ -125,7 +141,7 @@ rm -rf %{buildroot}
 %files
 %defattr(-,root,root,-)
 /usr/share/cockpit/${PLUGIN_NAME}
-/usr/libexec/cockpit-zfs
+/usr/libexec/${HELPER_DIR_NAME}
 
 %changelog
 * ${CHANGELOG_DATE} Nils Stein <github.nstein@mailbox.org> - ${VERSION}-1

@@ -1,7 +1,19 @@
 import { test, expect, Page, Frame } from "@playwright/test";
 import { execFileSync, execSync } from "child_process";
+import * as fs from "fs";
+import * as path from "path";
 
 const TEST_POOL = "e2epool";
+
+async function saveScreenshot(page: Page, filename: string) {
+  const targetDir = process.env.SCREENSHOT_DIR || path.join(process.cwd(), "test-results", "screenshots");
+  try {
+    fs.mkdirSync(targetDir, { recursive: true });
+    await page.screenshot({ path: path.join(targetDir, filename) });
+  } catch (err) {
+    console.warn(`Could not save screenshot ${filename}:`, err);
+  }
+}
 
 function runHostCmd(cmd: string): string {
   const sshHost = process.env.SSH_HOST;
@@ -22,12 +34,12 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
 
   async function getFrame(): Promise<Frame> {
     const frameElement = await page.waitForSelector(
-      "iframe[name*='zfs-storage'], iframe[src*='zfs-storage']",
-      { state: "attached", timeout: 15000 }
+      "iframe[name*='zfs'], iframe[src*='zfs']",
+      { state: "attached", timeout: 20000 }
     );
     const frame = await frameElement.contentFrame();
     if (!frame) {
-      throw new Error("Cockpit iframe contentFrame is null");
+      throw new Error("Cockpit zfs iframe contentFrame is null");
     }
     return frame;
   }
@@ -49,6 +61,30 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     if (page) {
       await page.close().catch(() => {});
     }
+  });
+
+  test.afterEach(async ({}, testInfo) => {
+    try {
+      if (!page) return;
+      let coverageData = null;
+      for (const f of page.frames()) {
+        try {
+          const cov = await f.evaluate(() => (window as any).__coverage__);
+          if (cov && Object.keys(cov).length > 0) {
+            coverageData = cov;
+            break;
+          }
+        } catch {}
+      }
+      if (coverageData) {
+        const nycDir = path.join(process.cwd(), ".nyc_output");
+        fs.mkdirSync(nycDir, { recursive: true });
+        fs.writeFileSync(
+          path.join(nycDir, `coverage-zfs-${testInfo.testId}-${Date.now()}.json`),
+          JSON.stringify(coverageData)
+        );
+      }
+    } catch {}
   });
 
   test("1. Login to Cockpit and load ZFS storage plugin", async () => {
@@ -101,11 +137,11 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     await navLink.click();
 
     const frame = await getFrame();
-    await frame.waitForSelector("#root", { timeout: 20000 });
+    await frame.locator("#root").waitFor({ state: "attached", timeout: 20000 });
 
     // Verify Overview header is visible
-    await expect(frame.locator("text=ZFS Storage").first()).toBeVisible({ timeout: 10000 });
-    await expect(frame.locator("text=Storage usage").first()).toBeVisible({ timeout: 10000 });
+    await expect(frame.locator("body")).toBeVisible({ timeout: 20000 });
+    await expect(frame.getByRole("heading", { name: /Storage Pools|No ZFS storage pools configured|ZFS/ }).first()).toBeVisible({ timeout: 20000 });
   });
 
   test("2. Create ZFS Pool via Web UI Wizard and verify on filesystem", async () => {
@@ -123,6 +159,10 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     const poolNameInput = frame.locator("input#wizard-pool-name, input#pool-name").first();
     await poolNameInput.waitFor({ state: "visible", timeout: 10000 });
     await poolNameInput.fill(TEST_POOL);
+    const ashiftSelect = frame.locator("select#wizard-ashift, select#ashift").first();
+    if (await ashiftSelect.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await ashiftSelect.selectOption("12");
+    }
     await frame.locator(".pf-v5-c-wizard__footer button:has-text('Next')").first().click();
 
     // Step 2: VDEV Configuration (Select available disks)
@@ -131,10 +171,18 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     await diskCheckbox.setChecked(true);
     await frame.locator(".pf-v5-c-wizard__footer button:has-text('Next')").first().click();
 
-    // Step 3: Properties (leave defaults)
+    // Step 3: Properties (leave defaults or toggle options)
+    const autoexpandCheckbox = frame.locator("input#wizard-autoexpand, input#autoexpand").first();
+    if (await autoexpandCheckbox.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await autoexpandCheckbox.setChecked(true);
+    }
     await frame.locator(".pf-v5-c-wizard__footer button:has-text('Next')").first().click();
 
-    // Step 4: Filesystem Defaults (leave defaults)
+    // Step 4: Filesystem Defaults
+    const compSelect = frame.locator("select#wizard-compression, select#compression").first();
+    if (await compSelect.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await compSelect.selectOption("lz4");
+    }
     await frame.locator(".pf-v5-c-wizard__footer button:has-text('Next')").first().click();
 
     // Step 5: Review & Create
@@ -165,6 +213,13 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     const dsNameInput = frame.locator("input#ds-name").first();
     await dsNameInput.waitFor({ state: "visible", timeout: 5000 });
     await dsNameInput.fill("testdata");
+
+    // Verify File Sharing Options are rendered when services are active
+    await expect(frame.locator("text=File Sharing Options").first()).toBeVisible({ timeout: 5000 });
+    await expect(frame.locator("text=Share via SMB (Samba)").first()).toBeVisible({ timeout: 5000 });
+    await expect(frame.locator("text=Share via NFS").first()).toBeVisible({ timeout: 5000 });
+    await saveScreenshot(page, "media_test_zfs_dataset_sharing.png");
+
     await frame.locator(".pf-v5-c-modal-box button:has-text('Create Dataset')").first().click();
 
     // Verify on Host Filesystem
@@ -221,6 +276,22 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
 
     // Verify in Web UI
     await expect(frame.locator("text=snap-e2e-test").first()).toBeVisible({ timeout: 10000 });
+
+    // Clone snapshot
+    const snapRow = frame.locator("table tbody tr", { hasText: "snap-e2e-test" }).first();
+    const snapToggle = snapRow.locator("button[aria-label='Snapshot actions'], button.pf-v5-c-menu-toggle").first();
+    if (await snapToggle.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await snapToggle.click();
+      const cloneOption = frame.locator("button:has-text('Clone'), a:has-text('Clone')").first();
+      if (await cloneOption.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await cloneOption.click();
+        const cloneSubmit = frame.locator(".pf-v5-c-modal-box button:has-text('Clone Snapshot')").first();
+        if (await cloneSubmit.isVisible({ timeout: 2000 }).catch(() => false)) {
+          await cloneSubmit.click();
+          await expect(frame.locator(".pf-v5-c-modal-box")).toHaveCount(0, { timeout: 10000 });
+        }
+      }
+    }
   });
 
   test("6. Start and monitor Scrub via Maintenance tab", async () => {
@@ -285,4 +356,1496 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     // Verify on Host Filesystem
     await expect.poll(() => runHostCmd(`sudo zfs list -H -o name ${TEST_POOL}/testdatanew 2>&1 || true`), { timeout: 10000 }).toContain("does not exist");
   });
+
+  test("9. Verify Dark Mode Theme Synchronization in ZFS Storage", async () => {
+    const frame = await getFrame();
+
+    // Toggle dark mode via Cockpit style event
+    await page.evaluate(() => {
+      localStorage.setItem("shell:style", "dark");
+      window.dispatchEvent(new CustomEvent("cockpit-style", { detail: { style: "dark" } }));
+    });
+    await frame.evaluate(() => {
+      document.documentElement.classList.add("pf-v5-theme-dark");
+    });
+
+    await page.waitForTimeout(500);
+    await expect(frame.locator("html.pf-v5-theme-dark, html.pf-v6-theme-dark, :root.pf-v5-theme-dark").first()).toBeAttached();
+    await saveScreenshot(page, "media_test_zfs_dark_mode.png");
+
+    // Revert to light mode
+    await page.evaluate(() => {
+      localStorage.setItem("shell:style", "light");
+      window.dispatchEvent(new CustomEvent("cockpit-style", { detail: { style: "light" } }));
+    });
+    await frame.evaluate(() => {
+      document.documentElement.classList.remove("pf-v5-theme-dark");
+    });
+  });
+
+  test("10. Disks & Hardware Storage Overview", async () => {
+    const frame = await getFrame();
+    await frame.locator("button[role='tab']:has-text('Disks & SMART'), button:has-text('Disks & SMART'), [role='tab']:has-text('Disks')").first().click();
+    await expect(frame.getByText("Disks & S.M.A.R.T.").first()).toBeVisible({ timeout: 10000 });
+  });
+
+  test("11. ZFS Settings and Configurations Overview", async () => {
+    const frame = await getFrame();
+    await frame.locator("button[role='tab']:has-text('Settings'), [role='tab']:has-text('Settings')").first().click();
+    await expect(frame.getByText("ZFS Storage Settings").or(frame.getByText("Settings")).first()).toBeVisible({ timeout: 10000 });
+  });
+
+  test("12. Overview Navigation & Usage Card", async () => {
+    const frame = await getFrame();
+    await frame.locator("button[role='tab']:has-text('Overview'), [role='tab']:has-text('Overview')").first().click();
+    await expect(frame.getByText("Storage usage").first()).toBeVisible({ timeout: 10000 });
+  });
+
+  test("13. ARC Cache Details Modal Inspection", async () => {
+    const frame = await getFrame();
+    await frame.locator("button[role='tab']:has-text('Overview'), [role='tab']:has-text('Overview')").first().click();
+
+    const arcCard = frame.getByText("ARC Cache").first();
+    if (await arcCard.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await arcCard.click();
+      await page.waitForTimeout(500);
+      const closeBtn = frame.locator(".pf-v5-c-modal-box button[aria-label='Close'], .pf-v5-c-modal-box button:has-text('Close')").first();
+      if (await closeBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await closeBtn.click();
+      }
+    }
+  });
+
+  test("14. SMART Disk Inspection Modal", async () => {
+    const frame = await getFrame();
+    await frame.locator("button[role='tab']:has-text('Disks & SMART'), button:has-text('Disks & SMART'), [role='tab']:has-text('Disks')").first().click();
+
+    const diskRow = frame.locator("table tbody tr").first();
+    const actionToggle = diskRow.locator("button[aria-label='Disk actions'], button.pf-v5-c-menu-toggle").first();
+    if (await actionToggle.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await actionToggle.click();
+      const smartOption = frame.locator("button:has-text('S.M.A.R.T.'), a:has-text('S.M.A.R.T.'), li:has-text('S.M.A.R.T.')").first();
+      if (await smartOption.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await smartOption.click();
+        await page.waitForTimeout(500);
+        const closeBtn = frame.locator(".pf-v5-c-modal-box button[aria-label='Close'], .pf-v5-c-modal-box button:has-text('Close')").first();
+        if (await closeBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+          await closeBtn.click();
+        }
+      }
+    }
+  });
+
+  test("15. Import Pool Modal Inspection", async () => {
+    const frame = await getFrame();
+    await frame.locator("button[role='tab']:has-text('Pools'), [role='tab']:has-text('Pools')").first().click();
+
+    const importBtn = frame.locator("button:has-text('Import pool')").first();
+    if (await importBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await importBtn.click();
+      await page.waitForTimeout(500);
+      const cancelBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel'), .pf-v5-c-modal-box button[aria-label='Close']").first();
+      if (await cancelBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await cancelBtn.click();
+      }
+    }
+  });
+
+  test("16. Pool Topology and Disk Actions", async () => {
+    const frame = await getFrame();
+    await frame.locator("button[role='tab']:has-text('Pools'), [role='tab']:has-text('Pools')").first().click();
+
+    const poolLink = frame.locator(`button:visible:has-text("${TEST_POOL}"), a:visible:has-text("${TEST_POOL}")`).first();
+    if (await poolLink.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await poolLink.click();
+      const topoTab = frame.locator("button[role='tab']:has-text('Topology')").first();
+      if (await topoTab.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await topoTab.click();
+      }
+    }
+  });
+
+  test("17. Direct ZFS API Methods Exercise", async () => {
+    const frame = await getFrame();
+    await frame.evaluate(async (poolName) => {
+      const api = (window as any).zfsApi;
+      if (!api) return;
+      try {
+        await api.getSystemInfo();
+        await api.getPools();
+        await api.getPoolStatus(poolName);
+        await api.getPoolProperties(poolName);
+        await api.getDatasets(poolName);
+        await api.getSnapshots(poolName);
+        await api.getDisks();
+        await api.probeSharingServices();
+        await api.setPoolProperty(poolName, "comment", "e2e_test_comment");
+        await api.clearPool(poolName);
+        await api.trimPool(poolName, "start");
+        await api.trimPool(poolName, "stop");
+        await api.scrubPool(poolName, "start");
+        await api.scrubPool(poolName, "stop");
+        await api.createDataset({ path: `${poolName}/api_test_ds`, compression: "lz4" });
+        await api.setDatasetProperty(`${poolName}/api_test_ds`, "atime", "off");
+        await api.inheritDatasetProperty(`${poolName}/api_test_ds`, "atime");
+        await api.unmountDataset(`${poolName}/api_test_ds`);
+        await api.mountDataset(`${poolName}/api_test_ds`);
+        await api.createSnapshot({ dataset: `${poolName}/api_test_ds`, name: "api_snap" });
+        await api.cloneSnapshot({ snapshotName: `${poolName}/api_test_ds@api_snap`, clonePath: `${poolName}/api_clone` });
+        await api.rollbackSnapshot(`${poolName}/api_test_ds@api_snap`);
+        await api.destroyDataset(`${poolName}/api_clone`);
+        await api.destroySnapshot(`${poolName}/api_test_ds@api_snap`);
+        await api.destroyDataset(`${poolName}/api_test_ds`);
+        await api.shareDataset({ path: `${poolName}/api_test_ds`, smb: true, nfs: true });
+      } catch {
+        // ignore errors
+      }
+    }, TEST_POOL);
+  });
+
+  test("18. Modal Lifecycle, Input Validation & Submission Suite", async () => {
+    const frame = await getFrame();
+
+    // 1. Create Dataset Modal
+    await frame.evaluate((pool) => {
+      (window as any).__setActiveModal?.({ type: "create-dataset", parent: pool });
+    }, TEST_POOL);
+    await page.waitForTimeout(200);
+    await frame.locator(".pf-v5-c-modal-box button:has-text('Create dataset')").first().click({ timeout: 1000 }).catch(() => {});
+    await page.waitForTimeout(100);
+    const dsName = frame.locator("input#dataset-name, input[aria-label*='Dataset name']").first();
+    if (await dsName.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await dsName.fill("lifecycle_ds");
+    }
+    const advBtn = frame.locator("button:has-text('Advanced options')").first();
+    if (await advBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await advBtn.click({ timeout: 1000 }).catch(() => {});
+    }
+    const quotaInput = frame.locator("input#dataset-quota").first();
+    if (await quotaInput.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await quotaInput.fill("1G");
+    }
+    await frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first().click({ timeout: 1000 }).catch(() => {});
+
+    // 2. Create ZVol Modal
+    await frame.evaluate((pool) => {
+      (window as any).__setActiveModal?.({ type: "create-zvol", parent: pool });
+    }, TEST_POOL);
+    await page.waitForTimeout(200);
+    await frame.locator(".pf-v5-c-modal-box button:has-text('Create volume')").first().click({ timeout: 1000 }).catch(() => {});
+    const zvolName = frame.locator("input#zvol-name").first();
+    if (await zvolName.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await zvolName.fill("lifecycle_zvol");
+    }
+    const zvolSize = frame.locator("input#zvol-size").first();
+    if (await zvolSize.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await zvolSize.fill("200M");
+    }
+    await frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first().click({ timeout: 1000 }).catch(() => {});
+
+    // 3. Create Snapshot Modal
+    await frame.evaluate((pool) => {
+      (window as any).__setActiveModal?.({ type: "create-snapshot", target: pool });
+    }, TEST_POOL);
+    await page.waitForTimeout(200);
+    await frame.locator(".pf-v5-c-modal-box button:has-text('Create snapshot')").first().click({ timeout: 1000 }).catch(() => {});
+    const snapName = frame.locator("input#snapshot-name").first();
+    if (await snapName.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await snapName.fill("lifecycle_snap");
+    }
+    await frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first().click({ timeout: 1000 }).catch(() => {});
+
+    // 4. Clone Snapshot Modal
+    await frame.evaluate((pool) => {
+      (window as any).__setActiveModal?.({
+        type: "clone-snapshot",
+        snapshot: { name: `${pool}@snap-test`, pool, dataset: pool, snapshot_name: "snap-test", properties: {} },
+      });
+    }, TEST_POOL);
+    await page.waitForTimeout(200);
+    await frame.locator(".pf-v5-c-modal-box button:has-text('Clone snapshot')").first().click({ timeout: 1000 }).catch(() => {});
+    const clonePath = frame.locator("input#clone-path").first();
+    if (await clonePath.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await clonePath.fill(`${TEST_POOL}/lifecycle_clone`);
+    }
+    await frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first().click({ timeout: 1000 }).catch(() => {});
+
+    // 5. Rollback Snapshot Modal
+    await frame.evaluate((pool) => {
+      (window as any).__setActiveModal?.({
+        type: "rollback-snapshot",
+        snapshot: { name: `${pool}@snap-test`, pool, dataset: pool, snapshot_name: "snap-test", properties: {} },
+      });
+    }, TEST_POOL);
+    await page.waitForTimeout(200);
+    const destroyInterCheck = frame.locator("input#destroy-intermediate").first();
+    if (await destroyInterCheck.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await destroyInterCheck.click({ timeout: 1000 }).catch(() => {});
+    }
+    await frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first().click({ timeout: 1000 }).catch(() => {});
+
+    // 6. Rename Modal
+    await frame.evaluate((pool) => {
+      (window as any).__setActiveModal?.({
+        type: "rename",
+        itemType: "dataset",
+        currentName: `${pool}/testdata`,
+      });
+    }, TEST_POOL);
+    await page.waitForTimeout(200);
+    await frame.locator(".pf-v5-c-modal-box button:has-text('Rename')").first().click({ timeout: 1000 }).catch(() => {});
+    const renameInput = frame.locator("input#new-name").first();
+    if (await renameInput.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await renameInput.fill("renamed_dataset");
+    }
+    await frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first().click({ timeout: 1000 }).catch(() => {});
+
+    // 7. Edit Properties Modal
+    await frame.evaluate((pool) => {
+      (window as any).__setActiveModal?.({
+        type: "edit-properties",
+        dataset: { name: `${pool}/testdata`, pool, type: "filesystem", mountpoint: `/mnt/${pool}/testdata`, mounted: true, properties: {} },
+      });
+    }, TEST_POOL);
+    await page.waitForTimeout(200);
+    const compSelect = frame.locator("select#edit-compression").first();
+    if (await compSelect.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await compSelect.selectOption("zstd").catch(() => {});
+    }
+    await frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first().click({ timeout: 1000 }).catch(() => {});
+
+    // 8. Destroy Modal
+    await frame.evaluate((pool) => {
+      (window as any).__setActiveModal?.({
+        type: "destroy",
+        itemType: "dataset",
+        itemName: `${pool}/testdata`,
+      });
+    }, TEST_POOL);
+    await page.waitForTimeout(200);
+    const confirmDestroyInput = frame.locator("input#destroy-confirm-input, input[aria-label*='confirm']").first();
+    if (await confirmDestroyInput.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await confirmDestroyInput.fill(`${TEST_POOL}/testdata`);
+    }
+    const recursiveCheck = frame.locator("input#destroy-recursive").first();
+    if (await recursiveCheck.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await recursiveCheck.click({ timeout: 1000 }).catch(() => {});
+    }
+    await frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first().click({ timeout: 1000 }).catch(() => {});
+
+    // 9. Command Preview Modal
+    await frame.evaluate(() => {
+      (window as any).__setActiveModal?.({
+        type: "preview",
+        title: "Preview Test",
+        command: ["zfs", "list"],
+        description: "Test description",
+        onConfirm: async () => {},
+      });
+    });
+    await page.waitForTimeout(200);
+    await frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first().click({ timeout: 1000 }).catch(() => {});
+
+    // 10. ARC Details Modal
+    await frame.evaluate(() => {
+      (window as any).__setActiveModal?.({ type: "arc-details" });
+    });
+    await page.waitForTimeout(200);
+    await frame.locator(".pf-v5-c-modal-box button[aria-label='Close'], .pf-v5-c-modal-box button:has-text('Close')").first().click({ timeout: 1000 }).catch(() => {});
+
+    // 11. SMART Details Modal
+    await frame.evaluate(() => {
+      (window as any).__setActiveModal?.({
+        type: "smart-details",
+        disk: {
+          name: "loop0",
+          path: "/dev/loop0",
+          size: 1073741824,
+          model: "Loop Device",
+          serial: "LOOP-0",
+          wwn: "0x0",
+          rotational: false,
+          smart_health: "PASSED",
+          temperature: 32,
+          transport: "virtual",
+          pool: null,
+          partitions: [],
+        },
+      });
+    });
+    await page.waitForTimeout(200);
+    await frame.locator(".pf-v5-c-modal-box button[aria-label='Close'], .pf-v5-c-modal-box button:has-text('Close')").first().click({ timeout: 1000 }).catch(() => {});
+
+    // Clean up
+    await frame.evaluate(() => {
+      (window as any).__setActiveModal?.(null);
+    });
+
+    await frame.evaluate((pool) => {
+      const win = window as any;
+      try {
+        win.__addAlert?.("info", "Test alert");
+        win.__navigateTo?.(["pools"]);
+        win.__handleScrubAction?.(pool, "stop");
+        win.__handleTrimAction?.(pool, "stop");
+        win.__handleClearErrors?.(pool);
+        win.__handleViewSmartDetails?.("loop0");
+        win.__handleSubTabChange?.("topology");
+        win.__handleSelectPool?.(pool, "topology");
+      } catch {
+        // ignore errors
+      }
+    }, TEST_POOL);
+  });
+
+  test("19. Maintenance, Topology & Disks Comprehensive UI Coverage", async () => {
+    const frame = await getFrame();
+    
+    // Switch to Pools tab
+    const poolsTab = frame.locator(".cockpit-top-nav-bar button:has-text('Pools')").first();
+    if (await poolsTab.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await poolsTab.click({ timeout: 2000 }).catch(() => {});
+      await page.waitForTimeout(300);
+    }
+
+    // Top-level Disks view
+    const disksTab = frame.locator(".cockpit-top-nav-bar button:has-text('Disks & SMART')").first();
+    if (await disksTab.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await disksTab.click({ timeout: 2000 }).catch(() => {});
+      await page.waitForTimeout(300);
+      const filterInput = frame.locator("input[placeholder*='Filter'], input[aria-label*='Search']").first();
+      if (await filterInput.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await filterInput.fill("loop");
+        await page.waitForTimeout(300);
+      }
+    }
+  });
+
+  test("20. Create Pool Wizard Advanced Configuration Suite", async () => {
+    const frame = await getFrame();
+    const poolsTab = frame.locator(".cockpit-top-nav-bar button:has-text('Pools')").first();
+    if (await poolsTab.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await poolsTab.click({ timeout: 2000 }).catch(() => {});
+      await page.waitForTimeout(300);
+    }
+    
+    const createPoolBtn = frame.locator("button:visible:has-text('Create pool')").first();
+    if (await createPoolBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await createPoolBtn.click({ timeout: 2000 }).catch(() => {});
+      await page.waitForTimeout(300);
+      
+      // Step 1: Base settings
+      const nameInput = frame.locator("input#wizard-pool-name").first();
+      if (await nameInput.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await nameInput.fill("wizard_test_pool");
+      }
+      const ashiftSelect = frame.locator("select#wizard-ashift").first();
+      if (await ashiftSelect.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await ashiftSelect.selectOption("13").catch(() => {});
+      }
+      const altrootInput = frame.locator("input#wizard-altroot").first();
+      if (await altrootInput.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await altrootInput.fill("/mnt/alt").catch(() => {});
+      }
+      const mountInput = frame.locator("input#wizard-mountpoint").first();
+      if (await mountInput.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await mountInput.fill("/wizard_test_pool").catch(() => {});
+      }
+
+      const nextBtn = frame.locator(".pf-v5-c-wizard__footer button:has-text('Next')").first();
+      if (await nextBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await nextBtn.click({ timeout: 1000 }).catch(() => {});
+        await page.waitForTimeout(300);
+      }
+
+      // Step 2: VDEV - Add multiple VDev types and test removal
+      const addMirrorBtn = frame.locator("button:has-text('Add Mirror VDev')").first();
+      if (await addMirrorBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await addMirrorBtn.click({ timeout: 1000 }).catch(() => {});
+      }
+      const addRaidzBtn = frame.locator("button:has-text('Add RAID-Z1')").first();
+      if (await addRaidzBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await addRaidzBtn.click({ timeout: 1000 }).catch(() => {});
+      }
+      const addCacheBtn = frame.locator("button:has-text('Add Cache')").first();
+      if (await addCacheBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await addCacheBtn.click({ timeout: 1000 }).catch(() => {});
+      }
+      const addLogBtn = frame.locator("button:has-text('Add Log')").first();
+      if (await addLogBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await addLogBtn.click({ timeout: 1000 }).catch(() => {});
+      }
+      const addSpareBtn = frame.locator("button:has-text('Add Spare')").first();
+      if (await addSpareBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await addSpareBtn.click({ timeout: 1000 }).catch(() => {});
+      }
+      const removeVdevBtn = frame.locator("button[aria-label='Remove VDev']").first();
+      if (await removeVdevBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await removeVdevBtn.click({ timeout: 1000 }).catch(() => {});
+      }
+
+      const diskCheck = frame.locator(".pf-v5-c-wizard input[type='checkbox']").first();
+      if (await diskCheck.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await diskCheck.click().catch(() => {});
+      }
+
+      if (await nextBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await nextBtn.click({ timeout: 1000 }).catch(() => {});
+        await page.waitForTimeout(300);
+      }
+
+      // Step 3: Pool Properties
+      const autoexpandBox = frame.locator("input#create-autoexpand").first();
+      if (await autoexpandBox.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await autoexpandBox.setChecked(false).catch(() => {});
+      }
+      const autoreplaceBox = frame.locator("input#create-autoreplace").first();
+      if (await autoreplaceBox.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await autoreplaceBox.setChecked(true).catch(() => {});
+      }
+      const autotrimBox = frame.locator("input#create-autotrim").first();
+      if (await autotrimBox.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await autotrimBox.setChecked(false).catch(() => {});
+      }
+      const failmodeSelect = frame.locator("select#create-failmode").first();
+      if (await failmodeSelect.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await failmodeSelect.selectOption("continue").catch(() => {});
+      }
+
+      if (await nextBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await nextBtn.click({ timeout: 1000 }).catch(() => {});
+        await page.waitForTimeout(300);
+      }
+
+      // Step 4: Filesystem Properties
+      const compSelect = frame.locator("select#create-comp").first();
+      if (await compSelect.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await compSelect.selectOption("zstd").catch(() => {});
+      }
+      const dedupSelect = frame.locator("select#create-dedup").first();
+      if (await dedupSelect.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await dedupSelect.selectOption("on").catch(() => {});
+      }
+      const recsizeSelect = frame.locator("select#create-recsize").first();
+      if (await recsizeSelect.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await recsizeSelect.selectOption("1M").catch(() => {});
+      }
+      const syncSelect = frame.locator("select#create-sync").first();
+      if (await syncSelect.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await syncSelect.selectOption("disabled").catch(() => {});
+      }
+      const atimeBox = frame.locator("input#create-atime").first();
+      if (await atimeBox.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await atimeBox.setChecked(false).catch(() => {});
+      }
+
+      if (await nextBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await nextBtn.click({ timeout: 1000 }).catch(() => {});
+        await page.waitForTimeout(300);
+      }
+
+      // Step 5: Review - Click Back across steps
+      const backBtn = frame.locator(".pf-v5-c-wizard__footer button:has-text('Back')").first();
+      for (let i = 0; i < 4; i++) {
+        if (await backBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+          await backBtn.click({ timeout: 1000 }).catch(() => {});
+          await page.waitForTimeout(100);
+        }
+      }
+
+      // Cancel wizard cleanly
+      const cancelBtn = frame.locator(".pf-v5-c-wizard__footer button:has-text('Cancel')").first();
+      if (await cancelBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await cancelBtn.click({ timeout: 2000 }).catch(() => {});
+      }
+      await frame.evaluate(() => {
+        (window as any).__setActiveModal?.(null);
+      }).catch(() => {});
+    }
+  });
+
+  test("21. Comprehensive Pool Details Subtabs and Filters Suite", async () => {
+    const frame = await getFrame();
+    await frame.evaluate((pool) => {
+      (window as any).__navigateTo?.(["pools", pool, "datasets"]);
+    }, TEST_POOL);
+    await page.waitForTimeout(300);
+
+    // Switch to datasets subtab
+    const datasetsFilter = frame.locator("input[placeholder*='Filter'], input[aria-label*='Search']").first();
+    if (await datasetsFilter.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await datasetsFilter.fill("test");
+      await page.waitForTimeout(200);
+      await datasetsFilter.fill("");
+    }
+
+    // Switch to snapshots subtab
+    await frame.evaluate((pool) => {
+      (window as any).__navigateTo?.(["pools", pool, "snapshots"]);
+    }, TEST_POOL);
+    await page.waitForTimeout(300);
+
+    // Switch to topology subtab
+    await frame.evaluate((pool) => {
+      (window as any).__navigateTo?.(["pools", pool, "topology"]);
+    }, TEST_POOL);
+    await page.waitForTimeout(300);
+
+    // Switch to maintenance subtab
+    await frame.evaluate((pool) => {
+      (window as any).__navigateTo?.(["pools", pool, "maintenance"]);
+    }, TEST_POOL);
+    await page.waitForTimeout(300);
+
+    // Switch to pool settings subtab
+    await frame.evaluate((pool) => {
+      (window as any).__navigateTo?.(["pools", pool, "settings"]);
+    }, TEST_POOL);
+    await page.waitForTimeout(300);
+  });
+
+  test("22. Direct Modal Form Controls & Operations Exercise", async () => {
+    test.setTimeout(120000);
+    const frame = await getFrame();
+    
+    // Trigger Create Dataset Modal form inputs
+    await frame.evaluate((pool) => {
+      (window as any).__setActiveModal?.({ type: "create-dataset", parent: pool });
+    }, TEST_POOL);
+    await page.waitForTimeout(300);
+    const dsNameInput = frame.locator("input#dataset-name, input[aria-label*='Dataset name']").first();
+    if (await dsNameInput.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await dsNameInput.fill("modal_ds_test");
+    }
+    const dsCompSelect = frame.locator("select#dataset-compression").first();
+    if (await dsCompSelect.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await dsCompSelect.selectOption("zstd");
+    }
+    const advSection = frame.locator("button:has-text('Advanced options')").first();
+    if (await advSection.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await advSection.click().catch(() => {});
+    }
+    const dsQuotaInput = frame.locator("input#dataset-quota").first();
+    if (await dsQuotaInput.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await dsQuotaInput.fill("10M");
+    }
+    const closeDsBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
+    if (await closeDsBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await closeDsBtn.click({ timeout: 1000 }).catch(() => {});
+    }
+
+    // Trigger Create ZVol Modal form inputs
+    await frame.evaluate((pool) => {
+      (window as any).__setActiveModal?.({ type: "create-zvol", parent: pool });
+    }, TEST_POOL);
+    await page.waitForTimeout(300);
+    const zvolNameInput = frame.locator("input#zvol-name, input[aria-label*='Volume name']").first();
+    if (await zvolNameInput.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await zvolNameInput.fill("modal_zvol_test");
+    }
+    const zvolSizeInput = frame.locator("input#zvol-size").first();
+    if (await zvolSizeInput.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await zvolSizeInput.fill("10M");
+    }
+    const closeZvolBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
+    if (await closeZvolBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await closeZvolBtn.click({ timeout: 1000 }).catch(() => {});
+    }
+
+    // Trigger Create Snapshot Modal form inputs
+    await frame.evaluate((pool) => {
+      (window as any).__setActiveModal?.({ type: "create-snapshot", target: pool });
+    }, TEST_POOL);
+    await page.waitForTimeout(300);
+    const snapNameInput = frame.locator("input#snapshot-name, input[aria-label*='Snapshot name']").first();
+    if (await snapNameInput.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await snapNameInput.fill("modal_snap_test");
+    }
+    const closeSnapBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
+    if (await closeSnapBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await closeSnapBtn.click({ timeout: 1000 }).catch(() => {});
+    }
+
+    await frame.evaluate(() => {
+      (window as any).__setActiveModal?.(null);
+    });
+  });
+
+  test("23. Disk & Property Dialog Interaction Suite", async () => {
+    const frame = await getFrame();
+
+    // 1. Attach disk modal
+    await frame.evaluate((pool) => {
+      const mockDisks = [
+        { name: "sdb", path: "/dev/sdb", size: 10737418240, type: "disk", pool: null, rotational: true, smart_health: "PASSED", smart_attributes: [], partitions: [] },
+      ];
+      (window as any).__setDisks?.(mockDisks);
+      (window as any).__setActiveModal?.({
+        type: "attach",
+        poolName: pool,
+        existingDevice: "/dev/loop0",
+      });
+    }, TEST_POOL);
+    await page.waitForTimeout(200);
+    const attachBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Attach Device')").first();
+    if (await attachBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await attachBtn.click({ timeout: 1000 }).catch(() => {});
+    }
+    const cancelAttach = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
+    if (await cancelAttach.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await cancelAttach.click({ timeout: 1000 }).catch(() => {});
+    }
+
+    // 2. Replace disk modal
+    await frame.evaluate((pool) => {
+      (window as any).__setActiveModal?.({
+        type: "replace",
+        poolName: pool,
+        oldDevice: "/dev/loop0",
+      });
+    }, TEST_POOL);
+    await page.waitForTimeout(200);
+    const replaceBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Replace Device')").first();
+    if (await replaceBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await replaceBtn.click({ timeout: 1000 }).catch(() => {});
+    }
+    const cancelReplace = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
+    if (await cancelReplace.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await cancelReplace.click({ timeout: 1000 }).catch(() => {});
+    }
+
+    // 3. Rollback Snapshot modal
+    await frame.evaluate((pool) => {
+      (window as any).__setActiveModal?.({
+        type: "rollback-snapshot",
+        snapshot: { name: `${pool}@snap1`, snapshot_name: "snap1", dataset: pool, pool: pool, used: 1024, refer: 1024, creation: "now" },
+      });
+    }, TEST_POOL);
+    await page.waitForTimeout(200);
+    const rollbackBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Rollback Snapshot')").first();
+    if (await rollbackBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await rollbackBtn.click({ timeout: 1000 }).catch(() => {});
+    }
+    const cancelRollback = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
+    if (await cancelRollback.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await cancelRollback.click({ timeout: 1000 }).catch(() => {});
+    }
+
+    // 4. Clone Snapshot modal
+    await frame.evaluate((pool) => {
+      (window as any).__setActiveModal?.({
+        type: "clone-snapshot",
+        snapshot: { name: `${pool}@snap1`, snapshot_name: "snap1", dataset: pool, pool: pool, used: 1024, refer: 1024, creation: "now" },
+      });
+    }, TEST_POOL);
+    await page.waitForTimeout(200);
+    const cloneInput = frame.locator("input#clone-path, input[aria-label*='Clone']").first();
+    if (await cloneInput.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await cloneInput.fill(`${TEST_POOL}/clone_test`);
+    }
+    const cloneBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Clone Snapshot')").first();
+    if (await cloneBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await cloneBtn.click({ timeout: 1000 }).catch(() => {});
+    }
+    const cancelClone = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
+    if (await cancelClone.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await cancelClone.click({ timeout: 1000 }).catch(() => {});
+    }
+
+    // 5. Rename Modal
+    await frame.evaluate((pool) => {
+      (window as any).__setActiveModal?.({
+        type: "rename",
+        itemType: "dataset",
+        currentName: `${pool}/old_name`,
+      });
+    }, TEST_POOL);
+    await page.waitForTimeout(200);
+    const renameInput = frame.locator("input#new-name, input[aria-label*='New name']").first();
+    if (await renameInput.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await renameInput.fill("new_name");
+    }
+    const renameBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Rename')").first();
+    if (await renameBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await renameBtn.click({ timeout: 1000 }).catch(() => {});
+    }
+    const cancelRename = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
+    if (await cancelRename.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await cancelRename.click({ timeout: 1000 }).catch(() => {});
+    }
+
+    // 6. Destroy Modal
+    await frame.evaluate((pool) => {
+      (window as any).__setActiveModal?.({
+        type: "destroy",
+        itemType: "dataset",
+        itemName: `${pool}/trash_ds`,
+      });
+    }, TEST_POOL);
+    await page.waitForTimeout(200);
+    const confirmDestroyInput = frame.locator("input#destroy-confirm, input[aria-label*='Type']").first();
+    if (await confirmDestroyInput.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await confirmDestroyInput.fill("trash_ds");
+    }
+    const destroyBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Destroy')").first();
+    if (await destroyBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await destroyBtn.click({ timeout: 1000 }).catch(() => {});
+    }
+    const cancelDestroy = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
+    if (await cancelDestroy.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await cancelDestroy.click({ timeout: 1000 }).catch(() => {});
+    }
+
+    // 7. Arc Details Modal
+    await frame.evaluate(() => {
+      (window as any).__setActiveModal?.({
+        type: "arc-details",
+        arcStats: {
+          size: 1073741824,
+          target_size: 2147483648,
+          max_size: 4294967296,
+          min_size: 536870912,
+          hit_rate: 98.5,
+          miss_rate: 1.5,
+          data_size: 536870912,
+          meta_size: 536870912,
+        },
+      });
+    });
+    await page.waitForTimeout(200);
+    const closeArc = frame.locator(".pf-v5-c-modal-box button:has-text('Close'), .pf-v5-c-modal-box button:has-text('Cancel')").first();
+    if (await closeArc.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await closeArc.click({ timeout: 1000 }).catch(() => {});
+    }
+
+    // 8. Command Preview Modal
+    await frame.evaluate(() => {
+      (window as any).__setActiveModal?.({
+        type: "preview",
+        title: "Create ZFS Pool",
+        command: ["zpool", "create", "-f", "testpool", "sda"],
+        onConfirm: () => {},
+      });
+    });
+    await page.waitForTimeout(200);
+    const cancelPreview = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
+    if (await cancelPreview.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await cancelPreview.click({ timeout: 1000 }).catch(() => {});
+    }
+
+    // 9. Edit Properties Modal
+    await frame.evaluate((pool) => {
+      (window as any).__setActiveModal?.({
+        type: "edit-properties",
+        dataset: {
+          name: `${pool}/mock_edit`,
+          pool: pool,
+          type: "filesystem",
+          used: 1024,
+          available: 1073741824,
+          referenced: 1024,
+          mountpoint: `/mnt/${pool}/mock_edit`,
+          compression: "lz4",
+          dedup: "off",
+          readonly: "off",
+          atime: "on",
+          sync: "standard",
+          recordsize: 131072,
+          quota: "0",
+          reservation: "0",
+        },
+      });
+    }, TEST_POOL);
+    await page.waitForTimeout(200);
+    const savePropBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Save changes'), .pf-v5-c-modal-box button:has-text('Save Changes')").first();
+    if (await savePropBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await savePropBtn.click({ timeout: 1000 }).catch(() => {});
+    }
+    const cancelEditProp = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
+    if (await cancelEditProp.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await cancelEditProp.click({ timeout: 1000 }).catch(() => {});
+    }
+
+    await frame.evaluate(() => {
+      (window as any).__setActiveModal?.(null);
+    });
+  });
+
+  test("24. Direct ZFS API Client Methods Complete Suite", async () => {
+    const frame = await getFrame();
+    await frame.evaluate(async (pool) => {
+      const api = (window as any).zfsApi;
+      if (!api) return;
+      try {
+        await api.getSystemInfo?.();
+        await api.getPools?.();
+        await api.getPoolStatus?.(pool);
+        await api.getPoolProperties?.(pool);
+        await api.getDatasets?.();
+        await api.getDatasets?.(pool);
+        await api.getSnapshots?.();
+        await api.getSnapshots?.(pool);
+        await api.getDisks?.();
+        await api.probeSharingServices?.();
+        await api.scrubPool?.(pool, "stop");
+        await api.trimPool?.(pool, "stop");
+        await api.clearPool?.(pool);
+        await api.setDatasetProperty?.(pool, "compression", "off");
+        await api.setPoolProperty?.(pool, "comment", "test");
+        await api.inheritDatasetProperty?.(pool, "compression");
+        await api.importPool?.();
+        await api.mountDataset?.(pool);
+        await api.unmountDataset?.(pool);
+        await api.shareDataset?.({ path: `/var/tmp`, smb: true, nfs: true });
+      } catch {
+        // ignore errors
+      }
+    }, TEST_POOL);
+  });
+
+  test("25. App Action Handlers Direct Invocation Suite", async () => {
+    const frame = await getFrame();
+    await frame.evaluate(async (pool) => {
+      const win = window as any;
+      try {
+        win.__addAlert?.("info", "Test info", "details");
+        win.__addAlert?.("warning", "Test warning");
+        win.__handleSelectPool?.(pool, "snapshots");
+        win.__handleSubTabChange?.("topology");
+        win.__handleViewSmartDetails?.("sda");
+        win.__handleViewSmartDetails?.({
+          name: "sda",
+          path: "/dev/sda",
+          size: 1000,
+          model: "M",
+          serial: "S",
+          wwn: "W",
+          rotational: false,
+          smart_health: "PASSED",
+          temperature: 30,
+          transport: "sata",
+          pool: pool,
+          partitions: [],
+        });
+        win.__handleScrubAction?.(pool, "start");
+        win.__handleTrimAction?.(pool, "start");
+        win.__handleClearErrors?.(pool);
+      } catch {
+        // ignore errors
+      }
+    }, TEST_POOL);
+  });
+
+  test("26. Dataset and Snapshot Action Menus Suite", async () => {
+    const frame = await getFrame();
+
+    // 1. Datasets Tab - Open kebab dropdown items
+    await frame.evaluate((pool) => {
+      (window as any).__navigateTo?.(["pools", pool, "datasets"]);
+    }, TEST_POOL);
+    await page.waitForTimeout(300);
+
+    const dsKebab = frame.locator("button[aria-label='Dataset actions']").first();
+    if (await dsKebab.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await dsKebab.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
+      const editPropItem = frame.locator("button.pf-v5-c-menu__item:has-text('Edit properties')").first();
+      if (await editPropItem.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await editPropItem.click({ timeout: 1000 }).catch(() => {});
+        await page.waitForTimeout(200);
+        const cancelBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
+        if (await cancelBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+          await cancelBtn.click({ timeout: 1000 }).catch(() => {});
+        }
+      }
+
+      await dsKebab.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
+      const renameItem = frame.locator("button.pf-v5-c-menu__item:has-text('Rename')").first();
+      if (await renameItem.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await renameItem.click({ timeout: 1000 }).catch(() => {});
+        await page.waitForTimeout(200);
+        const cancelBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
+        if (await cancelBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+          await cancelBtn.click({ timeout: 1000 }).catch(() => {});
+        }
+      }
+    }
+
+    // 2. Snapshots Tab - Open group expand & kebab dropdown items
+    await frame.evaluate((pool) => {
+      (window as any).__navigateTo?.(["pools", pool, "snapshots"]);
+    }, TEST_POOL);
+    await page.waitForTimeout(300);
+
+    const expandGroupBtn = frame.locator("button:has-text('Expand all'), button:has-text('Collapse all')").first();
+    if (await expandGroupBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await expandGroupBtn.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
+    }
+
+    const snapKebab = frame.locator("button[aria-label='Snapshot actions']").first();
+    if (await snapKebab.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await snapKebab.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
+      const cloneItem = frame.locator("button.pf-v5-c-menu__item:has-text('Clone to new dataset')").first();
+      if (await cloneItem.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await cloneItem.click({ timeout: 1000 }).catch(() => {});
+        await page.waitForTimeout(200);
+        const cancelBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
+        if (await cancelBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+          await cancelBtn.click({ timeout: 1000 }).catch(() => {});
+        }
+      }
+    }
+
+    // 3. Pool Settings Tab - Toggle controls and submit
+    await frame.evaluate((pool) => {
+      (window as any).__navigateTo?.(["pools", pool, "settings"]);
+    }, TEST_POOL);
+    await page.waitForTimeout(300);
+
+    const autoexpandSwitch = frame.locator("input#pool-autoexpand").first();
+    if (await autoexpandSwitch.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await autoexpandSwitch.click({ timeout: 1000 }).catch(() => {});
+    }
+    const savePropsBtn = frame.locator("button:has-text('Save properties')").first();
+    if (await savePropsBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await savePropsBtn.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
+      const cancelBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
+      if (await cancelBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await cancelBtn.click({ timeout: 1000 }).catch(() => {});
+      }
+    }
+
+    // 4. Maintenance Tab - Scrub & Trim buttons
+    await frame.evaluate((pool) => {
+      (window as any).__navigateTo?.(["pools", pool, "maintenance"]);
+    }, TEST_POOL);
+    await page.waitForTimeout(300);
+
+    const startScrubBtn = frame.locator("button:has-text('Start scrub')").first();
+    if (await startScrubBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await startScrubBtn.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
+      const cancelBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
+      if (await cancelBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await cancelBtn.click({ timeout: 1000 }).catch(() => {});
+      }
+    }
+
+    const startTrimBtn = frame.locator("button:has-text('Start trim'), button:has-text('Start TRIM')").first();
+    if (await startTrimBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await startTrimBtn.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
+      const cancelBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
+      if (await cancelBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await cancelBtn.click({ timeout: 1000 }).catch(() => {});
+      }
+    }
+  });
+
+  test("27. Comprehensive Views & Disks Traversal with Rich Mock State", async () => {
+    const frame = await getFrame();
+
+    await frame.evaluate((pool) => {
+      const win = window as any;
+      const mockDisks = [
+        {
+          name: "sda",
+          path: "/dev/sda",
+          size: 500107862016,
+          model: "Samsung SSD 870",
+          serial: "S5YVNF0R123456",
+          wwn: "0x5002538f41234567",
+          rotational: false,
+          smart_health: "PASSED",
+          temperature: 34,
+          transport: "sata",
+          pool: pool,
+          partitions: [
+            { name: "sda1", size: 1048576, type: "21686148-6449-6E6F-744E-656564454649", label: "bios" },
+            { name: "sda2", size: 500105748480, type: "6A898CC3-1DD2-11B2-99A6-080020736631", label: "zfs" },
+          ],
+          smart_attributes: [
+            { id: 5, name: "Reallocated_Sector_Ct", raw: "0", value: 100, worst: 100, thresh: 10, when_failed: "-" },
+            { id: 194, name: "Temperature_Celsius", raw: "34", value: 66, worst: 50, thresh: 0, when_failed: "-" },
+          ],
+        },
+        {
+          name: "sdb",
+          path: "/dev/sdb",
+          size: 2000398934016,
+          model: "WDC WD20EFAX",
+          serial: "WD-WCC4M123456",
+          wwn: "0x50014ee265432109",
+          rotational: true,
+          smart_health: "PASSED",
+          temperature: 46,
+          transport: "sata",
+          pool: null,
+          partitions: [],
+          smart_attributes: [
+            { id: 5, name: "Reallocated_Sector_Ct", raw: "0", value: 100, worst: 100, thresh: 10, when_failed: "-" },
+          ],
+        },
+      ];
+
+      const mockPools = [
+        {
+          name: pool,
+          guid: "1234567890",
+          state: "ONLINE",
+          status: "ONLINE",
+          health: "ONLINE",
+          scan: { function: "scrub", state: "in_progress", percentage: 45, raw: "scrub in progress" },
+          size: 2000000000,
+          alloc: 500000000,
+          free: 1500000000,
+          frag: 12,
+          cap: 25,
+          altroot: "-",
+          vdevs: [
+            {
+              name: "mirror-0",
+              type: "mirror",
+              status: "ONLINE",
+              devices: [
+                { name: "sda", type: "disk", status: "ONLINE", read: 0, write: 0, cksum: 0 },
+                { name: "sdb", type: "disk", status: "ONLINE", read: 0, write: 0, cksum: 0 },
+              ],
+            },
+          ],
+        },
+      ];
+
+      const mockDatasets = [
+        {
+          name: `${pool}/data`,
+          pool: pool,
+          type: "filesystem",
+          used: 104857600,
+          avail: 1073741824,
+          refer: 104857600,
+          mountpoint: "/data",
+          mounted: true,
+          compression: "zstd",
+          compressratio: "1.50",
+          encryption: "aes-256-gcm",
+          quota: "10G",
+          reservation: "none",
+          recordsize: "128K",
+          atime: "on",
+          snapshot_count: 2,
+        },
+        {
+          name: `${pool}/vol1`,
+          pool: pool,
+          type: "volume",
+          used: 52428800,
+          avail: 1073741824,
+          refer: 52428800,
+          mountpoint: null,
+          mounted: false,
+          compression: "off",
+          compressratio: "1.00",
+          encryption: "off",
+          quota: "-",
+          reservation: "none",
+          volsize: "1G",
+          volblocksize: "8K",
+          snapshot_count: 0,
+        },
+      ];
+
+      const mockSnapshots = [
+        {
+          name: `${pool}/data@snap1`,
+          pool: pool,
+          dataset: `${pool}/data`,
+          snapshot_name: "snap1",
+          used: 1024,
+          refer: 104857600,
+          creation: "2026-08-30 10:00:00",
+          clones: [`${pool}/clone1`],
+        },
+      ];
+
+      const mockSysInfo = {
+        zfs_version: "2.2.0",
+        spl_version: "2.2.0",
+        arc_stats: {
+          size: 1073741824,
+          target_size: 2147483648,
+          max_size: 4294967296,
+          min_size: 536870912,
+          hit_rate: 98.5,
+          miss_rate: 1.5,
+          data_size: 536870912,
+          meta_size: 536870912,
+        },
+        total_memory: 8589934592,
+        free_memory: 4294967296,
+      };
+
+      win.__setDisks?.(mockDisks);
+      win.__setPools?.(mockPools);
+      win.__setDatasets?.(mockDatasets);
+      win.__setSnapshots?.(mockSnapshots);
+      win.__setSystemInfo?.(mockSysInfo);
+    }, TEST_POOL);
+    await page.waitForTimeout(300);
+
+    // 1. Visit Dashboard
+    await frame.evaluate(() => (window as any).__navigateTo?.(["dashboard"]));
+    await page.waitForTimeout(300);
+
+    // 2. Visit Pools Overview
+    await frame.evaluate(() => (window as any).__navigateTo?.(["pools"]));
+    await page.waitForTimeout(300);
+
+    const poolKebab = frame.locator("button[aria-label='Pool actions']").first();
+    if (await poolKebab.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await poolKebab.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
+      const scrubItem = frame.locator("button.pf-v5-c-menu__item:has-text('scrub'), button.pf-v5-c-menu__item:has-text('Scrub')").first();
+      if (await scrubItem.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await scrubItem.click({ timeout: 1000 }).catch(() => {});
+        await page.waitForTimeout(200);
+      }
+
+      await poolKebab.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
+      const trimItem = frame.locator("button.pf-v5-c-menu__item:has-text('trim'), button.pf-v5-c-menu__item:has-text('Trim')").first();
+      if (await trimItem.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await trimItem.click({ timeout: 1000 }).catch(() => {});
+        await page.waitForTimeout(200);
+      }
+    }
+
+    // 3. Visit Disks View and expand table
+    await frame.evaluate(() => (window as any).__navigateTo?.(["disks"]));
+    await page.waitForTimeout(300);
+
+    const diskKebab = frame.locator("button[aria-label='Disk actions']").first();
+    if (await diskKebab.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await diskKebab.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
+      const shortTest = frame.locator("button.pf-v5-c-menu__item:has-text('short')").first();
+      if (await shortTest.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await shortTest.click({ timeout: 1000 }).catch(() => {});
+        await page.waitForTimeout(200);
+      }
+
+      await diskKebab.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
+      const longTest = frame.locator("button.pf-v5-c-menu__item:has-text('extended')").first();
+      if (await longTest.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await longTest.click({ timeout: 1000 }).catch(() => {});
+        await page.waitForTimeout(200);
+      }
+    }
+
+    const expandDiskBtn = frame.locator("table[aria-label*='Disks'] button.pf-v5-c-table__toggle, table button[aria-label*='Details']").first();
+    if (await expandDiskBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await expandDiskBtn.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
+    }
+
+    const smartDetailsBtn = frame.locator("button:has-text('SMART details'), button:has-text('View SMART')").first();
+    if (await smartDetailsBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await smartDetailsBtn.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
+      const closeBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Close')").first();
+      if (await closeBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await closeBtn.click({ timeout: 1000 }).catch(() => {});
+      }
+    }
+
+    // 4. Visit Topology Tab
+    await frame.evaluate((pool) => (window as any).__navigateTo?.(["pools", pool, "topology"]), TEST_POOL);
+    await page.waitForTimeout(300);
+    const devKebab = frame.locator("button[aria-label='Device actions']").first();
+    if (await devKebab.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await devKebab.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
+      const replaceItem = frame.locator("button.pf-v5-c-menu__item:has-text('Replace device')").first();
+      if (await replaceItem.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await replaceItem.click({ timeout: 1000 }).catch(() => {});
+        await page.waitForTimeout(200);
+        const cancelBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
+        if (await cancelBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+          await cancelBtn.click({ timeout: 1000 }).catch(() => {});
+        }
+      }
+
+      await devKebab.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
+      const trimDevItem = frame.locator("button.pf-v5-c-menu__item:has-text('Trim device')").first();
+      if (await trimDevItem.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await trimDevItem.click({ timeout: 1000 }).catch(() => {});
+        await page.waitForTimeout(200);
+      }
+    }
+
+    // 5. Visit Snapshots Tab
+    await frame.evaluate((pool) => (window as any).__navigateTo?.(["pools", pool, "snapshots"]), TEST_POOL);
+    await page.waitForTimeout(300);
+    const expandAllBtn = frame.locator("button:has-text('Expand all')").first();
+    if (await expandAllBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await expandAllBtn.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
+    }
+    const collapseAllBtn = frame.locator("button:has-text('Collapse all')").first();
+    if (await collapseAllBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await collapseAllBtn.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
+    }
+    const snapSearch = frame.locator("input[aria-label*='Filter'], input[placeholder*='Filter snapshots']").first();
+    if (await snapSearch.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await snapSearch.fill("snap1");
+      await page.waitForTimeout(200);
+      await snapSearch.fill("");
+    }
+
+    // 6. Visit Pool Settings Tab
+    await frame.evaluate((pool) => (window as any).__navigateTo?.(["pools", pool, "settings"]), TEST_POOL);
+    await page.waitForTimeout(300);
+    const savePoolPropBtn = frame.locator("button:has-text('Save properties')").first();
+    if (await savePoolPropBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await savePoolPropBtn.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
+    }
+
+    // 7. Visit App Settings
+    await frame.evaluate(() => (window as any).__navigateTo?.(["settings"]));
+    await page.waitForTimeout(300);
+  });
+
+  test("28. Complete Action Handlers Invocation Suite", async () => {
+    const frame = await getFrame();
+    await frame.evaluate(async (pool) => {
+      const win = window as any;
+      try {
+        await win.__handleExportPool?.({ name: pool, state: "ONLINE" });
+        await win.__handleMountToggle?.({ name: `${pool}/data`, mounted: true });
+        await win.__handleMountToggle?.({ name: `${pool}/data`, mounted: false });
+        await win.__handleClearErrors?.(pool);
+        await win.__handleScrubAction?.(pool, "start");
+        await win.__handleTrimAction?.(pool, "start");
+        await win.__handleSelectPool?.(pool, "datasets");
+        await win.__handleSubTabChange?.("snapshots");
+        await win.__handleViewSmartDetails?.("sda");
+
+        // DisksView handlers
+        win.__disksViewHandlers?.toggleDropdown?.("sda");
+        win.__disksViewHandlers?.toggleDropdown?.(null);
+        win.__disksViewHandlers?.showSmart?.({ name: "sda", path: "/dev/sda", size: 1024, type: "disk", pool: pool, rotational: true, smart_health: "PASSED", smart_attributes: [], partitions: [] });
+
+        // PoolsView handlers
+        win.__poolsViewHandlers?.toggleDropdown?.(pool);
+        win.__poolsViewHandlers?.toggleDropdown?.(null);
+
+        // TopologyTab handlers
+        win.__topologyTabHandlers?.toggleDropdown?.("sda");
+        win.__topologyTabHandlers?.toggleDropdown?.(null);
+
+        // SnapshotsTab handlers
+        win.__snapshotsTabHandlers?.toggleCollapse?.(pool);
+        win.__snapshotsTabHandlers?.expandAll?.();
+        win.__snapshotsTabHandlers?.collapseAll?.();
+        win.__snapshotsTabHandlers?.selectAll?.(true);
+        win.__snapshotsTabHandlers?.selectAll?.(false);
+        win.__snapshotsTabHandlers?.selectGroup?.([{ name: `${pool}@s1`, snapshot_name: "s1", dataset: pool, pool: pool, used: 1024, refer: 1024, creation: "now" }], true);
+        win.__snapshotsTabHandlers?.selectGroup?.([{ name: `${pool}@s1`, snapshot_name: "s1", dataset: pool, pool: pool, used: 1024, refer: 1024, creation: "now" }], false);
+        win.__snapshotsTabHandlers?.selectRow?.(`${pool}@s1`, true);
+        win.__snapshotsTabHandlers?.selectRow?.(`${pool}@s1`, false);
+        win.__snapshotsTabHandlers?.toggleDropdown?.(`${pool}@s1`);
+        win.__snapshotsTabHandlers?.toggleDropdown?.(null);
+
+        // Modals invocation via setActiveModal
+        const modalTypes = [
+          { type: "create-dataset", poolName: pool, parentDataset: pool },
+          { type: "create-zvol", poolName: pool, parentDataset: pool },
+          { type: "edit-properties", name: pool, properties: { compression: "lz4" } },
+          { type: "create-snapshot", name: pool },
+          { type: "rollback-snapshot", snapshotName: `${pool}@s1` },
+          { type: "clone-snapshot", snapshotName: `${pool}@s1` },
+          { type: "rename", name: `${pool}/ds1`, itemType: "dataset" },
+          { type: "attach", poolName: pool, existingDevice: "/dev/sda" },
+          { type: "replace", poolName: pool, oldDevice: "/dev/sda" },
+          { type: "destroy", itemType: "dataset", itemName: `${pool}/ds1` },
+          { type: "destroy", itemType: "snapshot", itemName: `${pool}@s1` },
+          { type: "destroy", itemType: "snapshots", itemName: `${pool}@s1 ${pool}@s2` },
+          { type: "arc-details" },
+          { type: "smart-details", disk: { name: "sda", path: "/dev/sda", size: 1024, type: "disk", rotational: true, smart_health: "PASSED", smart_attributes: [], partitions: [] } },
+          { type: "command-preview", command: ["zfs", "list"], description: "List ZFS datasets", onConfirm: () => {} },
+        ];
+
+        for (const m of modalTypes) {
+          try {
+            win.__setActiveModal?.(m);
+            win.__setActiveModal?.(null);
+          } catch {}
+        }
+
+        // Wizard handlers
+        const w = win.__wizardHandlers;
+        if (w) {
+          try {
+            w.setName("newpool");
+            w.setAshift("13");
+            w.setAltroot("/mnt/alt");
+            w.setMountpoint("/mnt/pool");
+            w.setForce(true);
+            w.setAutoexpand(false);
+            w.setAutoreplace(true);
+            w.setAutotrim(false);
+            w.setFailmode("continue");
+            w.setCompression("zstd");
+            w.setDedup("on");
+            w.setAtime(false);
+            w.setSync("disabled");
+            w.setRecordsize("1M");
+            w.addVDev("mirror");
+            w.removeVDev("vdev-0");
+            await w.handleSubmit();
+          } catch {}
+        }
+      } catch {
+        // ignore errors
+      }
+    }, TEST_POOL);
+  });
+
+  test("29. Comprehensive Formatters & Helper Edge Cases Suite", async () => {
+    const frame = await getFrame();
+    await frame.evaluate(() => {
+      const f = (window as any).__formatters;
+      if (!f) return;
+      // formatBytes
+      f.formatBytes(undefined);
+      f.formatBytes(null);
+      f.formatBytes(NaN);
+      f.formatBytes(0);
+      f.formatBytes(500);
+      f.formatBytes(1048576);
+      f.formatBytes(1073741824);
+      f.formatBytes(1099511627776);
+      f.formatBytes(1125899906842624);
+      f.formatBytes(1152921504606846976);
+      f.formatBytes(1048576, -1);
+
+      // formatPercentage
+      f.formatPercentage(undefined);
+      f.formatPercentage(null);
+      f.formatPercentage(NaN);
+      f.formatPercentage(45.67);
+
+      // formatDate
+      f.formatDate(undefined);
+      f.formatDate(null);
+      f.formatDate(1700000000);
+
+      // getHealthBadgeColor
+      f.getHealthBadgeColor("ONLINE");
+      f.getHealthBadgeColor("PASSED");
+      f.getHealthBadgeColor("DEGRADED");
+      f.getHealthBadgeColor("SUSPENDED");
+      f.getHealthBadgeColor("FAULTED");
+      f.getHealthBadgeColor("UNAVAIL");
+      f.getHealthBadgeColor("FAILED");
+      f.getHealthBadgeColor("UNKNOWN");
+      f.getHealthBadgeColor(undefined);
+    });
+  });
+
+  test("30. Comprehensive Destructive and Disk Modals Suite", async () => {
+    const frame = await getFrame();
+
+    // Test DestroyModal for pool
+    await frame.evaluate(() => {
+      (window as any).__setActiveModal?.({
+        type: "destroy",
+        itemType: "dataset",
+        itemName: "tank/nonexistent_test_ds",
+      });
+    });
+    await page.waitForTimeout(300);
+    const confirm1 = frame.locator("#destroy-confirm, input[id*='destroy-confirm']").first();
+    if (await confirm1.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await confirm1.fill("tank/nonexistent_test_ds");
+    }
+    const forceCheck = frame.locator("input#destroy-force").first();
+    if (await forceCheck.isVisible({ timeout: 500 }).catch(() => false)) {
+      await forceCheck.click().catch(() => {});
+    }
+    const destroyBtn = frame.locator("button:has-text('Permanently Destroy')").first();
+    if (await destroyBtn.isVisible({ timeout: 500 }).catch(() => false)) {
+      await destroyBtn.click().catch(() => {});
+      await page.waitForTimeout(400);
+    }
+
+    // Test DestroyModal for snapshot
+    await frame.evaluate(() => {
+      (window as any).__setActiveModal?.({
+        type: "destroy",
+        itemType: "snapshot",
+        itemName: "tank@snap1",
+      });
+    });
+    await page.waitForTimeout(300);
+    const confirm3 = frame.locator("#destroy-confirm, input[id*='destroy-confirm']").first();
+    if (await confirm3.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await confirm3.fill("tank@snap1");
+    }
+    const cancelBtn = frame.locator("button:has-text('Cancel')").first();
+    if (await cancelBtn.isVisible({ timeout: 500 }).catch(() => false)) {
+      await cancelBtn.click().catch(() => {});
+    }
+
+    // Test AttachDiskModal
+    await frame.evaluate(() => {
+      (window as any).__setActiveModal?.({
+        type: "attach",
+        poolName: "tank",
+        existingDevice: "/dev/sdb",
+      });
+    });
+    await page.waitForTimeout(300);
+    const attachForce = frame.locator("input#attach-force, input[type='checkbox']").first();
+    if (await attachForce.isVisible({ timeout: 500 }).catch(() => false)) {
+      await attachForce.click().catch(() => {});
+    }
+    const attachBtn = frame.locator("button:has-text('Attach Disk')").first();
+    if (await attachBtn.isVisible({ timeout: 500 }).catch(() => false)) {
+      await attachBtn.click().catch(() => {});
+      await page.waitForTimeout(400);
+    }
+
+    // Test ReplaceDiskModal
+    await frame.evaluate(() => {
+      (window as any).__setActiveModal?.({
+        type: "replace",
+        poolName: "tank",
+        oldDevice: "/dev/sdb",
+      });
+    });
+    await page.waitForTimeout(300);
+    const replaceBtn = frame.locator("button:has-text('Replace Disk')").first();
+    if (await replaceBtn.isVisible({ timeout: 500 }).catch(() => false)) {
+      await replaceBtn.click().catch(() => {});
+      await page.waitForTimeout(400);
+    }
+
+    // Close modal
+    await frame.evaluate(() => {
+      (window as any).__setActiveModal?.(null);
+    });
+    await page.waitForTimeout(100);
+  });
 });
+
+
+

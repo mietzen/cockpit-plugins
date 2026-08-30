@@ -40,23 +40,6 @@ export class ZfsApiClient {
       }
       return parsed;
     } catch (err: any) {
-      for (const fallback of HELPER_PATHS) {
-        if (fallback === this.helperPath) {
-          continue;
-        }
-        try {
-          const fallbackCmd = ["python3", fallback, subcommand, ...args];
-          const out = await cockpit.spawn(fallbackCmd, { superuser: "require", err: "message" });
-          this.helperPath = fallback;
-          const parsed = JSON.parse(out.trim() || "{}");
-          if (parsed.error) {
-            throw new Error(parsed.error);
-          }
-          return parsed;
-        } catch {
-          // continue fallback search
-        }
-      }
       throw new Error(`ZFS Helper failed [${subcommand}]: ${err.message || err}`);
     }
   }
@@ -168,6 +151,49 @@ export class ZfsApiClient {
   public async diskAction(action: string, pool: string, device: string, newDevice?: string): Promise<CommandResult> {
     return this.runHelper("disk-action", action, pool, device, ...(newDevice ? [newDevice] : []));
   }
+
+  public async probeSharingServices(): Promise<{ smb: boolean; nfs: boolean }> {
+    try {
+      return await this.runHelper("probe-sharing-services");
+    } catch {
+      return { smb: false, nfs: false };
+    }
+  }
+
+  public async shareDataset(params: { path: string; smb: boolean; nfs: boolean }): Promise<void> {
+    if (!this.hasCockpit()) return;
+    const cockpit = (window as any).cockpit;
+    const helper = "/usr/libexec/cockpit-file-sharing/file_sharing_helper.py";
+
+    try {
+      if (params.smb) {
+        const shareName = params.path.split("/").pop() || "share";
+        const smbData = JSON.stringify({
+          name: shareName,
+          path: params.path,
+          comment: `ZFS share ${params.path}`,
+          read_only: false,
+          browseable: true,
+          guest_ok: false,
+        });
+        await cockpit.spawn(["python3", helper, "save_smb_share", "--data", smbData], { superuser: "require", err: "message" });
+      }
+
+      if (params.nfs) {
+        const nfsData = JSON.stringify({
+          path: params.path,
+          clients: [{ host: "*", read_only: false, sync: true, root_squash: true, no_subtree_check: true }],
+        });
+        await cockpit.spawn(["python3", helper, "save_nfs_export", "--data", nfsData], { superuser: "require", err: "message" });
+      }
+    } catch {
+      // Gracefully handle if file sharing plugin helper is unavailable
+    }
+  }
 }
 
 export const zfsApi = new ZfsApiClient();
+
+if (typeof window !== "undefined") {
+  (window as any).zfsApi = zfsApi;
+}

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import "@patternfly/react-core/dist/styles/base.css";
-import "./styles/cockpit-theme.css";
+import "@cockpit-plugins/common/src/styles/cockpit-theme.css";
+import { useCockpitTheme } from "@cockpit-plugins/common";
 import {
   Alert,
   AlertGroup,
@@ -35,6 +36,7 @@ import { RenameModal } from "./components/Modals/RenameModal";
 import { ArcDetailsModal } from "./components/Modals/ArcDetailsModal";
 import { SmartDetailsModal } from "./components/Modals/SmartDetailsModal";
 import { CommandPreviewModal } from "./components/CommandPreviewModal";
+import { formatBytes, formatPercentage, formatDate, getHealthBadgeColor } from "./utils/formatters";
 
 declare const cockpit: any;
 
@@ -113,6 +115,8 @@ const parseRoute = (segments: string[]): AppRoute => {
 };
 
 export const App: React.FC = () => {
+  useCockpitTheme();
+
   const [route, setRoute] = useState<AppRoute>(() => {
     let initialSegments: string[] = [];
     if (typeof cockpit !== "undefined" && cockpit.location && Array.isArray(cockpit.location.path)) {
@@ -143,40 +147,7 @@ export const App: React.FC = () => {
   // Consolidated Modal State (resolves state bloat)
   const [activeModal, setActiveModal] = useState<ActiveModal>(null);
 
-  // Sync theme with Cockpit shell
-  useEffect(() => {
-    const applyTheme = () => {
-      const themePref = localStorage.getItem("cockpit_zfs_theme") || "auto";
-      let isDark = false;
-      if (themePref === "dark") {
-        isDark = true;
-      } else if (themePref === "light") {
-        isDark = false;
-      } else {
-        const shellDark = document.documentElement.classList.contains("pf-v5-theme-dark");
-        const sysDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-        isDark = shellDark || sysDark;
-      }
 
-      if (isDark) {
-        document.documentElement.classList.add("pf-v5-theme-dark");
-      } else {
-        document.documentElement.classList.remove("pf-v5-theme-dark");
-      }
-    };
-
-    applyTheme();
-    window.addEventListener("cockpit-style", applyTheme);
-    window.addEventListener("storage", applyTheme);
-    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-    mediaQuery.addEventListener("change", applyTheme);
-
-    return () => {
-      window.removeEventListener("cockpit-style", applyTheme);
-      window.removeEventListener("storage", applyTheme);
-      mediaQuery.removeEventListener("change", applyTheme);
-    };
-  }, []);
 
   const navigateTo = useCallback((segments: string[]) => {
     const nextRoute = parseRoute(segments);
@@ -404,6 +375,28 @@ export const App: React.FC = () => {
   };
 
   const selectedPool = pools.find((p) => p.name === route.poolName) || pools[0] || null;
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      (window as any).__setActiveModal = setActiveModal;
+      (window as any).__setDisks = setDisks;
+      (window as any).__setPools = setPools;
+      (window as any).__setDatasets = setDatasets;
+      (window as any).__setSnapshots = setSnapshots;
+      (window as any).__setSystemInfo = setSystemInfo;
+      (window as any).__addAlert = addAlert;
+      (window as any).__navigateTo = navigateTo;
+      (window as any).__handleScrubAction = handleScrubAction;
+      (window as any).__handleTrimAction = handleTrimAction;
+      (window as any).__handleClearErrors = handleClearErrors;
+      (window as any).__handleViewSmartDetails = handleViewSmartDetails;
+      (window as any).__handleSubTabChange = handleSubTabChange;
+      (window as any).__handleSelectPool = handleSelectPool;
+      (window as any).__handleExportPool = handleExportPool;
+      (window as any).__handleMountToggle = handleMountToggle;
+      (window as any).__formatters = { formatBytes, formatPercentage, formatDate, getHealthBadgeColor };
+    }
+  });
 
   return (
     <div style={{ minHeight: "100vh", backgroundColor: "var(--zfs-canvas-bg)", color: "var(--zfs-text-primary)" }}>
