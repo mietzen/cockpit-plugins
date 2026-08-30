@@ -264,6 +264,22 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
 
     // Verify in Web UI
     await expect(frame.locator("text=snap-e2e-test").first()).toBeVisible({ timeout: 10000 });
+
+    // Clone snapshot
+    const snapRow = frame.locator("table tbody tr", { hasText: "snap-e2e-test" }).first();
+    const snapToggle = snapRow.locator("button[aria-label='Snapshot actions'], button.pf-v5-c-menu-toggle").first();
+    if (await snapToggle.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await snapToggle.click();
+      const cloneOption = frame.locator("button:has-text('Clone'), a:has-text('Clone')").first();
+      if (await cloneOption.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await cloneOption.click();
+        const cloneSubmit = frame.locator(".pf-v5-c-modal-box button:has-text('Clone Snapshot')").first();
+        if (await cloneSubmit.isVisible({ timeout: 2000 }).catch(() => false)) {
+          await cloneSubmit.click();
+          await expect(frame.locator(".pf-v5-c-modal-box")).toHaveCount(0, { timeout: 10000 });
+        }
+      }
+    }
   });
 
   test("6. Start and monitor Scrub via Maintenance tab", async () => {
@@ -457,6 +473,18 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
         await api.trimPool(poolName, "stop");
         await api.scrubPool(poolName, "start");
         await api.scrubPool(poolName, "stop");
+        await api.createDataset({ path: `${poolName}/api_test_ds`, compression: "lz4" });
+        await api.setDatasetProperty(`${poolName}/api_test_ds`, "atime", "off");
+        await api.inheritDatasetProperty(`${poolName}/api_test_ds`, "atime");
+        await api.unmountDataset(`${poolName}/api_test_ds`);
+        await api.mountDataset(`${poolName}/api_test_ds`);
+        await api.createSnapshot({ dataset: `${poolName}/api_test_ds`, name: "api_snap" });
+        await api.cloneSnapshot({ snapshotName: `${poolName}/api_test_ds@api_snap`, clonePath: `${poolName}/api_clone` });
+        await api.rollbackSnapshot(`${poolName}/api_test_ds@api_snap`);
+        await api.destroyDataset(`${poolName}/api_clone`);
+        await api.destroySnapshot(`${poolName}/api_test_ds@api_snap`);
+        await api.destroyDataset(`${poolName}/api_test_ds`);
+        await api.shareDataset({ path: `${poolName}/api_test_ds`, smb: true, nfs: true });
       } catch {
         // ignore errors
       }

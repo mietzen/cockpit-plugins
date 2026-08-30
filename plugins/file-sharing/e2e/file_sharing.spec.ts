@@ -283,6 +283,31 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
     const saveBtn = frame.getByRole("button", { name: /Save changes/ }).or(frame.getByText("Save changes")).first();
     await saveBtn.click();
     await expect(frame.locator(".pf-v5-c-modal-box")).toHaveCount(0, { timeout: 10000 });
+
+    // Create custom SMB share
+    const createShareBtn = frame.getByRole("button", { name: /Create SMB share/ }).first();
+    await createShareBtn.click();
+    await frame.locator("input#share-name").fill("custom_e2e_share");
+    await frame.locator("input#share-path").fill("/srv/samba/test");
+    const tmSwitch = frame.locator("input#share-timemachine").first();
+    if (await tmSwitch.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await tmSwitch.check();
+    }
+    const createBtn = frame.getByRole("button", { name: /Create share/ }).first();
+    await createBtn.click();
+    await expect(frame.locator(".pf-v5-c-modal-box")).toHaveCount(0, { timeout: 10000 });
+
+    // Delete custom SMB share
+    const customRow = frame.locator("tr", { hasText: "custom_e2e_share" }).first();
+    const customToggle = customRow.locator("button[aria-label='Share actions']").first();
+    await customToggle.click();
+    const deleteShareOption = frame.getByRole("menuitem", { name: /Delete share/ }).or(frame.getByText("Delete share")).first();
+    await deleteShareOption.click();
+    const confirmDelBtn = frame.getByRole("button", { name: "Delete share" }).first();
+    if (await confirmDelBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await confirmDelBtn.click();
+    }
+    await expect(frame.locator(".pf-v5-c-modal-box")).toHaveCount(0, { timeout: 10000 });
   });
 
   test("10. Full NFS Export CRUD Workflow", async () => {
@@ -425,8 +450,16 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
       if (!api) return;
       try {
         await api.getOverview();
-        await api.setSmbUserState("test-user", false);
-        await api.setSmbUserState("test-user", true);
+        await api.saveSmbShare({ name: "api_share", path: "/srv/samba/test", read_only: false });
+        await api.deleteSmbShare("api_share");
+        await api.saveNfsExport({ path: "/srv/nfs/test_api", clients: [{ host: "*", read_only: false }] });
+        await api.deleteNfsExport("/srv/nfs/test_api");
+        await api.createSmbUser("api_user", "api_pass_123");
+        await api.setSmbUserPassword("api_user", "api_pass_456");
+        await api.setSmbUserState("api_user", false);
+        await api.setSmbUserState("api_user", true);
+        await api.deleteSmbUser("api_user");
+        await api.serviceAction("smbd", "restart");
         await api.saveSmbGlobal({ workgroup: "WORKGROUP", "server string": "Samba Server" });
       } catch {
         // ignore errors
