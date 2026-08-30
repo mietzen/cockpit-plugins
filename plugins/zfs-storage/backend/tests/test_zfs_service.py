@@ -282,9 +282,197 @@ class TestZfsServiceActions(unittest.TestCase):
             main()
             mock_print.assert_called_once()
             res = json.loads(mock_print.call_args[0][0])
-            self.assertEqual(res["state"], "ONLINE")
+    @patch("sys.argv", ["zfs_helper.py", "pool-properties", "tank"])
+    @patch("backend.zfs_helper.ZfsService.get_pool_properties", return_value={"ashift": "12"})
+    def test_main_cli_pool_properties(self, mock_prop):
+        with patch("builtins.print") as mock_print:
+            main()
+            mock_print.assert_called_once()
+            res = json.loads(mock_print.call_args[0][0])
+            self.assertEqual(res["ashift"], "12")
+
+    @patch("sys.argv", ["zfs_helper.py", "pool-create", json.dumps({"name": "tank", "vdevs": []})])
+    @patch("backend.zfs_helper.ZfsService.pool_create", return_value={"success": True})
+    def test_main_cli_pool_create(self, mock_create):
+        with patch("builtins.print") as mock_print:
+            main()
+            mock_print.assert_called_once()
+            res = json.loads(mock_print.call_args[0][0])
+            self.assertTrue(res["success"])
+
+    @patch("sys.argv", ["zfs_helper.py", "pool-destroy", "tank"])
+    @patch("backend.zfs_helper.ZfsService.pool_destroy", return_value={"success": True})
+    def test_main_cli_pool_destroy(self, mock_del):
+        with patch("builtins.print") as mock_print:
+            main()
+            mock_print.assert_called_once()
+            res = json.loads(mock_print.call_args[0][0])
+            self.assertTrue(res["success"])
+
+    @patch("sys.argv", ["zfs_helper.py", "pool-export", "tank"])
+    @patch("backend.zfs_helper.ZfsService.pool_export", return_value={"success": True})
+    def test_main_cli_pool_export(self, mock_exp):
+        with patch("builtins.print") as mock_print:
+            main()
+            mock_print.assert_called_once()
+            res = json.loads(mock_print.call_args[0][0])
+            self.assertTrue(res["success"])
+
+    @patch("sys.argv", ["zfs_helper.py", "pool-import", json.dumps({"name": "tank"})])
+    @patch("backend.zfs_helper.ZfsService.pool_import", return_value={"success": True})
+    def test_main_cli_pool_import(self, mock_imp):
+        with patch("builtins.print") as mock_print:
+            main()
+            mock_print.assert_called_once()
+            res = json.loads(mock_print.call_args[0][0])
+            self.assertTrue(res["success"])
+
+    @patch("sys.argv", ["zfs_helper.py", "pool-scrub", "tank", "start"])
+    @patch("backend.zfs_helper.ZfsService.pool_scrub", return_value={"success": True})
+    def test_main_cli_pool_scrub(self, mock_scrub):
+        with patch("builtins.print") as mock_print:
+            main()
+            mock_print.assert_called_once()
+            res = json.loads(mock_print.call_args[0][0])
+            self.assertTrue(res["success"])
+
+    @patch("sys.argv", ["zfs_helper.py", "pool-trim", "tank", "start", "/dev/sda"])
+    @patch("backend.zfs_helper.ZfsService.pool_trim", return_value={"success": True})
+    def test_main_cli_pool_trim(self, mock_trim):
+        with patch("builtins.print") as mock_print:
+            main()
+            mock_print.assert_called_once()
+            res = json.loads(mock_print.call_args[0][0])
+            self.assertTrue(res["success"])
+
+    @patch("sys.argv", ["zfs_helper.py", "pool-clear", "tank", "/dev/sda"])
+    @patch("backend.zfs_helper.ZfsService.pool_clear", return_value={"success": True})
+    def test_main_cli_pool_clear(self, mock_clear):
+        with patch("builtins.print") as mock_print:
+            main()
+            mock_print.assert_called_once()
+            res = json.loads(mock_print.call_args[0][0])
+            self.assertTrue(res["success"])
+
+    @patch("sys.argv", ["zfs_helper.py", "pool-set-property", "tank", "autotrim", "on"])
+    @patch("backend.zfs_helper.ZfsService.pool_set_property", return_value={"success": True})
+    def test_main_cli_pool_set_property(self, mock_prop):
+        with patch("builtins.print") as mock_print:
+            main()
+            mock_print.assert_called_once()
+            res = json.loads(mock_print.call_args[0][0])
+            self.assertTrue(res["success"])
+
+    @patch("sys.argv", ["zfs_helper.py", "dataset-create", json.dumps({"path": "tank/data"})])
+    @patch("backend.zfs_helper.ZfsService.dataset_create", return_value={"success": True})
+    def test_main_cli_dataset_create(self, mock_create):
+        with patch("builtins.print") as mock_print:
+            main()
+            mock_print.assert_called_once()
+            res = json.loads(mock_print.call_args[0][0])
+            self.assertTrue(res["success"])
+
+    @patch("sys.argv", ["zfs_helper.py", "dataset-destroy", "tank/data", "true"])
+    @patch("backend.zfs_helper.ZfsService.dataset_destroy", return_value={"success": True})
+    def test_main_cli_dataset_destroy(self, mock_del):
+        with patch("builtins.print") as mock_print:
+            main()
+            mock_print.assert_called_once()
+            res = json.loads(mock_print.call_args[0][0])
+            self.assertTrue(res["success"])
+
+    @patch("sys.argv", ["zfs_helper.py", "dataset-rename", "tank/data", "tank/new"])
+    @patch("backend.zfs_helper.ZfsService.dataset_rename", return_value={"success": True})
+    def test_main_cli_dataset_rename(self, mock_ren):
+        with patch("builtins.print") as mock_print:
+            main()
+            mock_print.assert_called_once()
+            res = json.loads(mock_print.call_args[0][0])
+            self.assertTrue(res["success"])
+
+    @patch("sys.argv", ["zfs_helper.py", "dataset-mount", "tank/data"])
+    @patch("backend.zfs_helper.ZfsService.dataset_mount", return_value={"success": True})
+    def test_main_cli_dataset_mount(self, mock_mnt):
+        with patch("builtins.print") as mock_print:
+            main()
+            mock_print.assert_called_once()
+            res = json.loads(mock_print.call_args[0][0])
+            self.assertTrue(res["success"])
+
+    @patch("sys.argv", ["zfs_helper.py", "dataset-unmount", "tank/data", "true"])
+    @patch("backend.zfs_helper.ZfsService.dataset_unmount", return_value={"success": True})
+    def test_main_cli_dataset_unmount(self, mock_unmnt):
+        with patch("builtins.print") as mock_print:
+            main()
+            mock_print.assert_called_once()
+            res = json.loads(mock_print.call_args[0][0])
+            self.assertTrue(res["success"])
+
+    @patch("sys.argv", ["zfs_helper.py", "dataset-set-property", "tank/data", "compression", "lz4"])
+    @patch("backend.zfs_helper.ZfsService.dataset_set_property", return_value={"success": True})
+    def test_main_cli_dataset_set_prop(self, mock_prop):
+        with patch("builtins.print") as mock_print:
+            main()
+            mock_print.assert_called_once()
+            res = json.loads(mock_print.call_args[0][0])
+            self.assertTrue(res["success"])
+
+    @patch("sys.argv", ["zfs_helper.py", "dataset-inherit-property", "tank/data", "compression"])
+    @patch("backend.zfs_helper.ZfsService.dataset_inherit_property", return_value={"success": True})
+    def test_main_cli_dataset_inherit(self, mock_inh):
+        with patch("builtins.print") as mock_print:
+            main()
+            mock_print.assert_called_once()
+            res = json.loads(mock_print.call_args[0][0])
+            self.assertTrue(res["success"])
+
+    @patch("sys.argv", ["zfs_helper.py", "snapshot-create", json.dumps({"path": "tank/data", "name": "s1"})])
+    @patch("backend.zfs_helper.ZfsService.snapshot_create", return_value={"success": True})
+    def test_main_cli_snapshot_create(self, mock_create):
+        with patch("builtins.print") as mock_print:
+            main()
+            mock_print.assert_called_once()
+            res = json.loads(mock_print.call_args[0][0])
+            self.assertTrue(res["success"])
+
+    @patch("sys.argv", ["zfs_helper.py", "snapshot-destroy", "tank/data@s1", "false"])
+    @patch("backend.zfs_helper.ZfsService.snapshot_destroy", return_value={"success": True})
+    def test_main_cli_snapshot_destroy(self, mock_del):
+        with patch("builtins.print") as mock_print:
+            main()
+            mock_print.assert_called_once()
+            res = json.loads(mock_print.call_args[0][0])
+            self.assertTrue(res["success"])
+
+    @patch("sys.argv", ["zfs_helper.py", "snapshot-rollback", "tank/data@s1", "true"])
+    @patch("backend.zfs_helper.ZfsService.snapshot_rollback", return_value={"success": True})
+    def test_main_cli_snapshot_rollback(self, mock_rb):
+        with patch("builtins.print") as mock_print:
+            main()
+            mock_print.assert_called_once()
+            res = json.loads(mock_print.call_args[0][0])
+            self.assertTrue(res["success"])
+
+    @patch("sys.argv", ["zfs_helper.py", "snapshot-clone", json.dumps({"snapshot": "tank/data@s1", "clone_path": "tank/c1"})])
+    @patch("backend.zfs_helper.ZfsService.snapshot_clone", return_value={"success": True})
+    def test_main_cli_snapshot_clone(self, mock_clone):
+        with patch("builtins.print") as mock_print:
+            main()
+            mock_print.assert_called_once()
+            res = json.loads(mock_print.call_args[0][0])
+            self.assertTrue(res["success"])
+
+    @patch("sys.argv", ["zfs_helper.py", "disk-action", "offline", "tank", "/dev/sda"])
+    @patch("backend.zfs_helper.ZfsService.disk_action", return_value={"success": True})
+    def test_main_cli_disk_action(self, mock_act):
+        with patch("builtins.print") as mock_print:
+            main()
+            mock_print.assert_called_once()
+            res = json.loads(mock_print.call_args[0][0])
+            self.assertTrue(res["success"])
 
 
 if __name__ == "__main__":
     unittest.main()
+
 

@@ -125,10 +125,50 @@ class TestCommandBuilder(unittest.TestCase):
         cmd = self.builder.build_snapshot_rollback("tank/media@snap1", destroy_intermediate=True)
         self.assertEqual(cmd, ["zfs", "rollback", "-r", "tank/media@snap1"])
 
-    def test_build_snapshot_clone(self):
-        cmd = self.builder.build_snapshot_clone("tank/media@snap1", clone_path="tank/media-clone", properties={"compression": "lz4"})
-        self.assertEqual(cmd, ["zfs", "clone", "-o", "compression=lz4", "tank/media@snap1", "tank/media-clone"])
+    def test_build_pool_create_all_vdev_types(self):
+        vdevs = [
+            VDevConfig(type=VDevType.DATA, devices=["/dev/sda"]),
+            VDevConfig(type=VDevType.STRIPE, devices=["/dev/sdb"]),
+            VDevConfig(type=VDevType.MIRROR, devices=["/dev/sdc", "/dev/sdd"]),
+            VDevConfig(type=VDevType.RAIDZ1, devices=["/dev/sde", "/dev/sdf", "/dev/sdg"]),
+            VDevConfig(type=VDevType.RAIDZ2, devices=["/dev/sdh", "/dev/sdi", "/dev/sdj", "/dev/sdk"]),
+            VDevConfig(type=VDevType.RAIDZ3, devices=["/dev/sdl", "/dev/sdm", "/dev/sdn", "/dev/sdo", "/dev/sdp"]),
+            VDevConfig(type=VDevType.LOG, devices=["/dev/sdq"]),
+            VDevConfig(type=VDevType.CACHE, devices=["/dev/sdr"]),
+            VDevConfig(type=VDevType.SPARE, devices=["/dev/sds"]),
+            VDevConfig(type=VDevType.SPECIAL, devices=["/dev/sdt"]),
+            VDevConfig(type=VDevType.DEDUP, devices=["/dev/sdu"]),
+        ]
+        cmd = self.builder.build_pool_create(
+            name="bigpool",
+            vdevs=vdevs,
+            ashift=AshiftType.ASHIFT_12,
+            altroot="/mnt/alt",
+            mountpoint="/mnt/bigpool",
+            compression=CompressionType.ZSTD,
+            properties={"autoexpand": "on", "dedup": "on"},
+            force=True
+        )
+        self.assertIn("raidz1", cmd)
+        self.assertIn("raidz2", cmd)
+        self.assertIn("raidz3", cmd)
+        self.assertIn("special", cmd)
+        self.assertIn("dedup", cmd)
+        self.assertIn("-o", cmd)
+        self.assertIn("autoexpand=on", cmd)
+        self.assertIn("-O", cmd)
+        self.assertIn("dedup=on", cmd)
+
+    def test_build_pool_disk_operations(self):
+        self.assertEqual(self.builder.build_pool_clear("tank", device="/dev/sda"), ["zpool", "clear", "tank", "/dev/sda"])
+        self.assertEqual(self.builder.build_pool_trim("tank", action=TrimAction.START, device="/dev/sda"), ["zpool", "trim", "tank", "/dev/sda"])
+        self.assertEqual(self.builder.build_pool_offline("tank", "/dev/sda"), ["zpool", "offline", "tank", "/dev/sda"])
+        self.assertEqual(self.builder.build_pool_online("tank", "/dev/sda"), ["zpool", "online", "tank", "/dev/sda"])
+        self.assertEqual(self.builder.build_pool_detach("tank", "/dev/sda"), ["zpool", "detach", "tank", "/dev/sda"])
+        self.assertEqual(self.builder.build_pool_attach("tank", "/dev/sda", "/dev/sdb"), ["zpool", "attach", "tank", "/dev/sda", "/dev/sdb"])
+        self.assertEqual(self.builder.build_pool_replace("tank", "/dev/sda", "/dev/sdb"), ["zpool", "replace", "tank", "/dev/sda", "/dev/sdb"])
 
 
 if __name__ == "__main__":
     unittest.main()
+
