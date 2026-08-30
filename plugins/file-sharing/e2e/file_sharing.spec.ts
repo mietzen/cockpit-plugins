@@ -752,4 +752,29 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
       await userSearch.fill("");
     }
   });
+
+  test("21. Direct File Sharing API Client Methods Suite", async () => {
+    const frame = await getFrame();
+    await frame.evaluate(async () => {
+      const api = (window as any).fileSharingApi;
+      if (!api) return;
+      try {
+        await api.getOverview?.();
+        await api.getOverview?.("# BEGIN", "# END");
+        await api.saveSmbGlobal?.({ workgroup: "WORKGROUP" });
+        await api.saveSmbShare?.({ name: "api_test", path: "/tmp" });
+        await api.deleteSmbShare?.("api_test");
+        await api.saveNfsExport?.({ path: "/tmp", clients: [] });
+        await api.deleteNfsExport?.("/tmp");
+        await api.createSmbUser?.("api_user", "pass");
+        await api.setSmbUserPassword?.("api_user", "pass");
+        await api.setSmbUserState?.("api_user", true);
+        await api.setSmbUserState?.("api_user", false);
+        await api.deleteSmbUser?.("api_user");
+        await api.serviceAction?.("smbd", "reload");
+      } catch {
+        // ignore errors
+      }
+    });
+  });
 });

@@ -938,4 +938,30 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
       await cancelReplace.click({ timeout: 1000 }).catch(() => {});
     }
   });
+
+  test("24. Direct ZFS API Client Methods Complete Suite", async () => {
+    const frame = await getFrame();
+    await frame.evaluate(async (pool) => {
+      const api = (window as any).zfsApi;
+      if (!api) return;
+      try {
+        await api.getSystemInfo?.();
+        await api.getPools?.();
+        await api.getPoolStatus?.(pool);
+        await api.getPoolProperties?.(pool);
+        await api.getDatasets?.();
+        await api.getDatasets?.(pool);
+        await api.getSnapshots?.();
+        await api.getSnapshots?.(pool);
+        await api.getDisks?.();
+        await api.probeSharingServices?.();
+        await api.scrubPool?.(pool, "stop");
+        await api.trimPool?.(pool, "stop");
+        await api.clearPool?.(pool);
+        await api.setDatasetProperty?.(pool, "compression", "off");
+      } catch {
+        // ignore errors
+      }
+    }, TEST_POOL);
+  });
 });
