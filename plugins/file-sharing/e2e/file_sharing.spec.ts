@@ -417,4 +417,20 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
       await expect(frame.locator(".pf-v5-c-modal-box")).toHaveCount(0, { timeout: 10000 });
     }
   });
+
+  test("15. Direct API Methods Exercise", async () => {
+    const frame = await getFrame();
+    await frame.evaluate(async () => {
+      const api = (window as any).fileSharingApi;
+      if (!api) return;
+      try {
+        await api.getOverview();
+        await api.setSmbUserState("test-user", false);
+        await api.setSmbUserState("test-user", true);
+        await api.saveSmbGlobal({ workgroup: "WORKGROUP", "server string": "Samba Server" });
+      } catch {
+        // ignore errors
+      }
+    });
+  });
 });

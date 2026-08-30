@@ -206,3 +206,7 @@ export class ZfsApiClient {
 }
 
 export const zfsApi = new ZfsApiClient();
+
+if (typeof window !== "undefined") {
+  (window as any).zfsApi = zfsApi;
+}

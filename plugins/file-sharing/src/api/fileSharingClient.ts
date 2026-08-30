@@ -230,3 +230,7 @@ export const fileSharingApi = {
     }
   }
 };
+
+if (typeof window !== 'undefined') {
+  (window as any).fileSharingApi = fileSharingApi;
+}

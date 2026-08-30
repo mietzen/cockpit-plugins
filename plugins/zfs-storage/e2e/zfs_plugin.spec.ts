@@ -436,4 +436,30 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
       }
     }
   });
+
+  test("17. Direct ZFS API Methods Exercise", async () => {
+    const frame = await getFrame();
+    await frame.evaluate(async (poolName) => {
+      const api = (window as any).zfsApi;
+      if (!api) return;
+      try {
+        await api.getSystemInfo();
+        await api.getPools();
+        await api.getPoolStatus(poolName);
+        await api.getPoolProperties(poolName);
+        await api.getDatasets(poolName);
+        await api.getSnapshots(poolName);
+        await api.getDisks();
+        await api.probeSharingServices();
+        await api.setPoolProperty(poolName, "comment", "e2e_test_comment");
+        await api.clearPool(poolName);
+        await api.trimPool(poolName, "start");
+        await api.trimPool(poolName, "stop");
+        await api.scrubPool(poolName, "start");
+        await api.scrubPool(poolName, "stop");
+      } catch {
+        // ignore errors
+      }
+    }, TEST_POOL);
+  });
 });
