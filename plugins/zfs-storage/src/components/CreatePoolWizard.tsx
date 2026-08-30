@@ -89,10 +89,6 @@ export const CreatePoolWizard: React.FC<CreatePoolWizardProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (!isOpen) {
-    return null;
-  }
-
   // Generate exact shell command array
   const buildCommand = (): string[] => {
     const cmd: string[] = ["zpool", "create"];
