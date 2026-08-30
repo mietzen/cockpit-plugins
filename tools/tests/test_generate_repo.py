@@ -1,5 +1,8 @@
 import unittest
-from tools.generate_apt_repo import format_size_mib, sanitize_description, parse_rpm_pkg_name
+try:
+    from generate_apt_repo import format_size_mib, sanitize_description, parse_rpm_pkg_name
+except ModuleNotFoundError:
+    from tools.generate_apt_repo import format_size_mib, sanitize_description, parse_rpm_pkg_name
 
 
 class TestGenerateRepo(unittest.TestCase):
