@@ -1283,6 +1283,7 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
         await toggleItem.click({ timeout: 1000 }).catch(() => {});
         await page.waitForTimeout(200);
       }
+    }
 
     // 6. Direct component handlers execution
     await frame.evaluate(() => {
