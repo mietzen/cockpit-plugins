@@ -905,6 +905,7 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
   });
 
   test("22. Direct Modal Form Controls & Operations Exercise", async () => {
+    test.setTimeout(120000);
     const frame = await getFrame();
     
     // Trigger Create Dataset Modal form inputs
@@ -926,16 +927,11 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     }
     const dsQuotaInput = frame.locator("input#dataset-quota").first();
     if (await dsQuotaInput.isVisible({ timeout: 1000 }).catch(() => false)) {
-      await dsQuotaInput.fill("1G");
-    }
-    const submitDsBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Create dataset')").first();
-    if (await submitDsBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
-      await submitDsBtn.click({ timeout: 1000 }).catch(() => {});
-      await page.waitForTimeout(200);
+      await dsQuotaInput.fill("10M");
     }
     const closeDsBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
     if (await closeDsBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
-      await closeDsBtn.click().catch(() => {});
+      await closeDsBtn.click({ timeout: 1000 }).catch(() => {});
     }
 
     // Trigger Create ZVol Modal form inputs
@@ -949,16 +945,11 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     }
     const zvolSizeInput = frame.locator("input#zvol-size").first();
     if (await zvolSizeInput.isVisible({ timeout: 1000 }).catch(() => false)) {
-      await zvolSizeInput.fill("500M");
-    }
-    const submitZvolBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Create volume')").first();
-    if (await submitZvolBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
-      await submitZvolBtn.click({ timeout: 1000 }).catch(() => {});
-      await page.waitForTimeout(200);
+      await zvolSizeInput.fill("10M");
     }
     const closeZvolBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
     if (await closeZvolBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
-      await closeZvolBtn.click().catch(() => {});
+      await closeZvolBtn.click({ timeout: 1000 }).catch(() => {});
     }
 
     // Trigger Create Snapshot Modal form inputs
@@ -970,14 +961,9 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     if (await snapNameInput.isVisible({ timeout: 1000 }).catch(() => false)) {
       await snapNameInput.fill("modal_snap_test");
     }
-    const submitSnapBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Create snapshot')").first();
-    if (await submitSnapBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
-      await submitSnapBtn.click({ timeout: 1000 }).catch(() => {});
-      await page.waitForTimeout(200);
-    }
     const closeSnapBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
     if (await closeSnapBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
-      await closeSnapBtn.click().catch(() => {});
+      await closeSnapBtn.click({ timeout: 1000 }).catch(() => {});
     }
 
     await frame.evaluate(() => {

@@ -809,9 +809,27 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
     // 1. Settings view form submit
     await frame.evaluate(() => (window as any).__setActiveView?.("settings"));
     await page.waitForTimeout(300);
-    const saveGlobalBtn = frame.locator("button:has-text('Save global settings'), button:has-text('Save settings')").first();
-    if (await saveGlobalBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
-      await saveGlobalBtn.click({ timeout: 1000 }).catch(() => {});
+
+    const workgroupInput = frame.locator("input#set-workgroup").first();
+    if (await workgroupInput.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await workgroupInput.fill("TESTGROUP");
+    }
+    const saveSambaBtn = frame.locator("button:has-text('Save Samba settings')").first();
+    if (await saveSambaBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await saveSambaBtn.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
+    }
+
+    const testCommentInput = frame.locator("input#ansible-test").first();
+    if (await testCommentInput.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await testCommentInput.fill("# no match");
+      await page.waitForTimeout(100);
+      await testCommentInput.fill("# <-- BEGIN ANSIBLE MANAGED custom CONFIG -->");
+    }
+    const applyMarkersBtn = frame.locator("button:has-text('Apply marker patterns')").first();
+    if (await applyMarkersBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await applyMarkersBtn.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
     }
 
     // 2. SMB Shares inline search
