@@ -8,124 +8,22 @@ declare global {
 
 const HELPER_PATH = '/usr/libexec/cockpit-file-sharing/file_sharing_helper.py';
 
-// Mock data for local Vite preview/dev environment
-const MOCK_OVERVIEW: FileSharingOverview = {
+// Default fallback when running in standalone dev mode
+const DEFAULT_OVERVIEW: FileSharingOverview = {
   services: {
-    smbd: { unit: 'smbd', active: true, state: 'active', enabled: true, installed: true },
-    nmbd: { unit: 'nmbd', active: true, state: 'active', enabled: true, installed: true },
-    nfs: { unit: 'nfs-kernel-server', active: true, state: 'active', enabled: true, installed: true }
+    smbd: { unit: 'smbd', active: false, state: 'inactive', enabled: false, installed: false },
+    nmbd: { unit: 'nmbd', active: false, state: 'inactive', enabled: false, installed: false },
+    nfs: { unit: 'nfs-kernel-server', active: false, state: 'inactive', enabled: false, installed: false },
   },
-  smb: {
-    global: {
-      workgroup: 'WORKGROUP',
-      'server string': 'Cockpit File Server',
-      'passdb backend': 'tdbsam',
-      security: 'user',
-      'server min protocol': 'SMB2_02',
-      'server max protocol': 'SMB3'
-    },
-    shares: [
-      {
-        name: 'public',
-        path: '/srv/samba/public',
-        comment: 'Public Share for all guests',
-        read_only: false,
-        browseable: true,
-        guest_ok: true,
-        is_managed: false
-      },
-      {
-        name: 'backups',
-        path: '/tank/backups',
-        comment: 'Ansible Managed Backup Repository',
-        read_only: true,
-        browseable: true,
-        guest_ok: false,
-        valid_users: 'alice, backup_agent',
-        is_managed: true,
-        managed_by: 'storage_playbook'
-      }
-    ]
-  },
-  nfs: {
-    exports: [
-      {
-        path: '/tank/media',
-        clients: [
-          { host: '192.168.1.0/24', read_only: false, sync: true, root_squash: true, all_squash: false, no_subtree_check: true, options: ['rw', 'sync', 'no_subtree_check'] },
-          { host: '*', read_only: true, sync: true, root_squash: true, all_squash: false, no_subtree_check: true, options: ['ro', 'sync', 'no_subtree_check'] }
-        ],
-        file: '/etc/exports.d/cockpit.exports',
-        is_managed: false
-      },
-      {
-        path: '/tank/k8s_volumes',
-        clients: [
-          { host: '10.0.0.0/16', read_only: false, sync: true, root_squash: false, all_squash: false, no_subtree_check: true, options: ['rw', 'sync', 'no_root_squash', 'no_subtree_check'] }
-        ],
-        file: '/etc/exports',
-        is_managed: true,
-        managed_by: 'k8s_infra'
-      }
-    ],
-    client_map: [
-      {
-        client: '192.168.1.0/24',
-        exports_count: 1,
-        exports: [
-          { path: '/tank/media', read_only: false, sync: true, root_squash: true, all_squash: false, no_subtree_check: true, options: ['rw', 'sync'], is_managed: false }
-        ]
-      },
-      {
-        client: '10.0.0.0/16',
-        exports_count: 1,
-        exports: [
-          { path: '/tank/k8s_volumes', read_only: false, sync: true, root_squash: false, all_squash: false, no_subtree_check: true, options: ['rw', 'sync', 'no_root_squash'], is_managed: true, managed_by: 'k8s_infra' }
-        ]
-      }
-    ]
-  },
-  users: {
-    smb_users: [
-      { username: 'alice', full_name: 'Alice Admin', sid: 'S-1-5-21-12345-1000', is_enabled: true },
-      { username: 'bob', full_name: 'Bob Operator', sid: 'S-1-5-21-12345-1001', is_enabled: true },
-      { username: 'charlie', full_name: 'Charlie Inactive', sid: 'S-1-5-21-12345-1002', is_enabled: false }
-    ],
-    unix_users: ['alice', 'bob', 'charlie', 'debian', 'test-user'],
-    access_matrix: [
-      {
-        username: 'alice',
-        full_name: 'Alice Admin',
-        is_enabled: true,
-        shares: [
-          { share_name: 'public', share_path: '/srv/samba/public', access: 'read_write', reason: 'Default read only = no', is_managed: false, guest_ok: true },
-          { share_name: 'backups', share_path: '/tank/backups', access: 'read_only', reason: 'In valid users list, read only = yes', is_managed: true, guest_ok: false }
-        ]
-      },
-      {
-        username: 'bob',
-        full_name: 'Bob Operator',
-        is_enabled: true,
-        shares: [
-          { share_name: 'public', share_path: '/srv/samba/public', access: 'read_write', reason: 'Default read only = no', is_managed: false, guest_ok: true },
-          { share_name: 'backups', share_path: '/tank/backups', access: 'denied', reason: 'Not in valid users list', is_managed: true, guest_ok: false }
-        ]
-      }
-    ]
-  },
-  sessions: [
-    { pid: '1428', username: 'alice', group: 'users', machine: '192.168.1.105 (MacBook-Pro)', protocol: 'SMB3_11' }
-  ],
-  zfs_mounts: [
-    { dataset: 'tank/data', mountpoint: '/tank/data' },
-    { dataset: 'tank/media', mountpoint: '/tank/media' },
-    { dataset: 'tank/backups', mountpoint: '/tank/backups' }
-  ]
+  smb: { global: { workgroup: 'WORKGROUP' }, shares: [] },
+  nfs: { exports: [], client_map: [] },
+  users: { smb_users: [], unix_users: [], access_matrix: [] },
+  sessions: [],
+  zfs_mounts: [],
 };
 
 async function execHelper(args: string[]): Promise<any> {
   if (!window.cockpit) {
-    console.warn('Running outside Cockpit. Using mock execution.');
     return { status: 'success' };
   }
 
@@ -148,7 +46,7 @@ async function execHelper(args: string[]): Promise<any> {
 export const fileSharingApi = {
   async getOverview(ansibleBegin?: string, ansibleEnd?: string): Promise<FileSharingOverview> {
     if (!window.cockpit) {
-      return Promise.resolve(MOCK_OVERVIEW);
+      return Promise.resolve(DEFAULT_OVERVIEW);
     }
     const args = ['get_overview'];
     if (ansibleBegin) args.push('--ansible-begin', ansibleBegin);

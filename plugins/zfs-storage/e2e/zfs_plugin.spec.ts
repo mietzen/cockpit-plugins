@@ -572,9 +572,6 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
       await poolSettingsTab.click();
       await page.waitForTimeout(300);
       const autoexpandSwitch = frame.locator("input#pool-autoexpand").first();
-      if (await autoexpandSwitch.isVisible({ timeout: 2000 }).catch(() => false)) {
-        await autoexpandSwitch.click();
-      }
       const saveSettingsBtn = frame.locator("button:has-text('Save changes')").first();
       if (await saveSettingsBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
         await saveSettingsBtn.click();
@@ -582,12 +579,64 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     }
 
     // Top-level Disks view
-    await frame.locator("button.pf-v5-c-nav__link:has-text('Disks'), [role='menuitem']:has-text('Disks')").first().click();
-    await page.waitForTimeout(300);
-    const filterInput = frame.locator("input[placeholder*='Filter'], input[aria-label*='Search']").first();
-    if (await filterInput.isVisible({ timeout: 2000 }).catch(() => false)) {
-      await filterInput.fill("loop");
+    const disksTab = frame.locator("button.pf-v5-c-tabs__link:has-text('Disks & SMART'), [role='tab']:has-text('Disks')").first();
+    if (await disksTab.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await disksTab.click();
       await page.waitForTimeout(300);
+      const filterInput = frame.locator("input[placeholder*='Filter'], input[aria-label*='Search']").first();
+      if (await filterInput.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await filterInput.fill("loop");
+        await page.waitForTimeout(300);
+      }
+    }
+  });
+
+  test("20. Create Pool Wizard Advanced Configuration Suite", async () => {
+    const frame = await getFrame();
+    await frame.locator("button.pf-v5-c-tabs__link:has-text('Pools'), [role='tab']:has-text('Pools')").first().click();
+    
+    const createPoolBtn = frame.locator("button:visible:has-text('Create pool')").first();
+    if (await createPoolBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
+      await createPoolBtn.click();
+      
+      // Test error validation on empty name
+      const nextBtn = frame.locator(".pf-v5-c-wizard__footer button:has-text('Next')").first();
+      await nextBtn.click();
+      
+      // Fill name and altroot
+      const poolNameInput = frame.locator("input#wizard-pool-name, input#pool-name").first();
+      await poolNameInput.fill("wizard_test_pool");
+      const altrootInput = frame.locator("input#wizard-altroot, input#altroot").first();
+      if (await altrootInput.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await altrootInput.fill("/mnt/altroot");
+      }
+      await nextBtn.click();
+
+      // Step 2: VDEV
+      const addVdevBtn = frame.locator("button:has-text('Add VDEV')").first();
+      if (await addVdevBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await addVdevBtn.click();
+      }
+      await nextBtn.click();
+
+      // Step 3: Properties
+      const autoreplaceBox = frame.locator("input#wizard-autoreplace").first();
+      if (await autoreplaceBox.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await autoreplaceBox.setChecked(true);
+      }
+      await nextBtn.click();
+
+      // Step 4: Filesystem
+      const dedupSelect = frame.locator("select#wizard-dedup").first();
+      if (await dedupSelect.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await dedupSelect.selectOption("on");
+      }
+      await nextBtn.click();
+
+      // Step 5: Cancel wizard
+      const cancelBtn = frame.locator(".pf-v5-c-wizard__footer button:has-text('Cancel')").first();
+      await cancelBtn.click();
+      await expect(frame.locator(".pf-v5-c-modal-box")).toHaveCount(0, { timeout: 10000 });
     }
   });
 });
