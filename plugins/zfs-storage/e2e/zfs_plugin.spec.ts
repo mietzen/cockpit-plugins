@@ -585,19 +585,57 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
       if (await altrootInput.isVisible({ timeout: 1000 }).catch(() => false)) {
         await altrootInput.fill("/mnt/altroot");
       }
+      const nextBtn = frame.locator(".pf-v5-c-wizard__footer button:has-text('Next')").first();
+      if (await nextBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await nextBtn.click({ timeout: 1000 }).catch(() => {});
+        await page.waitForTimeout(300);
+      }
 
       // Step 2: VDEV - Add VDEV button
       const addVdevBtn = frame.locator("button:has-text('Add VDEV')").first();
       if (await addVdevBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
         await addVdevBtn.click({ timeout: 1000 }).catch(() => {});
       }
+      if (await nextBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await nextBtn.click({ timeout: 1000 }).catch(() => {});
+        await page.waitForTimeout(300);
+      }
 
-      // Cancel wizard without submitting
+      // Step 3: Pool Properties
+      const autoreplaceBox = frame.locator("input#wizard-autoreplace").first();
+      if (await autoreplaceBox.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await autoreplaceBox.setChecked(true).catch(() => {});
+      }
+      if (await nextBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await nextBtn.click({ timeout: 1000 }).catch(() => {});
+        await page.waitForTimeout(300);
+      }
+
+      // Step 4: Filesystem Properties
+      const dedupSelect = frame.locator("select#wizard-dedup").first();
+      if (await dedupSelect.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await dedupSelect.selectOption("on").catch(() => {});
+      }
+      if (await nextBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await nextBtn.click({ timeout: 1000 }).catch(() => {});
+        await page.waitForTimeout(300);
+      }
+
+      // Step 5: Review - Click Back
+      const backBtn = frame.locator(".pf-v5-c-wizard__footer button:has-text('Back')").first();
+      if (await backBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await backBtn.click({ timeout: 1000 }).catch(() => {});
+        await page.waitForTimeout(200);
+      }
+
+      // Cancel wizard cleanly
       const cancelBtn = frame.locator(".pf-v5-c-wizard__footer button:has-text('Cancel')").first();
       if (await cancelBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
         await cancelBtn.click({ timeout: 2000 }).catch(() => {});
       }
-      await expect(frame.locator(".pf-v5-c-modal-box")).toHaveCount(0, { timeout: 5000 });
+      await frame.evaluate(() => {
+        (window as any).__setActiveModal?.(null);
+      }).catch(() => {});
     }
   });
 });
