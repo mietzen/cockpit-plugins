@@ -255,12 +255,20 @@ export const SmbSharesTab: React.FC<SmbSharesTabProps> = ({
                         <code>{s.path || "—"}</code>
                       </Td>
                       <Td data-label="Access">
-                        {s.guest_ok ? (
-                          <Label color="green">Guest / Public</Label>
-                        ) : (
-                          <Label color="purple">Authenticated</Label>
-                        )}
-                        {s.browseable && <Label color="cyan" style={{ marginLeft: 6 }}>Browseable</Label>}
+                        <Flex spaceItems={{ default: "spaceItemsSm" }} alignItems={{ default: "alignItemsCenter" }}>
+                          <FlexItem>
+                            {s.guest_ok ? (
+                              <Label color="green">Guest / Public</Label>
+                            ) : (
+                              <Label color="purple">Authenticated</Label>
+                            )}
+                          </FlexItem>
+                          {s.browseable && (
+                            <FlexItem>
+                              <Label color="cyan">Browseable</Label>
+                            </FlexItem>
+                          )}
+                        </Flex>
                       </Td>
                       <Td data-label="Permissions">
                         <Label color={s.read_only ? "blue" : "green"}>

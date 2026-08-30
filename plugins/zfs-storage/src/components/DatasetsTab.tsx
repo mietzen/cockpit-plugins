@@ -207,42 +207,12 @@ export const DatasetsTab: React.FC<DatasetsTabProps> = ({
                           }
                         }}
                         aria-label={`View ${ds.snapshot_count} snapshots for ${ds.name}`}
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          borderRadius: "999px",
-                          backgroundColor: "rgba(146, 197, 249, 0.2)",
-                          color: "var(--zfs-tab-active-color)",
-                          padding: "2px 12px",
-                          fontSize: "0.85rem",
-                          fontWeight: 600,
-                          minWidth: "32px",
-                          height: "24px",
-                          cursor: "pointer",
-                          textDecoration: "none",
-                          border: "1px solid rgba(146, 197, 249, 0.4)",
-                          transition: "all 0.15s ease",
-                        }}
+                        className="zfs-snapshot-btn"
                       >
                         {ds.snapshot_count}
                       </button>
                     ) : (
-                      <span
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          borderRadius: "999px",
-                          backgroundColor: "var(--zfs-card-bg)",
-                          color: "var(--zfs-text-secondary)",
-                          padding: "2px 12px",
-                          fontSize: "0.85rem",
-                          border: "1px solid var(--zfs-card-border)",
-                          minWidth: "32px",
-                          height: "24px",
-                        }}
-                      >
+                      <span className="zfs-snapshot-zero">
                         0
                       </span>
                     )}
