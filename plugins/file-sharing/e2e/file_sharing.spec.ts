@@ -362,6 +362,11 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
         await userInput.fill("runner");
       }
     }
+    const passInput = frame.locator("input#add-password").first();
+    await passInput.fill("password123");
+    const confirmPass = frame.locator("input#add-confirm-password").first();
+    await confirmPass.fill("password123");
+
     const saveUserBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Add user')").first();
     await saveUserBtn.click();
     await expect(frame.locator(".pf-v5-c-modal-box")).toHaveCount(0, { timeout: 10000 });
