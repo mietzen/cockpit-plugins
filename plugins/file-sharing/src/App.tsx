@@ -61,58 +61,46 @@ export const App: React.FC = () => {
     } catch (e) {}
 
     const applyTheme = (forcedTheme?: any) => {
-      let shellStyle = forcedTheme;
-      if (typeof shellStyle !== "string") {
-        try {
-          shellStyle = localStorage.getItem("shell:style");
-        } catch (e) {}
-      }
-      if (!shellStyle || shellStyle === "null" || shellStyle === "undefined") {
-        shellStyle = "auto";
-      }
-
       let isDark = false;
+      let parentFound = false;
 
-      if (shellStyle === "dark") {
-        isDark = true;
-      } else if (shellStyle === "light") {
-        isDark = false;
-      } else {
-        // "auto" mode: check parent frame class list first, then OS prefers-color-scheme
-        try {
-          if (window.parent && window.parent !== window && window.parent.document && window.parent.document.documentElement) {
-            const pCls = window.parent.document.documentElement.classList;
-            if (pCls.contains("pf-v6-theme-dark") || pCls.contains("pf-v5-theme-dark") || pCls.contains("theme-dark")) {
-              isDark = true;
-            }
+      // 1. When inside Cockpit iframe, Cockpit host shell is the single source of truth
+      try {
+        if (window.parent && window.parent !== window && window.parent.document && window.parent.document.documentElement) {
+          parentFound = true;
+          const pCls = window.parent.document.documentElement.classList;
+          if (pCls.contains("pf-v6-theme-dark") || pCls.contains("pf-v5-theme-dark") || pCls.contains("theme-dark")) {
+            isDark = true;
+          } else {
+            isDark = false;
           }
-        } catch (e) {}
+        }
+      } catch (e) {}
 
-        if (!isDark && window.matchMedia) {
+      // 2. Fallback when standalone or parent frame inaccessible
+      if (!parentFound) {
+        let shellStyle = forcedTheme;
+        if (typeof shellStyle !== "string") {
           try {
-            if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
-              isDark = true;
-            }
+            shellStyle = localStorage.getItem("shell:style");
           } catch (e) {}
+        }
+        if (shellStyle === "dark") {
+          isDark = true;
+        } else if (shellStyle === "light") {
+          isDark = false;
+        } else if (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) {
+          isDark = true;
         }
       }
 
       const docEl = document.documentElement;
       if (isDark) {
-        docEl.classList.add("pf-v5-theme-dark");
-        docEl.classList.add("pf-v6-theme-dark");
-        docEl.classList.remove("theme-light");
-        docEl.classList.remove("pf-m-light");
+        docEl.classList.add("pf-v5-theme-dark", "pf-v6-theme-dark", "theme-dark");
+        docEl.classList.remove("theme-light", "pf-m-light", "pf-v5-theme-light", "pf-v6-theme-light");
       } else {
-        docEl.classList.remove("pf-v5-theme-dark");
-        docEl.classList.remove("pf-v6-theme-dark");
-        if (shellStyle === "light") {
-          docEl.classList.add("theme-light");
-          docEl.classList.add("pf-m-light");
-        } else {
-          docEl.classList.remove("theme-light");
-          docEl.classList.remove("pf-m-light");
-        }
+        docEl.classList.remove("pf-v5-theme-dark", "pf-v6-theme-dark", "theme-dark");
+        docEl.classList.add("theme-light", "pf-m-light", "pf-v5-theme-light", "pf-v6-theme-light");
       }
     };
 
@@ -145,7 +133,7 @@ export const App: React.FC = () => {
       }
     } catch (e) {}
 
-    const intervalId = setInterval(applyTheme, 1000);
+    const intervalId = setInterval(applyTheme, 500);
 
     return () => {
       window.removeEventListener("cockpit-style", handleCockpitStyle);

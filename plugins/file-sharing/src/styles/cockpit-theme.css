@@ -67,37 +67,6 @@ body.theme-dark,
   --zfs-modal-header-bg: rgb(32, 32, 32);
 }
 
-/* Automatic OS-Level Dark Mode (when not explicitly overridden to light) */
-@media (prefers-color-scheme: dark) {
-  :root:not(.pf-v5-theme-light):not(.pf-v6-theme-light),
-  html:not(.pf-v5-theme-light):not(.pf-v6-theme-light),
-  body:not(.pf-v5-theme-light):not(.pf-v6-theme-light) {
-    --zfs-canvas-bg: rgb(21, 21, 21);
-    --zfs-card-bg: rgb(28, 28, 28);
-    --zfs-card-border: #333333;
-    --zfs-text-primary: #f0f0f0;
-    --zfs-text-secondary: #a0a0a0;
-    --zfs-text-heading: #ffffff;
-    --zfs-input-bg: rgb(35, 35, 35);
-    --zfs-input-border: #444444;
-    --zfs-code-bg: rgb(15, 15, 15);
-    --zfs-code-color: rgb(146, 197, 249);
-    --zfs-progress-track: rgba(255, 255, 255, 0.12);
-    --zfs-progress-fill: rgb(146, 197, 249);
-    --zfs-primary-btn-bg: rgb(146, 197, 249);
-    --zfs-primary-btn-text: #002952;
-    --zfs-primary-btn-hover: #b9daf9;
-    --zfs-secondary-btn-border: rgb(146, 197, 249);
-    --zfs-secondary-btn-text: rgb(146, 197, 249);
-    --zfs-secondary-btn-hover: rgba(146, 197, 249, 0.15);
-    --zfs-tab-active-color: rgb(146, 197, 249);
-    --zfs-table-header-color: #a0a0a0;
-    --zfs-table-border: #383838;
-    --zfs-table-row-hover: rgba(255, 255, 255, 0.04);
-    --zfs-modal-header-bg: rgb(32, 32, 32);
-  }
-}
-
 /* =========================================================
    Base Layout
    ========================================================= */
@@ -121,10 +90,30 @@ body,
   background-color: transparent !important;
 }
 
-/* Headings */
+/* Headings & Card Titles */
 .pf-v5-c-title,
+.pf-v5-c-title-text,
+.pf-v5-c-card__title,
+.pf-v5-c-card__title-text,
+.pf-v5-c-card__header,
+.cockpit-metric-val,
 h1, h2, h3, h4, h5, h6 {
   color: var(--zfs-text-heading) !important;
+  --pf-v5-c-title--Color: var(--zfs-text-heading) !important;
+  --pf-v5-c-card__title--Color: var(--zfs-text-heading) !important;
+  --pf-v5-c-card__title-text--Color: var(--zfs-text-heading) !important;
+}
+
+.cockpit-metric-val {
+  font-size: 1.75rem !important;
+  font-weight: 700 !important;
+  line-height: 1.2 !important;
+  color: var(--zfs-text-heading) !important;
+}
+
+.cockpit-metric-label {
+  font-size: 0.875rem !important;
+  color: var(--zfs-text-secondary) !important;
 }
 
 /* =========================================================
@@ -430,8 +419,19 @@ h1, h2, h3, h4, h5, h6 {
   --pf-v5-c-table--cell--BorderBottomWidth: 0 !important;
 }
 
-.pf-v5-c-table td {
+.pf-v5-c-table th,
+.pf-v5-c-table__th {
+  color: var(--zfs-table-header-color) !important;
+  --pf-v5-c-table__th--Color: var(--zfs-table-header-color) !important;
+}
+
+.pf-v5-c-table td,
+.pf-v5-c-table__td,
+.pf-v5-c-table td strong,
+.pf-v5-c-table td span,
+.pf-v5-c-table__text {
   color: var(--zfs-text-primary) !important;
+  --pf-v5-c-table__td--Color: var(--zfs-text-primary) !important;
   border-bottom: 1px solid var(--zfs-table-border) !important;
 }
 
@@ -586,7 +586,7 @@ select:focus-visible {
 }
 
 /* =========================================================
-   Labels & Badges: Pill Geometry
+   Labels & Badges: Pill Geometry & Contrast
    ========================================================= */
 .pf-v5-c-label,
 .pf-v5-c-badge {
@@ -595,40 +595,103 @@ select:focus-visible {
   padding: 2px 10px !important;
 }
 
-.pf-v5-c-label.pf-m-blue {
-  background-color: rgba(0, 102, 204, 0.15) !important;
-  color: var(--zfs-secondary-btn-text) !important;
+/* Light Mode Badges */
+.pf-v5-c-label.pf-m-blue,
+.pf-v5-c-badge.pf-m-blue {
+  background-color: rgba(0, 102, 204, 0.12) !important;
+  color: #004080 !important;
   border: 1px solid rgba(0, 102, 204, 0.3) !important;
 }
 
-.pf-v5-c-label.pf-m-green {
-  background-color: rgba(62, 134, 53, 0.15) !important;
-  color: #3e8635 !important;
+.pf-v5-c-label.pf-m-green,
+.pf-v5-c-badge.pf-m-green {
+  background-color: rgba(62, 134, 53, 0.12) !important;
+  color: #1e5a1b !important;
   border: 1px solid rgba(62, 134, 53, 0.3) !important;
 }
 
-.pf-v5-c-label.pf-m-orange {
-  background-color: rgba(240, 171, 0, 0.15) !important;
-  color: #c58c00 !important;
+.pf-v5-c-label.pf-m-orange,
+.pf-v5-c-badge.pf-m-orange {
+  background-color: rgba(240, 171, 0, 0.12) !important;
+  color: #8f6200 !important;
   border: 1px solid rgba(240, 171, 0, 0.3) !important;
 }
 
-.pf-v5-c-label.pf-m-red {
-  background-color: rgba(201, 25, 11, 0.15) !important;
-  color: #c9190b !important;
+.pf-v5-c-label.pf-m-red,
+.pf-v5-c-badge.pf-m-red {
+  background-color: rgba(201, 25, 11, 0.12) !important;
+  color: #a30000 !important;
   border: 1px solid rgba(201, 25, 11, 0.3) !important;
 }
 
-.pf-v5-c-label.pf-m-purple {
-  background-color: rgba(154, 85, 255, 0.15) !important;
-  color: #843fe8 !important;
+.pf-v5-c-label.pf-m-purple,
+.pf-v5-c-badge.pf-m-purple {
+  background-color: rgba(154, 85, 255, 0.12) !important;
+  color: #6a2eb8 !important;
   border: 1px solid rgba(154, 85, 255, 0.3) !important;
 }
 
-.pf-v5-c-label.pf-m-grey {
-  background-color: rgba(128, 128, 128, 0.15) !important;
+.pf-v5-c-label.pf-m-grey,
+.pf-v5-c-badge.pf-m-grey {
+  background-color: rgba(128, 128, 128, 0.12) !important;
   color: var(--zfs-text-secondary) !important;
   border: 1px solid var(--zfs-card-border) !important;
+}
+
+/* Dark Mode Badges */
+.pf-v5-theme-dark .pf-v5-c-label.pf-m-blue,
+.pf-v6-theme-dark .pf-v5-c-label.pf-m-blue,
+.theme-dark .pf-v5-c-label.pf-m-blue,
+.pf-v5-theme-dark .pf-v5-c-badge.pf-m-blue,
+.pf-v6-theme-dark .pf-v5-c-badge.pf-m-blue,
+.theme-dark .pf-v5-c-badge.pf-m-blue {
+  background-color: rgba(0, 102, 204, 0.25) !important;
+  color: #73bcf7 !important;
+  border: 1px solid rgba(115, 188, 247, 0.4) !important;
+}
+
+.pf-v5-theme-dark .pf-v5-c-label.pf-m-green,
+.pf-v6-theme-dark .pf-v5-c-label.pf-m-green,
+.theme-dark .pf-v5-c-label.pf-m-green,
+.pf-v5-theme-dark .pf-v5-c-badge.pf-m-green,
+.pf-v6-theme-dark .pf-v5-c-badge.pf-m-green,
+.theme-dark .pf-v5-c-badge.pf-m-green {
+  background-color: rgba(62, 134, 53, 0.25) !important;
+  color: #70db70 !important;
+  border: 1px solid rgba(112, 219, 112, 0.4) !important;
+}
+
+.pf-v5-theme-dark .pf-v5-c-label.pf-m-orange,
+.pf-v6-theme-dark .pf-v5-c-label.pf-m-orange,
+.theme-dark .pf-v5-c-label.pf-m-orange,
+.pf-v5-theme-dark .pf-v5-c-badge.pf-m-orange,
+.pf-v6-theme-dark .pf-v5-c-badge.pf-m-orange,
+.theme-dark .pf-v5-c-badge.pf-m-orange {
+  background-color: rgba(240, 171, 0, 0.25) !important;
+  color: #f0ab00 !important;
+  border: 1px solid rgba(240, 171, 0, 0.4) !important;
+}
+
+.pf-v5-theme-dark .pf-v5-c-label.pf-m-red,
+.pf-v6-theme-dark .pf-v5-c-label.pf-m-red,
+.theme-dark .pf-v5-c-label.pf-m-red,
+.pf-v5-theme-dark .pf-v5-c-badge.pf-m-red,
+.pf-v6-theme-dark .pf-v5-c-badge.pf-m-red,
+.theme-dark .pf-v5-c-badge.pf-m-red {
+  background-color: rgba(201, 25, 11, 0.25) !important;
+  color: #ff6b6b !important;
+  border: 1px solid rgba(255, 107, 107, 0.4) !important;
+}
+
+.pf-v5-theme-dark .pf-v5-c-label.pf-m-purple,
+.pf-v6-theme-dark .pf-v5-c-label.pf-m-purple,
+.theme-dark .pf-v5-c-label.pf-m-purple,
+.pf-v5-theme-dark .pf-v5-c-badge.pf-m-purple,
+.pf-v6-theme-dark .pf-v5-c-badge.pf-m-purple,
+.theme-dark .pf-v5-c-badge.pf-m-purple {
+  background-color: rgba(154, 85, 255, 0.25) !important;
+  color: #c499ff !important;
+  border: 1px solid rgba(196, 153, 255, 0.4) !important;
 }
 
 /* =========================================================
