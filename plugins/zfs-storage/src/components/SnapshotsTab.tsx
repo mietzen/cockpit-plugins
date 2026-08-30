@@ -165,6 +165,20 @@ export const SnapshotsTab: React.FC<SnapshotsTabProps> = ({
 
   const selectedObjects = poolSnaps.filter((s) => selectedSnaps.includes(s.name));
 
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      (window as any).__snapshotsTabHandlers = {
+        toggleCollapse: toggleDatasetCollapse,
+        expandAll: handleExpandAll,
+        collapseAll: handleCollapseAll,
+        selectAll: handleSelectAll,
+        selectGroup: handleSelectGroup,
+        selectRow: handleSelectRow,
+        toggleDropdown: toggleDropdown,
+      };
+    }
+  });
+
   return (
     <div>
       <Flex

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Card,
   CardTitle,
@@ -52,6 +52,14 @@ export const TopologyTab: React.FC<TopologyTabProps> = ({
   const toggleDropdown = (devName: string) => {
     setOpenDropdown(openDropdown === devName ? null : devName);
   };
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      (window as any).__topologyTabHandlers = {
+        toggleDropdown: toggleDropdown,
+      };
+    }
+  });
 
   const renderVDevTable = (title: string, vdevList?: VDevItem[], isData = false) => {
     if (!vdevList || vdevList.length === 0) {

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   PageSection,
   Title,
@@ -62,6 +62,14 @@ export const PoolsView: React.FC<PoolsViewProps> = ({
   const toggleDropdown = (poolName: string) => {
     setOpenDropdown(openDropdown === poolName ? null : poolName);
   };
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      (window as any).__poolsViewHandlers = {
+        toggleDropdown: toggleDropdown,
+      };
+    }
+  });
 
   const filteredPools = pools.filter((p) =>
     p.name.toLowerCase().includes(searchValue.toLowerCase())

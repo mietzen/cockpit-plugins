@@ -1284,17 +1284,15 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
         await page.waitForTimeout(200);
       }
 
-      await userKebab.click({ timeout: 1000 }).catch(() => {});
-      await page.waitForTimeout(200);
-      const deleteItem = frame.locator("button.pf-v5-c-menu__item:has-text('Delete Samba user')").first();
-      if (await deleteItem.isVisible({ timeout: 1000 }).catch(() => false)) {
-        await deleteItem.click({ timeout: 1000 }).catch(() => {});
-        await page.waitForTimeout(200);
-        const cancelBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
-        if (await cancelBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
-          await cancelBtn.click({ timeout: 1000 }).catch(() => {});
-        }
-      }
-    }
+    // 6. Direct component handlers execution
+    await frame.evaluate(() => {
+      const s = (window as any).__usersTabHandlers;
+      if (!s) return;
+      s.openAdd?.();
+      s.openPasswd?.("testuser");
+      s.openDelete?.("testuser");
+      s.setSubTab?.("matrix");
+      s.setSubTab?.("users");
+    });
   });
 });

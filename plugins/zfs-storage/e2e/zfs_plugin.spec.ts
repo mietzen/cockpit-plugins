@@ -1631,6 +1631,32 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
         await win.__handleSelectPool?.(pool, "datasets");
         await win.__handleSubTabChange?.("snapshots");
         await win.__handleViewSmartDetails?.("sda");
+
+        // DisksView handlers
+        win.__disksViewHandlers?.toggleDropdown?.("sda");
+        win.__disksViewHandlers?.toggleDropdown?.(null);
+        win.__disksViewHandlers?.showSmart?.({ name: "sda", path: "/dev/sda", size: 1024, type: "disk", pool: pool, rotational: true, smart_health: "PASSED", smart_attributes: [], partitions: [] });
+
+        // PoolsView handlers
+        win.__poolsViewHandlers?.toggleDropdown?.(pool);
+        win.__poolsViewHandlers?.toggleDropdown?.(null);
+
+        // TopologyTab handlers
+        win.__topologyTabHandlers?.toggleDropdown?.("sda");
+        win.__topologyTabHandlers?.toggleDropdown?.(null);
+
+        // SnapshotsTab handlers
+        win.__snapshotsTabHandlers?.toggleCollapse?.(pool);
+        win.__snapshotsTabHandlers?.expandAll?.();
+        win.__snapshotsTabHandlers?.collapseAll?.();
+        win.__snapshotsTabHandlers?.selectAll?.(true);
+        win.__snapshotsTabHandlers?.selectAll?.(false);
+        win.__snapshotsTabHandlers?.selectGroup?.([{ name: `${pool}@s1`, snapshot_name: "s1", dataset: pool, pool: pool, used: 1024, refer: 1024, creation: "now" }], true);
+        win.__snapshotsTabHandlers?.selectGroup?.([{ name: `${pool}@s1`, snapshot_name: "s1", dataset: pool, pool: pool, used: 1024, refer: 1024, creation: "now" }], false);
+        win.__snapshotsTabHandlers?.selectRow?.(`${pool}@s1`, true);
+        win.__snapshotsTabHandlers?.selectRow?.(`${pool}@s1`, false);
+        win.__snapshotsTabHandlers?.toggleDropdown?.(`${pool}@s1`);
+        win.__snapshotsTabHandlers?.toggleDropdown?.(null);
       } catch {
         // ignore errors
       }

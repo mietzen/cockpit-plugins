@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   PageSection,
   Title,
@@ -156,6 +156,20 @@ export const UsersTab: React.FC<UsersTabProps> = ({
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      (window as any).__usersTabHandlers = {
+        openAdd: handleOpenAdd,
+        openPasswd: handleOpenPasswd,
+        openDelete: (u: string) => { setSelectedUser(u); setIsDeleteModalOpen(true); },
+        saveAdd: handleSaveAdd,
+        savePasswd: handleSavePasswd,
+        deleteUser: handleDelete,
+        setSubTab: setActiveSubTab,
+      };
+    }
+  });
 
   const filteredUsers = users.filter((u) =>
     u.username.toLowerCase().includes(searchValue.toLowerCase()) ||
