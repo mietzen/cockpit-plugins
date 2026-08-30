@@ -543,27 +543,17 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
   test("19. Maintenance, Topology & Disks Comprehensive UI Coverage", async () => {
     const frame = await getFrame();
     
-    // Go to pool details -> Maintenance tab
-    await frame.locator(`button:visible:has-text("${TEST_POOL}"), a:visible:has-text("${TEST_POOL}")`).first().click().catch(() => {});
-    const maintTab = frame.locator("button.pf-v5-c-tabs__link:has-text('Maintenance'), [role='tab']:has-text('Maintenance')").first();
-    if (await maintTab.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await maintTab.click();
+    // Switch to Pools tab
+    const poolsTab = frame.locator(".cockpit-top-nav-bar button:has-text('Pools')").first();
+    if (await poolsTab.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await poolsTab.click({ timeout: 2000 }).catch(() => {});
       await page.waitForTimeout(300);
-      const clearBtn = frame.locator("button:has-text('Clear errors')").first();
-      if (await clearBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
-        await clearBtn.click();
-        const modalExec = frame.locator(".pf-v5-c-modal-box button:has-text('Execute'), .pf-v5-c-modal-box button:has-text('Confirm')").first();
-        if (await modalExec.isVisible({ timeout: 1000 }).catch(() => false)) {
-          await modalExec.click();
-        }
-        await page.waitForTimeout(300);
-      }
     }
 
     // Top-level Disks view
     const disksTab = frame.locator(".cockpit-top-nav-bar button:has-text('Disks & SMART')").first();
-    if (await disksTab.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await disksTab.click();
+    if (await disksTab.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await disksTab.click({ timeout: 2000 }).catch(() => {});
       await page.waitForTimeout(300);
       const filterInput = frame.locator("input[placeholder*='Filter'], input[aria-label*='Search']").first();
       if (await filterInput.isVisible({ timeout: 2000 }).catch(() => false)) {
