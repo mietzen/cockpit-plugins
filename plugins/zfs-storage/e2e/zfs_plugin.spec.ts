@@ -549,24 +549,6 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     if (await maintTab.isVisible({ timeout: 3000 }).catch(() => false)) {
       await maintTab.click();
       await page.waitForTimeout(300);
-      const scrubBtn = frame.locator("button:has-text('Start scrub')").first();
-      if (await scrubBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
-        await scrubBtn.click();
-        const modalExec = frame.locator(".pf-v5-c-modal-box button:has-text('Execute'), .pf-v5-c-modal-box button:has-text('Confirm')").first();
-        if (await modalExec.isVisible({ timeout: 1000 }).catch(() => false)) {
-          await modalExec.click();
-        }
-        await page.waitForTimeout(300);
-      }
-      const trimBtn = frame.locator("button:has-text('Start trim')").first();
-      if (await trimBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
-        await trimBtn.click();
-        const modalExec = frame.locator(".pf-v5-c-modal-box button:has-text('Execute'), .pf-v5-c-modal-box button:has-text('Confirm')").first();
-        if (await modalExec.isVisible({ timeout: 1000 }).catch(() => false)) {
-          await modalExec.click();
-        }
-        await page.waitForTimeout(300);
-      }
       const clearBtn = frame.locator("button:has-text('Clear errors')").first();
       if (await clearBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
         await clearBtn.click();
