@@ -58,26 +58,6 @@ export const App: React.FC = () => {
 
 
 
-  useEffect(() => {
-    loadData();
-    if (typeof window !== "undefined") {
-      (window as any).__setActiveView = setActiveView;
-      (window as any).__setFileSharingData = setData;
-      (window as any).__addAlert = addAlert;
-      (window as any).__handleSaveSmbShare = handleSaveSmbShare;
-      (window as any).__handleDeleteSmbShare = handleDeleteSmbShare;
-      (window as any).__handleSaveSmbGlobal = handleSaveSmbGlobal;
-      (window as any).__handleSaveNfsExport = handleSaveNfsExport;
-      (window as any).__handleDeleteNfsExport = handleDeleteNfsExport;
-      (window as any).__handleCreateUser = handleCreateUser;
-      (window as any).__handleSetUserPassword = handleSetUserPassword;
-      (window as any).__handleSetUserState = handleSetUserState;
-      (window as any).__handleDeleteUser = handleDeleteUser;
-      (window as any).__handleServiceAction = handleServiceAction;
-      (window as any).__handleSaveAnsibleMarkers = handleSaveAnsibleMarkers;
-    }
-  }, [loadData]);
-
   const handleSaveSmbShare = async (share: Partial<SmbShare>) => {
     await fileSharingApi.saveSmbShare(share);
     addAlert(`Samba share [${share.name}] saved successfully`);
@@ -143,6 +123,26 @@ export const App: React.FC = () => {
     setAnsibleEnd(end);
     addAlert("Ansible marker patterns updated");
   };
+
+  useEffect(() => {
+    loadData();
+    if (typeof window !== "undefined") {
+      (window as any).__setActiveView = setActiveView;
+      (window as any).__setFileSharingData = setData;
+      (window as any).__addAlert = addAlert;
+      (window as any).__handleSaveSmbShare = handleSaveSmbShare;
+      (window as any).__handleDeleteSmbShare = handleDeleteSmbShare;
+      (window as any).__handleSaveSmbGlobal = handleSaveSmbGlobal;
+      (window as any).__handleSaveNfsExport = handleSaveNfsExport;
+      (window as any).__handleDeleteNfsExport = handleDeleteNfsExport;
+      (window as any).__handleCreateUser = handleCreateUser;
+      (window as any).__handleSetUserPassword = handleSetUserPassword;
+      (window as any).__handleSetUserState = handleSetUserState;
+      (window as any).__handleDeleteUser = handleDeleteUser;
+      (window as any).__handleServiceAction = handleServiceAction;
+      (window as any).__handleSaveAnsibleMarkers = handleSaveAnsibleMarkers;
+    }
+  }, [loadData]);
 
   if (loading && !data) {
     return (

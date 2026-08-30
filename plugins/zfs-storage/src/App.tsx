@@ -243,17 +243,6 @@ export const App: React.FC = () => {
 
   useEffect(() => {
     loadData();
-    if (typeof window !== "undefined") {
-      (window as any).__setActiveModal = setActiveModal;
-      (window as any).__addAlert = addAlert;
-      (window as any).__navigateTo = navigateTo;
-      (window as any).__handleScrubAction = handleScrubAction;
-      (window as any).__handleTrimAction = handleTrimAction;
-      (window as any).__handleClearErrors = handleClearErrors;
-      (window as any).__handleViewSmartDetails = handleViewSmartDetails;
-      (window as any).__handleSubTabChange = handleSubTabChange;
-      (window as any).__handleSelectPool = handleSelectPool;
-    }
   }, [loadData]);
 
   const runAction = async (actionPromise: Promise<CommandResult>, successMsg: string) => {
@@ -385,6 +374,20 @@ export const App: React.FC = () => {
   };
 
   const selectedPool = pools.find((p) => p.name === route.poolName) || pools[0] || null;
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      (window as any).__setActiveModal = setActiveModal;
+      (window as any).__addAlert = addAlert;
+      (window as any).__navigateTo = navigateTo;
+      (window as any).__handleScrubAction = handleScrubAction;
+      (window as any).__handleTrimAction = handleTrimAction;
+      (window as any).__handleClearErrors = handleClearErrors;
+      (window as any).__handleViewSmartDetails = handleViewSmartDetails;
+      (window as any).__handleSubTabChange = handleSubTabChange;
+      (window as any).__handleSelectPool = handleSelectPool;
+    }
+  });
 
   return (
     <div style={{ minHeight: "100vh", backgroundColor: "var(--zfs-canvas-bg)", color: "var(--zfs-text-primary)" }}>
