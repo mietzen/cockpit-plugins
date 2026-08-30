@@ -174,7 +174,7 @@ jobs:
 
       - name: Run E2E Playwright Suite for ${{ matrix.plugin }}
         run: |
-          COCKPIT_URL=https://127.0.0.1:9090 npx playwright test plugins/${{ matrix.plugin }}/e2e/
+          COCKPIT_URL=https://127.0.0.1:9090 npx playwright test plugins/${{ matrix.plugin }}/e2e/ --project=chromium
 
       - name: Upload E2E Test Failure Artifacts
         if: failure()

@@ -1,4 +1,16 @@
 import { test, expect, Page, Frame } from "@playwright/test";
+import * as fs from "fs";
+import * as path from "path";
+
+async function saveScreenshot(page: Page, filename: string) {
+  const targetDir = process.env.SCREENSHOT_DIR || path.join(process.cwd(), "test-results", "screenshots");
+  try {
+    fs.mkdirSync(targetDir, { recursive: true });
+    await page.screenshot({ path: path.join(targetDir, filename) });
+  } catch (err) {
+    console.warn(`Could not save screenshot ${filename}:`, err);
+  }
+}
 
 test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () => {
   let page: Page;
@@ -80,7 +92,7 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
     const frame = await getFrame();
     await frame.locator("#root").waitFor({ state: "attached", timeout: 20000 });
     await expect(frame.getByRole("heading", { name: "File Sharing" }).first()).toBeVisible({ timeout: 10000 });
-    await page.screenshot({ path: "/Users/nils/.gemini/antigravity-cli/brain/c3e31e2d-d59b-40b3-925a-0d2725d4993e/.tempmediaStorage/media_fs_dashboard.png" });
+    await saveScreenshot(page, "media_fs_dashboard.png");
   });
 
   test("2. Full SMB Share CRUD Workflow & Ansible Lock Check", async () => {
@@ -89,7 +101,7 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
 
     // Verify Ansible lock badge in visible SMB table
     await expect(frame.getByText("Ansible: storage_cluster").and(frame.locator(":visible")).first()).toBeVisible({ timeout: 10000 });
-    await page.screenshot({ path: "/Users/nils/.gemini/antigravity-cli/brain/c3e31e2d-d59b-40b3-925a-0d2725d4993e/.tempmediaStorage/media_fs_smb.png" });
+    await saveScreenshot(page, "media_fs_smb.png");
 
     // Create a new SMB share
     const createBtn = frame.getByRole("button", { name: /Create SMB share/ }).first();
@@ -127,38 +139,38 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
     const frame = await getFrame();
     await frame.getByRole("tab", { name: /NFS Exports/ }).click();
     await expect(frame.getByText("/srv/nfs/test").and(frame.locator(":visible")).first()).toBeVisible({ timeout: 10000 });
-    await page.screenshot({ path: "/Users/nils/.gemini/antigravity-cli/brain/c3e31e2d-d59b-40b3-925a-0d2725d4993e/.tempmediaStorage/media_fs_nfs.png" });
+    await saveScreenshot(page, "media_fs_nfs.png");
 
     // Switch to Client IP Access Map
     await frame.getByRole("tab", { name: /Client IP Access Map/ }).click();
     await expect(frame.getByText("192.168.40.0/24").and(frame.locator(":visible")).first()).toBeVisible({ timeout: 10000 });
-    await page.screenshot({ path: "/Users/nils/.gemini/antigravity-cli/brain/c3e31e2d-d59b-40b3-925a-0d2725d4993e/.tempmediaStorage/media_fs_nfs_map.png" });
+    await saveScreenshot(page, "media_fs_nfs_map.png");
   });
 
   test("4. Verify Samba Users & Access Permissions Matrix", async () => {
     const frame = await getFrame();
     await frame.getByRole("tab", { name: /Samba Users/ }).click();
     await expect(frame.getByText("test-user").and(frame.locator(":visible")).first()).toBeVisible({ timeout: 10000 });
-    await page.screenshot({ path: "/Users/nils/.gemini/antigravity-cli/brain/c3e31e2d-d59b-40b3-925a-0d2725d4993e/.tempmediaStorage/media_fs_users.png" });
+    await saveScreenshot(page, "media_fs_users.png");
 
     // Switch to User Access Matrix
     await frame.getByRole("tab", { name: /User Access Matrix/ }).click();
     await expect(frame.getByText("test-user").and(frame.locator(":visible")).first()).toBeVisible({ timeout: 10000 });
-    await page.screenshot({ path: "/Users/nils/.gemini/antigravity-cli/brain/c3e31e2d-d59b-40b3-925a-0d2725d4993e/.tempmediaStorage/media_fs_matrix.png" });
+    await saveScreenshot(page, "media_fs_matrix.png");
   });
 
   test("5. Verify Services & Sessions and Settings Views with Versions", async () => {
     const frame = await getFrame();
     await frame.getByRole("tab", { name: /Services & Sessions/ }).click();
     await expect(frame.getByText("Samba File Daemon (smbd)").and(frame.locator(":visible")).first()).toBeVisible({ timeout: 10000 });
-    await page.screenshot({ path: "/Users/nils/.gemini/antigravity-cli/brain/c3e31e2d-d59b-40b3-925a-0d2725d4993e/.tempmediaStorage/media_fs_sessions.png" });
+    await saveScreenshot(page, "media_fs_sessions.png");
 
     await frame.getByRole("tab", { name: /Settings/ }).click();
     await expect(frame.getByText("Global Samba Configuration").and(frame.locator(":visible")).first()).toBeVisible({ timeout: 10000 });
     await expect(frame.getByText("About Cockpit File Sharing").and(frame.locator(":visible")).first()).toBeVisible({ timeout: 10000 });
     await expect(frame.getByText("Host Samba:").and(frame.locator(":visible")).first()).toBeVisible({ timeout: 10000 });
     await expect(frame.getByText("Host NFS:").and(frame.locator(":visible")).first()).toBeVisible({ timeout: 10000 });
-    await page.screenshot({ path: "/Users/nils/.gemini/antigravity-cli/brain/c3e31e2d-d59b-40b3-925a-0d2725d4993e/.tempmediaStorage/media_fs_settings.png" });
+    await saveScreenshot(page, "media_fs_settings.png");
   });
 
   test("6. Verify 3-Dot ActionMenu Positioned Inside Viewport", async () => {
@@ -175,7 +187,7 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
     if (menuBox) {
       expect(menuBox.x + menuBox.width).toBeLessThanOrEqual(1440);
     }
-    await page.screenshot({ path: "/Users/nils/.gemini/antigravity-cli/brain/c3e31e2d-d59b-40b3-925a-0d2725d4993e/.tempmediaStorage/media_test_dropdown_open.png" });
+    await saveScreenshot(page, "media_test_dropdown_open.png");
     await toggleBtn.click();
   });
 
@@ -186,7 +198,7 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
 
     const modalTitle = frame.locator(".pf-v5-c-modal-box__title-text");
     await expect(modalTitle).toBeVisible({ timeout: 5000 });
-    await page.screenshot({ path: "/Users/nils/.gemini/antigravity-cli/brain/c3e31e2d-d59b-40b3-925a-0d2725d4993e/.tempmediaStorage/media_test_modal_dimming.png" });
+    await saveScreenshot(page, "media_test_modal_dimming.png");
 
     await frame.getByRole("button", { name: /Cancel/ }).click();
     await expect(modalTitle).not.toBeVisible({ timeout: 5000 });
@@ -206,7 +218,7 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
     });
 
     await page.waitForTimeout(500);
-    await page.screenshot({ path: "/Users/nils/.gemini/antigravity-cli/brain/c3e31e2d-d59b-40b3-925a-0d2725d4993e/.tempmediaStorage/media_test_dark_mode.png" });
+    await saveScreenshot(page, "media_test_dark_mode.png");
 
     // Verify high-contrast dark theme badge colors
     const isDarkComputed = await frame.evaluate(() => {

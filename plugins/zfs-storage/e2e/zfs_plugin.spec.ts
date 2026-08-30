@@ -1,7 +1,19 @@
 import { test, expect, Page, Frame } from "@playwright/test";
 import { execFileSync, execSync } from "child_process";
+import * as fs from "fs";
+import * as path from "path";
 
 const TEST_POOL = "e2epool";
+
+async function saveScreenshot(page: Page, filename: string) {
+  const targetDir = process.env.SCREENSHOT_DIR || path.join(process.cwd(), "test-results", "screenshots");
+  try {
+    fs.mkdirSync(targetDir, { recursive: true });
+    await page.screenshot({ path: path.join(targetDir, filename) });
+  } catch (err) {
+    console.warn(`Could not save screenshot ${filename}:`, err);
+  }
+}
 
 function runHostCmd(cmd: string): string {
   const sshHost = process.env.SSH_HOST;
@@ -170,7 +182,7 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     await expect(frame.locator("text=File Sharing Options").first()).toBeVisible({ timeout: 5000 });
     await expect(frame.locator("text=Share via SMB (Samba)").first()).toBeVisible({ timeout: 5000 });
     await expect(frame.locator("text=Share via NFS").first()).toBeVisible({ timeout: 5000 });
-    await page.screenshot({ path: "/Users/nils/.gemini/antigravity-cli/brain/c3e31e2d-d59b-40b3-925a-0d2725d4993e/.tempmediaStorage/media_test_zfs_dataset_sharing.png" });
+    await saveScreenshot(page, "media_test_zfs_dataset_sharing.png");
 
     await frame.locator(".pf-v5-c-modal-box button:has-text('Create Dataset')").first().click();
 
@@ -307,7 +319,7 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
 
     await page.waitForTimeout(500);
     await expect(frame.locator("html.pf-v5-theme-dark, html.pf-v6-theme-dark, :root.pf-v5-theme-dark").first()).toBeAttached();
-    await page.screenshot({ path: "/Users/nils/.gemini/antigravity-cli/brain/c3e31e2d-d59b-40b3-925a-0d2725d4993e/.tempmediaStorage/media_test_zfs_dark_mode.png" });
+    await saveScreenshot(page, "media_test_zfs_dark_mode.png");
 
     // Revert to light mode
     await page.evaluate(() => {
