@@ -48,7 +48,13 @@ def parse_pkg_info(filename: str) -> tuple:
     return "", ""
 
 
-def verify_packages(deb_dir: str, rpm_dir: str) -> bool:
+def download_release_asset(tag: str, filename: str, dest_path: str) -> bool:
+    cmd = ["gh", "release", "download", tag, "-p", filename, "-O", dest_path, "--clobber"]
+    res = subprocess.run(cmd, capture_output=True, text=True)
+    return res.returncode == 0
+
+
+def verify_packages(deb_dir: str, rpm_dir: str, sync_assets: bool = False) -> bool:
     all_ok = True
     files_to_check = []
 
@@ -99,6 +105,18 @@ def verify_packages(deb_dir: str, rpm_dir: str) -> bool:
 
         if local_hash == expected_hash:
             print(f"  ✓ {fname}: SHA256 verified against {matched_tag} ({local_hash[:16]}...)")
+        elif sync_assets:
+            print(f"  ↓ Syncing official release asset {fname} from {matched_tag}...")
+            if download_release_asset(matched_tag, fname, path):
+                new_hash = compute_sha256(path)
+                if new_hash == expected_hash:
+                    print(f"  ✓ {fname}: Synchronized and verified ({new_hash[:16]}...)")
+                else:
+                    print(f"  ✗ ERROR: Downloaded asset hash mismatch for {fname}")
+                    all_ok = False
+            else:
+                print(f"  ✗ ERROR: Failed to download asset {fname} from {matched_tag}")
+                all_ok = False
         else:
             print(f"  ✗ ERROR: SHA256 mismatch for {fname} in release {matched_tag}!")
             print(f"      Local build:    {local_hash}")
@@ -112,9 +130,10 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Verify built package digests against GitHub Release assets")
     parser.add_argument("--deb-dir", default="dist-debs", help="Directory containing .deb packages")
     parser.add_argument("--rpm-dir", default="dist-rpms", help="Directory containing .rpm packages")
+    parser.add_argument("--sync-assets", action="store_true", help="Sync official release assets if hashes differ")
     args = parser.parse_args()
 
-    success = verify_packages(args.deb_dir, args.rpm_dir)
+    success = verify_packages(args.deb_dir, args.rpm_dir, sync_assets=args.sync_assets)
     if not success:
         print("\n==> Digest verification FAILED. Aborting deployment to prevent publishing mismatched packages.")
         sys.exit(1)
