@@ -535,21 +535,41 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
       await frame.locator(".pf-v5-c-modal-box button:has-text('Create share'), .pf-v5-c-modal-box button:has-text('Save share')").first().click({ timeout: 1000 }).catch(() => {});
       await page.waitForTimeout(100);
       
-      const shareNameInput = frame.locator("input#share-name, input[aria-label*='Share name']").first();
+      const shareNameInput = frame.locator("input#smb-name, input#share-name, input[aria-label*='Share name']").first();
       if (await shareNameInput.isVisible({ timeout: 1000 }).catch(() => false)) {
         await shareNameInput.fill("modal_test_share");
       }
-      const sharePathInput = frame.locator("input#share-path, input[aria-label*='Share path']").first();
+      const sharePathInput = frame.locator("input#smb-path, input#share-path, input[aria-label*='Share path']").first();
       if (await sharePathInput.isVisible({ timeout: 1000 }).catch(() => false)) {
         await sharePathInput.fill("/srv/samba/modal_test");
       }
-      const guestOkCheckbox = frame.locator("input#share-guest-ok").first();
-      if (await guestOkCheckbox.isVisible({ timeout: 1000 }).catch(() => false)) {
-        await guestOkCheckbox.setChecked(true);
+      const commentInput = frame.locator("input#smb-comment").first();
+      if (await commentInput.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await commentInput.fill("Test share description");
       }
-      const readOnlyCheckbox = frame.locator("input#share-read-only").first();
-      if (await readOnlyCheckbox.isVisible({ timeout: 1000 }).catch(() => false)) {
-        await readOnlyCheckbox.setChecked(false);
+      const smbReadonlySwitch = frame.locator("input#smb-readonly").first();
+      if (await smbReadonlySwitch.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await smbReadonlySwitch.click({ timeout: 1000 }).catch(() => {});
+      }
+      const smbBrowseSwitch = frame.locator("input#smb-browseable").first();
+      if (await smbBrowseSwitch.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await smbBrowseSwitch.click({ timeout: 1000 }).catch(() => {});
+      }
+      const smbGuestSwitch = frame.locator("input#smb-guest").first();
+      if (await smbGuestSwitch.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await smbGuestSwitch.click({ timeout: 1000 }).catch(() => {});
+      }
+      const smbFruitSwitch = frame.locator("input#smb-fruit").first();
+      if (await smbFruitSwitch.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await smbFruitSwitch.click({ timeout: 1000 }).catch(() => {});
+      }
+      const validUsersInput = frame.locator("input#smb-valid-users").first();
+      if (await validUsersInput.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await validUsersInput.fill("user1, user2");
+      }
+      const writeListInput = frame.locator("input#smb-write-list").first();
+      if (await writeListInput.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await writeListInput.fill("user1");
       }
 
       const submitShareModal = frame.locator(".pf-v5-c-modal-box button:has-text('Create share'), .pf-v5-c-modal-box button:has-text('Save share')").first();
@@ -578,13 +598,29 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
       await frame.locator(".pf-v5-c-modal-box button:has-text('Create export'), .pf-v5-c-modal-box button:has-text('Save export')").first().click({ timeout: 1000 }).catch(() => {});
       await page.waitForTimeout(100);
       
-      const exportPathInput = frame.locator("input#export-path, input[aria-label*='Export path']").first();
+      const exportPathInput = frame.locator("input#nfs-path, input#export-path, input[aria-label*='Export path']").first();
       if (await exportPathInput.isVisible({ timeout: 1000 }).catch(() => false)) {
         await exportPathInput.fill("/srv/nfs/modal_test");
       }
-      const clientHostInput = frame.locator("input#client-host, input[aria-label*='Client host']").first();
+      const clientHostInput = frame.locator("input#nfs-client, input#client-host, input[aria-label*='Client host']").first();
       if (await clientHostInput.isVisible({ timeout: 1000 }).catch(() => false)) {
         await clientHostInput.fill("192.168.1.0/24");
+      }
+      const nfsReadonlySwitch = frame.locator("input#nfs-readonly").first();
+      if (await nfsReadonlySwitch.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await nfsReadonlySwitch.click({ timeout: 1000 }).catch(() => {});
+      }
+      const nfsSyncSwitch = frame.locator("input#nfs-sync").first();
+      if (await nfsSyncSwitch.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await nfsSyncSwitch.click({ timeout: 1000 }).catch(() => {});
+      }
+      const nfsSquashSwitch = frame.locator("input#nfs-squash").first();
+      if (await nfsSquashSwitch.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await nfsSquashSwitch.click({ timeout: 1000 }).catch(() => {});
+      }
+      const nfsSubtreeSwitch = frame.locator("input#nfs-subtree").first();
+      if (await nfsSubtreeSwitch.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await nfsSubtreeSwitch.click({ timeout: 1000 }).catch(() => {});
       }
 
       const submitNfsModal = frame.locator(".pf-v5-c-modal-box button:has-text('Create export'), .pf-v5-c-modal-box button:has-text('Save export')").first();
@@ -604,7 +640,7 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
       (window as any).__setActiveView?.("users");
     });
     await page.waitForTimeout(300);
-    const addUserBtn = frame.locator("button:visible:has-text('Add user')").first();
+    const addUserBtn = frame.locator("button:visible:has-text('Add Samba user'), button:visible:has-text('Add user')").first();
     if (await addUserBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
       await addUserBtn.click({ timeout: 2000 }).catch(() => {});
       await page.waitForTimeout(300);
@@ -613,13 +649,17 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
       await frame.locator(".pf-v5-c-modal-box button:has-text('Add user')").first().click({ timeout: 1000 }).catch(() => {});
       await page.waitForTimeout(100);
 
-      const usernameInput = frame.locator("input#user-name, input[aria-label*='Username']").first();
+      const usernameInput = frame.locator("input#add-user-name, input#user-name, input[aria-label*='Username']").first();
       if (await usernameInput.isVisible({ timeout: 1000 }).catch(() => false)) {
         await usernameInput.fill("modal_user");
       }
-      const passInput = frame.locator("input#user-password, input[type='password']").first();
+      const passInput = frame.locator("input#add-user-password, input#user-password, input[type='password']").first();
       if (await passInput.isVisible({ timeout: 1000 }).catch(() => false)) {
         await passInput.fill("SecretPassword123!");
+      }
+      const confPassInput = frame.locator("input#add-confirm-password").first();
+      if (await confPassInput.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await confPassInput.fill("SecretPassword123!");
       }
 
       const submitUserModal = frame.locator(".pf-v5-c-modal-box button:has-text('Add user')").first();
