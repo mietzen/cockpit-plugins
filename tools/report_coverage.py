@@ -7,7 +7,7 @@ TIER_CONFIG = {
     "SECURITY": {
         "title": "🛡️ Security & Destructive Operations",
         "min_line": 90.0,
-        "min_branch": 80.0,
+        "min_branch": 85.0,
         "patterns": [
             "command_builder.py",
             "zfs_helper.py",
