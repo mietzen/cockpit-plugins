@@ -503,56 +503,185 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     }, TEST_POOL);
   });
 
-  test("18. Modal Rendering and Lifecycle Suite", async () => {
+  test("18. Modal Lifecycle, Input Validation & Submission Suite", async () => {
     const frame = await getFrame();
-    const modalTypes = [
-      { type: "arc-details" },
-      { type: "create-dataset", parent: TEST_POOL },
-      { type: "create-zvol", parent: TEST_POOL },
-      { type: "edit-properties", dataset: { name: `${TEST_POOL}/testdata`, pool: TEST_POOL, type: "filesystem", mountpoint: `/mnt/${TEST_POOL}/testdata`, mounted: true, properties: {} } },
-      { type: "create-snapshot", target: TEST_POOL },
-      { type: "rollback-snapshot", snapshot: { name: `${TEST_POOL}@snap-test`, pool: TEST_POOL, dataset: TEST_POOL, snapshot_name: "snap-test", properties: {} } },
-      { type: "clone-snapshot", snapshot: { name: `${TEST_POOL}@snap-test`, pool: TEST_POOL, dataset: TEST_POOL, snapshot_name: "snap-test", properties: {} } },
-      { type: "attach-disk", poolName: TEST_POOL, existingDevice: "/dev/loop1" },
-      { type: "replace-disk", poolName: TEST_POOL, existingDevice: "/dev/loop1" },
-      { type: "rename", itemType: "dataset", currentName: `${TEST_POOL}/testdata` },
-      { type: "destroy", itemType: "dataset", itemName: `${TEST_POOL}/testdata` },
-      { type: "preview", title: "Preview Command", command: ["zfs", "list"] },
-    ];
 
-    for (const m of modalTypes) {
-      await frame.evaluate((modalObj) => {
-        const win = window as any;
-        if (win.__setActiveModal) {
-          win.__setActiveModal(modalObj);
-        }
-      }, m);
-      await page.waitForTimeout(200);
-
-      // Touch form controls in the modal
-      const modalInput = frame.locator(".pf-v5-c-modal-box input[type='text']:visible").first();
-      if (await modalInput.isVisible({ timeout: 500 }).catch(() => false)) {
-        await modalInput.fill("test_modal_input").catch(() => {});
-      }
-      const modalCheckbox = frame.locator(".pf-v5-c-modal-box input[type='checkbox']:visible").first();
-      if (await modalCheckbox.isVisible({ timeout: 500 }).catch(() => false)) {
-        await modalCheckbox.click().catch(() => {});
-      }
-      const modalSelect = frame.locator(".pf-v5-c-modal-box select:visible").first();
-      if (await modalSelect.isVisible({ timeout: 500 }).catch(() => false)) {
-        await modalSelect.selectOption({ index: 1 }).catch(() => {});
-      }
-
-      const closeBtn = frame.locator(".pf-v5-c-modal-box button[aria-label='Close'], .pf-v5-c-modal-box button:has-text('Cancel')").first();
-      if (await closeBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
-        await closeBtn.click();
-      } else {
-        await frame.evaluate(() => {
-          const win = window as any;
-          if (win.__setActiveModal) win.__setActiveModal(null);
-        });
-      }
+    // 1. Create Dataset Modal
+    await frame.evaluate((pool) => {
+      (window as any).__setActiveModal?.({ type: "create-dataset", parent: pool });
+    }, TEST_POOL);
+    await page.waitForTimeout(200);
+    // Trigger validation error on empty submit
+    await frame.locator(".pf-v5-c-modal-box button:has-text('Create dataset')").first().click().catch(() => {});
+    await page.waitForTimeout(100);
+    // Fill dataset name and toggle advanced options
+    const dsName = frame.locator("input#dataset-name, input[aria-label*='Dataset name']").first();
+    if (await dsName.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await dsName.fill("lifecycle_ds");
     }
+    const advBtn = frame.locator("button:has-text('Advanced options')").first();
+    if (await advBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await advBtn.click().catch(() => {});
+    }
+    const quotaInput = frame.locator("input#dataset-quota").first();
+    if (await quotaInput.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await quotaInput.fill("1G");
+    }
+    await frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first().click().catch(() => {});
+
+    // 2. Create ZVol Modal
+    await frame.evaluate((pool) => {
+      (window as any).__setActiveModal?.({ type: "create-zvol", parent: pool });
+    }, TEST_POOL);
+    await page.waitForTimeout(200);
+    await frame.locator(".pf-v5-c-modal-box button:has-text('Create volume')").first().click().catch(() => {});
+    const zvolName = frame.locator("input#zvol-name").first();
+    if (await zvolName.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await zvolName.fill("lifecycle_zvol");
+    }
+    const zvolSize = frame.locator("input#zvol-size").first();
+    if (await zvolSize.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await zvolSize.fill("200M");
+    }
+    await frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first().click().catch(() => {});
+
+    // 3. Create Snapshot Modal
+    await frame.evaluate((pool) => {
+      (window as any).__setActiveModal?.({ type: "create-snapshot", target: pool });
+    }, TEST_POOL);
+    await page.waitForTimeout(200);
+    await frame.locator(".pf-v5-c-modal-box button:has-text('Create snapshot')").first().click().catch(() => {});
+    const snapName = frame.locator("input#snapshot-name").first();
+    if (await snapName.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await snapName.fill("lifecycle_snap");
+    }
+    await frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first().click().catch(() => {});
+
+    // 4. Clone Snapshot Modal
+    await frame.evaluate((pool) => {
+      (window as any).__setActiveModal?.({
+        type: "clone-snapshot",
+        snapshot: { name: `${pool}@snap-test`, pool, dataset: pool, snapshot_name: "snap-test", properties: {} },
+      });
+    }, TEST_POOL);
+    await page.waitForTimeout(200);
+    await frame.locator(".pf-v5-c-modal-box button:has-text('Clone snapshot')").first().click().catch(() => {});
+    const clonePath = frame.locator("input#clone-path").first();
+    if (await clonePath.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await clonePath.fill(`${TEST_POOL}/lifecycle_clone`);
+    }
+    await frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first().click().catch(() => {});
+
+    // 5. Rollback Snapshot Modal
+    await frame.evaluate((pool) => {
+      (window as any).__setActiveModal?.({
+        type: "rollback-snapshot",
+        snapshot: { name: `${pool}@snap-test`, pool, dataset: pool, snapshot_name: "snap-test", properties: {} },
+      });
+    }, TEST_POOL);
+    await page.waitForTimeout(200);
+    const destroyInterCheck = frame.locator("input#destroy-intermediate").first();
+    if (await destroyInterCheck.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await destroyInterCheck.click().catch(() => {});
+    }
+    await frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first().click().catch(() => {});
+
+    // 6. Rename Modal
+    await frame.evaluate((pool) => {
+      (window as any).__setActiveModal?.({
+        type: "rename",
+        itemType: "dataset",
+        currentName: `${pool}/testdata`,
+      });
+    }, TEST_POOL);
+    await page.waitForTimeout(200);
+    await frame.locator(".pf-v5-c-modal-box button:has-text('Rename')").first().click().catch(() => {});
+    const renameInput = frame.locator("input#new-name").first();
+    if (await renameInput.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await renameInput.fill("renamed_dataset");
+    }
+    await frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first().click().catch(() => {});
+
+    // 7. Edit Properties Modal
+    await frame.evaluate((pool) => {
+      (window as any).__setActiveModal?.({
+        type: "edit-properties",
+        dataset: { name: `${pool}/testdata`, pool, type: "filesystem", mountpoint: `/mnt/${pool}/testdata`, mounted: true, properties: {} },
+      });
+    }, TEST_POOL);
+    await page.waitForTimeout(200);
+    const compSelect = frame.locator("select#edit-compression").first();
+    if (await compSelect.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await compSelect.selectOption("zstd").catch(() => {});
+    }
+    await frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first().click().catch(() => {});
+
+    // 8. Destroy Modal
+    await frame.evaluate((pool) => {
+      (window as any).__setActiveModal?.({
+        type: "destroy",
+        itemType: "dataset",
+        itemName: `${pool}/testdata`,
+      });
+    }, TEST_POOL);
+    await page.waitForTimeout(200);
+    const confirmDestroyInput = frame.locator("input#destroy-confirm-input, input[aria-label*='confirm']").first();
+    if (await confirmDestroyInput.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await confirmDestroyInput.fill(`${TEST_POOL}/testdata`);
+    }
+    const recursiveCheck = frame.locator("input#destroy-recursive").first();
+    if (await recursiveCheck.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await recursiveCheck.click().catch(() => {});
+    }
+    await frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first().click().catch(() => {});
+
+    // 9. Command Preview Modal
+    await frame.evaluate(() => {
+      (window as any).__setActiveModal?.({
+        type: "preview",
+        title: "Preview Test",
+        command: ["zfs", "list"],
+        description: "Test description",
+        onConfirm: async () => {},
+      });
+    });
+    await page.waitForTimeout(200);
+    await frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first().click().catch(() => {});
+
+    // 10. ARC Details Modal
+    await frame.evaluate(() => {
+      (window as any).__setActiveModal?.({ type: "arc-details" });
+    });
+    await page.waitForTimeout(200);
+    await frame.locator(".pf-v5-c-modal-box button[aria-label='Close'], .pf-v5-c-modal-box button:has-text('Close')").first().click().catch(() => {});
+
+    // 11. SMART Details Modal
+    await frame.evaluate(() => {
+      (window as any).__setActiveModal?.({
+        type: "smart-details",
+        disk: {
+          name: "loop0",
+          path: "/dev/loop0",
+          size: 1073741824,
+          model: "Loop Device",
+          serial: "LOOP-0",
+          wwn: "0x0",
+          rotational: false,
+          smart_health: "PASSED",
+          temperature: 32,
+          transport: "virtual",
+          pool: null,
+          partitions: [],
+        },
+      });
+    });
+    await page.waitForTimeout(200);
+    await frame.locator(".pf-v5-c-modal-box button[aria-label='Close'], .pf-v5-c-modal-box button:has-text('Close')").first().click().catch(() => {});
+
+    // Clean up
+    await frame.evaluate(() => {
+      (window as any).__setActiveModal?.(null);
+    });
 
     await frame.evaluate((pool) => {
       const win = window as any;

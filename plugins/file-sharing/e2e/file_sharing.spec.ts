@@ -530,6 +530,10 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
     if (await addShareBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
       await addShareBtn.click({ timeout: 2000 }).catch(() => {});
       await page.waitForTimeout(300);
+
+      // Trigger empty validation
+      await frame.locator(".pf-v5-c-modal-box button:has-text('Create share'), .pf-v5-c-modal-box button:has-text('Save share')").first().click().catch(() => {});
+      await page.waitForTimeout(100);
       
       const shareNameInput = frame.locator("input#share-name, input[aria-label*='Share name']").first();
       if (await shareNameInput.isVisible({ timeout: 1000 }).catch(() => false)) {
@@ -563,6 +567,10 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
     if (await addExportBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
       await addExportBtn.click({ timeout: 2000 }).catch(() => {});
       await page.waitForTimeout(300);
+
+      // Trigger empty validation
+      await frame.locator(".pf-v5-c-modal-box button:has-text('Create export'), .pf-v5-c-modal-box button:has-text('Save export')").first().click().catch(() => {});
+      await page.waitForTimeout(100);
       
       const exportPathInput = frame.locator("input#export-path, input[aria-label*='Export path']").first();
       if (await exportPathInput.isVisible({ timeout: 1000 }).catch(() => false)) {
@@ -588,6 +596,10 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
     if (await addUserBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
       await addUserBtn.click({ timeout: 2000 }).catch(() => {});
       await page.waitForTimeout(300);
+
+      // Trigger empty validation
+      await frame.locator(".pf-v5-c-modal-box button:has-text('Add user')").first().click().catch(() => {});
+      await page.waitForTimeout(100);
 
       const usernameInput = frame.locator("input#user-name, input[aria-label*='Username']").first();
       if (await usernameInput.isVisible({ timeout: 1000 }).catch(() => false)) {
@@ -652,5 +664,50 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
       await usersSubTab.click({ timeout: 2000 }).catch(() => {});
       await page.waitForTimeout(300);
     }
+  });
+
+  test("19. Dashboard Action Buttons & Client API Coverage", async () => {
+    const frame = await getFrame();
+    
+    // Switch to Dashboard
+    await frame.evaluate(() => (window as any).__setActiveView?.("dashboard"));
+    await page.waitForTimeout(300);
+
+    // Click Create SMB Share button on Dashboard
+    const createSmbBtn = frame.locator("button:visible:has-text('Create SMB share')").first();
+    if (await createSmbBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await createSmbBtn.click({ timeout: 2000 }).catch(() => {});
+      await page.waitForTimeout(200);
+      const cancelModal = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
+      if (await cancelModal.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await cancelModal.click({ timeout: 1000 }).catch(() => {});
+      }
+    }
+
+    // Click Create NFS Export button on Dashboard
+    const createNfsBtn = frame.locator("button:visible:has-text('Create NFS export')").first();
+    if (await createNfsBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await createNfsBtn.click({ timeout: 2000 }).catch(() => {});
+      await page.waitForTimeout(200);
+      const cancelModal = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
+      if (await cancelModal.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await cancelModal.click({ timeout: 1000 }).catch(() => {});
+      }
+    }
+
+    // Click Add User button on Dashboard
+    const addUserBtn = frame.locator("button:visible:has-text('Add user')").first();
+    if (await addUserBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await addUserBtn.click({ timeout: 2000 }).catch(() => {});
+      await page.waitForTimeout(200);
+      const cancelModal = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
+      if (await cancelModal.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await cancelModal.click({ timeout: 1000 }).catch(() => {});
+      }
+    }
+
+    // Navigate to sessions view
+    await frame.evaluate(() => (window as any).__setActiveView?.("sessions"));
+    await page.waitForTimeout(300);
   });
 });
