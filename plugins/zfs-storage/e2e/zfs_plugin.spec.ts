@@ -906,4 +906,36 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
       (window as any).__setActiveModal?.(null);
     });
   });
+
+  test("23. Disk & Property Dialog Interaction Suite", async () => {
+    const frame = await getFrame();
+
+    // Attach disk modal
+    await frame.evaluate((pool) => {
+      (window as any).__setActiveModal?.({
+        type: "attach",
+        poolName: pool,
+        existingDevice: "/dev/loop0",
+      });
+    }, TEST_POOL);
+    await page.waitForTimeout(200);
+    const cancelAttach = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
+    if (await cancelAttach.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await cancelAttach.click({ timeout: 1000 }).catch(() => {});
+    }
+
+    // Replace disk modal
+    await frame.evaluate((pool) => {
+      (window as any).__setActiveModal?.({
+        type: "replace",
+        poolName: pool,
+        oldDevice: "/dev/loop0",
+      });
+    }, TEST_POOL);
+    await page.waitForTimeout(200);
+    const cancelReplace = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
+    if (await cancelReplace.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await cancelReplace.click({ timeout: 1000 }).catch(() => {});
+    }
+  });
 });

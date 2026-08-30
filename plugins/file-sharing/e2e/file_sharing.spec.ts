@@ -710,4 +710,46 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
     await frame.evaluate(() => (window as any).__setActiveView?.("sessions"));
     await page.waitForTimeout(300);
   });
+
+  test("20. Tab Action Menus and Settings Form Execution", async () => {
+    const frame = await getFrame();
+
+    // 1. Settings view form submit
+    await frame.evaluate(() => (window as any).__setActiveView?.("settings"));
+    await page.waitForTimeout(300);
+    const saveGlobalBtn = frame.locator("button:has-text('Save global settings'), button:has-text('Save settings')").first();
+    if (await saveGlobalBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await saveGlobalBtn.click({ timeout: 1000 }).catch(() => {});
+    }
+
+    // 2. SMB Shares inline search
+    await frame.evaluate(() => (window as any).__setActiveView?.("smb"));
+    await page.waitForTimeout(300);
+    const smbSearch = frame.locator("input[placeholder*='Search'], input[aria-label*='Search']").first();
+    if (await smbSearch.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await smbSearch.fill("nomatch");
+      await page.waitForTimeout(100);
+      await smbSearch.fill("");
+    }
+
+    // 3. NFS Exports inline search
+    await frame.evaluate(() => (window as any).__setActiveView?.("nfs"));
+    await page.waitForTimeout(300);
+    const nfsSearch = frame.locator("input[placeholder*='Search'], input[aria-label*='Search']").first();
+    if (await nfsSearch.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await nfsSearch.fill("nomatch");
+      await page.waitForTimeout(100);
+      await nfsSearch.fill("");
+    }
+
+    // 4. Users inline search
+    await frame.evaluate(() => (window as any).__setActiveView?.("users"));
+    await page.waitForTimeout(300);
+    const userSearch = frame.locator("input[placeholder*='Search'], input[aria-label*='Search']").first();
+    if (await userSearch.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await userSearch.fill("nomatch");
+      await page.waitForTimeout(100);
+      await userSearch.fill("");
+    }
+  });
 });
