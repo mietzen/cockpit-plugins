@@ -603,9 +603,8 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
       if (await dedupSelect.isVisible({ timeout: 1000 }).catch(() => false)) {
         await dedupSelect.selectOption("on");
       }
-      await nextBtn.click();
 
-      // Step 5: Cancel wizard
+      // Cancel wizard without submitting
       const cancelBtn = frame.locator(".pf-v5-c-wizard__footer button:has-text('Cancel')").first();
       await cancelBtn.click();
       await expect(frame.locator(".pf-v5-c-modal-box")).toHaveCount(0, { timeout: 10000 });
