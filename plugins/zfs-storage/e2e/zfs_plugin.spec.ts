@@ -372,4 +372,39 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     await frame.locator("button[role='tab']:has-text('Overview'), [role='tab']:has-text('Overview')").first().click();
     await expect(frame.getByText("Storage usage").first()).toBeVisible({ timeout: 10000 });
   });
+
+  test("13. ARC Cache Details Modal Inspection", async () => {
+    const frame = await getFrame();
+    await frame.locator("button[role='tab']:has-text('Overview'), [role='tab']:has-text('Overview')").first().click();
+
+    const arcCard = frame.getByText("ARC Cache").first();
+    if (await arcCard.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await arcCard.click();
+      await page.waitForTimeout(500);
+      const closeBtn = frame.locator(".pf-v5-c-modal-box button[aria-label='Close'], .pf-v5-c-modal-box button:has-text('Close')").first();
+      if (await closeBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await closeBtn.click();
+      }
+    }
+  });
+
+  test("14. SMART Disk Inspection Modal", async () => {
+    const frame = await getFrame();
+    await frame.locator("button[role='tab']:has-text('Disks & SMART'), button:has-text('Disks & SMART'), [role='tab']:has-text('Disks')").first().click();
+
+    const diskRow = frame.locator("table tbody tr").first();
+    const actionToggle = diskRow.locator("button[aria-label='Disk actions'], button.pf-v5-c-menu-toggle").first();
+    if (await actionToggle.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await actionToggle.click();
+      const smartOption = frame.locator("button:has-text('S.M.A.R.T.'), a:has-text('S.M.A.R.T.'), li:has-text('S.M.A.R.T.')").first();
+      if (await smartOption.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await smartOption.click();
+        await page.waitForTimeout(500);
+        const closeBtn = frame.locator(".pf-v5-c-modal-box button[aria-label='Close'], .pf-v5-c-modal-box button:has-text('Close')").first();
+        if (await closeBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+          await closeBtn.click();
+        }
+      }
+    }
+  });
 });

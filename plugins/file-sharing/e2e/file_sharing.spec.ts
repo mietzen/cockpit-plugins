@@ -363,4 +363,38 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
       await page.waitForTimeout(500);
     }
   });
+
+  test("13. Services Restart and Reload Management", async () => {
+    const frame = await getFrame();
+    await frame.locator("button.pf-v5-c-tabs__link:has-text('Services & Sessions'), [role='tab']:has-text('Services')").first().click();
+
+    const restartSmbBtn = frame.locator("button:has-text('Restart')").first();
+    if (await restartSmbBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await restartSmbBtn.click();
+      await page.waitForTimeout(1000);
+    }
+
+    const refreshBtn = frame.getByRole("button", { name: /Refresh status/ }).first();
+    if (await refreshBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await refreshBtn.click();
+    }
+  });
+
+  test("14. Edit NFS Export Settings", async () => {
+    const frame = await getFrame();
+    await frame.locator("button.pf-v5-c-tabs__link:has-text('NFS Exports'), [role='tab']:has-text('NFS Exports')").first().click();
+
+    const row = frame.locator("tr", { hasText: "/srv/nfs/test" }).first();
+    const actionToggle = row.locator("button[aria-label='Export actions']").first();
+    if (await actionToggle.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await actionToggle.click();
+      const editBtn = frame.getByRole("menuitem", { name: /Edit export/ }).or(frame.getByText("Edit export")).first();
+      await editBtn.click();
+      await expect(frame.locator(".pf-v5-c-modal-box__title-text")).toBeVisible({ timeout: 5000 });
+
+      const saveChangesBtn = frame.getByRole("button", { name: /Save changes/ }).first();
+      await saveChangesBtn.click();
+      await expect(frame.locator(".pf-v5-c-modal-box")).toHaveCount(0, { timeout: 10000 });
+    }
+  });
 });
