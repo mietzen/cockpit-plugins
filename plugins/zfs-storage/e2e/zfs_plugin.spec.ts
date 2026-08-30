@@ -1777,6 +1777,10 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     if (await confirm1.isVisible({ timeout: 1000 }).catch(() => false)) {
       await confirm1.fill("tank");
     }
+    const forceCheck = frame.locator("input#destroy-force").first();
+    if (await forceCheck.isVisible({ timeout: 500 }).catch(() => false)) {
+      await forceCheck.click().catch(() => {});
+    }
 
     // Test DestroyModal for dataset
     await frame.evaluate(() => {
@@ -1790,6 +1794,10 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     const confirm2 = frame.locator("#destroy-confirm, input[id*='destroy-confirm']").first();
     if (await confirm2.isVisible({ timeout: 1000 }).catch(() => false)) {
       await confirm2.fill("tank/data");
+    }
+    const recCheck = frame.locator("input#destroy-recursive").first();
+    if (await recCheck.isVisible({ timeout: 500 }).catch(() => false)) {
+      await recCheck.click().catch(() => {});
     }
 
     // Test DestroyModal for snapshot
@@ -1815,6 +1823,10 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
       });
     });
     await page.waitForTimeout(300);
+    const attachForce = frame.locator("input#attach-force, input[type='checkbox']").first();
+    if (await attachForce.isVisible({ timeout: 500 }).catch(() => false)) {
+      await attachForce.click().catch(() => {});
+    }
 
     // Test ReplaceDiskModal
     await frame.evaluate(() => {
@@ -1833,5 +1845,6 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     await page.waitForTimeout(100);
   });
 });
+
 
 

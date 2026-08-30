@@ -139,14 +139,41 @@ Account Flags:        [UD         ]
         self.assertFalse(ok)
 
     @patch("file_sharing_helper.run_cmd")
-    def test_get_system_versions(self, mock_cmd):
+    def test_get_system_versions_fallbacks(self, mock_cmd):
+        # smb ok, nfs binary fails -> dpkg query success
         mock_cmd.side_effect = [
-            (0, "Version 4.19.5-Ubuntu", ""),
-            (0, "Version 2.6.4", ""),
+            (0, "Version 4.19.5", ""),
+            (1, "", "not found"),
+            (1, "", "not found"),
+            (1, "", "not found"),
+            (1, "", "not found"),
+            (0, "1:2.6.4-1ubuntu1\n", ""),
         ]
         versions = file_sharing_helper.get_system_versions()
-        self.assertEqual(versions["smb"], "4.19.5-Ubuntu")
-        self.assertEqual(versions["nfs"], "2.6.4")
+        self.assertEqual(versions["smb"], "4.19.5")
+        self.assertEqual(versions["nfs"], "1:2.6.4-1ubuntu1")
+
+        # dpkg fails -> rpm query success
+        mock_cmd.side_effect = [
+            (1, "", "not found"),
+            (1, "", "not found"),
+            (1, "", "not found"),
+            (1, "", "not found"),
+            (1, "", "not found"),
+            (1, "", "not found"),
+            (0, "2.6.4-1.el9\n", ""),
+        ]
+        versions = file_sharing_helper.get_system_versions()
+        self.assertEqual(versions["smb"], "Not installed")
+        self.assertEqual(versions["nfs"], "2.6.4-1.el9")
+
+    @patch("shutil.which", return_value=None)
+    def test_tool_not_found_branches(self, mock_which):
+        self.assertEqual(file_sharing_helper.get_smb_sessions(), [])
+        self.assertEqual(file_sharing_helper.get_zfs_mountpoints(), [])
+        self.assertTrue(file_sharing_helper.testparm_verify()[0])
+        self.assertTrue(file_sharing_helper.reload_nfs()[0])
+        file_sharing_helper.reload_smb()
 
     @patch("file_sharing_helper.SmbParser")
     @patch("file_sharing_helper.NfsParser")
