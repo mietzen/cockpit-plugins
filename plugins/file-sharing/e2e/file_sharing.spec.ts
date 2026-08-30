@@ -532,7 +532,7 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
       await page.waitForTimeout(300);
 
       // Trigger empty validation
-      await frame.locator(".pf-v5-c-modal-box button:has-text('Create share'), .pf-v5-c-modal-box button:has-text('Save share')").first().click().catch(() => {});
+      await frame.locator(".pf-v5-c-modal-box button:has-text('Create share'), .pf-v5-c-modal-box button:has-text('Save share')").first().click({ timeout: 1000 }).catch(() => {});
       await page.waitForTimeout(100);
       
       const shareNameInput = frame.locator("input#share-name, input[aria-label*='Share name']").first();
@@ -569,7 +569,7 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
       await page.waitForTimeout(300);
 
       // Trigger empty validation
-      await frame.locator(".pf-v5-c-modal-box button:has-text('Create export'), .pf-v5-c-modal-box button:has-text('Save export')").first().click().catch(() => {});
+      await frame.locator(".pf-v5-c-modal-box button:has-text('Create export'), .pf-v5-c-modal-box button:has-text('Save export')").first().click({ timeout: 1000 }).catch(() => {});
       await page.waitForTimeout(100);
       
       const exportPathInput = frame.locator("input#export-path, input[aria-label*='Export path']").first();
@@ -598,7 +598,7 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
       await page.waitForTimeout(300);
 
       // Trigger empty validation
-      await frame.locator(".pf-v5-c-modal-box button:has-text('Add user')").first().click().catch(() => {});
+      await frame.locator(".pf-v5-c-modal-box button:has-text('Add user')").first().click({ timeout: 1000 }).catch(() => {});
       await page.waitForTimeout(100);
 
       const usernameInput = frame.locator("input#user-name, input[aria-label*='Username']").first();
