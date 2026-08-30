@@ -159,6 +159,10 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     const poolNameInput = frame.locator("input#wizard-pool-name, input#pool-name").first();
     await poolNameInput.waitFor({ state: "visible", timeout: 10000 });
     await poolNameInput.fill(TEST_POOL);
+    const ashiftSelect = frame.locator("select#wizard-ashift, select#ashift").first();
+    if (await ashiftSelect.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await ashiftSelect.selectOption("12");
+    }
     await frame.locator(".pf-v5-c-wizard__footer button:has-text('Next')").first().click();
 
     // Step 2: VDEV Configuration (Select available disks)
@@ -167,10 +171,18 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     await diskCheckbox.setChecked(true);
     await frame.locator(".pf-v5-c-wizard__footer button:has-text('Next')").first().click();
 
-    // Step 3: Properties (leave defaults)
+    // Step 3: Properties (leave defaults or toggle options)
+    const autoexpandCheckbox = frame.locator("input#wizard-autoexpand, input#autoexpand").first();
+    if (await autoexpandCheckbox.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await autoexpandCheckbox.setChecked(true);
+    }
     await frame.locator(".pf-v5-c-wizard__footer button:has-text('Next')").first().click();
 
-    // Step 4: Filesystem Defaults (leave defaults)
+    // Step 4: Filesystem Defaults
+    const compSelect = frame.locator("select#wizard-compression, select#compression").first();
+    if (await compSelect.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await compSelect.selectOption("lz4");
+    }
     await frame.locator(".pf-v5-c-wizard__footer button:has-text('Next')").first().click();
 
     // Step 5: Review & Create

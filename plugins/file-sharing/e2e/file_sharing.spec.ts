@@ -362,18 +362,45 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
         await userInput.fill("runner");
       }
     }
-    const passInput = frame.locator("input#add-password").first();
-    if (await passInput.isVisible({ timeout: 2000 }).catch(() => false)) {
-      await passInput.fill("password123");
-    }
-    const confirmPass = frame.locator("input#add-confirm-password").first();
-    if (await confirmPass.isVisible({ timeout: 2000 }).catch(() => false)) {
-      await confirmPass.fill("password123");
+    const saveUserBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Add user')").first();
+    await saveUserBtn.click();
+    await expect(frame.locator(".pf-v5-c-modal-box")).toHaveCount(0, { timeout: 10000 });
+
+    // Open Change Password modal
+    const userRow = frame.locator("tr", { hasText: "test-user" }).or(frame.locator("tr", { hasText: "runner" })).first();
+    const userToggle = userRow.locator("button[aria-label='User actions']").first();
+    if (await userToggle.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await userToggle.click();
+      const pwdOption = frame.getByRole("menuitem", { name: /Change password/ }).or(frame.getByText("Change password")).first();
+      if (await pwdOption.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await pwdOption.click();
+        await frame.locator("input#set-password").fill("newpassword123");
+        await frame.locator("input#set-confirm-password").fill("newpassword123");
+        await frame.locator(".pf-v5-c-modal-box button:has-text('Update password')").first().click();
+        await expect(frame.locator(".pf-v5-c-modal-box")).toHaveCount(0, { timeout: 10000 });
+      }
     }
 
-    const cancelUserBtn = frame.getByRole("button", { name: /Cancel/ }).first();
-    await cancelUserBtn.click();
-    await expect(frame.locator(".pf-v5-c-modal-box")).toHaveCount(0, { timeout: 5000 });
+    // Toggle user state and delete modal
+    if (await userToggle.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await userToggle.click();
+      const disableOption = frame.getByRole("menuitem", { name: /Disable user|Enable user/ }).or(frame.getByText(/Disable user|Enable user/)).first();
+      if (await disableOption.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await disableOption.click();
+        await page.waitForTimeout(500);
+      }
+
+      await userToggle.click();
+      const delOption = frame.getByRole("menuitem", { name: /Delete Samba user/ }).or(frame.getByText("Delete Samba user")).first();
+      if (await delOption.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await delOption.click();
+        const confirmDel = frame.locator(".pf-v5-c-modal-box button:has-text('Delete user')").first();
+        if (await confirmDel.isVisible({ timeout: 2000 }).catch(() => false)) {
+          await confirmDel.click();
+          await expect(frame.locator(".pf-v5-c-modal-box")).toHaveCount(0, { timeout: 10000 });
+        }
+      }
+    }
 
     // Switch to User Access Matrix subtab and search
     const matrixTab = frame.getByRole("tab", { name: /User Access Matrix/ }).first();
