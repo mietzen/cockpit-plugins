@@ -12,3 +12,8 @@ __pycache__/
 inspection/
 *.deb
 [0-9]*.[0-9]*.[0-9]*/
+.nyc_output/
+coverage/
+coverage-python/
+coverage-data/
+coverage-summary.md

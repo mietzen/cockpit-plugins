@@ -63,6 +63,33 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     }
   });
 
+  test.afterEach(async ({}, testInfo) => {
+    try {
+      if (!page) return;
+      const coverageData = await page.evaluate(() => {
+        try {
+          const iframes = Array.from(document.querySelectorAll("iframe"));
+          for (const f of iframes) {
+            if (f.contentWindow && (f.contentWindow as any).__coverage__) {
+              return (f.contentWindow as any).__coverage__;
+            }
+          }
+          return (window as any).__coverage__ || null;
+        } catch {
+          return null;
+        }
+      });
+      if (coverageData) {
+        const nycDir = path.join(process.cwd(), ".nyc_output");
+        fs.mkdirSync(nycDir, { recursive: true });
+        fs.writeFileSync(
+          path.join(nycDir, `coverage-zfs-${testInfo.testId}-${Date.now()}.json`),
+          JSON.stringify(coverageData)
+        );
+      }
+    } catch {}
+  });
+
   test("1. Login to Cockpit and load ZFS storage plugin", async () => {
     const user = process.env.COCKPIT_USER || "test-user";
     const pass = process.env.COCKPIT_PASSWORD || "password";

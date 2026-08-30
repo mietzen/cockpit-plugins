@@ -16,6 +16,7 @@ permissions:
   contents: write
   pages: write
   id-token: write
+  pull-requests: write
 
 jobs:
   build:
@@ -50,9 +51,22 @@ jobs:
         run: |
           pip install -r requirements-dev.txt
 
-      - name: Run Backend Unit Tests
+      - name: Run Backend Unit Tests with Coverage
         run: |
-          PYTHONPATH=packages/common/python:plugins/${{ matrix.plugin }}:tools pytest plugins/${{ matrix.plugin }}/backend/tests tools/tests
+          mkdir -p coverage-python
+          PYTHONPATH=packages/common/python:plugins/${{ matrix.plugin }}:tools pytest \
+            --cov=plugins/${{ matrix.plugin }}/backend \
+            --cov=packages/common/python/cockpit_common \
+            --cov-report=lcov:coverage-python/coverage-python-${{ matrix.plugin }}.lcov \
+            --cov-report=term \
+            plugins/${{ matrix.plugin }}/backend/tests tools/tests
+
+      - name: Upload Python Coverage Artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-python-${{ matrix.plugin }}
+          path: coverage-python/*.lcov
+          retention-days: 7
 
       - name: Install Packaging Tools (RPM & DPKG)
         run: |
@@ -62,7 +76,7 @@ jobs:
       - name: Install Workspace Dependencies & Build Plugin
         run: |
           npm ci
-          npm --prefix plugins/${{ matrix.plugin }} run build
+          VITE_COVERAGE=true npm --prefix plugins/${{ matrix.plugin }} run build
 
       - name: Package Plugin (.deb & .rpm) - Build Pass 1
         run: |
@@ -176,6 +190,21 @@ jobs:
         run: |
           COCKPIT_URL=https://127.0.0.1:9090 npx playwright test plugins/${{ matrix.plugin }}/e2e/ --project=chromium
 
+      - name: Generate E2E Code Coverage Report
+        if: always()
+        run: |
+          if [ -d ".nyc_output" ]; then
+            npx nyc report --reporter=lcov --reporter=text-summary --report-dir=coverage-e2e-${{ matrix.plugin }} || true
+          fi
+
+      - name: Upload E2E Coverage Artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-e2e-${{ matrix.plugin }}
+          path: coverage-e2e-${{ matrix.plugin }}/**
+          retention-days: 7
+
       - name: Upload E2E Test Failure Artifacts
         if: failure()
         uses: actions/upload-artifact@v7
@@ -192,6 +221,60 @@ jobs:
       - build
       - e2e
     steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v7
+
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Download All Coverage Artifacts
+        uses: actions/download-artifact@v8
+        with:
+          path: coverage-data
+          pattern: coverage-*
+          merge-multiple: false
+
+      - name: Aggregate & Generate Coverage Summary
+        run: |
+          python3 tools/report_coverage.py coverage-data
+
+      - name: Post Sticky Coverage Comment on Pull Request
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            if (!fs.existsSync('coverage-summary.md')) return;
+            const body = fs.readFileSync('coverage-summary.md', 'utf8');
+            const commentHeader = '## 📊 Code Coverage Summary';
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+
+            const comments = await github.rest.issues.listComments({
+              owner,
+              repo,
+              issue_number,
+            });
+            const botComment = comments.data.find(c => c.body.includes(commentHeader));
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: botComment.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number,
+                body,
+              });
+            }
+
       - name: Evaluate Pipeline Status
         run: |
           build_result="${{ needs.build.result }}"

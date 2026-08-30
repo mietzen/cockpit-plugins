@@ -9,6 +9,8 @@
   ],
   "devDependencies": {
     "@playwright/test": "^1.48.0",
-    "typescript": "^5.4.5"
+    "nyc": "^18.0.0",
+    "typescript": "^5.4.5",
+    "vite-plugin-istanbul": "^9.0.1"
   }
 }
