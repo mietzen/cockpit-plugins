@@ -410,8 +410,7 @@ export const App: React.FC = () => {
         runSmartTest: handleRunSmartTest,
         destroy: handleDestroy,
         bulkDestroySnapshots: (names: string[]) => {
-          setSelectedDestroyTarget({ type: "snapshot", name: names.join(", "), snapshotCount: names.length });
-          setActiveModal("destroy");
+          setActiveModal({ type: "destroy", itemType: "snapshots", itemName: names.join(" ") });
         },
       };
     }
