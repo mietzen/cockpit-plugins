@@ -99,5 +99,20 @@ class TestSmbParser(unittest.TestCase):
         self.assertFalse(ok)
         self.assertIn("managed by Ansible", msg)
 
+    def test_save_global_settings(self):
+        ok, msg = self.parser.save_global({
+            "workgroup": "MYGROUP",
+            "server string": "Updated Server",
+        })
+        self.assertTrue(ok)
+        data = self.parser.parse()
+        self.assertEqual(data["global"]["workgroup"], "MYGROUP")
+        self.assertEqual(data["global"]["server string"], "Updated Server")
+
+    def test_nonexistent_config_handled(self):
+        p = SmbParser(config_path="/tmp/nonexistent_smb.conf")
+        data = p.parse()
+        self.assertEqual(data["shares"], [])
+
 if __name__ == "__main__":
     unittest.main()

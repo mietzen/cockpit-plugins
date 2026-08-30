@@ -75,5 +75,15 @@ class TestNfsParser(unittest.TestCase):
         paths = [e["path"] for e in exports]
         self.assertNotIn("/tank/temp", paths)
 
+    def test_prevent_delete_ansible_managed_export(self):
+        ok, msg = self.parser.delete_export("/tank/managed")
+        self.assertFalse(ok)
+        self.assertIn("managed by Ansible", msg)
+
+    def test_delete_nonexistent_export(self):
+        ok, msg = self.parser.delete_export("/nonexistent")
+        self.assertFalse(ok)
+        self.assertTrue("does not exist" in msg or "not found" in msg)
+
 if __name__ == "__main__":
     unittest.main()

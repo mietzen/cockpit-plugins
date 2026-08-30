@@ -54,12 +54,12 @@ jobs:
       - name: Run Backend Unit Tests with Coverage
         run: |
           mkdir -p coverage-python
-          PYTHONPATH=packages/common/python:plugins/${{ matrix.plugin }}:tools pytest \
+          PYTHONPATH=packages/common/python:plugins/${{ matrix.plugin }}:plugins/${{ matrix.plugin }}/backend:tools pytest \
             --cov=plugins/${{ matrix.plugin }}/backend \
             --cov=packages/common/python/cockpit_common \
             --cov-report=lcov:coverage-python/coverage-python-${{ matrix.plugin }}.lcov \
-            --cov-report=term \
-            plugins/${{ matrix.plugin }}/backend/tests tools/tests
+            --cov-report=term-missing \
+            plugins/${{ matrix.plugin }}/backend/tests packages/common/python/tests tools/tests
 
       - name: Upload Python Coverage Artifact
         uses: actions/upload-artifact@v7
