@@ -1768,36 +1768,23 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     await frame.evaluate(() => {
       (window as any).__setActiveModal?.({
         type: "destroy",
-        itemType: "pool",
-        itemName: "tank",
+        itemType: "dataset",
+        itemName: "tank/nonexistent_test_ds",
       });
     });
     await page.waitForTimeout(300);
     const confirm1 = frame.locator("#destroy-confirm, input[id*='destroy-confirm']").first();
     if (await confirm1.isVisible({ timeout: 1000 }).catch(() => false)) {
-      await confirm1.fill("tank");
+      await confirm1.fill("tank/nonexistent_test_ds");
     }
     const forceCheck = frame.locator("input#destroy-force").first();
     if (await forceCheck.isVisible({ timeout: 500 }).catch(() => false)) {
       await forceCheck.click().catch(() => {});
     }
-
-    // Test DestroyModal for dataset
-    await frame.evaluate(() => {
-      (window as any).__setActiveModal?.({
-        type: "destroy",
-        itemType: "dataset",
-        itemName: "tank/data",
-      });
-    });
-    await page.waitForTimeout(300);
-    const confirm2 = frame.locator("#destroy-confirm, input[id*='destroy-confirm']").first();
-    if (await confirm2.isVisible({ timeout: 1000 }).catch(() => false)) {
-      await confirm2.fill("tank/data");
-    }
-    const recCheck = frame.locator("input#destroy-recursive").first();
-    if (await recCheck.isVisible({ timeout: 500 }).catch(() => false)) {
-      await recCheck.click().catch(() => {});
+    const destroyBtn = frame.locator("button:has-text('Permanently Destroy')").first();
+    if (await destroyBtn.isVisible({ timeout: 500 }).catch(() => false)) {
+      await destroyBtn.click().catch(() => {});
+      await page.waitForTimeout(400);
     }
 
     // Test DestroyModal for snapshot
@@ -1813,6 +1800,10 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     if (await confirm3.isVisible({ timeout: 1000 }).catch(() => false)) {
       await confirm3.fill("tank@snap1");
     }
+    const cancelBtn = frame.locator("button:has-text('Cancel')").first();
+    if (await cancelBtn.isVisible({ timeout: 500 }).catch(() => false)) {
+      await cancelBtn.click().catch(() => {});
+    }
 
     // Test AttachDiskModal
     await frame.evaluate(() => {
@@ -1827,6 +1818,11 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     if (await attachForce.isVisible({ timeout: 500 }).catch(() => false)) {
       await attachForce.click().catch(() => {});
     }
+    const attachBtn = frame.locator("button:has-text('Attach Disk')").first();
+    if (await attachBtn.isVisible({ timeout: 500 }).catch(() => false)) {
+      await attachBtn.click().catch(() => {});
+      await page.waitForTimeout(400);
+    }
 
     // Test ReplaceDiskModal
     await frame.evaluate(() => {
@@ -1837,6 +1833,11 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
       });
     });
     await page.waitForTimeout(300);
+    const replaceBtn = frame.locator("button:has-text('Replace Disk')").first();
+    if (await replaceBtn.isVisible({ timeout: 500 }).catch(() => false)) {
+      await replaceBtn.click().catch(() => {});
+      await page.waitForTimeout(400);
+    }
 
     // Close modal
     await frame.evaluate(() => {
