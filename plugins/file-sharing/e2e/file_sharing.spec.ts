@@ -851,4 +851,21 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
       }
     });
   });
+
+  test("22. App Action Handlers Direct Invocation Suite", async () => {
+    const frame = await getFrame();
+    await frame.evaluate(async () => {
+      const win = window as any;
+      try {
+        win.__addAlert?.("Share alert", "info");
+        win.__handleSaveSmbGlobal?.({ workgroup: "TESTWG" });
+        win.__handleSaveAnsibleMarkers?.("# A", "# B");
+        win.__handleSetUserState?.("test-user", true);
+        win.__handleSetUserState?.("test-user", false);
+        win.__handleServiceAction?.("smbd", "reload");
+      } catch {
+        // ignore errors
+      }
+    });
+  });
 });

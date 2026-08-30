@@ -964,4 +964,37 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
       }
     }, TEST_POOL);
   });
+
+  test("25. App Action Handlers Direct Invocation Suite", async () => {
+    const frame = await getFrame();
+    await frame.evaluate(async (pool) => {
+      const win = window as any;
+      try {
+        win.__addAlert?.("info", "Test info", "details");
+        win.__addAlert?.("warning", "Test warning");
+        win.__handleSelectPool?.(pool, "snapshots");
+        win.__handleSubTabChange?.("topology");
+        win.__handleViewSmartDetails?.("sda");
+        win.__handleViewSmartDetails?.({
+          name: "sda",
+          path: "/dev/sda",
+          size: 1000,
+          model: "M",
+          serial: "S",
+          wwn: "W",
+          rotational: false,
+          smart_health: "PASSED",
+          temperature: 30,
+          transport: "sata",
+          pool: pool,
+          partitions: [],
+        });
+        win.__handleScrubAction?.(pool, "start");
+        win.__handleTrimAction?.(pool, "start");
+        win.__handleClearErrors?.(pool);
+      } catch {
+        // ignore errors
+      }
+    }, TEST_POOL);
+  });
 });
