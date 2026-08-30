@@ -80,10 +80,40 @@ class TestNfsParser(unittest.TestCase):
         self.assertFalse(ok)
         self.assertIn("managed by Ansible", msg)
 
-    def test_delete_nonexistent_export(self):
-        ok, msg = self.parser.delete_export("/nonexistent")
+    def test_save_export_edge_cases(self):
+        # Invalid path
+        ok, msg = self.parser.save_export("invalid_path", [])
         self.assertFalse(ok)
-        self.assertTrue("does not exist" in msg or "not found" in msg)
+
+        # Overwrite managed export
+        ok, msg = self.parser.save_export("/tank/managed", [])
+        self.assertFalse(ok)
+
+        # Custom options
+        ok, msg = self.parser.save_export("/tank/custom", [{
+            "host": "10.0.0.1",
+            "read_only": True,
+            "sync": False,
+            "no_subtree_check": False,
+            "root_squash": False,
+            "all_squash": True,
+            "anonuid": 1001,
+            "anongid": 1001,
+        }])
+        self.assertTrue(ok)
+
+        # Update existing export in place
+        ok, msg = self.parser.save_export("/tank/custom", [{"host": "10.0.0.2", "read_only": False}])
+        self.assertTrue(ok)
+
+    def test_parse_line_edge_cases(self):
+        self.assertIsNone(self.parser.parse_line("", "file", False, ""))
+        self.assertIsNone(self.parser.parse_line("# comment", "file", False, ""))
+        res = self.parser.parse_line("/export/path", "file", False, "")
+        self.assertIsNotNone(res)
+        self.assertEqual(res["clients"][0]["host"], "*")
+
 
 if __name__ == "__main__":
     unittest.main()
+

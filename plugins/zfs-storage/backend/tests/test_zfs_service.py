@@ -184,6 +184,25 @@ class TestZfsServiceActions(unittest.TestCase):
         self.assertEqual(len(datasets), 1)
         self.assertEqual(datasets[0]["name"], "tank/data")
 
+    @patch("backend.zfs_helper.run_cmd")
+    def test_get_pool_status_and_properties(self, mock_run):
+        mock_run.return_value = MagicMock(returncode=0, stdout="pool: tank\nstate: ONLINE\n", stderr="")
+        self.assertIn("state", self.svc.get_pool_status("tank"))
+        mock_run.return_value = MagicMock(returncode=1, stdout="", stderr="pool not found")
+        self.assertIn("error", self.svc.get_pool_status("tank"))
+
+        mock_run.return_value = MagicMock(returncode=0, stdout="tank\tashift\t12\tlocal\n", stderr="")
+        self.assertIn("ashift", self.svc.get_pool_properties("tank"))
+        mock_run.return_value = MagicMock(returncode=1, stdout="", stderr="error")
+        self.assertEqual(self.svc.get_pool_properties("tank"), {})
+
+    @patch("backend.zfs_helper.run_cmd")
+    def test_get_snapshots(self, mock_run):
+        mock_run.return_value = MagicMock(returncode=0, stdout="tank@s1\t100\t100\t100\t-\n", stderr="")
+        self.assertEqual(len(self.svc.get_snapshots("tank")), 1)
+        mock_run.return_value = MagicMock(returncode=1, stdout="", stderr="error")
+        self.assertEqual(self.svc.get_snapshots("tank"), [])
+
     @patch("backend.zfs_helper.ZfsService.get_pools", return_value=[])
     @patch("backend.zfs_helper.run_cmd")
     def test_get_disks(self, mock_run, mock_pools):

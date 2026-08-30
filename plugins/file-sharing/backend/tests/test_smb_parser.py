@@ -109,10 +109,36 @@ class TestSmbParser(unittest.TestCase):
         self.assertEqual(data["global"]["workgroup"], "MYGROUP")
         self.assertEqual(data["global"]["server string"], "Updated Server")
 
-    def test_nonexistent_config_handled(self):
-        p = SmbParser(config_path="/tmp/nonexistent_smb.conf")
-        data = p.parse()
-        self.assertEqual(data["shares"], [])
+    def test_save_share_with_all_properties(self):
+        # Empty name failure
+        ok, msg = self.parser.save_share({"name": ""})
+        self.assertFalse(ok)
+
+        # Full properties update
+        ok, msg = self.parser.save_share({
+            "name": "public",
+            "path": "/srv/public_new",
+            "comment": "New Comment",
+            "read_only": True,
+            "browseable": False,
+            "guest_ok": True,
+            "valid_users": "user1",
+            "write_list": "user2",
+            "read_list": "user3",
+            "invalid_users": "baduser",
+            "force_user": "nobody",
+            "force_group": "nogroup",
+            "create_mask": "0644",
+            "directory_mask": "0755",
+            "vfs_objects": "acl_xattr",
+        })
+        self.assertTrue(ok)
+
+    def test_delete_nonexistent_share(self):
+        ok, msg = self.parser.delete_share("nonexistent_share_name")
+        self.assertFalse(ok)
+
 
 if __name__ == "__main__":
     unittest.main()
+

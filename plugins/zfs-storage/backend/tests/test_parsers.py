@@ -139,6 +139,66 @@ demand_data_misses              4    800
         self.assertEqual(stats["size"], 3145728000)
         self.assertAlmostEqual(stats["hit_ratio"], 0.909, places=2)
 
+    def test_parse_zpool_properties(self):
+        raw = "testpool\tashift\t12\tlocal\ntestpool\tautotrim\ton\tlocal\n"
+        props = parse_zpool_properties(raw)
+        self.assertEqual(props["ashift"], "12")
+        self.assertEqual(props["autotrim"], "on")
+
+    def test_parse_lsblk(self):
+        raw = """{
+            "blockdevices": [
+                {
+                    "name": "sda",
+                    "kname": "sda",
+                    "path": "/dev/sda",
+                    "size": 107374182400,
+                    "rota": false,
+                    "type": "disk",
+                    "tran": "sata",
+                    "serial": "123456",
+                    "wwn": "0x5002538",
+                    "model": "Samsung SSD",
+                    "mountpoint": null,
+                    "fstype": "zfs_member",
+                    "uuid": "abcdef",
+                    "hotplug": false,
+                    "children": [
+                        {
+                            "name": "sda1",
+                            "kname": "sda1",
+                            "path": "/dev/sda1",
+                            "size": 10737418240,
+                            "rota": false,
+                            "type": "part",
+                            "mountpoint": "/boot"
+                        }
+                    ]
+                }
+            ]
+        }"""
+        disks = parse_lsblk(raw)
+        self.assertEqual(len(disks), 1)
+        self.assertEqual(disks[0]["name"], "sda")
+        self.assertEqual(len(disks[0]["children"]), 1)
+
+    def test_parse_smartctl(self):
+        smart_data = {
+            "smartctl": {"messages": [{"string": "PASSED"}]},
+            "device": {"type": "sat"},
+            "smart_status": {"passed": True},
+            "temperature": {"current": 35},
+            "model_name": "Samsung SSD",
+            "serial_number": "S123",
+        }
+        import json
+        res = parse_smartctl(json.dumps(smart_data))
+        self.assertEqual(res["health"], "PASSED")
+        self.assertEqual(res["temperature"], 35)
+        self.assertEqual(res["model"], "Samsung SSD")
+
 
 if __name__ == "__main__":
     unittest.main()
+
+
