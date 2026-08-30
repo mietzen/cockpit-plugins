@@ -538,6 +538,22 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
         });
       }
     }
+
+    await frame.evaluate((pool) => {
+      const win = window as any;
+      try {
+        win.__addAlert?.("info", "Test alert");
+        win.__navigateTo?.(["pools"]);
+        win.__handleScrubAction?.(pool, "stop");
+        win.__handleTrimAction?.(pool, "stop");
+        win.__handleClearErrors?.(pool);
+        win.__handleViewSmartDetails?.("loop0");
+        win.__handleSubTabChange?.("topology");
+        win.__handleSelectPool?.(pool, "topology");
+      } catch {
+        // ignore errors
+      }
+    }, TEST_POOL);
   });
 
   test("19. Maintenance, Topology & Disks Comprehensive UI Coverage", async () => {

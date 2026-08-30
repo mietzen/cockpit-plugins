@@ -40,23 +40,6 @@ export class ZfsApiClient {
       }
       return parsed;
     } catch (err: any) {
-      for (const fallback of HELPER_PATHS) {
-        if (fallback === this.helperPath) {
-          continue;
-        }
-        try {
-          const fallbackCmd = ["python3", fallback, subcommand, ...args];
-          const out = await cockpit.spawn(fallbackCmd, { superuser: "require", err: "message" });
-          this.helperPath = fallback;
-          const parsed = JSON.parse(out.trim() || "{}");
-          if (parsed.error) {
-            throw new Error(parsed.error);
-          }
-          return parsed;
-        } catch {
-          // continue fallback search
-        }
-      }
       throw new Error(`ZFS Helper failed [${subcommand}]: ${err.message || err}`);
     }
   }

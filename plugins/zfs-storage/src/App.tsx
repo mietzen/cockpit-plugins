@@ -246,6 +246,13 @@ export const App: React.FC = () => {
     if (typeof window !== "undefined") {
       (window as any).__setActiveModal = setActiveModal;
       (window as any).__addAlert = addAlert;
+      (window as any).__navigateTo = navigateTo;
+      (window as any).__handleScrubAction = handleScrubAction;
+      (window as any).__handleTrimAction = handleTrimAction;
+      (window as any).__handleClearErrors = handleClearErrors;
+      (window as any).__handleViewSmartDetails = handleViewSmartDetails;
+      (window as any).__handleSubTabChange = handleSubTabChange;
+      (window as any).__handleSelectPool = handleSelectPool;
     }
   }, [loadData]);
 

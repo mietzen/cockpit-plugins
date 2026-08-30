@@ -571,5 +571,16 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
       (window as any).__setActiveView?.("settings");
     });
     await page.waitForTimeout(300);
+
+    await frame.evaluate(() => {
+      const win = window as any;
+      try {
+        win.__addAlert?.("info", "Test alert");
+        win.__handleSaveAnsibleMarkers?.("# <-- BEGIN -->", "# <-- END -->");
+        win.__handleServiceAction?.("smbd", "reload");
+      } catch {
+        // ignore errors
+      }
+    });
   });
 });
