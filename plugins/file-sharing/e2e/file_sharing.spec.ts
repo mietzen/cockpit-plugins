@@ -117,12 +117,12 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
     await submitBtn.click();
     await page.waitForTimeout(1000);
 
-    // Verify created share is in the list
-    await expect(frame.locator("table").getByText("[e2e_crud_share]")).toBeVisible({ timeout: 10000 });
+    // Verify created share row is present
+    const createdRow = frame.locator("tr:has-text('[e2e_crud_share]')").first();
+    await expect(createdRow).toBeVisible({ timeout: 10000 });
 
     // Delete the share
-    const row = frame.locator("tr:has-text('[e2e_crud_share]')").first();
-    const actionToggle = row.locator("button[aria-label='Share actions']").first();
+    const actionToggle = createdRow.locator("button[aria-label='Share actions']").first();
     await actionToggle.click();
     const deleteOption = frame.getByRole("menuitem", { name: /Delete share/ }).or(frame.getByText("Delete share")).first();
     await deleteOption.click();
@@ -132,7 +132,7 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
       await confirmDeleteBtn.click();
     }
     await page.waitForTimeout(1000);
-    await expect(frame.locator("table").getByText("[e2e_crud_share]")).not.toBeVisible({ timeout: 10000 });
+    await expect(frame.locator("tr:has-text('[e2e_crud_share]')")).toHaveCount(0, { timeout: 10000 });
   });
 
   test("3. Verify NFS Exports & Client IP Access Map", async () => {
