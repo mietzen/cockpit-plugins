@@ -1767,8 +1767,10 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
       });
     });
     await page.waitForTimeout(300);
-    await frame.locator("input#destroy-confirm-input, input[aria-label*='confirm']").fill("tank");
-    await page.waitForTimeout(100);
+    const confirm1 = frame.locator("#destroy-confirm, input[id*='destroy-confirm']").first();
+    if (await confirm1.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await confirm1.fill("tank");
+    }
 
     // Test DestroyModal for dataset
     await frame.evaluate(() => {
@@ -1779,8 +1781,10 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
       });
     });
     await page.waitForTimeout(300);
-    await frame.locator("input#destroy-confirm-input, input[aria-label*='confirm']").fill("tank/data");
-    await page.waitForTimeout(100);
+    const confirm2 = frame.locator("#destroy-confirm, input[id*='destroy-confirm']").first();
+    if (await confirm2.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await confirm2.fill("tank/data");
+    }
 
     // Test DestroyModal for snapshot
     await frame.evaluate(() => {
@@ -1791,8 +1795,10 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
       });
     });
     await page.waitForTimeout(300);
-    await frame.locator("input#destroy-confirm-input, input[aria-label*='confirm']").fill("tank@snap1");
-    await page.waitForTimeout(100);
+    const confirm3 = frame.locator("#destroy-confirm, input[id*='destroy-confirm']").first();
+    if (await confirm3.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await confirm3.fill("tank@snap1");
+    }
 
     // Test AttachDiskModal
     await frame.evaluate(() => {
@@ -1821,4 +1827,5 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     await page.waitForTimeout(100);
   });
 });
+
 

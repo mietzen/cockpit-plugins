@@ -90,5 +90,36 @@ class TestAccessMatrix(unittest.TestCase):
         self.assertFalse(subnet_entry["exports"][0]["read_only"])
         self.assertTrue(subnet_entry["exports"][1]["read_only"])
 
+    def test_smb_matrix_guest_and_read_list(self):
+        shares = [
+            {
+                "name": "guest_share",
+                "path": "/srv/guest",
+                "read_only": True,
+                "guest_ok": True,
+                "valid_users": "alice",
+                "read_list": "bob",
+            },
+            {
+                "name": "ro_share",
+                "path": "/srv/ro",
+                "read_only": True,
+                "guest_ok": False,
+                "valid_users": "alice bob",
+                "read_list": "bob",
+            }
+        ]
+        users = [
+            {"username": "charlie", "full_name": "Charlie", "is_enabled": True},
+            {"username": "bob", "full_name": "Bob", "is_enabled": True},
+        ]
+        matrix = calculate_smb_user_matrix(shares, users)
+        # Charlie on guest_share (not in valid_users, guest_ok=True) -> guest_only
+        self.assertEqual(matrix[0]["shares"][0]["access"], "guest_only")
+        # Bob on ro_share (in read_list) -> read_only
+        self.assertEqual(matrix[1]["shares"][1]["access"], "read_only")
+
+
 if __name__ == "__main__":
     unittest.main()
+
