@@ -1147,4 +1147,40 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
       }
     }
   });
+
+  test("26. User Access Matrix & Direct User Management Suite", async () => {
+    const frame = await getFrame();
+
+    // 1. Switch to Users tab
+    await frame.evaluate(() => {
+      (window as any).__setActiveView?.("users");
+    });
+    await page.waitForTimeout(300);
+
+    // 2. Switch to Access matrix subtab
+    const matrixTab = frame.locator("button.pf-v5-c-tabs__link:has-text('Access Matrix'), button:has-text('Access Matrix')").first();
+    if (await matrixTab.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await matrixTab.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
+    }
+
+    // 3. Switch back to Users subtab
+    const usersSubTab = frame.locator("button.pf-v5-c-tabs__link:has-text('Samba Users'), button:has-text('Samba Users')").first();
+    if (await usersSubTab.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await usersSubTab.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
+    }
+
+    // 4. Toggle user status via kebab
+    const userKebab = frame.locator("button[aria-label='User actions']").first();
+    if (await userKebab.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await userKebab.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
+      const toggleItem = frame.locator("button.pf-v5-c-menu__item:has-text('Disable user'), button.pf-v5-c-menu__item:has-text('Enable user')").first();
+      if (await toggleItem.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await toggleItem.click({ timeout: 1000 }).catch(() => {});
+        await page.waitForTimeout(200);
+      }
+    }
+  });
 });

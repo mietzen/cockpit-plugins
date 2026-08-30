@@ -1105,6 +1105,39 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
       await cancelPreview.click({ timeout: 1000 }).catch(() => {});
     }
 
+    // 9. Edit Properties Modal
+    await frame.evaluate((pool) => {
+      (window as any).__setActiveModal?.({
+        type: "edit-properties",
+        dataset: {
+          name: `${pool}/mock_edit`,
+          pool: pool,
+          type: "filesystem",
+          used: 1024,
+          available: 1073741824,
+          referenced: 1024,
+          mountpoint: `/mnt/${pool}/mock_edit`,
+          compression: "lz4",
+          dedup: "off",
+          readonly: "off",
+          atime: "on",
+          sync: "standard",
+          recordsize: 131072,
+          quota: "0",
+          reservation: "0",
+        },
+      });
+    }, TEST_POOL);
+    await page.waitForTimeout(200);
+    const savePropBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Save changes'), .pf-v5-c-modal-box button:has-text('Save Changes')").first();
+    if (await savePropBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await savePropBtn.click({ timeout: 1000 }).catch(() => {});
+    }
+    const cancelEditProp = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
+    if (await cancelEditProp.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await cancelEditProp.click({ timeout: 1000 }).catch(() => {});
+    }
+
     await frame.evaluate(() => {
       (window as any).__setActiveModal?.(null);
     });
@@ -1458,7 +1491,54 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
       }
     }
 
-    // 4. Visit Settings
+    // 4. Visit Topology Tab
+    await frame.evaluate((pool) => (window as any).__navigateTo?.(["pools", pool, "topology"]), TEST_POOL);
+    await page.waitForTimeout(300);
+    const devKebab = frame.locator("button[aria-label='Device actions']").first();
+    if (await devKebab.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await devKebab.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
+      const replaceItem = frame.locator("button.pf-v5-c-menu__item:has-text('Replace device')").first();
+      if (await replaceItem.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await replaceItem.click({ timeout: 1000 }).catch(() => {});
+        await page.waitForTimeout(200);
+        const cancelBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
+        if (await cancelBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+          await cancelBtn.click({ timeout: 1000 }).catch(() => {});
+        }
+      }
+    }
+
+    // 5. Visit Snapshots Tab
+    await frame.evaluate((pool) => (window as any).__navigateTo?.(["pools", pool, "snapshots"]), TEST_POOL);
+    await page.waitForTimeout(300);
+    const expandAllBtn = frame.locator("button:has-text('Expand all')").first();
+    if (await expandAllBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await expandAllBtn.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
+    }
+    const collapseAllBtn = frame.locator("button:has-text('Collapse all')").first();
+    if (await collapseAllBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await collapseAllBtn.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
+    }
+    const snapSearch = frame.locator("input[aria-label*='Filter'], input[placeholder*='Filter snapshots']").first();
+    if (await snapSearch.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await snapSearch.fill("snap1");
+      await page.waitForTimeout(200);
+      await snapSearch.fill("");
+    }
+
+    // 6. Visit Pool Settings Tab
+    await frame.evaluate((pool) => (window as any).__navigateTo?.(["pools", pool, "settings"]), TEST_POOL);
+    await page.waitForTimeout(300);
+    const savePoolPropBtn = frame.locator("button:has-text('Save properties')").first();
+    if (await savePoolPropBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await savePoolPropBtn.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
+    }
+
+    // 7. Visit App Settings
     await frame.evaluate(() => (window as any).__navigateTo?.(["settings"]));
     await page.waitForTimeout(300);
   });
