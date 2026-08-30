@@ -1499,9 +1499,47 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     await frame.evaluate(() => (window as any).__navigateTo?.(["pools"]));
     await page.waitForTimeout(300);
 
+    const poolKebab = frame.locator("button[aria-label='Pool actions']").first();
+    if (await poolKebab.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await poolKebab.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
+      const scrubItem = frame.locator("button.pf-v5-c-menu__item:has-text('scrub'), button.pf-v5-c-menu__item:has-text('Scrub')").first();
+      if (await scrubItem.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await scrubItem.click({ timeout: 1000 }).catch(() => {});
+        await page.waitForTimeout(200);
+      }
+
+      await poolKebab.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
+      const trimItem = frame.locator("button.pf-v5-c-menu__item:has-text('trim'), button.pf-v5-c-menu__item:has-text('Trim')").first();
+      if (await trimItem.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await trimItem.click({ timeout: 1000 }).catch(() => {});
+        await page.waitForTimeout(200);
+      }
+    }
+
     // 3. Visit Disks View and expand table
     await frame.evaluate(() => (window as any).__navigateTo?.(["disks"]));
     await page.waitForTimeout(300);
+
+    const diskKebab = frame.locator("button[aria-label='Disk actions']").first();
+    if (await diskKebab.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await diskKebab.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
+      const shortTest = frame.locator("button.pf-v5-c-menu__item:has-text('short')").first();
+      if (await shortTest.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await shortTest.click({ timeout: 1000 }).catch(() => {});
+        await page.waitForTimeout(200);
+      }
+
+      await diskKebab.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
+      const longTest = frame.locator("button.pf-v5-c-menu__item:has-text('extended')").first();
+      if (await longTest.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await longTest.click({ timeout: 1000 }).catch(() => {});
+        await page.waitForTimeout(200);
+      }
+    }
 
     const expandDiskBtn = frame.locator("table[aria-label*='Disks'] button.pf-v5-c-table__toggle, table button[aria-label*='Details']").first();
     if (await expandDiskBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
@@ -1534,6 +1572,14 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
         if (await cancelBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
           await cancelBtn.click({ timeout: 1000 }).catch(() => {});
         }
+      }
+
+      await devKebab.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
+      const trimDevItem = frame.locator("button.pf-v5-c-menu__item:has-text('Trim device')").first();
+      if (await trimDevItem.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await trimDevItem.click({ timeout: 1000 }).catch(() => {});
+        await page.waitForTimeout(200);
       }
     }
 

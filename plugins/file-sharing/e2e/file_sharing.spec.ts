@@ -1155,9 +1155,63 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
   test("26. User Access Matrix & Direct User Management Suite", async () => {
     const frame = await getFrame();
 
-    // 1. Switch to Users tab
+    // 1. Inject rich mock state with users and matrix
     await frame.evaluate(() => {
-      (window as any).__setActiveView?.("users");
+      const win = window as any;
+      win.__setFileSharingData?.({
+        services: {
+          smbd: { unit: 'smbd', active: true, state: 'active', enabled: true, installed: true },
+          nmbd: { unit: 'nmbd', active: true, state: 'active', enabled: true, installed: true },
+          nfs: { unit: 'nfs-kernel-server', active: true, state: 'active', enabled: true, installed: true },
+        },
+        smb: {
+          global: { workgroup: 'WORKGROUP', 'server string': 'Cockpit File Sharing' },
+          shares: [
+            { name: 'public', path: '/srv/public', comment: 'Public share', guest_ok: true, read_only: false, is_managed: true, browseable: true, valid_users: ['alice'], write_list: ['alice'] },
+          ],
+        },
+        nfs: {
+          exports: [
+            { path: '/srv/nfs/data', clients: [{ host: '*', read_only: false, sync: true, root_squash: true, no_subtree_check: true, options: ['rw', 'sync'] }], is_managed: true },
+          ],
+          client_map: [
+            { client: '192.168.1.0/24', exports: [{ path: '/srv/nfs/data', options: ['rw', 'sync'] }] },
+          ],
+        },
+        users: {
+          smb_users: [
+            { username: 'testuser', full_name: 'Test User', is_enabled: true, sid: 'S-1-5-21-123-456-789-1000' },
+            { username: 'disableduser', full_name: 'Disabled User', is_enabled: false, sid: 'S-1-5-21-123-456-789-1001' },
+          ],
+          unixUsers: ['testuser', 'alice', 'bob'],
+          access_matrix: [
+            {
+              username: 'testuser',
+              is_enabled: true,
+              shares: [
+                { share_name: 'public', access: 'read_write' },
+                { share_name: 'private', access: 'read_only' },
+                { share_name: 'guest_share', access: 'guest_only' },
+                { share_name: 'denied_share', access: 'denied' },
+              ],
+            },
+            {
+              username: 'disableduser',
+              is_enabled: false,
+              shares: [
+                { share_name: 'public', access: 'denied' },
+              ],
+            },
+          ],
+        },
+        sessions: [
+          { service: 'smb', username: 'alice', client: '192.168.1.50', pid: '1234', machine: 'ALICE-PC' },
+        ],
+        zfs_mounts: [
+          { dataset: 'tank/data', mountpoint: '/tank/data' },
+        ],
+      });
+      win.__setActiveView?.("users");
     });
     await page.waitForTimeout(300);
 
@@ -1175,15 +1229,39 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
       await page.waitForTimeout(200);
     }
 
-    // 4. Toggle user status via kebab
+    // 4. Exercise user kebab actions
     const userKebab = frame.locator("button[aria-label='User actions']").first();
     if (await userKebab.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await userKebab.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
+      const setPassItem = frame.locator("button.pf-v5-c-menu__item:has-text('Set password')").first();
+      if (await setPassItem.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await setPassItem.click({ timeout: 1000 }).catch(() => {});
+        await page.waitForTimeout(200);
+        const cancelBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
+        if (await cancelBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+          await cancelBtn.click({ timeout: 1000 }).catch(() => {});
+        }
+      }
+
       await userKebab.click({ timeout: 1000 }).catch(() => {});
       await page.waitForTimeout(200);
       const toggleItem = frame.locator("button.pf-v5-c-menu__item:has-text('Disable user'), button.pf-v5-c-menu__item:has-text('Enable user')").first();
       if (await toggleItem.isVisible({ timeout: 1000 }).catch(() => false)) {
         await toggleItem.click({ timeout: 1000 }).catch(() => {});
         await page.waitForTimeout(200);
+      }
+
+      await userKebab.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
+      const deleteItem = frame.locator("button.pf-v5-c-menu__item:has-text('Delete Samba user')").first();
+      if (await deleteItem.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await deleteItem.click({ timeout: 1000 }).catch(() => {});
+        await page.waitForTimeout(200);
+        const cancelBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
+        if (await cancelBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+          await cancelBtn.click({ timeout: 1000 }).catch(() => {});
+        }
       }
     }
   });
