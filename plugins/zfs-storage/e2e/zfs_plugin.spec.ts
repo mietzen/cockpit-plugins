@@ -1191,6 +1191,12 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
         await api.trimPool?.(pool, "stop");
         await api.clearPool?.(pool);
         await api.setDatasetProperty?.(pool, "compression", "off");
+        await api.setPoolProperty?.(pool, "comment", "test");
+        await api.inheritDatasetProperty?.(pool, "compression");
+        await api.importPool?.();
+        await api.mountDataset?.(pool);
+        await api.unmountDataset?.(pool);
+        await api.shareDataset?.({ path: `/var/tmp`, smb: true, nfs: true });
       } catch {
         // ignore errors
       }

@@ -291,8 +291,73 @@ Account Flags:        [UD         ]
             self.assertEqual(res["status"], "success")
 
     @patch("sys.argv", ["file_sharing_helper.py", "save_smb_share", "--data", json.dumps({"name": "data", "path": "/data"})])
-    @patch("file_sharing_helper.SmbParser.save_share", return_value=(False, "Failed to write"))
-    def test_main_save_smb_share_error(self, mock_save):
+    @patch("file_sharing_helper.testparm_verify", return_value=(False, "Syntax error"))
+    @patch("file_sharing_helper.SmbParser.save_share", return_value=(True, "Saved"))
+    def test_main_save_smb_share_testparm_error(self, mock_save, mock_testparm):
+        with patch("builtins.print") as mock_print, self.assertRaises(SystemExit):
+            file_sharing_helper.main()
+        res = json.loads(mock_print.call_args[0][0])
+        self.assertEqual(res["status"], "error")
+
+    @patch("sys.argv", ["file_sharing_helper.py", "delete_smb_share", "--name", "data"])
+    @patch("file_sharing_helper.SmbParser.delete_share", return_value=(False, "Failed to delete"))
+    def test_main_delete_smb_share_error(self, mock_del):
+        with patch("builtins.print") as mock_print, self.assertRaises(SystemExit):
+            file_sharing_helper.main()
+        res = json.loads(mock_print.call_args[0][0])
+        self.assertEqual(res["status"], "error")
+
+    @patch("sys.argv", ["file_sharing_helper.py", "save_smb_global", "--data", json.dumps({"workgroup": "NEW"})])
+    @patch("file_sharing_helper.SmbParser.save_global", return_value=(False, "Global error"))
+    def test_main_save_smb_global_error(self, mock_save):
+        with patch("builtins.print") as mock_print, self.assertRaises(SystemExit):
+            file_sharing_helper.main()
+        res = json.loads(mock_print.call_args[0][0])
+        self.assertEqual(res["status"], "error")
+
+    @patch("sys.argv", ["file_sharing_helper.py", "save_nfs_export", "--data", json.dumps({"path": "/srv", "clients": []})])
+    @patch("file_sharing_helper.NfsParser.save_export", return_value=(False, "NFS save error"))
+    def test_main_save_nfs_export_error(self, mock_save):
+        with patch("builtins.print") as mock_print, self.assertRaises(SystemExit):
+            file_sharing_helper.main()
+        res = json.loads(mock_print.call_args[0][0])
+        self.assertEqual(res["status"], "error")
+
+    @patch("sys.argv", ["file_sharing_helper.py", "delete_nfs_export", "--path", "/srv"])
+    @patch("file_sharing_helper.NfsParser.delete_export", return_value=(False, "NFS del error"))
+    def test_main_delete_nfs_export_error(self, mock_del):
+        with patch("builtins.print") as mock_print, self.assertRaises(SystemExit):
+            file_sharing_helper.main()
+        res = json.loads(mock_print.call_args[0][0])
+        self.assertEqual(res["status"], "error")
+
+    @patch("sys.argv", ["file_sharing_helper.py", "create_smb_user", "--username", "u1", "--password", "p1"])
+    @patch("file_sharing_helper.run_cmd", return_value=(1, "", "User not found"))
+    def test_main_create_smb_user_error(self, mock_cmd):
+        with patch("builtins.print") as mock_print, self.assertRaises(SystemExit):
+            file_sharing_helper.main()
+        res = json.loads(mock_print.call_args[0][0])
+        self.assertEqual(res["status"], "error")
+
+    @patch("sys.argv", ["file_sharing_helper.py", "set_smb_user_state", "--username", "u1"])
+    @patch("file_sharing_helper.run_cmd", return_value=(1, "", "Failed"))
+    def test_main_set_smb_user_state_error(self, mock_cmd):
+        with patch("builtins.print") as mock_print, self.assertRaises(SystemExit):
+            file_sharing_helper.main()
+        res = json.loads(mock_print.call_args[0][0])
+        self.assertEqual(res["status"], "error")
+
+    @patch("sys.argv", ["file_sharing_helper.py", "delete_smb_user", "--username", "u1"])
+    @patch("file_sharing_helper.run_cmd", return_value=(1, "", "Failed"))
+    def test_main_delete_smb_user_error(self, mock_cmd):
+        with patch("builtins.print") as mock_print, self.assertRaises(SystemExit):
+            file_sharing_helper.main()
+        res = json.loads(mock_print.call_args[0][0])
+        self.assertEqual(res["status"], "error")
+
+    @patch("sys.argv", ["file_sharing_helper.py", "service_action", "--service", "smbd", "--verb", "restart"])
+    @patch("file_sharing_helper.run_cmd", return_value=(1, "", "Unit not found"))
+    def test_main_service_action_error(self, mock_cmd):
         with patch("builtins.print") as mock_print, self.assertRaises(SystemExit):
             file_sharing_helper.main()
         res = json.loads(mock_print.call_args[0][0])
@@ -301,3 +366,4 @@ Account Flags:        [UD         ]
 
 if __name__ == "__main__":
     unittest.main()
+
