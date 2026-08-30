@@ -592,13 +592,37 @@ select:focus-visible {
 }
 
 /* =========================================================
-   Labels & Badges: Pill Geometry & Contrast
+   Labels & Badges: Pill Geometry & Single Clean Border
    ========================================================= */
 .pf-v5-c-label,
 .pf-v5-c-badge {
   border-radius: 999px !important;
   font-weight: 500 !important;
   padding: 2px 10px !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+/* Eliminate PatternFly nested pseudo-element borders that cause double outlines */
+.pf-v5-c-label::before,
+.pf-v5-c-label::after,
+.pf-v5-c-label__content::before,
+.pf-v5-c-label__content::after,
+.pf-v5-c-badge::before,
+.pf-v5-c-badge::after {
+  display: none !important;
+  content: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.pf-v5-c-label__content {
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+  padding: 0 !important;
 }
 
 /* Light Mode Badges */
@@ -642,6 +666,20 @@ select:focus-visible {
   background-color: rgba(128, 128, 128, 0.12) !important;
   color: var(--zfs-text-secondary) !important;
   border: 1px solid var(--zfs-card-border) !important;
+}
+
+.pf-v5-c-label.pf-m-cyan,
+.pf-v5-c-badge.pf-m-cyan {
+  background-color: rgba(0, 150, 180, 0.12) !important;
+  color: #006070 !important;
+  border: 1px solid rgba(0, 150, 180, 0.3) !important;
+}
+
+.pf-v5-c-label.pf-m-gold,
+.pf-v5-c-badge.pf-m-gold {
+  background-color: rgba(240, 171, 0, 0.12) !important;
+  color: #8f6200 !important;
+  border: 1px solid rgba(240, 171, 0, 0.3) !important;
 }
 
 /* Dark Mode Badges */
@@ -698,6 +736,39 @@ select:focus-visible {
   background-color: rgba(154, 85, 255, 0.25) !important;
   color: #c499ff !important;
   border: 1px solid rgba(196, 153, 255, 0.4) !important;
+}
+
+.pf-v5-theme-dark .pf-v5-c-label.pf-m-grey,
+.pf-v6-theme-dark .pf-v5-c-label.pf-m-grey,
+.theme-dark .pf-v5-c-label.pf-m-grey,
+.pf-v5-theme-dark .pf-v5-c-badge.pf-m-grey,
+.pf-v6-theme-dark .pf-v5-c-badge.pf-m-grey,
+.theme-dark .pf-v5-c-badge.pf-m-grey {
+  background-color: rgba(128, 128, 128, 0.25) !important;
+  color: var(--zfs-text-secondary) !important;
+  border: 1px solid var(--zfs-card-border) !important;
+}
+
+.pf-v5-theme-dark .pf-v5-c-label.pf-m-cyan,
+.pf-v6-theme-dark .pf-v5-c-label.pf-m-cyan,
+.theme-dark .pf-v5-c-label.pf-m-cyan,
+.pf-v5-theme-dark .pf-v5-c-badge.pf-m-cyan,
+.pf-v6-theme-dark .pf-v5-c-badge.pf-m-cyan,
+.theme-dark .pf-v5-c-badge.pf-m-cyan {
+  background-color: rgba(0, 150, 180, 0.25) !important;
+  color: #5edbfa !important;
+  border: 1px solid rgba(94, 219, 250, 0.4) !important;
+}
+
+.pf-v5-theme-dark .pf-v5-c-label.pf-m-gold,
+.pf-v6-theme-dark .pf-v5-c-label.pf-m-gold,
+.theme-dark .pf-v5-c-label.pf-m-gold,
+.pf-v5-theme-dark .pf-v5-c-badge.pf-m-gold,
+.pf-v6-theme-dark .pf-v5-c-badge.pf-m-gold,
+.theme-dark .pf-v5-c-badge.pf-m-gold {
+  background-color: rgba(240, 171, 0, 0.25) !important;
+  color: #f0ab00 !important;
+  border: 1px solid rgba(240, 171, 0, 0.4) !important;
 }
 
 /* =========================================================
