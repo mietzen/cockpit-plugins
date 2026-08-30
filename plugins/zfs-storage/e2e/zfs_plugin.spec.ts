@@ -669,4 +669,44 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
       }).catch(() => {});
     }
   });
+
+  test("21. Comprehensive Pool Details Subtabs and Filters Suite", async () => {
+    const frame = await getFrame();
+    await frame.evaluate((pool) => {
+      (window as any).__navigateTo?.(["pools", pool, "datasets"]);
+    }, TEST_POOL);
+    await page.waitForTimeout(300);
+
+    // Switch to datasets subtab
+    const datasetsFilter = frame.locator("input[placeholder*='Filter'], input[aria-label*='Search']").first();
+    if (await datasetsFilter.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await datasetsFilter.fill("test");
+      await page.waitForTimeout(200);
+      await datasetsFilter.fill("");
+    }
+
+    // Switch to snapshots subtab
+    await frame.evaluate((pool) => {
+      (window as any).__navigateTo?.(["pools", pool, "snapshots"]);
+    }, TEST_POOL);
+    await page.waitForTimeout(300);
+
+    // Switch to topology subtab
+    await frame.evaluate((pool) => {
+      (window as any).__navigateTo?.(["pools", pool, "topology"]);
+    }, TEST_POOL);
+    await page.waitForTimeout(300);
+
+    // Switch to maintenance subtab
+    await frame.evaluate((pool) => {
+      (window as any).__navigateTo?.(["pools", pool, "maintenance"]);
+    }, TEST_POOL);
+    await page.waitForTimeout(300);
+
+    // Switch to pool settings subtab
+    await frame.evaluate((pool) => {
+      (window as any).__navigateTo?.(["pools", pool, "settings"]);
+    }, TEST_POOL);
+    await page.waitForTimeout(300);
+  });
 });

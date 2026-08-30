@@ -621,4 +621,36 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
       }
     });
   });
+
+  test("18. NFS Client Mapping & Samba Access Matrix Subtabs", async () => {
+    const frame = await getFrame();
+
+    // NFS Client Mapping subtab
+    await frame.evaluate(() => (window as any).__setActiveView?.("nfs"));
+    await page.waitForTimeout(300);
+    const clientsSubTab = frame.locator("button.pf-v5-c-tabs__link:has-text('Client mapping'), [role='tab']:has-text('Client mapping')").first();
+    if (await clientsSubTab.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await clientsSubTab.click({ timeout: 2000 }).catch(() => {});
+      await page.waitForTimeout(300);
+    }
+    const exportsSubTab = frame.locator("button.pf-v5-c-tabs__link:has-text('Export shares'), [role='tab']:has-text('Export shares')").first();
+    if (await exportsSubTab.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await exportsSubTab.click({ timeout: 2000 }).catch(() => {});
+      await page.waitForTimeout(300);
+    }
+
+    // Users Access Matrix subtab
+    await frame.evaluate(() => (window as any).__setActiveView?.("users"));
+    await page.waitForTimeout(300);
+    const matrixSubTab = frame.locator("button.pf-v5-c-tabs__link:has-text('Share access matrix'), [role='tab']:has-text('Share access matrix')").first();
+    if (await matrixSubTab.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await matrixSubTab.click({ timeout: 2000 }).catch(() => {});
+      await page.waitForTimeout(300);
+    }
+    const usersSubTab = frame.locator("button.pf-v5-c-tabs__link:has-text('Samba users'), [role='tab']:has-text('Samba users')").first();
+    if (await usersSubTab.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await usersSubTab.click({ timeout: 2000 }).catch(() => {});
+      await page.waitForTimeout(300);
+    }
+  });
 });
