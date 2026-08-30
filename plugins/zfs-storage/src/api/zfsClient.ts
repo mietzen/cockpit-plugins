@@ -176,7 +176,7 @@ export class ZfsApiClient {
           browseable: true,
           guest_ok: false,
         });
-        await cockpit.spawn(["python3", helper, "save_smb_share", "--data", smbData], { superuser: "require" });
+        await cockpit.spawn(["python3", helper, "save_smb_share", "--data", smbData], { superuser: "require", err: "message" });
       }
 
       if (params.nfs) {
@@ -184,7 +184,7 @@ export class ZfsApiClient {
           path: params.path,
           clients: [{ host: "*", read_only: false, sync: true, root_squash: true, no_subtree_check: true }],
         });
-        await cockpit.spawn(["python3", helper, "save_nfs_export", "--data", nfsData], { superuser: "require" });
+        await cockpit.spawn(["python3", helper, "save_nfs_export", "--data", nfsData], { superuser: "require", err: "message" });
       }
     } catch {
       // Gracefully handle if file sharing plugin helper is unavailable
