@@ -331,25 +331,45 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
     await addUserBtn.click();
     await expect(frame.locator(".pf-v5-c-modal-box__title-text")).toBeVisible({ timeout: 5000 });
 
-    const userInput = frame.locator("input#smb-username, select#unix-user-select").first();
+    const userInput = frame.locator("input#add-username, select#add-username").first();
     if (await userInput.isVisible({ timeout: 2000 }).catch(() => false)) {
-      if (await userInput.getAttribute("type") === "text") {
+      if ((await userInput.evaluate((el) => el.tagName)) === "INPUT") {
         await userInput.fill("runner");
       }
     }
-    const passInput = frame.locator("input#smb-password, input[type='password']").first();
+    const passInput = frame.locator("input#add-password").first();
     if (await passInput.isVisible({ timeout: 2000 }).catch(() => false)) {
       await passInput.fill("password123");
+    }
+    const confirmPass = frame.locator("input#add-confirm-password").first();
+    if (await confirmPass.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await confirmPass.fill("password123");
     }
 
     const cancelUserBtn = frame.getByRole("button", { name: /Cancel/ }).first();
     await cancelUserBtn.click();
     await expect(frame.locator(".pf-v5-c-modal-box")).toHaveCount(0, { timeout: 5000 });
+
+    // Switch to User Access Matrix subtab and search
+    const matrixTab = frame.getByRole("tab", { name: /User Access Matrix/ }).first();
+    if (await matrixTab.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await matrixTab.click();
+      const searchInput = frame.locator("input[placeholder*='Search'], input[aria-label*='Search']").first();
+      if (await searchInput.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await searchInput.fill("test-user");
+        await page.waitForTimeout(300);
+      }
+    }
   });
 
   test("12. Global Settings and Ansible Markers Modification", async () => {
     const frame = await getFrame();
     await frame.locator("button.pf-v5-c-tabs__link:has-text('Settings'), [role='tab']:has-text('Settings')").first().click();
+
+    const netbiosInput = frame.locator("input#smb-netbios, input[placeholder*='NetBIOS']").first();
+    if (await netbiosInput.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await netbiosInput.fill("COCKPITNAS");
+    }
 
     const saveSettingsBtn = frame.getByRole("button", { name: /Save Global Settings/ }).first();
     if (await saveSettingsBtn.isVisible({ timeout: 3000 }).catch(() => false)) {

@@ -407,4 +407,33 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
       }
     }
   });
+
+  test("15. Import Pool Modal Inspection", async () => {
+    const frame = await getFrame();
+    await frame.locator("button[role='tab']:has-text('Pools'), [role='tab']:has-text('Pools')").first().click();
+
+    const importBtn = frame.locator("button:has-text('Import pool')").first();
+    if (await importBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await importBtn.click();
+      await page.waitForTimeout(500);
+      const cancelBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel'), .pf-v5-c-modal-box button[aria-label='Close']").first();
+      if (await cancelBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await cancelBtn.click();
+      }
+    }
+  });
+
+  test("16. Pool Topology and Disk Actions", async () => {
+    const frame = await getFrame();
+    await frame.locator("button[role='tab']:has-text('Pools'), [role='tab']:has-text('Pools')").first().click();
+
+    const poolLink = frame.locator(`button:visible:has-text("${TEST_POOL}"), a:visible:has-text("${TEST_POOL}")`).first();
+    if (await poolLink.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await poolLink.click();
+      const topoTab = frame.locator("button[role='tab']:has-text('Topology')").first();
+      if (await topoTab.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await topoTab.click();
+      }
+    }
+  });
 });
