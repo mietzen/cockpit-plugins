@@ -974,7 +974,7 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
   test("23. Disk & Property Dialog Interaction Suite", async () => {
     const frame = await getFrame();
 
-    // Attach disk modal
+    // 1. Attach disk modal
     await frame.evaluate((pool) => {
       (window as any).__setActiveModal?.({
         type: "attach",
@@ -988,7 +988,7 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
       await cancelAttach.click({ timeout: 1000 }).catch(() => {});
     }
 
-    // Replace disk modal
+    // 2. Replace disk modal
     await frame.evaluate((pool) => {
       (window as any).__setActiveModal?.({
         type: "replace",
@@ -1001,6 +1001,113 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     if (await cancelReplace.isVisible({ timeout: 1000 }).catch(() => false)) {
       await cancelReplace.click({ timeout: 1000 }).catch(() => {});
     }
+
+    // 3. Rollback Snapshot modal
+    await frame.evaluate((pool) => {
+      (window as any).__setActiveModal?.({
+        type: "rollback-snapshot",
+        snapshot: { name: `${pool}@snap1`, snapshot_name: "snap1", dataset: pool, pool: pool, used: 1024, refer: 1024, creation: "now" },
+      });
+    }, TEST_POOL);
+    await page.waitForTimeout(200);
+    const cancelRollback = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
+    if (await cancelRollback.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await cancelRollback.click({ timeout: 1000 }).catch(() => {});
+    }
+
+    // 4. Clone Snapshot modal
+    await frame.evaluate((pool) => {
+      (window as any).__setActiveModal?.({
+        type: "clone-snapshot",
+        snapshot: { name: `${pool}@snap1`, snapshot_name: "snap1", dataset: pool, pool: pool, used: 1024, refer: 1024, creation: "now" },
+      });
+    }, TEST_POOL);
+    await page.waitForTimeout(200);
+    const cloneInput = frame.locator("input#clone-path, input[aria-label*='Clone']").first();
+    if (await cloneInput.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await cloneInput.fill(`${TEST_POOL}/clone_test`);
+    }
+    const cancelClone = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
+    if (await cancelClone.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await cancelClone.click({ timeout: 1000 }).catch(() => {});
+    }
+
+    // 5. Rename Modal
+    await frame.evaluate((pool) => {
+      (window as any).__setActiveModal?.({
+        type: "rename",
+        itemType: "dataset",
+        currentName: `${pool}/old_name`,
+      });
+    }, TEST_POOL);
+    await page.waitForTimeout(200);
+    const renameInput = frame.locator("input#new-name, input[aria-label*='New name']").first();
+    if (await renameInput.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await renameInput.fill("new_name");
+    }
+    const cancelRename = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
+    if (await cancelRename.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await cancelRename.click({ timeout: 1000 }).catch(() => {});
+    }
+
+    // 6. Destroy Modal
+    await frame.evaluate((pool) => {
+      (window as any).__setActiveModal?.({
+        type: "destroy",
+        itemType: "dataset",
+        itemName: `${pool}/trash_ds`,
+      });
+    }, TEST_POOL);
+    await page.waitForTimeout(200);
+    const confirmDestroyInput = frame.locator("input#destroy-confirm, input[aria-label*='Type']").first();
+    if (await confirmDestroyInput.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await confirmDestroyInput.fill("trash_ds");
+    }
+    const cancelDestroy = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
+    if (await cancelDestroy.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await cancelDestroy.click({ timeout: 1000 }).catch(() => {});
+    }
+
+    // 7. Arc Details Modal
+    await frame.evaluate(() => {
+      (window as any).__setActiveModal?.({
+        type: "arc-details",
+        arcStats: {
+          size: 1073741824,
+          target_size: 2147483648,
+          max_size: 4294967296,
+          min_size: 536870912,
+          hit_rate: 98.5,
+          miss_rate: 1.5,
+          data_size: 536870912,
+          meta_size: 536870912,
+        },
+      });
+    });
+    await page.waitForTimeout(200);
+    const closeArc = frame.locator(".pf-v5-c-modal-box button:has-text('Close'), .pf-v5-c-modal-box button:has-text('Cancel')").first();
+    if (await closeArc.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await closeArc.click({ timeout: 1000 }).catch(() => {});
+    }
+
+    // 8. Command Preview Modal
+    await frame.evaluate(() => {
+      (window as any).__setActiveModal?.({
+        type: "preview",
+        title: "Create ZFS Pool",
+        command: ["zpool", "create", "-f", "testpool", "sda"],
+        onConfirm: () => {},
+      });
+    });
+    await page.waitForTimeout(200);
+    const cancelPreview = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
+    if (await cancelPreview.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await cancelPreview.click({ timeout: 1000 }).catch(() => {});
+    }
+
+    await frame.evaluate(() => {
+      (window as any).__setActiveModal?.(null);
+    });
   });
 
   test("24. Direct ZFS API Client Methods Complete Suite", async () => {

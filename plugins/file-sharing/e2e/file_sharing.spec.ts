@@ -915,10 +915,24 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
     if (await userKebab.isVisible({ timeout: 1000 }).catch(() => false)) {
       await userKebab.click({ timeout: 1000 }).catch(() => {});
       await page.waitForTimeout(200);
-      const setPassItem = frame.locator("button.pf-v5-c-menu__item:has-text('Set Samba password')").first();
+      const setPassItem = frame.locator("button.pf-v5-c-menu__item:has-text('Set password')").first();
       if (await setPassItem.isVisible({ timeout: 1000 }).catch(() => false)) {
         await setPassItem.click({ timeout: 1000 }).catch(() => {});
         await page.waitForTimeout(200);
+
+        const newPass = frame.locator("input#set-password").first();
+        const confPass = frame.locator("input#set-confirm-password").first();
+        if (await newPass.isVisible({ timeout: 1000 }).catch(() => false)) {
+          await newPass.fill("Pass123!");
+          await confPass.fill("Mismatch!");
+          const updateBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Update password')").first();
+          await updateBtn.click({ timeout: 1000 }).catch(() => {});
+          await page.waitForTimeout(100);
+          await confPass.fill("Pass123!");
+          await updateBtn.click({ timeout: 1000 }).catch(() => {});
+          await page.waitForTimeout(200);
+        }
+
         const cancelBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
         if (await cancelBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
           await cancelBtn.click({ timeout: 1000 }).catch(() => {});
@@ -931,6 +945,11 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
       if (await deleteUserItem.isVisible({ timeout: 1000 }).catch(() => false)) {
         await deleteUserItem.click({ timeout: 1000 }).catch(() => {});
         await page.waitForTimeout(200);
+        const delBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Delete Samba user')").first();
+        if (await delBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+          await delBtn.click({ timeout: 1000 }).catch(() => {});
+          await page.waitForTimeout(200);
+        }
         const cancelBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
         if (await cancelBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
           await cancelBtn.click({ timeout: 1000 }).catch(() => {});
@@ -949,6 +968,15 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
       if (await editItem.isVisible({ timeout: 1000 }).catch(() => false)) {
         await editItem.click({ timeout: 1000 }).catch(() => {});
         await page.waitForTimeout(200);
+        const zfsPick = frame.locator("select#smb-zfs-mount").first();
+        if (await zfsPick.isVisible({ timeout: 1000 }).catch(() => false)) {
+          await zfsPick.selectOption({ index: 1 }).catch(() => {});
+        }
+        const saveChangesBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Save changes')").first();
+        if (await saveChangesBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+          await saveChangesBtn.click({ timeout: 1000 }).catch(() => {});
+          await page.waitForTimeout(200);
+        }
         const cancelBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
         if (await cancelBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
           await cancelBtn.click({ timeout: 1000 }).catch(() => {});
@@ -961,6 +989,11 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
       if (await deleteShareItem.isVisible({ timeout: 1000 }).catch(() => false)) {
         await deleteShareItem.click({ timeout: 1000 }).catch(() => {});
         await page.waitForTimeout(200);
+        const delBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Delete share')").first();
+        if (await delBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+          await delBtn.click({ timeout: 1000 }).catch(() => {});
+          await page.waitForTimeout(200);
+        }
         const cancelBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
         if (await cancelBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
           await cancelBtn.click({ timeout: 1000 }).catch(() => {});
@@ -979,6 +1012,15 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
       if (await editNfsItem.isVisible({ timeout: 1000 }).catch(() => false)) {
         await editNfsItem.click({ timeout: 1000 }).catch(() => {});
         await page.waitForTimeout(200);
+        const zfsPick = frame.locator("select#nfs-zfs-mount").first();
+        if (await zfsPick.isVisible({ timeout: 1000 }).catch(() => false)) {
+          await zfsPick.selectOption({ index: 1 }).catch(() => {});
+        }
+        const saveChangesBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Save changes'), .pf-v5-c-modal-box button:has-text('Save export')").first();
+        if (await saveChangesBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+          await saveChangesBtn.click({ timeout: 1000 }).catch(() => {});
+          await page.waitForTimeout(200);
+        }
         const cancelBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
         if (await cancelBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
           await cancelBtn.click({ timeout: 1000 }).catch(() => {});
@@ -991,6 +1033,11 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
       if (await deleteExportItem.isVisible({ timeout: 1000 }).catch(() => false)) {
         await deleteExportItem.click({ timeout: 1000 }).catch(() => {});
         await page.waitForTimeout(200);
+        const delBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Delete export')").first();
+        if (await delBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+          await delBtn.click({ timeout: 1000 }).catch(() => {});
+          await page.waitForTimeout(200);
+        }
         const cancelBtn = frame.locator(".pf-v5-c-modal-box button:has-text('Cancel')").first();
         if (await cancelBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
           await cancelBtn.click({ timeout: 1000 }).catch(() => {});
