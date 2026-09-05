@@ -23,3 +23,33 @@
 ## 3. Reference Skills
 - Cockpit Plugin Development: [.agents/skills/cockpit-plugin/SKILL.md](.agents/skills/cockpit-plugin/SKILL.md)
 
+
+## 4. Review convention
+
+Final reviews of implemented issues use a Gemini 3.8 Flash sub-agent.
+
+## 5. Development workflow (branch/PR per issue — mandatory)
+
+Every issue is developed on its own branch, tested, merged via PR, and only
+then deployed and e2e-tested on the test VM. Never commit directly to `main`;
+never deploy from a local build.
+
+1. **Branch**: `git switch -c <topic>/<issue-slug>` off `main` (one branch per
+   issue; `main` stays green).
+3. **Test on the test VM**: install the built package on the `debian-test`
+   VM (reachable via `ssh debian-test`)
+   and exercise the change end-to-end before merging.
+4. **PR**: open a PR (gh CLI) from the branch to `main`; CI runs the build
+   check on the PR. Iterate until green.
+5. **AI review**: before merging, run the `/code-review` skill on the branch. 
+   Address blocking findings with follow-up commits on the
+   branch; re-run CI until green. Final review of implemented issues
+6. **Merge**: merge the PR to `main` only after CI is green AND the AI review
+   passed.
+7. **Deploy**: pushing to `main` triggers the CI deploy to GitHub Pages — this
+   is the ONLY deploy path. No local-build deploys.
+8. **E2E on the test VM**: after the deploy job completes, install
+   the updated package, and verify the issue's acceptance criteria on the VM
+   (WebUI via the 9090 tunnel + playwright, service checks via ssh).
+9. **Cleanup**: delete the merged branch; restore the VM repo config if it was
+   pointed elsewhere during testing.

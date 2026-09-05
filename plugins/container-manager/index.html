@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Containers</title>
+    <script type="text/javascript">
+        (function () {
+            try {
+                var parentDoc = window.parent && window.parent.document;
+                if (parentDoc) {
+                    var html = parentDoc.documentElement;
+                    var isDark = html.classList.contains('pf-v6-theme-dark') ||
+                                 html.classList.contains('pf-v5-theme-dark') ||
+                                 parentDoc.body.classList.contains('pf-v6-theme-dark') ||
+                                 parentDoc.body.classList.contains('pf-v5-theme-dark');
+                    if (isDark) {
+                        document.documentElement.classList.add('pf-v5-theme-dark');
+                    }
+                }
+            } catch (e) {
+                // Ignore cross-origin error in development
+            }
+        })();
+    </script>
+    <script src="../base1/cockpit.js"></script>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="module" src="./src/main.tsx"></script>
+</body>
+</html>

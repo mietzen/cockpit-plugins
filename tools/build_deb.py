@@ -197,6 +197,26 @@ exit 0
                         arcname = f"{target_dir}/{f}"
                         add_file_to_tar(file_path, arcname, is_exec=f.endswith(".py"))
 
+            # Add shared cockpit_common python library
+            common_py_dir = "packages/common/python/cockpit_common"
+            if os.path.exists(common_py_dir):
+                for target_base in [
+                    "usr/lib/python3/dist-packages/cockpit_common",
+                    f"usr/libexec/{helper_dir_name}/cockpit_common",
+                ]:
+                    for root, dirs, files in os.walk(common_py_dir):
+                        dirs[:] = [d for d in dirs if d != "__pycache__" and d != "tests"]
+                        dirs.sort()
+                        files.sort()
+                        rel_dir = os.path.relpath(root, common_py_dir)
+                        target_dir = target_base if rel_dir == "." else f"{target_base}/{rel_dir}"
+                        for f in files:
+                            if f.startswith(".") or f.endswith(".pyc") or f.endswith(".pyo"):
+                                continue
+                            file_path = os.path.join(root, f)
+                            arcname = f"{target_dir}/{f}"
+                            add_file_to_tar(file_path, arcname, is_exec=f.endswith(".py"))
+
     data_tar_bytes = data_tar_io.getvalue()
 
     deb_filename = f"{pkg_name}_{version}_all.deb"

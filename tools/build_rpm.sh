@@ -84,6 +84,10 @@ if command -v rpmbuild >/dev/null 2>&1; then
         RPM_SUMMARY="SMB and NFS file sharing management plugin for Cockpit"
         RPM_REQUIRES="cockpit-bridge, python3, samba, nfs-utils"
         RPM_DESC="SMB and NFS file sharing management plugin for Cockpit."
+    elif [ "$PLUGIN_NAME" = "container-manager" ]; then
+        RPM_SUMMARY="Docker and Podman container management plugin for Cockpit"
+        RPM_REQUIRES="cockpit-bridge, python3, openssl"
+        RPM_DESC="Docker and Podman container management plugin for Cockpit."
     fi
 
     SPEC_FILE="$RPMBUILD_DIR/SPECS/${PKG_NAME}.spec"
@@ -127,6 +131,10 @@ if [ -f "${PWD}/${PLUGIN_DIR}/manifest.json" ]; then
 fi
 if [ -d "${PWD}/${PLUGIN_DIR}/backend" ]; then
     cp -r "${PWD}/${PLUGIN_DIR}/backend/"* %{buildroot}/usr/libexec/${HELPER_DIR_NAME}/
+fi
+if [ -d "${PWD}/packages/common/python/cockpit_common" ]; then
+    mkdir -p %{buildroot}/usr/libexec/${HELPER_DIR_NAME}/cockpit_common
+    cp -r "${PWD}/packages/common/python/cockpit_common/"* %{buildroot}/usr/libexec/${HELPER_DIR_NAME}/cockpit_common/
 fi
 rm -rf %{buildroot}/usr/libexec/${HELPER_DIR_NAME}/tests
 find %{buildroot} -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
