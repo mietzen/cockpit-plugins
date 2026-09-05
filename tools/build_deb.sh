@@ -88,6 +88,9 @@ if [ -n "$DPKG_DEB" ]; then
     elif [ "$PLUGIN_NAME" = "file-sharing" ]; then
         DEB_DEPENDS="cockpit-bridge | cockpit, python3, samba, nfs-kernel-server | nfs-common"
         DEB_DESC="SMB and NFS file sharing management plugin for Cockpit"
+    elif [ "$PLUGIN_NAME" = "container-manager" ]; then
+        DEB_DEPENDS="cockpit-bridge | cockpit, python3, openssl"
+        DEB_DESC="Docker and Podman container management plugin for Cockpit"
     fi
 
     mkdir -p "$STAGE_DIR/usr/share/cockpit/${PLUGIN_NAME}"
@@ -137,6 +140,14 @@ PRERM_EOF
     # Backend helper
     if [ -d "${PLUGIN_DIR}/backend" ]; then
         cp -r "${PLUGIN_DIR}/backend/"* "$STAGE_DIR/usr/libexec/${HELPER_DIR_NAME}/"
+    fi
+
+    # Shared common python library
+    if [ -d "packages/common/python/cockpit_common" ]; then
+        mkdir -p "$STAGE_DIR/usr/lib/python3/dist-packages/cockpit_common"
+        cp -r "packages/common/python/cockpit_common/"* "$STAGE_DIR/usr/lib/python3/dist-packages/cockpit_common/"
+        mkdir -p "$STAGE_DIR/usr/libexec/${HELPER_DIR_NAME}/cockpit_common"
+        cp -r "packages/common/python/cockpit_common/"* "$STAGE_DIR/usr/libexec/${HELPER_DIR_NAME}/cockpit_common/"
     fi
 
     # Clean non-production test files and bytecode caches

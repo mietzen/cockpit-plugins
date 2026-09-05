@@ -12,6 +12,9 @@ TIER_CONFIG = {
             "command_builder.py",
             "zfs_helper.py",
             "file_sharing_helper.py",
+            "container_helper.py",
+            "engine_adapter.py",
+            "tls_manager.py",
             "smb_parser.py",
             "samba_parser.py",
             "nfs_parser.py",
@@ -20,6 +23,12 @@ TIER_CONFIG = {
             "DestroyModal.tsx",
             "AttachDiskModal.tsx",
             "ReplaceDiskModal.tsx",
+            "ConfirmModal.tsx",
+            "SystemPruneModal.tsx",
+            "RemoteApiModal.tsx",
+            "containerClient.ts",
+            "fileSharingClient.ts",
+            "zfsClient.ts",
             "Client.ts",
         ],
     },
@@ -42,8 +51,9 @@ def is_test_file(filepath: str) -> bool:
     return "/tests/" in low or "/test/" in low or low.endswith(".spec.ts") or "test_" in low or "spec_" in low
 
 def classify_file(filepath: str) -> str:
+    low = filepath.lower()
     for pat in TIER_CONFIG["SECURITY"]["patterns"]:
-        if pat in filepath:
+        if pat.lower() in low:
             return "SECURITY"
     if filepath.endswith(".py") or "formatters.ts" in filepath:
         return "BACKEND"

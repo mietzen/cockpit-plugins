@@ -26,7 +26,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        plugin: [zfs-storage, file-sharing]
+        plugin: [zfs-storage, file-sharing, container-manager]
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v7
@@ -149,7 +149,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        plugin: [zfs-storage, file-sharing]
+        plugin: [zfs-storage, file-sharing, container-manager]
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v7
@@ -390,6 +390,8 @@ jobs:
             RELEASE_FILES=(all-debs/cockpit-zfs-storage_*.deb all-rpms/cockpit-zfs-storage-*.rpm)
           elif [[ "$TAG_NAME" == file-sharing-* ]]; then
             RELEASE_FILES=(all-debs/cockpit-file-sharing_*.deb all-rpms/cockpit-file-sharing-*.rpm)
+          elif [[ "$TAG_NAME" == container-manager-* ]]; then
+            RELEASE_FILES=(all-debs/cockpit-container-manager_*.deb all-rpms/cockpit-container-manager-*.rpm)
           else
             RELEASE_FILES=(all-debs/*.deb all-rpms/*.rpm)
           fi
