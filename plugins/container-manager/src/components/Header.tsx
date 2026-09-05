@@ -59,7 +59,7 @@ export const Header: React.FC<HeaderProps> = ({
           <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsMd' }}>
             <FlexItem>
               <Title headingLevel="h1" size="2xl" style={{ margin: 0 }}>
-                📦 Containers
+                Containers
               </Title>
             </FlexItem>
 
@@ -69,6 +69,7 @@ export const Header: React.FC<HeaderProps> = ({
                   <Select
                     isOpen={engineDropdownOpen}
                     selected={activeEngine}
+                    popperProps={{ appendTo: () => document.body }}
                     onSelect={(_event, value) => {
                       onSelectEngine(value as EngineType);
                       setEngineDropdownOpen(false);
@@ -76,21 +77,21 @@ export const Header: React.FC<HeaderProps> = ({
                     onOpenChange={(isOpen) => setEngineDropdownOpen(isOpen)}
                     toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
                       <MenuToggle ref={toggleRef} onClick={onEngineToggle} isExpanded={engineDropdownOpen}>
-                        {activeEngine === 'docker' ? '🐳 Docker' : '🦭 Podman'} ({activeEngineInfo?.version || 'Active'})
+                        {activeEngine === 'docker' ? 'Docker' : 'Podman'} ({activeEngineInfo?.version || 'Active'})
                       </MenuToggle>
                     )}
                   >
                     <SelectOption key="docker" value="docker">
-                      🐳 Docker ({engines.docker.version || 'installed'})
+                      Docker ({engines.docker.version || 'installed'})
                     </SelectOption>
                     <SelectOption key="podman" value="podman">
-                      🦭 Podman ({engines.podman.version || 'installed'})
+                      Podman ({engines.podman.version || 'installed'})
                     </SelectOption>
                   </Select>
                 ) : (
                   <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsXs' }}>
                     <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>
-                      {activeEngine === 'docker' ? '🐳 Docker' : '🦭 Podman'} {activeEngineInfo?.version}
+                      {activeEngine === 'docker' ? 'Docker' : 'Podman'} {activeEngineInfo?.version}
                     </span>
                     <StatusBadge variant={activeEngineInfo?.active ? 'green' : 'grey'}>
                       {activeEngineInfo?.active ? 'Active' : 'Inactive'}

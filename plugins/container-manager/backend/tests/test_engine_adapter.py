@@ -86,12 +86,16 @@ class TestEngineAdapter(unittest.TestCase):
     @patch("engine_adapter.run_cmd")
     def test_docker_list_volumes(self, mock_run):
         mock_output = '{"Name":"app-data","Driver":"local","Scope":"local","Mountpoint":"/var/lib/docker/volumes/app-data/_data"}\n'
-        mock_run.return_value = (0, mock_output, "")
+        mock_run.side_effect = [
+            (0, mock_output, ""),
+            (0, '{"Mounts":"app-data"}', ""),
+        ]
 
         adapter = DockerAdapter()
         volumes = adapter.list_volumes()
         self.assertEqual(len(volumes), 1)
         self.assertEqual(volumes[0]["name"], "app-data")
+        self.assertTrue(volumes[0]["inUse"])
 
     @patch("engine_adapter.run_cmd")
     def test_docker_list_networks(self, mock_run):
@@ -99,7 +103,10 @@ class TestEngineAdapter(unittest.TestCase):
             '{"ID":"net1","Name":"bridge","Driver":"bridge","Scope":"local"}\n'
             '{"ID":"net2","Name":"custom-net","Driver":"bridge","Scope":"local"}\n'
         )
-        mock_run.return_value = (0, mock_output, "")
+        mock_run.side_effect = [
+            (0, mock_output, ""),
+            (0, '{"Networks":"bridge"}', ""),
+        ]
 
         adapter = DockerAdapter()
         networks = adapter.list_networks()
@@ -148,18 +155,22 @@ class TestEngineAdapter(unittest.TestCase):
     def test_podman_list_volumes_and_networks(self, mock_run):
         mock_run.side_effect = [
             (0, json.dumps([{"Name": "vol1", "Driver": "local", "MountPoint": "/data"}]), ""),
+            (0, json.dumps([{"Mounts": [{"Name": "vol1"}]}]), ""),
             (0, json.dumps([{"Id": "net1", "Name": "podman", "Subnets": [{"Subnet": "10.88.0.0/16"}]}]), ""),
+            (0, json.dumps([{"Networks": ["podman"]}]), ""),
         ]
 
         adapter = PodmanAdapter()
         vols = adapter.list_volumes()
         self.assertEqual(len(vols), 1)
         self.assertEqual(vols[0]["name"], "vol1")
+        self.assertTrue(vols[0]["inUse"])
 
         nets = adapter.list_networks()
         self.assertEqual(len(nets), 1)
         self.assertEqual(nets[0]["subnet"], "10.88.0.0/16")
         self.assertTrue(nets[0]["isBuiltIn"])
+        self.assertTrue(nets[0]["inUse"])
 
     @patch("engine_adapter.run_cmd")
     def test_container_actions(self, mock_run):

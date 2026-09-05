@@ -173,6 +173,7 @@ export const ContainerTerminalModal: React.FC<ContainerTerminalModalProps> = ({
               <Select
                 isOpen={shellDropdownOpen}
                 selected={selectedShell}
+                popperProps={{ appendTo: () => document.body }}
                 onSelect={(_event, val) => {
                   setSelectedShell(String(val));
                   setShellDropdownOpen(false);

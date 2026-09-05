@@ -227,6 +227,22 @@ class DockerAdapter(ContainerEngineAdapter):
         if rc != 0 or not out.strip():
             return []
 
+        # Find in-use volume names from containers
+        containers_rc, containers_out, _ = run_cmd([self.bin, "ps", "-a", "--no-trunc", "--format", "{{json .}}"])
+        used_volumes = set()
+        if containers_rc == 0 and containers_out.strip():
+            for line in containers_out.strip().splitlines():
+                try:
+                    cdata = json.loads(line)
+                    mounts_str = cdata.get("Mounts", "")
+                    if mounts_str:
+                        for m in mounts_str.split(","):
+                            m = m.strip()
+                            if m:
+                                used_volumes.add(m)
+                except Exception:
+                    pass
+
         volumes = []
         for line in out.strip().splitlines():
             line = line.strip()
@@ -243,7 +259,7 @@ class DockerAdapter(ContainerEngineAdapter):
                 "driver": data.get("Driver", "local"),
                 "scope": data.get("Scope", "local"),
                 "mountpoint": data.get("Mountpoint", ""),
-                "inUse": False,
+                "inUse": name in used_volumes,
             })
         return volumes
 
@@ -251,6 +267,22 @@ class DockerAdapter(ContainerEngineAdapter):
         rc, out, _ = run_cmd([self.bin, "network", "ls", "--no-trunc", "--format", "{{json .}}"])
         if rc != 0 or not out.strip():
             return []
+
+        # Find in-use network names from containers
+        containers_rc, containers_out, _ = run_cmd([self.bin, "ps", "-a", "--no-trunc", "--format", "{{json .}}"])
+        used_networks = set()
+        if containers_rc == 0 and containers_out.strip():
+            for line in containers_out.strip().splitlines():
+                try:
+                    cdata = json.loads(line)
+                    nets_str = cdata.get("Networks", "")
+                    if nets_str:
+                        for n in nets_str.split(","):
+                            n = n.strip()
+                            if n:
+                                used_networks.add(n)
+                except Exception:
+                    pass
 
         networks = []
         for line in out.strip().splitlines():
@@ -273,7 +305,7 @@ class DockerAdapter(ContainerEngineAdapter):
                 "driver": data.get("Driver", ""),
                 "scope": data.get("Scope", "local"),
                 "isBuiltIn": is_built_in,
-                "inUse": False,
+                "inUse": is_built_in or (name in used_networks) or (net_id in used_networks),
             })
         return networks
 
@@ -386,6 +418,30 @@ class PodmanAdapter(ContainerEngineAdapter):
         except Exception:
             return []
 
+        # Find in-use volume names from containers
+        used_volumes = set()
+        containers_rc, containers_out, _ = run_cmd([self.bin, "ps", "-a", "--format", "json"])
+        if containers_rc == 0 and containers_out.strip():
+            try:
+                cdata_list = json.loads(containers_out)
+                for citem in cdata_list:
+                    mounts = citem.get("mounts", citem.get("Mounts", []))
+                    if isinstance(mounts, list):
+                        for m in mounts:
+                            if isinstance(m, dict):
+                                src = m.get("Name", m.get("Source", m.get("source", "")))
+                                if src:
+                                    used_volumes.add(src)
+                            elif isinstance(m, str):
+                                used_volumes.add(m)
+                    vols = citem.get("volumes", citem.get("Volumes", []))
+                    if isinstance(vols, list):
+                        for v in vols:
+                            if isinstance(v, str):
+                                used_volumes.add(v)
+            except Exception:
+                pass
+
         volumes = []
         for item in data_list:
             name = item.get("name", item.get("Name", ""))
@@ -394,7 +450,7 @@ class PodmanAdapter(ContainerEngineAdapter):
                 "driver": item.get("driver", item.get("Driver", "local")),
                 "scope": item.get("scope", item.get("Scope", "local")),
                 "mountpoint": item.get("mountPoint", item.get("mountpoint", item.get("MountPoint", item.get("Mountpoint", "")))),
-                "inUse": False,
+                "inUse": name in used_volumes,
             })
         return volumes
 
@@ -407,6 +463,27 @@ class PodmanAdapter(ContainerEngineAdapter):
             data_list = json.loads(out)
         except Exception:
             return []
+
+        # Find in-use network names from containers
+        used_networks = set()
+        containers_rc, containers_out, _ = run_cmd([self.bin, "ps", "-a", "--format", "json"])
+        if containers_rc == 0 and containers_out.strip():
+            try:
+                cdata_list = json.loads(containers_out)
+                for citem in cdata_list:
+                    nets = citem.get("networks", citem.get("Networks", []))
+                    if isinstance(nets, list):
+                        for n in nets:
+                            if isinstance(n, str):
+                                used_networks.add(n)
+                            elif isinstance(n, dict):
+                                nname = n.get("Name", n.get("name", ""))
+                                if nname:
+                                    used_networks.add(nname)
+                    elif isinstance(nets, str) and nets:
+                        used_networks.add(nets)
+            except Exception:
+                pass
 
         networks = []
         for item in data_list:
@@ -431,7 +508,7 @@ class PodmanAdapter(ContainerEngineAdapter):
                 "scope": "local",
                 "subnet": ", ".join(subnets) if subnets else "",
                 "isBuiltIn": is_built_in,
-                "inUse": False,
+                "inUse": is_built_in or (name in used_networks) or (net_id in used_networks),
             })
         return networks
 

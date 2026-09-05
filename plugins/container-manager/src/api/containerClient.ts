@@ -170,7 +170,7 @@ async function execHelper(args: string[]): Promise<any> {
 
   return new Promise((resolve, reject) => {
     window.cockpit
-      .spawn(['python3', HELPER_PATH, ...args], { superuser: 'require', err: 'message' })
+      .spawn([HELPER_PATH, ...args], { superuser: 'require', err: 'message' })
       .then((output: string) => {
         try {
           const res = JSON.parse(output);
@@ -306,6 +306,6 @@ export const containerApi = {
       args.push('-t');
     }
     args.push(containerId);
-    return window.cockpit.spawn(args, { superuser: 'require' });
+    return window.cockpit.spawn(args, { superuser: 'require', err: 'out' });
   },
 };

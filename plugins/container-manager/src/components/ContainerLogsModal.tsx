@@ -139,6 +139,7 @@ export const ContainerLogsModal: React.FC<ContainerLogsModalProps> = ({
                 <Select
                   isOpen={tailDropdownOpen}
                   selected={String(tailLines)}
+                  popperProps={{ appendTo: () => document.body }}
                   onSelect={(_event, val) => {
                     setTailLines(Number(val));
                     setTailDropdownOpen(false);
