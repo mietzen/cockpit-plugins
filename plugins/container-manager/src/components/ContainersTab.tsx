@@ -250,7 +250,7 @@ export const ContainersTab: React.FC<ContainersTabProps> = ({
                           >
                             Logs
                           </DropdownItem>
-                          {!isRunning && (
+                          {!isRunning && c.state !== 'paused' && (
                             <DropdownItem
                               key="delete"
                               icon={<TrashIcon />}

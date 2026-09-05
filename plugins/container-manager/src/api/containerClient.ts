@@ -285,8 +285,9 @@ export const containerApi = {
     if (!window.cockpit) {
       return null;
     }
+    const safeEngine = engine === 'auto' || engine === 'none' || !engine ? 'docker' : engine;
     const parts = cmd.trim().split(/\s+/);
-    return window.cockpit.spawn([engine, 'exec', '-i', '-t', containerId, ...parts], {
+    return window.cockpit.spawn([safeEngine, 'exec', '-i', '-t', containerId, ...parts], {
       pty: true,
       superuser: 'require',
     });
@@ -301,7 +302,8 @@ export const containerApi = {
     if (!window.cockpit) {
       return null;
     }
-    const args = [engine, 'logs', '-f', '--tail', String(tail)];
+    const safeEngine = engine === 'auto' || engine === 'none' || !engine ? 'docker' : engine;
+    const args = [safeEngine, 'logs', '-f', '--tail', String(tail)];
     if (timestamps) {
       args.push('-t');
     }

@@ -164,7 +164,7 @@ export const RemoteApiModal: React.FC<RemoteApiModalProps> = ({
     : `docker context create remote-${hostIp} --docker "host=ssh://root@${hostIp}"\ndocker context use remote-${hostIp}\ndocker ps`;
 
   const tcpTlsContextCode = isPodman
-    ? `# Unzip downloaded certificates to ~/.containers/certs/\npodman --remote --url tcp://${hostIp}:${port} ps`
+    ? `podman system connection add remote-${hostIp} tcp://${hostIp}:${port}\npodman system connection default remote-${hostIp}\npodman ps`
     : `# Unzip client certificates to ~/.docker/certs/\ndocker context create remote-${hostIp} \\\n  --docker "host=tcp://${hostIp}:${port},ca=~/.docker/certs/ca.pem,cert=~/.docker/certs/cert.pem,key=~/.docker/certs/key.pem"\ndocker context use remote-${hostIp}\ndocker ps`;
 
   const envVarsCode = `export DOCKER_HOST="tcp://${hostIp}:${port}"\nexport DOCKER_TLS_VERIFY=1\nexport DOCKER_CERT_PATH="~/.docker/certs"\ndocker ps`;
