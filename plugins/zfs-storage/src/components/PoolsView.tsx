@@ -137,12 +137,12 @@ export const PoolsView: React.FC<PoolsViewProps> = ({
                   <Tr>
                     <Th width={20}>Name</Th>
                     <Th width={15}>Health</Th>
-                    <Th width={25}>Capacity usage</Th>
-                    <Th width={15}>Free</Th>
+                    <Th width={20}>Capacity usage</Th>
+                    <Th width={10}>Free</Th>
                     <Th width={10}>Fragmentation</Th>
                     <Th width={10}>Deduplication</Th>
                     <Th width={15}>Maintenance</Th>
-                    <Th width={10} screenReaderText="Actions" />
+                    <Th screenReaderText="Actions" />
                   </Tr>
                 </Thead>
                 <Tbody>

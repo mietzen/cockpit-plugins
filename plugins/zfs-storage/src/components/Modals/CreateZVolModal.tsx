@@ -112,7 +112,7 @@ export const CreateZVolModal: React.FC<CreateZVolModalProps> = ({
       <ModalBody>
         <Form style={{ maxWidth: "550px" }}>
           <FormGroup label="Parent Path" fieldId="zvol-parent">
-            <TextInput id="zvol-parent" value={parentPath} readOnly />
+            <TextInput id="zvol-parent" value={parentPath} readOnlyVariant="default" />
           </FormGroup>
 
           <FormGroup label="Volume Name" isRequired fieldId="zvol-name">

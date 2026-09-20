@@ -14,7 +14,6 @@ import {
   FlexItem,
   EmptyState,
   EmptyStateBody,
-  Title,
   Tooltip,
 } from '@patternfly/react-core';
 import { TrashIcon, InfoCircleIcon } from '@patternfly/react-icons';
@@ -79,10 +78,10 @@ export const NetworksTab: React.FC<NetworksTabProps> = ({
       </Flex>
 
       {filteredNetworks.length === 0 ? (
-        <EmptyState>
-          <Title headingLevel="h4" size="lg">
-            No Networks Found
-          </Title>
+        <EmptyState
+          titleText="No Networks Found"
+          headingLevel="h4"
+        >
           <EmptyStateBody>
             {filterText
               ? `No networks match "${filterText}".`

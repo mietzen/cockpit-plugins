@@ -14,7 +14,6 @@ import {
   FlexItem,
   EmptyState,
   EmptyStateBody,
-  Title,
   Tooltip,
 } from '@patternfly/react-core';
 import { TrashIcon, InfoCircleIcon } from '@patternfly/react-icons';
@@ -79,10 +78,10 @@ export const ImagesTab: React.FC<ImagesTabProps> = ({
       </Flex>
 
       {filteredImages.length === 0 ? (
-        <EmptyState>
-          <Title headingLevel="h4" size="lg">
-            No Images Found
-          </Title>
+        <EmptyState
+          titleText="No Images Found"
+          headingLevel="h4"
+        >
           <EmptyStateBody>
             {filterText
               ? `No images match "${filterText}".`

@@ -122,7 +122,7 @@ export const CreateSnapshotModal: React.FC<CreateSnapshotModalProps> = ({
                 ))}
               </FormSelect>
             ) : (
-              <TextInput id="snap-dataset" value={targetDataset} readOnly />
+              <TextInput id="snap-dataset" value={targetDataset} readOnlyVariant="default" />
             )}
           </FormGroup>
 

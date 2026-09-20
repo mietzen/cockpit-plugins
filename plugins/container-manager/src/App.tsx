@@ -7,7 +7,6 @@ import {
   AlertActionCloseButton,
   EmptyState,
   EmptyStateBody,
-  Title,
   Button,
   Page,
 } from '@patternfly/react-core';
@@ -373,10 +372,10 @@ export const App: React.FC = () => {
 
       {isNoneInstalled ? (
         <div style={{ padding: '3rem 1.5rem' }}>
-          <EmptyState>
-            <Title headingLevel="h2" size="xl">
-              No Container Engine Found
-            </Title>
+          <EmptyState
+            titleText="No Container Engine Found"
+            headingLevel="h2"
+          >
             <EmptyStateBody>
               Neither <strong>Docker</strong> nor <strong>Podman</strong> is installed on this host.
               Please install one of the container engines to manage containers through Cockpit:

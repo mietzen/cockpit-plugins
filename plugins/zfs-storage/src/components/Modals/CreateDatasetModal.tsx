@@ -139,7 +139,7 @@ export const CreateDatasetModal: React.FC<CreateDatasetModalProps> = ({
       <ModalBody>
         <Form style={{ maxWidth: "550px" }}>
           <FormGroup label="Parent Path" fieldId="ds-parent">
-            <TextInput id="ds-parent" value={parentPath} readOnly />
+            <TextInput id="ds-parent" value={parentPath} readOnlyVariant="default" />
           </FormGroup>
 
           <FormGroup label="Dataset Name" isRequired fieldId="ds-name">
