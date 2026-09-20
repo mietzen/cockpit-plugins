@@ -255,6 +255,223 @@ class TestEngineAdapter(unittest.TestCase):
         self.assertEqual(res["default_shell"], "/app/start")
         self.assertEqual(res["entrypoint"], "/app/start")
 
+    @patch("engine_adapter.run_cmd")
+    def test_check_shells_cmd_fallback(self, mock_run):
+        # mock shells fail, inspect returns string Entrypoint and list Cmd
+        mock_run.side_effect = [
+            (1, "", ""),
+            (1, "", ""),
+            (1, "", ""),
+            (1, "", ""),
+            (0, json.dumps([{"Config": {"Entrypoint": "/bin/myentry", "Cmd": ["run"]}}]), ""),
+        ]
+        adapter = DockerAdapter()
+        res = adapter.check_shells("c1")
+        self.assertEqual(res["status"], "success")
+        self.assertEqual(res["default_shell"], "/bin/myentry")
+
+        # mock inspect failure
+        mock_run.side_effect = [
+            (1, "", ""),
+            (1, "", ""),
+            (1, "", ""),
+            (1, "", ""),
+            (1, "", "inspect failed"),
+        ]
+        res_fail = adapter.check_shells("c1")
+        self.assertEqual(res_fail["status"], "success")
+        self.assertEqual(res_fail["default_shell"], "/bin/sh")
+
+    @patch("engine_adapter.run_cmd")
+    def test_inspect_entity_all_kinds_and_errors(self, mock_run):
+        adapter = DockerAdapter()
+
+        # Image inspect
+        mock_run.return_value = (0, json.dumps([{"Id": "img1"}]), "")
+        self.assertEqual(adapter.inspect_entity("image", "img1")["status"], "success")
+
+        # Volume inspect
+        mock_run.return_value = (0, json.dumps([{"Name": "vol1"}]), "")
+        self.assertEqual(adapter.inspect_entity("volume", "vol1")["status"], "success")
+
+        # Network inspect
+        mock_run.return_value = (0, json.dumps([{"Id": "net1"}]), "")
+        self.assertEqual(adapter.inspect_entity("network", "net1")["status"], "success")
+
+        # Unknown kind fallback inspect
+        mock_run.return_value = (0, json.dumps([{"Id": "other1"}]), "")
+        self.assertEqual(adapter.inspect_entity("other", "other1")["status"], "success")
+
+        # Command failure
+        mock_run.return_value = (1, "", "No such object")
+        self.assertEqual(adapter.inspect_entity("container", "bad")["status"], "error")
+
+        # Non-json parse fallback
+        mock_run.return_value = (0, "not a json string", "")
+        res_raw = adapter.inspect_entity("container", "c1")
+        self.assertEqual(res_raw["status"], "success")
+        self.assertEqual(res_raw["raw"], "not a json string")
+
+    @patch("engine_adapter.run_cmd")
+    def test_container_actions_and_delete_errors(self, mock_run):
+        adapter = DockerAdapter()
+
+        # Action failure
+        mock_run.return_value = (1, "", "Cannot start container")
+        self.assertEqual(adapter.container_action("c1", "start")["status"], "error")
+
+        # Delete with force=True
+        mock_run.return_value = (0, "deleted", "")
+        self.assertEqual(adapter.delete_entity("container", "c1", force=True)["status"], "success")
+        self.assertEqual(adapter.delete_entity("image", "i1", force=True)["status"], "success")
+        self.assertEqual(adapter.delete_entity("volume", "v1", force=True)["status"], "success")
+
+        # Delete error
+        mock_run.return_value = (1, "", "resource in use")
+        self.assertEqual(adapter.delete_entity("container", "c1")["status"], "error")
+
+    @patch("engine_adapter.run_cmd")
+    def test_prune_operations_and_errors(self, mock_run):
+        adapter = DockerAdapter()
+
+        # Invalid prune kind
+        with self.assertRaises(ValueError):
+            adapter.prune_entity("unknown")
+
+        # Prune error
+        mock_run.return_value = (1, "", "prune error")
+        self.assertEqual(adapter.prune_entity("container")["status"], "error")
+
+        # System prune without volumes and error
+        mock_run.return_value = (0, "Reclaimed", "")
+        self.assertEqual(adapter.system_prune(include_volumes=False)["status"], "success")
+
+        mock_run.return_value = (1, "", "system prune error")
+        self.assertEqual(adapter.system_prune()["status"], "error")
+
+    @patch("engine_adapter.run_cmd")
+    def test_docker_list_volumes_and_networks_edge_cases(self, mock_run):
+        adapter = DockerAdapter()
+
+        # Empty output
+        mock_run.return_value = (0, "", "")
+        self.assertEqual(adapter.list_volumes(), [])
+        self.assertEqual(adapter.list_networks(), [])
+
+        # Non-zero return code
+        mock_run.return_value = (1, "", "error")
+        self.assertEqual(adapter.list_volumes(), [])
+        self.assertEqual(adapter.list_networks(), [])
+
+        # Malformed lines
+        mock_run.side_effect = [
+            (0, "bad-json\n", ""),
+            (0, '{"Mounts":"vol1, vol2"}\n', ""),
+        ]
+        self.assertEqual(adapter.list_volumes(), [])
+
+    @patch("engine_adapter.run_cmd")
+    def test_podman_list_containers_and_images_edge_cases(self, mock_run):
+        adapter = PodmanAdapter()
+
+        # Containers error and empty
+        mock_run.return_value = (1, "", "error")
+        self.assertEqual(adapter.list_containers(), [])
+        mock_run.return_value = (0, "invalid-json", "")
+        self.assertEqual(adapter.list_containers(), [])
+
+        # Containers with ports string, command string, network list
+        mock_run.return_value = (0, json.dumps([{
+            "Id": "p123456789012",
+            "Names": ["/test-pod"],
+            "State": "running",
+            "Status": "Up 5 minutes",
+            "Ports": "8080->80/tcp",
+            "Command": "nginx",
+            "Networks": ["podman"],
+        }]), "")
+        containers = adapter.list_containers()
+        self.assertEqual(len(containers), 1)
+        self.assertEqual(containers[0]["name"], "test-pod")
+        self.assertEqual(containers[0]["ports"], "8080->80/tcp")
+
+        # Images error and empty
+        mock_run.return_value = (1, "", "error")
+        self.assertEqual(adapter.list_images(), [])
+        mock_run.return_value = (0, "invalid-json", "")
+        self.assertEqual(adapter.list_images(), [])
+
+        # Images with untagged name
+        mock_run.side_effect = [
+            (0, json.dumps([{"Id": "img_untagged", "Names": ["myimage"], "Size": 0}]), ""),
+            (0, "[]", ""),
+        ]
+        images = adapter.list_images()
+        self.assertEqual(len(images), 1)
+        self.assertEqual(images[0]["repository"], "myimage")
+        self.assertEqual(images[0]["tag"], "latest")
+
+    @patch("engine_adapter.run_cmd")
+    def test_podman_volumes_and_networks_edge_cases(self, mock_run):
+        podman = PodmanAdapter()
+
+        # Volume list errors and string/dict mounts
+        mock_run.side_effect = [
+            (1, "", "error"),
+            (0, json.dumps([{"Name": "v1", "Driver": "local"}]), ""),
+            (0, json.dumps([
+                {"mounts": ["v1", {"Source": "v1"}]},
+                {"volumes": ["v1"]},
+            ]), ""),
+            (1, "", "error"),
+            (0, json.dumps([{"Name": "custom_net", "subnets": [{"subnet": "192.168.1.0/24"}]}]), ""),
+            (0, json.dumps([
+                {"networks": ["custom_net", {"name": "custom_net"}]},
+                {"networks": "custom_net"},
+            ]), ""),
+        ]
+
+        self.assertEqual(podman.list_volumes(), [])
+        vols = podman.list_volumes()
+        self.assertEqual(len(vols), 1)
+        self.assertTrue(vols[0]["inUse"])
+
+        self.assertEqual(podman.list_networks(), [])
+        nets = podman.list_networks()
+        self.assertEqual(len(nets), 1)
+        self.assertEqual(nets[0]["subnet"], "192.168.1.0/24")
+        self.assertTrue(nets[0]["inUse"])
+
+    @patch("shutil.which")
+    @patch("engine_adapter.run_cmd")
+    @patch("engine_adapter.get_service_status")
+    def test_detect_engines_edge_cases(self, mock_svc, mock_run, mock_which):
+        # Only docker installed
+        mock_which.side_effect = lambda cmd: "/usr/bin/docker" if cmd == "docker" else None
+        mock_run.side_effect = [
+            (0, "Docker version 27.0.0", ""),
+            (0, "Server Version: 27.0.0", ""),
+        ]
+        mock_svc.return_value = {"active": True, "state": "active", "enabled": True}
+
+        res = detect_engines()
+        self.assertTrue(res["docker"]["installed"])
+        self.assertFalse(res["podman"]["installed"])
+        self.assertEqual(res["active_engine"], "docker")
+
+        # Podman version failure
+        mock_which.side_effect = lambda cmd: "/usr/bin/podman" if cmd == "podman" else None
+        mock_run.side_effect = [
+            (1, "", "version command failed"),
+            (1, "", "info command failed"),
+        ]
+        mock_svc.return_value = {"active": False, "state": "inactive", "enabled": False}
+
+        res_podman = detect_engines()
+        self.assertTrue(res_podman["podman"]["installed"])
+        self.assertEqual(res_podman["podman"]["version"], "")
+        self.assertEqual(res_podman["active_engine"], "podman")
+
 
 if __name__ == "__main__":
     unittest.main()
