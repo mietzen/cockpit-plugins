@@ -173,9 +173,10 @@ export const App: React.FC = () => {
       ansible_markers: { begin: ansibleBegin, end: ansibleEnd },
     },
     nfs: { exports: [], client_map: [] },
-    users: { smb_users: [], unixUsers: [], access_matrix: [] },
+    users: { smb_users: [], unix_users: [], access_matrix: [] },
     sessions: [],
     zfs_mounts: [],
+    versions: { smb: '', nfs: '' },
   };
 
   return (

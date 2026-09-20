@@ -15,8 +15,6 @@ import {
   CardBody,
   Badge,
   EmptyState,
-  EmptyStateHeader,
-  EmptyStateIcon,
   EmptyStateBody,
   EmptyStateFooter,
   EmptyStateActions,
@@ -219,12 +217,11 @@ export const SnapshotsTab: React.FC<SnapshotsTabProps> = ({
 
       {poolSnaps.length === 0 ? (
         isLoading ? null : (
-          <EmptyState>
-            <EmptyStateHeader
-              titleText="No snapshots taken"
-              icon={<EmptyStateIcon icon={CameraIcon} />}
-              headingLevel="h4"
-            />
+          <EmptyState
+            titleText="No snapshots taken"
+            icon={CameraIcon}
+            headingLevel="h4"
+          >
             <EmptyStateBody>
               Snapshots are point-in-time read-only copies of your datasets. They take no initial space until data blocks change.
             </EmptyStateBody>

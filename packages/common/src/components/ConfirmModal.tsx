@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import {
   Modal,
   ModalVariant,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
   Button,
   Alert,
   TextInput,
@@ -64,12 +67,55 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   return (
     <Modal
       variant={ModalVariant.small}
-      title={title}
-      titleIconVariant={confirmVariant === 'danger' ? 'danger' : confirmVariant === 'warning' ? 'warning' : undefined}
       isOpen={isOpen}
       onClose={onCancel}
       appendTo={() => document.body}
-      actions={[
+    >
+      <ModalHeader
+        title={title}
+        titleIconVariant={confirmVariant === 'danger' ? 'danger' : confirmVariant === 'warning' ? 'warning' : undefined}
+      />
+      <ModalBody>
+        {error && (
+          <Alert
+            variant="danger"
+            isInline
+            title="Error"
+            style={{ marginBottom: '1rem' }}
+          >
+            {error}
+          </Alert>
+        )}
+
+        <div style={{ marginBottom: requireConfirmString ? '1rem' : 0 }}>
+          {message}
+        </div>
+
+        {requireConfirmString && (
+          <FormGroup
+            label={
+              <span>
+                Type <strong>{requireConfirmString}</strong> to confirm:
+              </span>
+            }
+            fieldId="confirm-string-input"
+          >
+            <TextInput
+              id="confirm-string-input"
+              value={typedString}
+              onChange={(_event, val) => setTypedString(val)}
+              placeholder={confirmInputPlaceholder || requireConfirmString}
+              isDisabled={isLoading}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && isConfirmed && !isLoading) {
+                  handleConfirm();
+                }
+              }}
+            />
+          </FormGroup>
+        )}
+      </ModalBody>
+      <ModalFooter>
         <Button
           key="confirm"
           variant={buttonVariant}
@@ -78,7 +124,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
           onClick={handleConfirm}
         >
           {confirmText}
-        </Button>,
+        </Button>
         <Button
           key="cancel"
           variant="link"
@@ -86,47 +132,8 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
           onClick={onCancel}
         >
           {cancelText}
-        </Button>,
-      ]}
-    >
-      {error && (
-        <Alert
-          variant="danger"
-          isInline
-          title="Error"
-          style={{ marginBottom: '1rem' }}
-        >
-          {error}
-        </Alert>
-      )}
-
-      <div style={{ marginBottom: requireConfirmString ? '1rem' : 0 }}>
-        {message}
-      </div>
-
-      {requireConfirmString && (
-        <FormGroup
-          label={
-            <span>
-              Type <strong>{requireConfirmString}</strong> to confirm:
-            </span>
-          }
-          fieldId="confirm-string-input"
-        >
-          <TextInput
-            id="confirm-string-input"
-            value={typedString}
-            onChange={(_event, val) => setTypedString(val)}
-            placeholder={confirmInputPlaceholder || requireConfirmString}
-            isDisabled={isLoading}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && isConfirmed && !isLoading) {
-                handleConfirm();
-              }
-            }}
-          />
-        </FormGroup>
-      )}
+        </Button>
+      </ModalFooter>
     </Modal>
   );
 };

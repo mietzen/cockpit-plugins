@@ -62,7 +62,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   return (
     <>
       {/* Top Header */}
-      <PageSection variant="light" style={{ paddingBottom: "1rem" }}>
+      <PageSection style={{ paddingBottom: "1rem" }}>
         <Flex justifyContent={{ default: "justifyContentSpaceBetween" }} alignItems={{ default: "alignItemsCenter" }}>
           <FlexItem>
             <Flex alignItems={{ default: "alignItemsCenter" }}>
@@ -163,7 +163,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <Card
               isFullHeight
               isPlain
-              isHoverable
+              isClickable
               onClick={onViewArcDetails}
               style={{ border: "1px solid #333333", cursor: "pointer" }}
             >
@@ -234,7 +234,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             return (
               <GridItem key={pool.name} span={12} md={6}>
                 <Card
-                  isHoverable
+                  isClickable
                   isPlain
                   onClick={() => onSelectPool(pool.name)}
                   style={{

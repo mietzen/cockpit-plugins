@@ -11,20 +11,17 @@ import {
   FlexItem,
   Title,
   Label,
-  Divider,
 } from "@patternfly/react-core";
 import { Table, Thead, Tr, Th, Tbody, Td } from "@patternfly/react-table";
 import {
   CheckCircleIcon,
   ExclamationTriangleIcon,
   PlusCircleIcon,
-  FolderOpenIcon,
   UsersIcon,
-  ServerIcon,
   ArrowRightIcon,
   LockIcon,
 } from "@patternfly/react-icons";
-import { FileSharingOverview, SmbShare, NfsExport, SmbSession } from "../types";
+import { FileSharingOverview } from "../types";
 
 interface DashboardViewProps {
   overview: FileSharingOverview;
@@ -51,12 +48,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const sessions = overview.sessions;
 
   const managedSmbCount = smbShares.filter((s) => s.is_managed).length;
-  const managedNfsCount = nfsExports.filter((e) => e.is_managed).length;
 
   return (
     <>
       {/* Top Header */}
-      <PageSection variant="light" style={{ paddingBottom: "1rem" }}>
+      <PageSection style={{ paddingBottom: "1rem" }}>
         <Flex justifyContent={{ default: "justifyContentSpaceBetween" }} alignItems={{ default: "alignItemsCenter" }}>
           <FlexItem>
             <Flex alignItems={{ default: "alignItemsCenter" }}>

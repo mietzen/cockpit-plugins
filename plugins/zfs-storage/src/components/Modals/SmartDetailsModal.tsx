@@ -2,6 +2,9 @@ import React from "react";
 import {
   Modal,
   ModalVariant,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
   Button,
   Label,
   Title,
@@ -34,15 +37,12 @@ export const SmartDetailsModal: React.FC<SmartDetailsModalProps> = ({
   return (
     <Modal
       variant={ModalVariant.medium}
-      title={`SMART Details: ${disk.name}`}
       isOpen={isOpen}
       onClose={onClose}
-      actions={[
-        <Button key="close" variant="primary" onClick={onClose}>
-          Close
-        </Button>,
-      ]}
+      appendTo={() => document.body}
     >
+      <ModalHeader title={`SMART Details: ${disk.name}`} />
+      <ModalBody>
       <DescriptionList isHorizontal style={{ marginBottom: "1.5rem" }}>
         <DescriptionListGroup>
           <DescriptionListTerm>Device path</DescriptionListTerm>
@@ -103,6 +103,12 @@ export const SmartDetailsModal: React.FC<SmartDetailsModalProps> = ({
       ) : (
         <p style={{ color: "#a0a0a0" }}>No partitions found on this device.</p>
       )}
+      </ModalBody>
+      <ModalFooter>
+        <Button key="close" variant="primary" onClick={onClose}>
+          Close
+        </Button>
+      </ModalFooter>
     </Modal>
   );
 };

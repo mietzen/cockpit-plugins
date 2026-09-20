@@ -22,6 +22,9 @@ import {
   HelperTextItem,
   Modal,
   ModalVariant,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
 } from '@patternfly/react-core';
 import {
   LockIcon,
@@ -265,7 +268,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   return (
     <>
-      <PageSection variant="light" style={{ paddingBottom: '1rem' }}>
+      <PageSection style={{ paddingBottom: '1rem' }}>
         <Title headingLevel="h1" size="2xl" style={{ fontWeight: 600, margin: 0 }}>
           Container Settings
         </Title>
@@ -594,26 +597,15 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       {/* Certificate Viewer Modal */}
       <Modal
         variant={ModalVariant.large}
-        title="Client Certificates &amp; Keys"
         isOpen={isCertModalOpen}
         onClose={() => setIsCertModalOpen(false)}
-        actions={[
-          <Button
-            key="download-all"
-            variant="primary"
-            icon={<DownloadIcon />}
-            onClick={handleDownloadCerts}
-          >
-            Download Bundle (.zip)
-          </Button>,
-          <Button key="close" variant="link" onClick={() => setIsCertModalOpen(false)}>
-            Close
-          </Button>,
-        ]}
+        appendTo={() => document.body}
       >
-        <p style={{ fontSize: '0.9rem', color: '#8b949e', marginBottom: '1rem' }}>
-          Inspect or copy individual certificate files for client authentication.
-        </p>
+        <ModalHeader title="Client Certificates &amp; Keys" />
+        <ModalBody>
+          <p style={{ fontSize: '0.9rem', color: '#8b949e', marginBottom: '1rem' }}>
+            Inspect or copy individual certificate files for client authentication.
+          </p>
 
         {loadingCerts ? (
           <p>Loading certificate bundle...</p>
@@ -743,6 +735,20 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         ) : (
           <p>No certificates available.</p>
         )}
+        </ModalBody>
+        <ModalFooter>
+          <Button
+            key="download-all"
+            variant="primary"
+            icon={<DownloadIcon />}
+            onClick={handleDownloadCerts}
+          >
+            Download Bundle (.zip)
+          </Button>
+          <Button key="close" variant="link" onClick={() => setIsCertModalOpen(false)}>
+            Close
+          </Button>
+        </ModalFooter>
       </Modal>
     </>
   );

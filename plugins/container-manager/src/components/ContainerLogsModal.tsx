@@ -2,6 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   Modal,
   ModalVariant,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
   Button,
   Select,
   SelectOption,
@@ -113,7 +116,6 @@ export const ContainerLogsModal: React.FC<ContainerLogsModalProps> = ({
   return (
     <Modal
       variant={ModalVariant.large}
-      title={`Logs: ${container.name}`}
       isOpen={isOpen}
       onClose={() => {
         if (processRef.current) {
@@ -127,99 +129,102 @@ export const ContainerLogsModal: React.FC<ContainerLogsModalProps> = ({
         onClose();
       }}
       appendTo={() => document.body}
-      actions={[
-        <Button key="close" variant="secondary" onClick={onClose}>
-          Close Logs
-        </Button>,
-      ]}
     >
-      <div style={{ marginBottom: '1rem' }}>
-        <Flex justifyContent={{ default: 'justifyContentSpaceBetween' }} alignItems={{ default: 'alignItemsCenter' }}>
-          <FlexItem>
-            <Flex spaceItems={{ default: 'spaceItemsMd' }} alignItems={{ default: 'alignItemsCenter' }}>
-              <Flex spaceItems={{ default: 'spaceItemsXs' }} alignItems={{ default: 'alignItemsCenter' }}>
-                <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>Tail lines:</span>
-                <Select
-                  isOpen={tailDropdownOpen}
-                  selected={String(tailLines)}
-                  popperProps={{ appendTo: () => document.body }}
-                  onSelect={(_event, val) => {
-                    setTailLines(Number(val));
-                    setTailDropdownOpen(false);
-                  }}
-                  onOpenChange={(open) => setTailDropdownOpen(open)}
-                  toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
-                    <MenuToggle
-                      ref={toggleRef}
-                      onClick={() => setTailDropdownOpen(!tailDropdownOpen)}
-                      style={{ borderRadius: '999px' }}
-                    >
-                      {tailLines} lines
-                    </MenuToggle>
-                  )}
-                >
-                  {TAIL_OPTIONS.map((opt) => (
-                    <SelectOption key={opt} value={String(opt)}>
-                      {opt} lines
-                    </SelectOption>
-                  ))}
-                </Select>
+      <ModalHeader title={`Logs: ${container.name}`} />
+      <ModalBody>
+        <div style={{ marginBottom: '1rem' }}>
+          <Flex justifyContent={{ default: 'justifyContentSpaceBetween' }} alignItems={{ default: 'alignItemsCenter' }}>
+            <FlexItem>
+              <Flex spaceItems={{ default: 'spaceItemsMd' }} alignItems={{ default: 'alignItemsCenter' }}>
+                <Flex spaceItems={{ default: 'spaceItemsXs' }} alignItems={{ default: 'alignItemsCenter' }}>
+                  <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>Tail lines:</span>
+                  <Select
+                    isOpen={tailDropdownOpen}
+                    selected={String(tailLines)}
+                    popperProps={{ appendTo: () => document.body }}
+                    onSelect={(_event, val) => {
+                      setTailLines(Number(val));
+                      setTailDropdownOpen(false);
+                    }}
+                    onOpenChange={(open) => setTailDropdownOpen(open)}
+                    toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
+                      <MenuToggle
+                        ref={toggleRef}
+                        onClick={() => setTailDropdownOpen(!tailDropdownOpen)}
+                        style={{ borderRadius: '999px' }}
+                      >
+                        {tailLines} lines
+                      </MenuToggle>
+                    )}
+                  >
+                    {TAIL_OPTIONS.map((opt) => (
+                      <SelectOption key={opt} value={String(opt)}>
+                        {opt} lines
+                      </SelectOption>
+                    ))}
+                  </Select>
+                </Flex>
+
+                <Checkbox
+                  id="timestamps-toggle"
+                  label="Show Timestamps (-t)"
+                  isChecked={timestamps}
+                  onChange={(_event, checked) => setTimestamps(checked)}
+                />
+
+                <Button
+                  variant="plain"
+                  icon={<SyncAltIcon />}
+                  onClick={startLogStream}
+                  isLoading={isStreaming}
+                  aria-label="Reload logs"
+                />
               </Flex>
+            </FlexItem>
 
-              <Checkbox
-                id="timestamps-toggle"
-                label="Show Timestamps (-t)"
-                isChecked={timestamps}
-                onChange={(_event, checked) => setTimestamps(checked)}
-              />
-
-              <Button
-                variant="plain"
-                icon={<SyncAltIcon />}
-                onClick={startLogStream}
-                isLoading={isStreaming}
-                aria-label="Reload logs"
-              />
-            </Flex>
-          </FlexItem>
-
-          <FlexItem>
-            <span
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                fontSize: '0.85rem',
-                color: isStreaming ? '#3fb950' : '#8b949e',
-              }}
-            >
+            <FlexItem>
               <span
                 style={{
-                  width: '8px',
-                  height: '8px',
-                  borderRadius: '50%',
-                  backgroundColor: isStreaming ? '#3fb950' : '#8b949e',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  fontSize: '0.85rem',
+                  color: isStreaming ? '#3fb950' : '#8b949e',
                 }}
-              />
-              {isStreaming ? 'Streaming' : 'Ended'}
-            </span>
-          </FlexItem>
-        </Flex>
-      </div>
+              >
+                <span
+                  style={{
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    backgroundColor: isStreaming ? '#3fb950' : '#8b949e',
+                  }}
+                />
+                {isStreaming ? 'Streaming' : 'Ended'}
+              </span>
+            </FlexItem>
+          </Flex>
+        </div>
 
-      {error && (
-        <Alert variant="danger" isInline title="Log Stream Error" style={{ marginBottom: '1rem' }}>
-          {error}
-        </Alert>
-      )}
+        {error && (
+          <Alert variant="danger" isInline title="Log Stream Error" style={{ marginBottom: '1rem' }}>
+            {error}
+          </Alert>
+        )}
 
-      <div style={{ height: '450px', width: '100%' }}>
-        <XtermLogViewer
-          logs={logs}
-          isDark={isDark}
-          onClear={() => setLogs('')}
-        />
-      </div>
+        <div style={{ height: '450px', width: '100%' }}>
+          <XtermLogViewer
+            logs={logs}
+            isDark={isDark}
+            onClear={() => setLogs('')}
+          />
+        </div>
+      </ModalBody>
+      <ModalFooter>
+        <Button key="close" variant="secondary" onClick={onClose}>
+          Close Logs
+        </Button>
+      </ModalFooter>
     </Modal>
   );
 };

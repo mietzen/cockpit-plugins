@@ -2,6 +2,9 @@ import React, { useState, useEffect } from "react";
 import {
   Modal,
   ModalVariant,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
   Form,
   FormGroup,
   TextInput,
@@ -100,10 +103,58 @@ export const CreateSnapshotModal: React.FC<CreateSnapshotModalProps> = ({
   return (
     <Modal
       variant={ModalVariant.small}
-      title="Create ZFS Snapshot"
       isOpen={isOpen}
       onClose={onClose}
-      actions={[
+      appendTo={() => document.body}
+    >
+      <ModalHeader title="Create ZFS Snapshot" />
+      <ModalBody>
+        <Form>
+          <FormGroup label="Target Dataset / Volume" isRequired fieldId="snap-dataset">
+            {datasetList.length > 1 ? (
+              <FormSelect
+                id="snap-dataset"
+                value={selectedDataset}
+                onChange={(_event, val) => setSelectedDataset(val)}
+              >
+                {datasetList.map((ds) => (
+                  <FormSelectOption key={ds} value={ds} label={ds} />
+                ))}
+              </FormSelect>
+            ) : (
+              <TextInput id="snap-dataset" value={targetDataset} readOnly />
+            )}
+          </FormGroup>
+
+          <FormGroup label="Snapshot Name (Tag)" isRequired fieldId="snap-name">
+            <TextInput
+              id="snap-name"
+              value={snapshotName}
+              onChange={(_event, val) => setSnapshotName(val)}
+              placeholder="e.g. backup-daily, before-upgrade"
+              autoFocus
+            />
+          </FormGroup>
+
+          <FormGroup fieldId="snap-recursive">
+            <Checkbox
+              id="snap-recursive"
+              label="Recursive (-r, snapshot all child datasets & volumes)"
+              isChecked={recursive}
+              onChange={(_event, checked) => setRecursive(checked)}
+            />
+          </FormGroup>
+
+          <CommandBox command={buildCommand()} />
+
+          {error && (
+            <Alert variant="danger" title="Error" style={{ marginTop: "1rem" }}>
+              {error}
+            </Alert>
+          )}
+        </Form>
+      </ModalBody>
+      <ModalFooter>
         <Button
           key="create"
           variant="primary"
@@ -112,56 +163,11 @@ export const CreateSnapshotModal: React.FC<CreateSnapshotModalProps> = ({
           isLoading={loading}
         >
           Create Snapshot
-        </Button>,
+        </Button>
         <Button key="cancel" variant="secondary" onClick={onClose} isDisabled={loading}>
           Cancel
-        </Button>,
-      ]}
-    >
-      <Form>
-        <FormGroup label="Target Dataset / Volume" isRequired fieldId="snap-dataset">
-          {datasetList.length > 1 ? (
-            <FormSelect
-              id="snap-dataset"
-              value={selectedDataset}
-              onChange={(_event, val) => setSelectedDataset(val)}
-            >
-              {datasetList.map((ds) => (
-                <FormSelectOption key={ds} value={ds} label={ds} />
-              ))}
-            </FormSelect>
-          ) : (
-            <TextInput id="snap-dataset" value={targetDataset} isReadOnly />
-          )}
-        </FormGroup>
-
-        <FormGroup label="Snapshot Name (Tag)" isRequired fieldId="snap-name">
-          <TextInput
-            id="snap-name"
-            value={snapshotName}
-            onChange={(_event, val) => setSnapshotName(val)}
-            placeholder="e.g. backup-daily, before-upgrade"
-            autoFocus
-          />
-        </FormGroup>
-
-        <FormGroup fieldId="snap-recursive">
-          <Checkbox
-            id="snap-recursive"
-            label="Recursive (-r, snapshot all child datasets & volumes)"
-            isChecked={recursive}
-            onChange={(_event, checked) => setRecursive(checked)}
-          />
-        </FormGroup>
-
-        <CommandBox command={buildCommand()} />
-
-        {error && (
-          <Alert variant="danger" title="Error" style={{ marginTop: "1rem" }}>
-            {error}
-          </Alert>
-        )}
-      </Form>
+        </Button>
+      </ModalFooter>
     </Modal>
   );
 };

@@ -11,12 +11,6 @@ import {
   SnapshotCloneSpec,
 } from "../types";
 
-const HELPER_PATHS = [
-  "/usr/libexec/cockpit-zfs/zfs_helper.py",
-  "/usr/share/cockpit/zfs-storage/backend/zfs_helper.py",
-  "/tmp/cockpit-zfs-backend/zfs_helper.py",
-];
-
 export class ZfsApiClient {
   private helperPath = "/usr/libexec/cockpit-zfs/zfs_helper.py";
 

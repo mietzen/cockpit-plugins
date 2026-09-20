@@ -2,6 +2,9 @@ import React, { useState } from "react";
 import {
   Modal,
   ModalVariant,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
   Form,
   FormGroup,
   TextInput,
@@ -98,28 +101,16 @@ export const EditPropertiesModal: React.FC<EditPropertiesModalProps> = ({
   return (
     <Modal
       variant={ModalVariant.medium}
-      title={`Edit Properties: ${dataset.name}`}
       isOpen={isOpen}
       onClose={onClose}
-      actions={[
-        <Button
-          key="save"
-          variant="primary"
-          onClick={handleSave}
-          isDisabled={loading}
-          isLoading={loading}
-        >
-          Save Changes
-        </Button>,
-        <Button key="cancel" variant="link" onClick={onClose} isDisabled={loading}>
-          Cancel
-        </Button>,
-      ]}
+      appendTo={() => document.body}
     >
-      <Form style={{ maxWidth: "550px" }}>
-        <FormGroup label="Dataset Name" fieldId="edit-name">
-          <TextInput id="edit-name" value={dataset.name} isReadOnly />
-        </FormGroup>
+      <ModalHeader title={`Edit Properties: ${dataset.name}`} />
+      <ModalBody>
+        <Form style={{ maxWidth: "550px" }}>
+          <FormGroup label="Dataset Name" fieldId="edit-name">
+            <TextInput id="edit-name" value={dataset.name} readOnly />
+          </FormGroup>
 
         <FormGroup label="Compression" fieldId="edit-comp">
           <FormSelect
@@ -205,6 +196,21 @@ export const EditPropertiesModal: React.FC<EditPropertiesModalProps> = ({
           </Alert>
         )}
       </Form>
+      </ModalBody>
+      <ModalFooter>
+        <Button
+          key="save"
+          variant="primary"
+          onClick={handleSave}
+          isDisabled={loading}
+          isLoading={loading}
+        >
+          Save Changes
+        </Button>
+        <Button key="cancel" variant="link" onClick={onClose} isDisabled={loading}>
+          Cancel
+        </Button>
+      </ModalFooter>
     </Modal>
   );
 };

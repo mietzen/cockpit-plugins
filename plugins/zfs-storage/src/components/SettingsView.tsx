@@ -32,7 +32,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ systemInfo }) => {
 
   return (
     <>
-      <PageSection variant="light" style={{ paddingBottom: "1rem" }}>
+      <PageSection style={{ paddingBottom: "1rem" }}>
         <Title headingLevel="h1" size="2xl" style={{ fontWeight: 600 }}>
           Plugin Settings
         </Title>
