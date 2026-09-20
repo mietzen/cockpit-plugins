@@ -154,13 +154,15 @@ class TestEngineAdapter(unittest.TestCase):
     def test_podman_list_images(self, mock_run):
         # mock list_images then list_containers
         mock_run.side_effect = [
-            (0, json.dumps([{"Id": "img1", "RepoTags": ["docker.io/library/alpine:latest"], "Size": 5000000}]), ""),
+            (0, json.dumps([{"Id": "sha256:1234567890abcdef1234567890abcdef", "RepoTags": ["docker.io/library/alpine:latest"], "Size": 5000000}]), ""),
             (0, "[]", ""),
         ]
 
         adapter = PodmanAdapter()
         images = adapter.list_images()
         self.assertEqual(len(images), 1)
+        self.assertEqual(images[0]["id"], "1234567890abcdef1234567890abcdef")
+        self.assertEqual(images[0]["shortId"], "1234567890ab")
         self.assertEqual(images[0]["repository"], "docker.io/library/alpine")
         self.assertEqual(images[0]["tag"], "latest")
 

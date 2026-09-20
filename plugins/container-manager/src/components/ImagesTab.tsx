@@ -39,12 +39,13 @@ export const ImagesTab: React.FC<ImagesTabProps> = ({
 }) => {
   const [filterText, setFilterText] = useState('');
 
+  const normalizedFilter = filterText.toLowerCase().replace(/^sha256:/, '');
   const filteredImages = images.filter(
     (img) =>
       img.repository.toLowerCase().includes(filterText.toLowerCase()) ||
       img.tag.toLowerCase().includes(filterText.toLowerCase()) ||
-      img.shortId.toLowerCase().includes(filterText.toLowerCase()) ||
-      img.id.toLowerCase().includes(filterText.toLowerCase())
+      img.shortId.toLowerCase().includes(normalizedFilter) ||
+      img.id.toLowerCase().includes(normalizedFilter)
   );
 
   const unusedCount = images.filter((i) => !i.inUse).length;

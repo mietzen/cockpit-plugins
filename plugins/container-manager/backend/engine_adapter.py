@@ -377,7 +377,6 @@ class DockerAdapter(ContainerEngineAdapter):
             full_ref = f"{repo}:{tag}" if repo != "<none>" and tag != "<none>" else repo
 
             img_refs = normalize_image_ref(full_id)
-            img_refs.update(normalize_image_ref(clean_id))
             img_refs.update(normalize_image_ref(full_ref))
             img_refs.update(normalize_image_ref(repo))
             is_in_use = bool(img_refs.intersection(used_image_refs))
@@ -570,7 +569,6 @@ class PodmanAdapter(ContainerEngineAdapter):
 
             full_ref = f"{repo}:{tag}"
             img_refs = normalize_image_ref(full_id)
-            img_refs.update(normalize_image_ref(clean_id))
             if isinstance(repo_tags, list):
                 for t in repo_tags:
                     img_refs.update(normalize_image_ref(t))

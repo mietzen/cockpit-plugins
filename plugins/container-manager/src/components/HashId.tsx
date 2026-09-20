@@ -9,6 +9,8 @@ export interface HashIdProps {
   className?: string;
 }
 
+const SHA256_PREFIX = 'sha256:';
+
 export const HashId: React.FC<HashIdProps> = ({
   id,
   shortId,
@@ -18,9 +20,9 @@ export const HashId: React.FC<HashIdProps> = ({
   const [copied, setCopied] = useState<boolean>(false);
 
   const rawId = id || '';
-  const cleanId = rawId.startsWith('sha256:') ? rawId.slice(7) : rawId;
+  const cleanId = rawId.startsWith(SHA256_PREFIX) ? rawId.slice(SHA256_PREFIX.length) : rawId;
   const rawShort = shortId || '';
-  const cleanShort = rawShort.startsWith('sha256:') ? rawShort.slice(7) : rawShort;
+  const cleanShort = rawShort.startsWith(SHA256_PREFIX) ? rawShort.slice(SHA256_PREFIX.length) : rawShort;
   const displayText = cleanShort || cleanId.slice(0, 12);
 
   const fallbackCopy = (text: string) => {
@@ -58,7 +60,10 @@ export const HashId: React.FC<HashIdProps> = ({
   };
 
   return (
-    <Tooltip content={copied ? 'Copied to clipboard!' : `Click to copy: ${cleanId}`}>
+    <Tooltip
+      content={copied ? 'Copied to clipboard!' : `Click to copy: ${cleanId}`}
+      appendTo={() => document.body}
+    >
       <button
         type="button"
         onClick={handleCopy}
