@@ -498,6 +498,70 @@ class TestEngineAdapter(unittest.TestCase):
         self.assertEqual(res_podman["podman"]["version"], "")
         self.assertEqual(res_podman["active_engine"], "podman")
 
+    def test_normalize_image_ref_edge_cases(self):
+        from engine_adapter import normalize_image_ref
+
+        # Empty or <none>
+        self.assertEqual(normalize_image_ref(""), set())
+        self.assertEqual(normalize_image_ref("<none>"), set())
+
+        # sha256 hash
+        refs = normalize_image_ref("sha256:1234567890abcdef1234567890abcdef")
+        self.assertIn("1234567890abcdef1234567890abcdef", refs)
+        self.assertIn("1234567890ab", refs)
+
+        # Standard hex ID
+        hex_refs = normalize_image_ref("1234567890abcdef1234")
+        self.assertIn("1234567890ab", hex_refs)
+
+        # Registries and custom domains
+        quay_refs = normalize_image_ref("quay.io/org/app:v2")
+        self.assertIn("org/app:v2", quay_refs)
+
+        custom_refs = normalize_image_ref("registry.internal.net:5000/myteam/service:latest")
+        self.assertIn("myteam/service", custom_refs)
+        self.assertIn("myteam/service:latest", custom_refs)
+
+    def test_get_volume_size_unit(self):
+        import tempfile
+        import os
+        from engine_adapter import get_volume_size
+
+        # Non-existent path
+        self.assertEqual(get_volume_size("/non/existent/path/123"), "")
+        self.assertEqual(get_volume_size(""), "")
+
+        # Single file
+        with tempfile.NamedTemporaryFile() as tmp:
+            tmp.write(b"x" * 500)
+            tmp.flush()
+            self.assertEqual(get_volume_size(tmp.name), "500 B")
+
+        # Directory with files
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # 0 B empty directory
+            self.assertEqual(get_volume_size(tmpdir), "0 B")
+
+            # 2 KB file
+            fpath = os.path.join(tmpdir, "file.bin")
+            with open(fpath, "wb") as f:
+                f.write(b"a" * 2048)
+            self.assertEqual(get_volume_size(tmpdir), "2.0 KB")
+
+            # 2 MB file
+            with open(fpath, "wb") as f:
+                f.write(b"a" * (2 * 1024 * 1024))
+            self.assertEqual(get_volume_size(tmpdir), "2.0 MB")
+
+            # 1.5 GB simulated via mock
+            with patch("os.walk", return_value=[(tmpdir, [], ["big.bin"])]):
+                with patch("os.path.getsize", return_value=int(1.5 * 1024 * 1024 * 1024)):
+                    self.assertEqual(get_volume_size(tmpdir), "1.50 GB")
+
+            # Exception handling
+            with patch("os.walk", side_effect=PermissionError("denied")):
+                self.assertEqual(get_volume_size(tmpdir), "")
+
 
 if __name__ == "__main__":
     unittest.main()

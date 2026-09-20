@@ -101,6 +101,16 @@ def normalize_image_ref(ref: str) -> set:
             else:
                 results.add(f"{stripped}:latest")
 
+    # Handle custom domain/port registries, e.g. registry.example.com/app:v1 or host:5000/app
+    if "/" in ref:
+        first_segment, rest = ref.split("/", 1)
+        if ("." in first_segment or ":" in first_segment or first_segment == "localhost") and rest:
+            results.add(rest)
+            if ":" in rest:
+                results.add(rest.rsplit(":", 1)[0])
+            else:
+                results.add(f"{rest}:latest")
+
     if ":" in ref:
         name_only, tag = ref.rsplit(":", 1)
         if tag == "latest":
@@ -349,7 +359,6 @@ class DockerAdapter(ContainerEngineAdapter):
         used_image_refs = set()
         for c in containers:
             used_image_refs.update(normalize_image_ref(c.get("image", "")))
-            used_image_refs.update(normalize_image_ref(c.get("id", "")))
 
         images = []
         for line in out.strip().splitlines():
@@ -541,7 +550,6 @@ class PodmanAdapter(ContainerEngineAdapter):
         used_image_refs = set()
         for c in containers:
             used_image_refs.update(normalize_image_ref(c.get("image", "")))
-            used_image_refs.update(normalize_image_ref(c.get("id", "")))
 
         images = []
         for item in data_list:

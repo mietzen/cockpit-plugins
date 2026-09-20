@@ -15,17 +15,37 @@ export const PortLinks: React.FC<PortLinksProps> = ({ ports, style }) => {
   const rawParts = ports.split(',').map((p) => p.trim()).filter(Boolean);
 
   const parsedParts = rawParts.map((part, idx) => {
-    // Check if host port is mapped, e.g. "0.0.0.0:8080->80/tcp", ":::8080->80/tcp", "192.168.1.50:9000->9000/tcp"
-    const match = part.match(/^(?:\[?([^\]:]+)\]?:)?(\d+)->/);
-    if (match) {
-      const hostIp = match[1] || '';
-      const hostPort = match[2];
+    let hostIp = '';
+    let hostPort = '';
 
-      const currentHostname = typeof window !== 'undefined' && window.location?.hostname ? window.location.hostname : 'localhost';
-      const targetIpOrDomain = (!hostIp || hostIp === '0.0.0.0' || hostIp === '::' || hostIp === '127.0.0.1')
-        ? currentHostname
-        : hostIp;
+    if (part.includes('->')) {
+      const [hostPart] = part.split('->');
+      const colonIdx = hostPart.lastIndexOf(':');
+      if (colonIdx !== -1) {
+        hostIp = hostPart.slice(0, colonIdx).replace(/^\[|\]$/g, '').trim();
+        hostPort = hostPart.slice(colonIdx + 1).trim();
+      }
+    } else if (part.includes(':')) {
+      const colonIdx = part.lastIndexOf(':');
+      hostIp = part.slice(0, colonIdx).replace(/^\[|\]$/g, '').trim();
+      hostPort = part.slice(colonIdx + 1).split('/')[0].trim();
+    }
 
+    if (hostPort && /^\d+$/.test(hostPort)) {
+      const currentHostname =
+        typeof window !== 'undefined' && window.location?.hostname
+          ? window.location.hostname
+          : 'localhost';
+
+      const isWildcardOrLocal =
+        !hostIp ||
+        hostIp === '0.0.0.0' ||
+        hostIp === '::' ||
+        hostIp === ':::' ||
+        hostIp === '127.0.0.1' ||
+        hostIp === 'localhost';
+
+      const targetIpOrDomain = isWildcardOrLocal ? currentHostname : hostIp;
       const url = `http://${targetIpOrDomain}:${hostPort}`;
 
       return (
