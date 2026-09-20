@@ -84,6 +84,11 @@ export const XtermTerminal = forwardRef<XtermTerminalHandle, XtermTerminalProps>
       brightWhite: '#24292f',
     };
 
+    const onDataRef = useRef(onData);
+    onDataRef.current = onData;
+    const onResizeRef = useRef(onResize);
+    onResizeRef.current = onResize;
+
     useImperativeHandle(
       ref,
       () => ({
@@ -133,11 +138,11 @@ export const XtermTerminal = forwardRef<XtermTerminalHandle, XtermTerminalProps>
       fitAddonRef.current = fitAddon;
 
       const dataDisposable = term.onData((data) => {
-        onData?.(data);
+        onDataRef.current?.(data);
       });
 
       const resizeDisposable = term.onResize((size) => {
-        onResize?.(size);
+        onResizeRef.current?.(size);
       });
 
       const resizeObserver = new ResizeObserver(() => {

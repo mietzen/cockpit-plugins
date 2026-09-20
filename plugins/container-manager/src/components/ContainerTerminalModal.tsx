@@ -43,10 +43,10 @@ export const ContainerTerminalModal: React.FC<ContainerTerminalModalProps> = ({
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const effectiveCommand = selectedShell === 'custom' ? (customCommand || '/bin/sh') : selectedShell;
-
-  const startSession = () => {
+  const startSession = (overrideCmd?: string) => {
     if (!container) return;
+
+    const cmdToRun = overrideCmd || (selectedShell === 'custom' ? (customCommand || '/bin/sh') : selectedShell);
 
     // Terminate any previous session
     if (processRef.current) {
@@ -62,9 +62,9 @@ export const ContainerTerminalModal: React.FC<ContainerTerminalModalProps> = ({
     setError(null);
     setIsConnected(true);
 
-    terminalRef.current?.writeln(`\x1b[1;34mConnecting to ${container.name} via ${effectiveCommand}...\x1b[0m\r\n`);
+    terminalRef.current?.writeln(`\x1b[1;34mConnecting to ${container.name} via ${cmdToRun}...\x1b[0m\r\n`);
 
-    const proc = containerApi.spawnTerminal(container.id, effectiveCommand, activeEngine);
+    const proc = containerApi.spawnTerminal(container.id, cmdToRun, activeEngine);
     if (!proc) {
       // Mock session in standalone mode
       terminalRef.current?.writeln('\x1b[33m[Mock Terminal Session - Cockpit not detected]\x1b[0m\r\n');
@@ -182,8 +182,12 @@ export const ContainerTerminalModal: React.FC<ContainerTerminalModalProps> = ({
                 selected={selectedShell}
                 popperProps={{ appendTo: () => document.body }}
                 onSelect={(_event, val) => {
-                  setSelectedShell(String(val));
+                  const chosen = String(val);
+                  setSelectedShell(chosen);
                   setShellDropdownOpen(false);
+                  if (chosen !== 'custom') {
+                    startSession(chosen);
+                  }
                 }}
                 onOpenChange={(open) => setShellDropdownOpen(open)}
                 toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
@@ -204,6 +208,11 @@ export const ContainerTerminalModal: React.FC<ContainerTerminalModalProps> = ({
                   placeholder="/bin/bash -l"
                   value={customCommand}
                   onChange={(_e, val) => setCustomCommand(val)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      startSession(customCommand || '/bin/sh');
+                    }
+                  }}
                   style={{ width: '200px' }}
                 />
               )}
@@ -211,7 +220,7 @@ export const ContainerTerminalModal: React.FC<ContainerTerminalModalProps> = ({
               <Button
                 variant="secondary"
                 icon={<SyncAltIcon />}
-                onClick={startSession}
+                onClick={() => startSession()}
                 size="sm"
               >
                 {isConnected ? 'Restart Session' : 'Connect'}

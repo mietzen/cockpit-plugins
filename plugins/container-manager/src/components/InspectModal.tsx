@@ -175,8 +175,8 @@ export const InspectModal: React.FC<InspectModalProps> = ({
             <CardBody>
               <Flex justifyContent={{ default: 'justifyContentSpaceBetween' }} alignItems={{ default: 'alignItemsCenter' }} flexWrap={{ default: 'wrap' }}>
                 <FlexItem>
-                  <Flex spaceItems={{ default: 'spaceItemsSm' }} alignItems={{ default: 'alignItemsCenter' }}>
-                    <Title headingLevel="h3" size="lg" style={{ margin: 0 }}>
+                  <Flex spaceItems={{ default: 'spaceItemsMd' }} alignItems={{ default: 'alignItemsCenter' }}>
+                    <Title headingLevel="h3" size="lg" style={{ margin: 0, marginRight: '8px' }}>
                       {titleName}
                     </Title>
                     {kind === 'container' && (
@@ -200,12 +200,13 @@ export const InspectModal: React.FC<InspectModalProps> = ({
             </CardBody>
           </Card>
 
-          <Tabs
-            activeKey={activeTab}
-            onSelect={(_e, key) => setActiveTab(Number(key))}
-            isBox
-            style={{ marginBottom: '1rem' }}
-          >
+          <div style={{ minHeight: '420px', maxHeight: '420px', height: '420px', overflowY: 'auto', paddingRight: '4px' }}>
+            <Tabs
+              activeKey={activeTab}
+              onSelect={(_e, key) => setActiveTab(Number(key))}
+              isBox
+              style={{ marginBottom: '1rem' }}
+            >
             <Tab eventKey={0} title={<TabTitleText><InfoCircleIcon style={{ marginRight: '6px' }} /> Overview &amp; Execution</TabTitleText>}>
               <div style={{ padding: '1rem 0' }}>
                 <Table variant="compact" aria-label="Overview Properties">
@@ -443,6 +444,7 @@ export const InspectModal: React.FC<InspectModalProps> = ({
               </div>
             </Tab>
           </Tabs>
+        </div>
         </>
       )}
     </Modal>

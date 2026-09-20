@@ -6,24 +6,13 @@ import {
   Flex,
   FlexItem,
   Button,
-  Select,
-  SelectOption,
-  MenuToggle,
-  MenuToggleElement,
-  Tooltip,
 } from '@patternfly/react-core';
-import { SyncAltIcon, TrashIcon } from '@patternfly/react-icons';
-import { StatusBadge } from '@cockpit-plugins/common';
-import { EnginesDetection, EngineType } from '../types';
+import { SyncAltIcon } from '@patternfly/react-icons';
 
 export interface NavigationProps {
   activeView: string;
   onSelectView: (view: string) => void;
-  engines: EnginesDetection;
-  activeEngine: EngineType;
-  onSelectEngine: (engine: EngineType) => void;
   onRefresh: () => void;
-  onOpenSystemPrune: () => void;
   isLoading: boolean;
   containerCount?: number;
   imageCount?: number;
@@ -34,25 +23,17 @@ export interface NavigationProps {
 export const Navigation: React.FC<NavigationProps> = ({
   activeView,
   onSelectView,
-  engines,
-  activeEngine,
-  onSelectEngine,
   onRefresh,
-  onOpenSystemPrune,
   isLoading,
   containerCount = 0,
   imageCount = 0,
   volumeCount = 0,
   networkCount = 0,
 }) => {
-  const [engineDropdownOpen, setEngineDropdownOpen] = React.useState(false);
-  const activeEngineInfo = engines[activeEngine as 'docker' | 'podman'];
-  const hasMultipleEngines = engines.docker.installed && engines.podman.installed;
-
   return (
     <div className="cockpit-top-nav-sticky-wrapper">
       <div className="cockpit-top-nav-bar">
-        <Flex justifyContent={{ default: 'justifyContentSpaceBetween' }} alignItems={{ default: 'alignItemsCenter' }} flexWrap={{ default: 'wrap' }}>
+        <Flex justifyContent={{ default: 'justifyContentSpaceBetween' }} alignItems={{ default: 'alignItemsCenter' }}>
           <FlexItem>
             <Tabs
               activeKey={activeView}
@@ -81,71 +62,15 @@ export const Navigation: React.FC<NavigationProps> = ({
           </FlexItem>
 
           <FlexItem>
-            <Flex spaceItems={{ default: 'spaceItemsSm' }} alignItems={{ default: 'alignItemsCenter' }}>
-              {activeEngine !== 'none' && (
-                <FlexItem>
-                  {hasMultipleEngines ? (
-                    <Select
-                      isOpen={engineDropdownOpen}
-                      selected={activeEngine}
-                      popperProps={{ appendTo: () => document.body }}
-                      onSelect={(_event, value) => {
-                        onSelectEngine(value as EngineType);
-                        setEngineDropdownOpen(false);
-                      }}
-                      onOpenChange={(isOpen) => setEngineDropdownOpen(isOpen)}
-                      toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
-                        <MenuToggle
-                          ref={toggleRef}
-                          onClick={() => setEngineDropdownOpen(!engineDropdownOpen)}
-                          isExpanded={engineDropdownOpen}
-                        >
-                          {activeEngine === 'docker' ? 'Docker' : 'Podman'} ({activeEngineInfo?.version || 'Active'})
-                        </MenuToggle>
-                      )}
-                    >
-                      <SelectOption key="docker" value="docker">
-                        Docker ({engines.docker.version || 'installed'})
-                      </SelectOption>
-                      <SelectOption key="podman" value="podman">
-                        Podman ({engines.podman.version || 'installed'})
-                      </SelectOption>
-                    </Select>
-                  ) : (
-                    <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsXs' }}>
-                      <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>
-                        {activeEngine === 'docker' ? 'Docker' : 'Podman'} {activeEngineInfo?.version}
-                      </span>
-                      <StatusBadge variant={activeEngineInfo?.active ? 'green' : 'grey'}>
-                        {activeEngineInfo?.active ? 'Active' : 'Inactive'}
-                      </StatusBadge>
-                    </Flex>
-                  )}
-                </FlexItem>
-              )}
-
-              <Tooltip content="Purge unused containers, images, and networks">
-                <Button
-                  variant="secondary"
-                  icon={<TrashIcon />}
-                  onClick={onOpenSystemPrune}
-                  isDisabled={isLoading || activeEngine === 'none'}
-                  size="sm"
-                >
-                  System Prune
-                </Button>
-              </Tooltip>
-
-              <Button
-                variant="plain"
-                icon={<SyncAltIcon className={isLoading ? 'pf-m-spin' : ''} />}
-                onClick={onRefresh}
-                aria-label="Refresh data"
-                isDisabled={isLoading}
-              >
-                Refresh
-              </Button>
-            </Flex>
+            <Button
+              variant="plain"
+              icon={<SyncAltIcon className={isLoading ? 'pf-m-spin' : ''} />}
+              onClick={onRefresh}
+              aria-label="Refresh data"
+              isDisabled={isLoading}
+            >
+              Refresh
+            </Button>
           </FlexItem>
         </Flex>
       </div>

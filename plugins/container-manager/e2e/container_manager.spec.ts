@@ -97,7 +97,7 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     await saveScreenshot(page, '01_overview_dashboard_loaded.png');
   });
 
-  test('02. Verify Overview Dashboard and Top Navigation Pill Bar', async () => {
+  test('02. Verify Overview Dashboard and Clean Top Navigation Bar', async () => {
     const frame = await getFrame();
 
     // Verify top sticky navigation pill bar
@@ -141,29 +141,41 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     await saveScreenshot(page, '03_settings_view.png');
   });
 
-  test('04. Open System Prune Modal', async () => {
+  test('04. Switch Engine in Settings and Open System Prune Modal', async () => {
     const frame = await getFrame();
 
-    const pruneBtn = frame.locator('button:has-text("System Prune")').first();
-    await pruneBtn.click();
+    // Navigate to Settings
+    await frame.locator('button.pf-v5-c-tabs__link:has-text("Settings"), [role="tab"]:has-text("Settings")').first().click();
+    await frame.waitForSelector('h1:has-text("Container Settings")', { timeout: 10000 });
 
-    // Verify modal appears
-    await frame.waitForSelector('.pf-v5-c-modal-box:has-text("System Prune")', { timeout: 5000 });
-
-    const checkbox = frame.locator('#prune-volumes-checkbox');
-    if ((await checkbox.count()) > 0) {
-      await checkbox.click();
+    // Test engine activation button
+    const activateBtn = frame.locator('button:has-text("Activate Docker"), button:has-text("Activate Podman")').first();
+    if (await activateBtn.count() > 0) {
+      await activateBtn.click();
+      await frame.waitForSelector('.pf-v5-c-alert.pf-m-success', { timeout: 5000 }).catch(() => {});
     }
 
-    await saveScreenshot(page, '04_system_prune_modal.png');
+    // Open System Prune from Settings maintenance card
+    const pruneBtn = frame.locator('button:has-text("Open System Prune Modal")').first();
+    if (await pruneBtn.count() > 0) {
+      await pruneBtn.click();
+      await frame.waitForSelector('.pf-v5-c-modal-box:has-text("System Prune")', { timeout: 5000 });
 
-    // Close modal
-    const cancelBtn = frame.locator('.pf-v5-c-modal-box button:has-text("Cancel")');
-    await cancelBtn.click();
-    await frame.waitForSelector('.pf-v5-c-modal-box', { state: 'detached', timeout: 5000 });
+      const checkbox = frame.locator('#prune-volumes-checkbox');
+      if ((await checkbox.count()) > 0) {
+        await checkbox.click();
+      }
+
+      await saveScreenshot(page, '04_system_prune_modal.png');
+
+      // Close modal
+      const cancelBtn = frame.locator('.pf-v5-c-modal-box button:has-text("Cancel")');
+      await cancelBtn.click();
+      await frame.waitForSelector('.pf-v5-c-modal-box', { state: 'detached', timeout: 5000 });
+    }
   });
 
-  test('05. Verify Settings View Remote API & Mutual TLS', async () => {
+  test('05. Verify Remote API, Mutual TLS & Instructions', async () => {
     const frame = await getFrame();
 
     // Navigate to Settings

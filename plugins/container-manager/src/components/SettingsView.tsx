@@ -216,9 +216,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                       <Button
                         variant={activeEngine === 'docker' ? 'primary' : 'secondary'}
                         size="sm"
-                        onClick={() => onSelectEngine('docker')}
+                        onClick={() => {
+                          onSelectEngine('docker');
+                          setSuccessMsg('Active container backend switched to Docker Engine.');
+                        }}
                       >
-                        {activeEngine === 'docker' ? 'Active Backend' : 'Select Docker'}
+                        {activeEngine === 'docker' ? 'Active Backend' : 'Activate Docker'}
                       </Button>
                     )}
                   </Flex>
@@ -234,9 +237,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                       <Button
                         variant={activeEngine === 'podman' ? 'primary' : 'secondary'}
                         size="sm"
-                        onClick={() => onSelectEngine('podman')}
+                        onClick={() => {
+                          onSelectEngine('podman');
+                          setSuccessMsg('Active container backend switched to Podman.');
+                        }}
                       >
-                        {activeEngine === 'podman' ? 'Active Backend' : 'Select Podman'}
+                        {activeEngine === 'podman' ? 'Active Backend' : 'Activate Podman'}
                       </Button>
                     )}
                   </Flex>

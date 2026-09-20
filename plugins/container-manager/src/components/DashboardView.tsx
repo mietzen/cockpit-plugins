@@ -33,7 +33,6 @@ import {
   FileAltIcon,
   InfoCircleIcon,
   LockIcon,
-  TrashIcon,
 } from '@patternfly/react-icons';
 import { StatusBadge } from '@cockpit-plugins/common';
 import {
@@ -41,14 +40,10 @@ import {
   ImageItem,
   VolumeItem,
   NetworkItem,
-  EnginesDetection,
-  EngineType,
   TlsStatus,
 } from '../types';
 
 export interface DashboardViewProps {
-  engines: EnginesDetection;
-  activeEngine: EngineType;
   containers: ContainerItem[];
   images: ImageItem[];
   volumes: VolumeItem[];
@@ -59,12 +54,9 @@ export interface DashboardViewProps {
   onOpenTerminal: (container: ContainerItem) => void;
   onOpenLogs: (container: ContainerItem) => void;
   onOpenInspect: (kind: 'container' | 'image' | 'volume' | 'network', id: string, name?: string) => void;
-  onOpenSystemPrune: () => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
-  engines,
-  activeEngine,
   containers,
   images,
   volumes,
@@ -75,9 +67,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenTerminal,
   onOpenLogs,
   onOpenInspect,
-  onOpenSystemPrune,
 }) => {
-  const activeEngineInfo = engines[activeEngine as 'docker' | 'podman'];
   const runningContainers = containers.filter((c) => c.state === 'running');
   const runningPct = containers.length > 0 ? (runningContainers.length / containers.length) * 100 : 0;
 
@@ -87,44 +77,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   return (
     <>
       {/* Top Header Section */}
-      <PageSection variant="light" style={{ paddingBottom: '1rem' }}>
-        <Flex justifyContent={{ default: 'justifyContentSpaceBetween' }} alignItems={{ default: 'alignItemsCenter' }} flexWrap={{ default: 'wrap' }}>
-          <FlexItem>
-            <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsMd' }}>
-              <FlexItem>
-                <Title headingLevel="h1" size="2xl" style={{ fontWeight: 600, margin: 0 }}>
-                  Containers
-                </Title>
-              </FlexItem>
-              {activeEngine !== 'none' && (
-                <FlexItem>
-                  <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsXs' }}>
-                    <span style={{ color: 'var(--pf-v5-global--Color--200, #8b949e)', fontSize: '0.95rem' }}>
-                      {activeEngine === 'docker' ? 'Docker Engine' : 'Podman'}{' '}
-                      {activeEngineInfo?.version ? `v${activeEngineInfo.version}` : ''}
-                    </span>
-                    <StatusBadge variant={activeEngineInfo?.active ? 'green' : 'grey'}>
-                      {activeEngineInfo?.active ? 'Active' : 'Inactive'}
-                    </StatusBadge>
-                  </Flex>
-                </FlexItem>
-              )}
-            </Flex>
-          </FlexItem>
-
-          <FlexItem>
-            <Flex spaceItems={{ default: 'spaceItemsSm' }}>
-              <Button
-                variant="secondary"
-                icon={<TrashIcon />}
-                onClick={onOpenSystemPrune}
-                size="sm"
-              >
-                System Prune
-              </Button>
-            </Flex>
-          </FlexItem>
-        </Flex>
+      <PageSection style={{ paddingBottom: '0.5rem', backgroundColor: 'transparent' }}>
+        <Title headingLevel="h1" size="2xl" style={{ fontWeight: 600, margin: 0 }}>
+          Containers
+        </Title>
       </PageSection>
 
       {/* Metric Cards Grid */}
@@ -296,28 +252,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         </Td>
                         <Td dataLabel="Actions" style={{ textAlign: 'right' }}>
                           <Flex justifyContent={{ default: 'justifyContentFlexEnd' }} spaceItems={{ default: 'spaceItemsXs' }}>
-                            <Tooltip content="Container Logs">
+                            <Tooltip content="Stop Container">
                               <Button
                                 variant="plain"
-                                icon={<FileAltIcon />}
-                                onClick={() => onOpenLogs(c)}
-                                aria-label="Logs"
-                              />
-                            </Tooltip>
-                            <Tooltip content="Interactive Terminal">
-                              <Button
-                                variant="plain"
-                                icon={<TerminalIcon />}
-                                onClick={() => onOpenTerminal(c)}
-                                aria-label="Terminal"
-                              />
-                            </Tooltip>
-                            <Tooltip content="Inspect Details">
-                              <Button
-                                variant="plain"
-                                icon={<InfoCircleIcon />}
-                                onClick={() => onOpenInspect('container', c.id, c.name)}
-                                aria-label="Inspect"
+                                icon={<StopIcon />}
+                                onClick={() => onAction(c.id, 'stop')}
+                                aria-label="Stop"
                               />
                             </Tooltip>
                             <Tooltip content="Restart Container">
@@ -328,12 +268,28 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                                 aria-label="Restart"
                               />
                             </Tooltip>
-                            <Tooltip content="Stop Container">
+                            <Tooltip content="Open Terminal">
                               <Button
                                 variant="plain"
-                                icon={<StopIcon />}
-                                onClick={() => onAction(c.id, 'stop')}
-                                aria-label="Stop"
+                                icon={<TerminalIcon />}
+                                onClick={() => onOpenTerminal(c)}
+                                aria-label="Terminal"
+                              />
+                            </Tooltip>
+                            <Tooltip content="View Logs">
+                              <Button
+                                variant="plain"
+                                icon={<FileAltIcon />}
+                                onClick={() => onOpenLogs(c)}
+                                aria-label="Logs"
+                              />
+                            </Tooltip>
+                            <Tooltip content="Inspect Details">
+                              <Button
+                                variant="plain"
+                                icon={<InfoCircleIcon />}
+                                onClick={() => onOpenInspect('container', c.id, c.name)}
+                                aria-label="Inspect"
                               />
                             </Tooltip>
                           </Flex>

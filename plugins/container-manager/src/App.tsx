@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import '@patternfly/react-core/dist/styles/base.css';
+import '@cockpit-plugins/common/src/styles/cockpit-theme.css';
 import {
   Alert,
   EmptyState,
   EmptyStateBody,
   Title,
   Button,
+  Page,
 } from '@patternfly/react-core';
 import { useCockpitTheme, ConfirmModal } from '@cockpit-plugins/common';
-import '@cockpit-plugins/common/src/styles/cockpit-theme.css';
 
 import {
   ContainerOverview,
@@ -43,7 +45,13 @@ export const App: React.FC = () => {
     typeof window !== 'undefined' && window.cockpit ? DEFAULT_EMPTY_OVERVIEW : DEFAULT_MOCK_OVERVIEW
   );
   const [tlsStatus, setTlsStatus] = useState<TlsStatus | null>(null);
-  const [activeEngine, setActiveEngine] = useState<EngineType>('auto');
+  const [activeEngine, setActiveEngine] = useState<EngineType>(() => {
+    try {
+      const saved = localStorage.getItem('cockpit_container_engine');
+      if (saved === 'docker' || saved === 'podman') return saved as EngineType;
+    } catch {}
+    return 'auto';
+  });
   const [activeView, setActiveView] = useState<string>('dashboard');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [bannerError, setBannerError] = useState<string | null>(null);
@@ -85,9 +93,20 @@ export const App: React.FC = () => {
     setIsLoading(true);
     setBannerError(null);
     try {
-      const data = await containerApi.getOverview(engineToUse);
+      let preferred = engineToUse;
+      if (!preferred || preferred === 'auto') {
+        try {
+          const saved = localStorage.getItem('cockpit_container_engine');
+          if (saved === 'docker' || saved === 'podman') preferred = saved as EngineType;
+        } catch {}
+      }
+
+      const data = await containerApi.getOverview(preferred);
       setOverview(data);
-      const effEngine = (engineToUse && engineToUse !== 'auto') ? engineToUse : (data.active_engine && data.active_engine !== 'none' ? data.active_engine : 'docker');
+
+      const effEngine = (preferred && preferred !== 'auto')
+        ? preferred
+        : (data.active_engine && data.active_engine !== 'none' ? data.active_engine : 'docker');
       setActiveEngine(effEngine);
 
       const tls = await containerApi.getTlsStatus(effEngine).catch(() => null);
@@ -104,6 +123,9 @@ export const App: React.FC = () => {
   }, [loadData]);
 
   const handleSelectEngine = (newEngine: EngineType) => {
+    try {
+      localStorage.setItem('cockpit_container_engine', newEngine);
+    } catch {}
     setActiveEngine(newEngine);
     loadData(newEngine);
   };
@@ -127,110 +149,117 @@ export const App: React.FC = () => {
     }
   };
 
-  const handleDeleteContainer = (c: ContainerItem) => {
+  const handleDeleteContainer = (container: ContainerItem) => {
     setConfirmModal({
       isOpen: true,
-      title: `Delete Container: ${c.name}`,
+      title: `Delete Container: ${container.name}`,
       message: (
-        <p>
-          Are you sure you want to permanently delete container <strong>{c.name}</strong> ({c.shortId})?
-        </p>
+        <div>
+          Are you sure you want to permanently delete container <strong>{container.name}</strong> (<code>{container.shortId}</code>)?
+        </div>
       ),
       confirmText: 'Delete Container',
       confirmVariant: 'danger',
       onConfirm: async () => {
+        setIsLoading(true);
         try {
-          const res = await containerApi.deleteEntity('container', c.id, false, activeEngine);
+          const res = await containerApi.deleteEntity('container', container.id, false, activeEngine);
           if (res?.status === 'error') {
             setBannerError(res.error || 'Failed to delete container');
           } else {
-            setConfirmModal((prev) => ({ ...prev, isOpen: false }));
             await loadData(activeEngine);
           }
-        } catch (e: any) {
-          setBannerError(e?.message || 'Failed to delete container');
+        } catch (err: any) {
+          setBannerError(err?.message || 'Failed to delete container');
+        } finally {
+          setIsLoading(false);
         }
       },
     });
   };
 
-  const handleDeleteImage = (img: ImageItem) => {
+  const handleDeleteImage = (image: ImageItem) => {
     setConfirmModal({
       isOpen: true,
-      title: `Delete Image: ${img.repository}:${img.tag}`,
+      title: `Delete Image: ${image.repository}:${image.tag}`,
       message: (
-        <p>
-          Are you sure you want to remove image <strong>{img.repository}:{img.tag}</strong> ({img.shortId})?
-        </p>
+        <div>
+          Are you sure you want to delete image <strong>{image.repository}:{image.tag}</strong> (<code>{image.shortId}</code>)?
+        </div>
       ),
       confirmText: 'Delete Image',
       confirmVariant: 'danger',
       onConfirm: async () => {
+        setIsLoading(true);
         try {
-          const res = await containerApi.deleteEntity('image', img.id, false, activeEngine);
+          const res = await containerApi.deleteEntity('image', image.id, false, activeEngine);
           if (res?.status === 'error') {
             setBannerError(res.error || 'Failed to delete image');
           } else {
-            setConfirmModal((prev) => ({ ...prev, isOpen: false }));
             await loadData(activeEngine);
           }
-        } catch (e: any) {
-          setBannerError(e?.message || 'Failed to delete image');
+        } catch (err: any) {
+          setBannerError(err?.message || 'Failed to delete image');
+        } finally {
+          setIsLoading(false);
         }
       },
     });
   };
 
-  const handleDeleteVolume = (vol: VolumeItem) => {
+  const handleDeleteVolume = (volume: VolumeItem) => {
     setConfirmModal({
       isOpen: true,
-      title: `Delete Volume: ${vol.name}`,
+      title: `Delete Volume: ${volume.name}`,
       message: (
-        <p>
-          Are you sure you want to permanently delete volume <strong>{vol.name}</strong>?
-          All persistent data in this volume will be lost.
-        </p>
+        <div>
+          Are you sure you want to permanently delete volume <strong>{volume.name}</strong>? All stored data in this volume will be lost.
+        </div>
       ),
       confirmText: 'Delete Volume',
       confirmVariant: 'danger',
       onConfirm: async () => {
+        setIsLoading(true);
         try {
-          const res = await containerApi.deleteEntity('volume', vol.name, false, activeEngine);
+          const res = await containerApi.deleteEntity('volume', volume.name, false, activeEngine);
           if (res?.status === 'error') {
             setBannerError(res.error || 'Failed to delete volume');
           } else {
-            setConfirmModal((prev) => ({ ...prev, isOpen: false }));
             await loadData(activeEngine);
           }
-        } catch (e: any) {
-          setBannerError(e?.message || 'Failed to delete volume');
+        } catch (err: any) {
+          setBannerError(err?.message || 'Failed to delete volume');
+        } finally {
+          setIsLoading(false);
         }
       },
     });
   };
 
-  const handleDeleteNetwork = (net: NetworkItem) => {
+  const handleDeleteNetwork = (network: NetworkItem) => {
     setConfirmModal({
       isOpen: true,
-      title: `Delete Network: ${net.name}`,
+      title: `Delete Network: ${network.name}`,
       message: (
-        <p>
-          Are you sure you want to remove network <strong>{net.name}</strong>?
-        </p>
+        <div>
+          Are you sure you want to delete network <strong>{network.name}</strong> (<code>{network.shortId}</code>)?
+        </div>
       ),
       confirmText: 'Delete Network',
       confirmVariant: 'danger',
       onConfirm: async () => {
+        setIsLoading(true);
         try {
-          const res = await containerApi.deleteEntity('network', net.id || net.name, false, activeEngine);
+          const res = await containerApi.deleteEntity('network', network.id, false, activeEngine);
           if (res?.status === 'error') {
             setBannerError(res.error || 'Failed to delete network');
           } else {
-            setConfirmModal((prev) => ({ ...prev, isOpen: false }));
             await loadData(activeEngine);
           }
-        } catch (e: any) {
-          setBannerError(e?.message || 'Failed to delete network');
+        } catch (err: any) {
+          setBannerError(err?.message || 'Failed to delete network');
+        } finally {
+          setIsLoading(false);
         }
       },
     });
@@ -240,65 +269,69 @@ export const App: React.FC = () => {
     setConfirmModal({
       isOpen: true,
       title,
-      message: <p>Are you sure you want to purge all unused {kind}s from the {activeEngine} engine?</p>,
-      confirmText: `Prune ${kind}s`,
+      message: (
+        <div>
+          Are you sure you want to prune all unused <strong>{kind}s</strong>? This action will remove all {kind}s not currently in use.
+        </div>
+      ),
+      confirmText: `Prune ${kind.charAt(0).toUpperCase() + kind.slice(1)}s`,
       confirmVariant: 'danger',
       onConfirm: async () => {
+        setIsLoading(true);
         try {
-          const res = await containerApi.prune(kind, kind === 'image', false, activeEngine);
+          const res = await containerApi.prune(kind, true, false, activeEngine);
           if (res?.status === 'error') {
             setBannerError(res.error || `Failed to prune ${kind}s`);
           } else {
-            setConfirmModal((prev) => ({ ...prev, isOpen: false }));
             await loadData(activeEngine);
           }
-        } catch (e: any) {
-          setBannerError(e?.message || `Failed to prune ${kind}s`);
+        } catch (err: any) {
+          setBannerError(err?.message || `Failed to prune ${kind}s`);
+        } finally {
+          setIsLoading(false);
         }
       },
     });
   };
 
-  const handleSystemPrune = async (includeVolumes: boolean) => {
+  const handleSystemPrune = async (volumes: boolean) => {
     setIsLoading(true);
     try {
-      const res = await containerApi.prune('system', false, includeVolumes, activeEngine);
+      const res = await containerApi.prune('system', true, volumes, activeEngine);
       if (res?.status === 'error') {
-        setBannerError(res.error || 'System prune failed');
+        setBannerError(res.error || 'Failed to perform system prune');
       } else {
-        setSystemPruneOpen(false);
         await loadData(activeEngine);
       }
-    } catch (e: any) {
-      setBannerError(e?.message || 'System prune failed');
+    } catch (err: any) {
+      setBannerError(err?.message || 'Failed to perform system prune');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleOpenInspect = (kind: 'container' | 'image' | 'volume' | 'network', id: string, name?: string) => {
+  const handleOpenInspect = (
+    kind: 'container' | 'image' | 'volume' | 'network',
+    id: string,
+    name?: string
+  ) => {
     setInspectModalState({
       isOpen: true,
       kind,
       id,
-      name: name || id,
+      name,
     });
   };
 
-  const isNoneInstalled =
-    !overview.engines.docker.installed && !overview.engines.podman.installed;
+  const isNoneInstalled = !overview.engines.docker.installed && !overview.engines.podman.installed;
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: 'var(--pf-v5-global--BackgroundColor--100, #0d1117)' }}>
+    <Page style={{ minHeight: '100vh', backgroundColor: 'var(--zfs-canvas-bg)' }}>
       {/* Top Sticky Navigation Bar */}
       <Navigation
         activeView={activeView}
         onSelectView={(v) => setActiveView(v)}
-        engines={overview.engines}
-        activeEngine={activeEngine}
-        onSelectEngine={handleSelectEngine}
         onRefresh={() => loadData(activeEngine)}
-        onOpenSystemPrune={() => setSystemPruneOpen(true)}
         isLoading={isLoading}
         containerCount={overview.containers.length}
         imageCount={overview.images.length}
@@ -355,8 +388,6 @@ export const App: React.FC = () => {
           {/* Persistent in-memory views to avoid layout thrashing and 0ms redraw */}
           <div style={{ display: activeView === 'dashboard' ? 'block' : 'none' }}>
             <DashboardView
-              engines={overview.engines}
-              activeEngine={activeEngine}
               containers={overview.containers}
               images={overview.images}
               volumes={overview.volumes}
@@ -367,7 +398,6 @@ export const App: React.FC = () => {
               onOpenTerminal={(c) => setTerminalContainer(c)}
               onOpenLogs={(c) => setLogsContainer(c)}
               onOpenInspect={handleOpenInspect}
-              onOpenSystemPrune={() => setSystemPruneOpen(true)}
             />
           </div>
 
@@ -376,10 +406,10 @@ export const App: React.FC = () => {
               containers={overview.containers}
               onAction={handleContainerAction}
               onDelete={handleDeleteContainer}
+              onPruneStopped={() => handlePruneEntity('container', 'Prune Stopped Containers')}
               onOpenTerminal={(c) => setTerminalContainer(c)}
               onOpenLogs={(c) => setLogsContainer(c)}
-              onOpenInspect={(kind, id, name) => handleOpenInspect(kind, id, name)}
-              onPruneStopped={() => handlePruneEntity('container', 'Prune Stopped Containers')}
+              onOpenInspect={handleOpenInspect}
               isLoading={isLoading}
             />
           </div>
@@ -388,7 +418,7 @@ export const App: React.FC = () => {
             <ImagesTab
               images={overview.images}
               onDelete={handleDeleteImage}
-              onPruneUnused={() => handlePruneEntity('image', 'Prune Unused Images')}
+              onPruneUnused={() => handlePruneEntity('image', 'Prune Dangling Images')}
               onOpenInspect={handleOpenInspect}
               isLoading={isLoading}
             />
@@ -473,6 +503,6 @@ export const App: React.FC = () => {
         onConfirm={confirmModal.onConfirm}
         onCancel={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
       />
-    </div>
+    </Page>
   );
 };
