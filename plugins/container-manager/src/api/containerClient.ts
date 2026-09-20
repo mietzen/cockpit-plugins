@@ -241,6 +241,22 @@ export const containerApi = {
     return execHelper(args);
   },
 
+  async checkShells(
+    id: string,
+    engine?: string
+  ): Promise<{ status: string; shells: string[]; entrypoint?: string; cmd?: string; default_shell?: string }> {
+    if (!window.cockpit) {
+      return Promise.resolve({
+        status: 'success',
+        shells: ['/bin/sh', '/bin/bash'],
+        default_shell: '/bin/sh',
+      });
+    }
+    const args = ['check_shells', '--id', id];
+    if (engine) args.push('--engine', engine);
+    return execHelper(args);
+  },
+
   async deleteEntity(
     kind: 'container' | 'image' | 'volume' | 'network',
     id: string,

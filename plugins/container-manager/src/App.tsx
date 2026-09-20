@@ -3,6 +3,8 @@ import '@patternfly/react-core/dist/styles/base.css';
 import '@cockpit-plugins/common/src/styles/cockpit-theme.css';
 import {
   Alert,
+  AlertGroup,
+  AlertActionCloseButton,
   EmptyState,
   EmptyStateBody,
   Title,
@@ -54,7 +56,21 @@ export const App: React.FC = () => {
   });
   const [activeView, setActiveView] = useState<string>('dashboard');
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [bannerError, setBannerError] = useState<string | null>(null);
+  const [alerts, setAlerts] = useState<
+    Array<{ key: number; variant: 'success' | 'danger' | 'warning' | 'info'; title: string; message?: string }>
+  >([]);
+
+  const addAlert = (title: string, variant: 'success' | 'danger' | 'warning' | 'info' = 'success', message?: string) => {
+    const key = Date.now() + Math.random();
+    setAlerts((prev) => [...prev, { key, variant, title, message }]);
+    setTimeout(() => {
+      setAlerts((prev) => prev.filter((a) => a.key !== key));
+    }, 5000);
+  };
+
+  const removeAlert = (key: number) => {
+    setAlerts((prev) => prev.filter((a) => a.key !== key));
+  };
 
   // Modals state
   const [terminalContainer, setTerminalContainer] = useState<ContainerItem | null>(null);
@@ -91,7 +107,6 @@ export const App: React.FC = () => {
 
   const loadData = useCallback(async (engineToUse?: EngineType) => {
     setIsLoading(true);
-    setBannerError(null);
     try {
       let preferred = engineToUse;
       if (!preferred || preferred === 'auto') {
@@ -112,7 +127,7 @@ export const App: React.FC = () => {
       const tls = await containerApi.getTlsStatus(effEngine).catch(() => null);
       setTlsStatus(tls);
     } catch (err: any) {
-      setBannerError(err?.message || 'Failed to load container engine overview');
+      addAlert('Failed to load container overview', 'danger', err?.message);
     } finally {
       setIsLoading(false);
     }
@@ -138,12 +153,13 @@ export const App: React.FC = () => {
     try {
       const res = await containerApi.containerAction(id, action, activeEngine);
       if (res?.status === 'error') {
-        setBannerError(res.error || `Failed to ${action} container`);
+        addAlert(`Failed to ${action} container`, 'danger', res.error);
       } else {
+        addAlert(`Container ${action} succeeded`, 'success');
         await loadData(activeEngine);
       }
     } catch (err: any) {
-      setBannerError(err?.message || `Failed to ${action} container`);
+      addAlert(`Failed to ${action} container`, 'danger', err?.message);
     } finally {
       setIsLoading(false);
     }
@@ -165,12 +181,13 @@ export const App: React.FC = () => {
         try {
           const res = await containerApi.deleteEntity('container', container.id, false, activeEngine);
           if (res?.status === 'error') {
-            setBannerError(res.error || 'Failed to delete container');
+            addAlert('Failed to delete container', 'danger', res.error);
           } else {
+            addAlert(`Container ${container.name} deleted`, 'success');
             await loadData(activeEngine);
           }
         } catch (err: any) {
-          setBannerError(err?.message || 'Failed to delete container');
+          addAlert('Failed to delete container', 'danger', err?.message);
         } finally {
           setIsLoading(false);
         }
@@ -194,12 +211,13 @@ export const App: React.FC = () => {
         try {
           const res = await containerApi.deleteEntity('image', image.id, false, activeEngine);
           if (res?.status === 'error') {
-            setBannerError(res.error || 'Failed to delete image');
+            addAlert('Failed to delete image', 'danger', res.error);
           } else {
+            addAlert(`Image ${image.repository}:${image.tag} deleted`, 'success');
             await loadData(activeEngine);
           }
         } catch (err: any) {
-          setBannerError(err?.message || 'Failed to delete image');
+          addAlert('Failed to delete image', 'danger', err?.message);
         } finally {
           setIsLoading(false);
         }
@@ -223,12 +241,13 @@ export const App: React.FC = () => {
         try {
           const res = await containerApi.deleteEntity('volume', volume.name, false, activeEngine);
           if (res?.status === 'error') {
-            setBannerError(res.error || 'Failed to delete volume');
+            addAlert('Failed to delete volume', 'danger', res.error);
           } else {
+            addAlert(`Volume ${volume.name} deleted`, 'success');
             await loadData(activeEngine);
           }
         } catch (err: any) {
-          setBannerError(err?.message || 'Failed to delete volume');
+          addAlert('Failed to delete volume', 'danger', err?.message);
         } finally {
           setIsLoading(false);
         }
@@ -252,12 +271,13 @@ export const App: React.FC = () => {
         try {
           const res = await containerApi.deleteEntity('network', network.id, false, activeEngine);
           if (res?.status === 'error') {
-            setBannerError(res.error || 'Failed to delete network');
+            addAlert('Failed to delete network', 'danger', res.error);
           } else {
+            addAlert(`Network ${network.name} deleted`, 'success');
             await loadData(activeEngine);
           }
         } catch (err: any) {
-          setBannerError(err?.message || 'Failed to delete network');
+          addAlert('Failed to delete network', 'danger', err?.message);
         } finally {
           setIsLoading(false);
         }
@@ -281,12 +301,13 @@ export const App: React.FC = () => {
         try {
           const res = await containerApi.prune(kind, true, false, activeEngine);
           if (res?.status === 'error') {
-            setBannerError(res.error || `Failed to prune ${kind}s`);
+            addAlert(`Failed to prune ${kind}s`, 'danger', res.error);
           } else {
+            addAlert(`Pruned unused ${kind}s`, 'success');
             await loadData(activeEngine);
           }
         } catch (err: any) {
-          setBannerError(err?.message || `Failed to prune ${kind}s`);
+          addAlert(`Failed to prune ${kind}s`, 'danger', err?.message);
         } finally {
           setIsLoading(false);
         }
@@ -299,12 +320,13 @@ export const App: React.FC = () => {
     try {
       const res = await containerApi.prune('system', true, volumes, activeEngine);
       if (res?.status === 'error') {
-        setBannerError(res.error || 'Failed to perform system prune');
+        addAlert('Failed to perform system prune', 'danger', res.error);
       } else {
+        addAlert('System prune completed successfully', 'success');
         await loadData(activeEngine);
       }
     } catch (err: any) {
-      setBannerError(err?.message || 'Failed to perform system prune');
+      addAlert('Failed to perform system prune', 'danger', err?.message);
     } finally {
       setIsLoading(false);
     }
@@ -327,6 +349,21 @@ export const App: React.FC = () => {
 
   return (
     <Page style={{ minHeight: '100vh', backgroundColor: 'var(--zfs-canvas-bg)' }}>
+      {/* Toast Alert Notifications */}
+      <AlertGroup isToast isLiveRegion>
+        {alerts.map((alert) => (
+          <Alert
+            key={alert.key}
+            variant={alert.variant}
+            title={alert.title}
+            actionClose={<AlertActionCloseButton onClose={() => removeAlert(alert.key)} />}
+            timeout={5000}
+          >
+            {alert.message}
+          </Alert>
+        ))}
+      </AlertGroup>
+
       {/* Top Sticky Navigation Bar */}
       <Navigation
         activeView={activeView}
@@ -338,18 +375,6 @@ export const App: React.FC = () => {
         volumeCount={overview.volumes.length}
         networkCount={overview.networks.length}
       />
-
-      {bannerError && (
-        <Alert
-          variant="danger"
-          isInline
-          title="Error"
-          actionClose={<Button variant="plain" onClick={() => setBannerError(null)}>×</Button>}
-          style={{ margin: '1rem 1.5rem 0 1.5rem' }}
-        >
-          {bannerError}
-        </Alert>
-      )}
 
       {isNoneInstalled ? (
         <div style={{ padding: '3rem 1.5rem' }}>
@@ -392,7 +417,6 @@ export const App: React.FC = () => {
               images={overview.images}
               volumes={overview.volumes}
               networks={overview.networks}
-              tlsStatus={tlsStatus}
               onNavigateTab={(tab) => setActiveView(tab)}
               onAction={handleContainerAction}
               onOpenTerminal={(c) => setTerminalContainer(c)}
@@ -451,6 +475,7 @@ export const App: React.FC = () => {
               onSelectEngine={handleSelectEngine}
               onOpenSystemPrune={() => setSystemPruneOpen(true)}
               onRefresh={() => loadData(activeEngine)}
+              onNotify={(variant, title, message) => addAlert(title, variant, message)}
             />
           </div>
         </div>

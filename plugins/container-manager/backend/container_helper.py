@@ -56,6 +56,11 @@ def cmd_container_action(args: argparse.Namespace) -> Dict[str, Any]:
     return adapter.container_action(args.id, args.action)
 
 
+def cmd_check_shells(args: argparse.Namespace) -> Dict[str, Any]:
+    adapter = get_adapter(args.engine)
+    return adapter.check_shells(args.id)
+
+
 def cmd_delete_entity(args: argparse.Namespace) -> Dict[str, Any]:
     adapter = get_adapter(args.engine)
     return adapter.delete_entity(args.kind, args.id, force=args.force)
@@ -112,6 +117,12 @@ def main() -> None:
     p_action.add_argument("--id", required=True, help="Container ID or name")
     p_action.add_argument("--action", required=True, choices=["start", "stop", "kill", "restart"])
     p_action.set_defaults(func=cmd_container_action)
+
+    # check_shells
+    p_shells = subparsers.add_parser("check_shells")
+    p_shells.add_argument("--engine", default="auto")
+    p_shells.add_argument("--id", required=True, help="Container ID or name")
+    p_shells.set_defaults(func=cmd_check_shells)
 
     # delete_entity
     p_del = subparsers.add_parser("delete_entity")

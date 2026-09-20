@@ -38,6 +38,7 @@ export interface SettingsViewProps {
   onSelectEngine: (engine: EngineType) => void;
   onOpenSystemPrune: () => void;
   onRefresh: () => void;
+  onNotify?: (variant: 'success' | 'danger' | 'warning' | 'info', title: string, message?: string) => void;
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
@@ -46,11 +47,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onSelectEngine,
   onOpenSystemPrune,
   onRefresh,
+  onNotify,
 }) => {
   const [tlsStatus, setTlsStatus] = useState<TlsStatus | null>(null);
   const [isSettingUp, setIsSettingUp] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   const [port, setPort] = useState<number>(2376);
   const [sansInput, setSansInput] = useState<string>('');
@@ -82,7 +83,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const handleSetup = async () => {
     setIsSettingUp(true);
     setError(null);
-    setSuccessMsg(null);
     try {
       const sans = sansInput
         .split(',')
@@ -90,14 +90,18 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         .filter((s) => s.length > 0);
       const res = await containerApi.setupTls(activeEngine, port, sans);
       if (res?.status === 'error') {
-        setError(res.error || 'Failed to configure TLS');
+        const msg = res.error || 'Failed to configure TLS';
+        setError(msg);
+        onNotify?.('danger', 'TLS Configuration Failed', msg);
       } else {
-        setSuccessMsg(`Remote TCP socket on port ${port} and mutual TLS certificates successfully configured.`);
+        onNotify?.('success', 'TLS Configured', `Remote TCP socket on port ${port} and mutual TLS certificates configured.`);
         await loadStatus();
         onRefresh();
       }
     } catch (e: any) {
-      setError(e?.message || 'Failed to configure TLS');
+      const msg = e?.message || 'Failed to configure TLS';
+      setError(msg);
+      onNotify?.('danger', 'TLS Configuration Failed', msg);
     } finally {
       setIsSettingUp(false);
     }
@@ -106,18 +110,21 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const handleDisable = async () => {
     setIsSettingUp(true);
     setError(null);
-    setSuccessMsg(null);
     try {
       const res = await containerApi.disableTls(activeEngine);
       if (res?.status === 'error') {
-        setError(res.error || 'Failed to disable TLS');
+        const msg = res.error || 'Failed to disable TLS';
+        setError(msg);
+        onNotify?.('danger', 'Disable Failed', msg);
       } else {
-        setSuccessMsg('Remote TCP socket disabled.');
+        onNotify?.('success', 'TLS Disabled', 'Remote TCP socket disabled.');
         await loadStatus();
         onRefresh();
       }
     } catch (e: any) {
-      setError(e?.message || 'Failed to disable TLS');
+      const msg = e?.message || 'Failed to disable TLS';
+      setError(msg);
+      onNotify?.('danger', 'Disable Failed', msg);
     } finally {
       setIsSettingUp(false);
     }
@@ -127,27 +134,23 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     try {
       const bundle = await containerApi.getClientBundle(activeEngine);
       if (bundle.status === 'error') {
-        setError(bundle.ca || 'Failed to get client certificate bundle');
+        const msg = bundle.ca || 'Failed to get client certificate bundle';
+        setError(msg);
+        onNotify?.('danger', 'Download Failed', msg);
         return;
       }
 
-      const binaryString = window.atob(bundle.zipBase64);
-      const len = binaryString.length;
-      const bytes = new Uint8Array(len);
-      for (let i = 0; i < len; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
-      }
-      const blob = new Blob([bytes], { type: 'application/zip' });
-      const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url;
+      a.href = `data:application/zip;base64,${bundle.zipBase64}`;
       a.download = bundle.zipFilename || `${activeEngine}-client-certs.zip`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
+      onNotify?.('success', 'Download Started', `Downloaded ${bundle.zipFilename || 'client certificates'}`);
     } catch (e: any) {
-      setError(e?.message || 'Failed to download certificate bundle');
+      const msg = e?.message || 'Failed to download certificate bundle';
+      setError(msg);
+      onNotify?.('danger', 'Download Failed', msg);
     }
   };
 
@@ -188,12 +191,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </Alert>
         )}
 
-        {successMsg && (
-          <Alert variant="success" isInline title="Success" style={{ marginBottom: '1.25rem' }}>
-            {successMsg}
-          </Alert>
-        )}
-
         <Grid hasGutter>
           {/* Engine Selection Card */}
           <GridItem span={12} md={6}>
@@ -218,7 +215,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                         size="sm"
                         onClick={() => {
                           onSelectEngine('docker');
-                          setSuccessMsg('Active container backend switched to Docker Engine.');
+                          onNotify?.('success', 'Backend Switched', 'Active container backend switched to Docker Engine.');
                         }}
                       >
                         {activeEngine === 'docker' ? 'Active Backend' : 'Activate Docker'}
@@ -239,7 +236,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                         size="sm"
                         onClick={() => {
                           onSelectEngine('podman');
-                          setSuccessMsg('Active container backend switched to Podman.');
+                          onNotify?.('success', 'Backend Switched', 'Active container backend switched to Podman.');
                         }}
                       >
                         {activeEngine === 'podman' ? 'Active Backend' : 'Activate Podman'}
@@ -367,7 +364,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
                       <Button
                         variant="primary"
-                        icon={<LockIcon />}
+                        icon={isSettingUp ? undefined : <LockIcon />}
                         onClick={handleSetup}
                         isLoading={isSettingUp}
                         isDisabled={isSettingUp}

@@ -32,7 +32,6 @@ import {
   TerminalIcon,
   FileAltIcon,
   InfoCircleIcon,
-  LockIcon,
 } from '@patternfly/react-icons';
 import { StatusBadge } from '@cockpit-plugins/common';
 import {
@@ -40,7 +39,6 @@ import {
   ImageItem,
   VolumeItem,
   NetworkItem,
-  TlsStatus,
 } from '../types';
 
 export interface DashboardViewProps {
@@ -48,7 +46,7 @@ export interface DashboardViewProps {
   images: ImageItem[];
   volumes: VolumeItem[];
   networks: NetworkItem[];
-  tlsStatus: TlsStatus | null;
+  tlsStatus?: any;
   onNavigateTab: (tab: string) => void;
   onAction: (id: string, action: 'start' | 'stop' | 'kill' | 'restart') => void;
   onOpenTerminal: (container: ContainerItem) => void;
@@ -303,37 +301,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   No containers currently running.
                 </div>
               )}
-            </CardBody>
-          </Card>
-        </div>
-
-        {/* Remote API & Daemon Status Banner */}
-        <div style={{ marginTop: '1.5rem' }}>
-          <Card>
-            <CardBody>
-              <Flex justifyContent={{ default: 'justifyContentSpaceBetween' }} alignItems={{ default: 'alignItemsCenter' }} flexWrap={{ default: 'wrap' }}>
-                <FlexItem>
-                  <Flex spaceItems={{ default: 'spaceItemsMd' }} alignItems={{ default: 'alignItemsCenter' }}>
-                    <LockIcon style={{ fontSize: '1.5rem', color: tlsStatus?.enabled ? '#3fb950' : '#8b949e' }} />
-                    <div>
-                      <div style={{ fontWeight: 600, fontSize: '1rem' }}>
-                        Remote Daemon TCP Socket &amp; Mutual TLS
-                      </div>
-                      <div style={{ fontSize: '0.85rem', color: '#8b949e' }}>
-                        {tlsStatus?.enabled
-                          ? `Listening on port ${tlsStatus.port} with mutual TLS authentication`
-                          : 'Daemon is currently accessible only via local socket / SSH'}
-                      </div>
-                    </div>
-                  </Flex>
-                </FlexItem>
-
-                <FlexItem>
-                  <Button variant="secondary" onClick={() => onNavigateTab('settings')} size="sm">
-                    Configure in Settings →
-                  </Button>
-                </FlexItem>
-              </Flex>
             </CardBody>
           </Card>
         </div>

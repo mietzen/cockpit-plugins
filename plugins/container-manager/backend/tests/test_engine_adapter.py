@@ -221,6 +221,40 @@ class TestEngineAdapter(unittest.TestCase):
         self.assertEqual(adapter.prune_entity("network")["status"], "success")
         self.assertEqual(adapter.system_prune(include_volumes=True)["status"], "success")
 
+    @patch("engine_adapter.run_cmd")
+    def test_check_shells_detected(self, mock_run):
+        # mock bash success, sh success, ash fail, zsh fail, inspect container
+        mock_run.side_effect = [
+            (0, "", ""),  # /bin/bash
+            (0, "", ""),  # /bin/sh
+            (1, "", "not found"),  # /bin/ash
+            (1, "", "not found"),  # /bin/zsh
+            (0, json.dumps([{"Config": {"Entrypoint": ["/entrypoint.sh"], "Cmd": ["nginx"]}}]), ""),
+        ]
+        adapter = DockerAdapter()
+        res = adapter.check_shells("c1")
+        self.assertEqual(res["status"], "success")
+        self.assertEqual(res["shells"], ["/bin/bash", "/bin/sh"])
+        self.assertEqual(res["default_shell"], "/bin/bash")
+        self.assertEqual(res["entrypoint"], "/entrypoint.sh")
+
+    @patch("engine_adapter.run_cmd")
+    def test_check_shells_fallback_entrypoint(self, mock_run):
+        # mock all 4 shells fail, inspect returns entrypoint
+        mock_run.side_effect = [
+            (1, "", ""),
+            (1, "", ""),
+            (1, "", ""),
+            (1, "", ""),
+            (0, json.dumps([{"Config": {"Entrypoint": ["/app/start"], "Cmd": []}}]), ""),
+        ]
+        adapter = DockerAdapter()
+        res = adapter.check_shells("c1")
+        self.assertEqual(res["status"], "success")
+        self.assertEqual(res["shells"], [])
+        self.assertEqual(res["default_shell"], "/app/start")
+        self.assertEqual(res["entrypoint"], "/app/start")
+
 
 if __name__ == "__main__":
     unittest.main()

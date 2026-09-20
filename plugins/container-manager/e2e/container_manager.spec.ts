@@ -193,4 +193,38 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     await tcpTab.click();
     await saveScreenshot(page, '05_settings_tcp_instructions.png');
   });
+
+  test('06. Interactive Container Terminal Keystroke Input Test', async () => {
+    const frame = await getFrame();
+
+    // Navigate to Containers tab
+    await frame.locator('.cockpit-top-nav-bar button:has-text("Containers")').click();
+    await frame.waitForSelector('table[aria-label="Containers Table"]', { timeout: 10000 });
+
+    // Click terminal icon on first container in visible table
+    const termBtn = frame.locator('table[aria-label="Containers Table"] button[aria-label="Terminal"]').first();
+    await termBtn.click();
+
+    // Wait for terminal modal and connection prompt to appear
+    await frame.waitForSelector('.pf-v5-c-modal-box:has-text("Terminal:")', { timeout: 8000 });
+    await frame.waitForSelector('.xterm-screen', { timeout: 8000 });
+    await frame.waitForSelector('.xterm-rows:has-text("#")', { timeout: 10000 });
+
+    // Focus and type test command into container PTY via xterm helper textarea
+    await frame.locator('.xterm').first().click();
+    const xtermTextarea = frame.locator('textarea.xterm-helper-textarea').first();
+    await xtermTextarea.focus();
+    await page.keyboard.type('echo TEST_XTERM_OUTPUT_SUCCESS', { delay: 30 });
+    await page.keyboard.press('Enter');
+
+    // Verify terminal output contains the echoed text
+    const rows = frame.locator('.xterm-rows').first();
+    await expect(rows).toContainText('TEST_XTERM_OUTPUT_SUCCESS', { timeout: 10000 });
+
+    // Close terminal modal
+    const closeBtn = frame.locator('.pf-v5-c-modal-box button:has-text("Close Terminal")').first();
+    await closeBtn.click();
+    await frame.waitForSelector('.pf-v5-c-modal-box', { state: 'detached', timeout: 5000 });
+  });
 });
+

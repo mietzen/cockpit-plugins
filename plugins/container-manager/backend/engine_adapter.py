@@ -172,6 +172,49 @@ class ContainerEngineAdapter(ABC):
             return {"status": "error", "error": err or out}
         return {"status": "success", "output": out}
 
+    def check_shells(self, container_id: str) -> Dict[str, Any]:
+        """Detects available interactive shells in container with fallback to entrypoint."""
+        candidates = ["/bin/bash", "/bin/sh", "/bin/ash", "/bin/zsh"]
+        available: List[str] = []
+
+        for shell in candidates:
+            rc, _, _ = run_cmd([self.bin, "exec", container_id, shell, "-c", "exit 0"], timeout=3)
+            if rc == 0:
+                available.append(shell)
+
+        entrypoint = ""
+        cmd = ""
+        inspect_res = self.inspect_entity("container", container_id)
+        if inspect_res.get("status") == "success" and isinstance(inspect_res.get("data"), dict):
+            config = inspect_res["data"].get("Config", {})
+            ep = config.get("Entrypoint")
+            if isinstance(ep, list) and ep:
+                entrypoint = " ".join(ep)
+            elif isinstance(ep, str) and ep:
+                entrypoint = ep
+
+            cm = config.get("Cmd")
+            if isinstance(cm, list) and cm:
+                cmd = " ".join(cm)
+            elif isinstance(cm, str) and cm:
+                cmd = cm
+
+        default_shell = "/bin/sh"
+        if available:
+            default_shell = "/bin/bash" if "/bin/bash" in available else available[0]
+        elif entrypoint:
+            default_shell = entrypoint
+        elif cmd:
+            default_shell = cmd
+
+        return {
+            "status": "success",
+            "shells": available,
+            "entrypoint": entrypoint,
+            "cmd": cmd,
+            "default_shell": default_shell,
+        }
+
 
 class DockerAdapter(ContainerEngineAdapter):
     """Adapter for Docker Engine."""

@@ -25,7 +25,7 @@ export interface ContainerTerminalModalProps {
   onClose: () => void;
 }
 
-const SHELL_PRESETS = ['/bin/sh', '/bin/bash', '/bin/ash', '/bin/zsh', 'custom'];
+const DEFAULT_SHELL_PRESETS = ['/bin/sh', '/bin/bash', 'custom'];
 
 export const ContainerTerminalModal: React.FC<ContainerTerminalModalProps> = ({
   isOpen,
@@ -37,6 +37,7 @@ export const ContainerTerminalModal: React.FC<ContainerTerminalModalProps> = ({
   const terminalRef = useRef<XtermTerminalHandle>(null);
   const processRef = useRef<any>(null);
 
+  const [availableShells, setAvailableShells] = useState<string[]>(DEFAULT_SHELL_PRESETS);
   const [selectedShell, setSelectedShell] = useState('/bin/sh');
   const [customCommand, setCustomCommand] = useState('');
   const [shellDropdownOpen, setShellDropdownOpen] = useState(false);
@@ -97,11 +98,47 @@ export const ContainerTerminalModal: React.FC<ContainerTerminalModalProps> = ({
 
   useEffect(() => {
     if (isOpen && container) {
-      // Delay slightly for modal animation and DOM layout
-      const timer = setTimeout(() => {
-        startSession();
-      }, 150);
-      return () => clearTimeout(timer);
+      // Probe available shells in container
+      let isSubscribed = true;
+      containerApi
+        .checkShells(container.id, activeEngine)
+        .then((res) => {
+          if (!isSubscribed) return;
+          const shells = res?.shells || [];
+          const list: string[] = [...shells];
+          if (list.length === 0) {
+            if (res.entrypoint) list.push(res.entrypoint);
+            if (res.cmd && res.cmd !== res.entrypoint) list.push(res.cmd);
+          }
+          if (!list.includes('/bin/sh') && list.length === 0) {
+            list.push('/bin/sh');
+          }
+          list.push('custom');
+          setAvailableShells(list);
+
+          const initial = res?.default_shell || (shells.length > 0 ? shells[0] : list[0]);
+          setSelectedShell(initial);
+          startSession(initial);
+        })
+        .catch(() => {
+          if (!isSubscribed) return;
+          setAvailableShells(DEFAULT_SHELL_PRESETS);
+          setSelectedShell('/bin/sh');
+          startSession('/bin/sh');
+        });
+
+      return () => {
+        isSubscribed = false;
+        if (processRef.current) {
+          try {
+            processRef.current.close('terminate');
+          } catch {
+            // Ignore
+          }
+          processRef.current = null;
+        }
+        setIsConnected(false);
+      };
     } else {
       if (processRef.current) {
         try {
@@ -118,7 +155,7 @@ export const ContainerTerminalModal: React.FC<ContainerTerminalModalProps> = ({
   const handleData = (data: string) => {
     if (processRef.current) {
       try {
-        processRef.current.input(data);
+        processRef.current.input(data, true);
       } catch (e) {
         console.warn('Failed to send input to terminal process:', e);
       }
@@ -154,6 +191,7 @@ export const ContainerTerminalModal: React.FC<ContainerTerminalModalProps> = ({
       variant={ModalVariant.large}
       title={`Terminal: ${container.name}`}
       isOpen={isOpen}
+      disableFocusTrap
       onClose={() => {
         if (processRef.current) {
           try {
@@ -191,12 +229,16 @@ export const ContainerTerminalModal: React.FC<ContainerTerminalModalProps> = ({
                 }}
                 onOpenChange={(open) => setShellDropdownOpen(open)}
                 toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
-                  <MenuToggle ref={toggleRef} onClick={() => setShellDropdownOpen(!shellDropdownOpen)}>
+                  <MenuToggle
+                    ref={toggleRef}
+                    onClick={() => setShellDropdownOpen(!shellDropdownOpen)}
+                    style={{ borderRadius: '999px' }}
+                  >
                     {selectedShell}
                   </MenuToggle>
                 )}
               >
-                {SHELL_PRESETS.map((p) => (
+                {availableShells.map((p) => (
                   <SelectOption key={p} value={p}>
                     {p}
                   </SelectOption>

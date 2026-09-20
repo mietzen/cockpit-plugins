@@ -176,7 +176,6 @@ export const XtermTerminal = forwardRef<XtermTerminalHandle, XtermTerminalProps>
         ref={containerRef}
         className={className}
         onClick={() => termRef.current?.focus()}
-        tabIndex={0}
         style={{
           width: '100%',
           height: '100%',

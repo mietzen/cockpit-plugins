@@ -76,6 +76,12 @@ class TestContainerHelperCLI(unittest.TestCase):
         res_sys = container_helper.cmd_prune(MagicMock(engine="docker", kind="system", all=False, volumes=True))
         self.assertEqual(res_sys["status"], "success")
 
+        # check shells
+        mock_adapter.check_shells.return_value = {"status": "success", "shells": ["/bin/sh"]}
+        res_shells = container_helper.cmd_check_shells(MagicMock(engine="docker", id="c1"))
+        self.assertEqual(res_shells["status"], "success")
+        self.assertEqual(res_shells["shells"], ["/bin/sh"])
+
     @patch("container_helper.get_tls_status", return_value={"enabled": True, "port": 2376})
     def test_get_tls_status(self, mock_stat):
         res = container_helper.cmd_get_tls_status(MagicMock(engine="docker"))
