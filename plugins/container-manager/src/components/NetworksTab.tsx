@@ -20,6 +20,7 @@ import {
 import { TrashIcon, InfoCircleIcon } from '@patternfly/react-icons';
 import { StatusBadge } from '@cockpit-plugins/common';
 import { NetworkItem } from '../types';
+import { HashId } from './HashId';
 
 export interface NetworksTabProps {
   networks: NetworkItem[];
@@ -42,7 +43,9 @@ export const NetworksTab: React.FC<NetworksTabProps> = ({
     (n) =>
       n.name.toLowerCase().includes(filterText.toLowerCase()) ||
       n.driver.toLowerCase().includes(filterText.toLowerCase()) ||
-      (n.subnet && n.subnet.toLowerCase().includes(filterText.toLowerCase()))
+      (n.subnet && n.subnet.toLowerCase().includes(filterText.toLowerCase())) ||
+      n.shortId.toLowerCase().includes(filterText.toLowerCase()) ||
+      n.id.toLowerCase().includes(filterText.toLowerCase())
   );
 
   const unusedCustomCount = networks.filter((n) => !n.isBuiltIn && !n.inUse).length;
@@ -57,7 +60,7 @@ export const NetworksTab: React.FC<NetworksTabProps> = ({
       >
         <FlexItem grow={{ default: 'grow' }} style={{ maxWidth: '400px' }}>
           <SearchInput
-            placeholder="Filter networks by name, driver, subnet..."
+            placeholder="Filter networks by name, driver, subnet, ID..."
             value={filterText}
             onChange={(_event, val) => setFilterText(val)}
             onClear={() => setFilterText('')}
@@ -110,9 +113,9 @@ export const NetworksTab: React.FC<NetworksTabProps> = ({
                   <Tr key={net.id || net.name}>
                     <Td dataLabel="Network Name">
                       <strong style={{ fontSize: '0.95rem' }}>{net.name}</strong>
-                      {net.shortId && (
-                        <div style={{ fontSize: '0.8rem', color: 'var(--pf-v5-global--Color--200, #8b949e)', fontFamily: 'monospace' }}>
-                          {net.shortId}
+                      {net.id && (
+                        <div style={{ marginTop: '2px' }}>
+                          <HashId id={net.id} shortId={net.shortId} />
                         </div>
                       )}
                     </Td>

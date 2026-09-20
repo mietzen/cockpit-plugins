@@ -44,6 +44,7 @@ export interface VolumeItem {
   driver: string;
   scope: string;
   mountpoint: string;
+  size?: string;
   inUse: boolean;
 }
 

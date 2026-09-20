@@ -69,6 +69,90 @@ def detect_engines() -> Dict[str, Any]:
     }
 
 
+def normalize_image_ref(ref: str) -> set:
+    """Generates a set of normalized aliases for an image reference/tag/ID."""
+    if not ref or ref == "<none>":
+        return set()
+    ref = str(ref).strip()
+    results = {ref}
+
+    if ref.startswith("sha256:"):
+        raw_hash = ref[7:]
+        results.add(raw_hash)
+        results.add(raw_hash[:12])
+    elif len(ref) >= 12 and all(c in "0123456789abcdefABCDEF" for c in ref):
+        results.add(ref[:12])
+
+    registries = [
+        "docker.io/library/",
+        "docker.io/",
+        "localhost/",
+        "registry.fedoraproject.org/",
+        "quay.io/",
+        "ghcr.io/",
+    ]
+    for prefix in registries:
+        if ref.startswith(prefix):
+            stripped = ref[len(prefix):]
+            results.add(stripped)
+            if ":" in stripped:
+                name_only = stripped.rsplit(":", 1)[0]
+                results.add(name_only)
+            else:
+                results.add(f"{stripped}:latest")
+
+    # Handle custom domain/port registries, e.g. registry.example.com/app:v1 or host:5000/app
+    if "/" in ref:
+        first_segment, rest = ref.split("/", 1)
+        if ("." in first_segment or ":" in first_segment or first_segment == "localhost") and rest:
+            results.add(rest)
+            if ":" in rest:
+                results.add(rest.rsplit(":", 1)[0])
+            else:
+                results.add(f"{rest}:latest")
+
+    if ":" in ref:
+        name_only, tag = ref.rsplit(":", 1)
+        if tag == "latest":
+            results.add(name_only)
+    else:
+        results.add(f"{ref}:latest")
+
+    return results
+
+
+def get_volume_size(mountpoint: str) -> str:
+    """Calculates disk usage for a local volume mountpoint."""
+    if not mountpoint or not os.path.exists(mountpoint):
+        return ""
+
+    total = 0
+    try:
+        if os.path.isfile(mountpoint):
+            total = os.path.getsize(mountpoint)
+        else:
+            for root, _, files in os.walk(mountpoint):
+                for f in files:
+                    fp = os.path.join(root, f)
+                    try:
+                        if not os.path.islink(fp):
+                            total += os.path.getsize(fp)
+                    except OSError:
+                        pass
+    except Exception:
+        return ""
+
+    if total <= 0:
+        return "0 B"
+    if total < 1024:
+        return f"{total} B"
+    if total < 1024 * 1024:
+        return f"{total / 1024:.1f} KB"
+    if total < 1024 * 1024 * 1024:
+        return f"{total / (1024 * 1024):.1f} MB"
+    return f"{total / (1024 * 1024 * 1024):.2f} GB"
+
+
 class ContainerEngineAdapter(ABC):
     """Abstract adapter unifying Docker and Podman CLI interactions."""
 
@@ -270,9 +354,11 @@ class DockerAdapter(ContainerEngineAdapter):
         if rc != 0 or not out.strip():
             return []
 
-        # Find in-use image IDs from running/stopped containers
+        # Find in-use image IDs and references from running/stopped containers
         containers = self.list_containers()
-        used_images = {c["image"] for c in containers}
+        used_image_refs = set()
+        for c in containers:
+            used_image_refs.update(normalize_image_ref(c.get("image", "")))
 
         images = []
         for line in out.strip().splitlines():
@@ -289,7 +375,10 @@ class DockerAdapter(ContainerEngineAdapter):
             tag = data.get("Tag", "<none>")
             full_ref = f"{repo}:{tag}" if repo != "<none>" and tag != "<none>" else repo
 
-            is_in_use = (full_ref in used_images) or (full_id in used_images) or (full_id[:12] in used_images)
+            img_refs = normalize_image_ref(full_id)
+            img_refs.update(normalize_image_ref(full_ref))
+            img_refs.update(normalize_image_ref(repo))
+            is_in_use = bool(img_refs.intersection(used_image_refs))
 
             images.append({
                 "id": full_id,
@@ -334,11 +423,14 @@ class DockerAdapter(ContainerEngineAdapter):
                 continue
 
             name = data.get("Name", "")
+            mountpoint = data.get("Mountpoint", "")
+            vol_size = get_volume_size(mountpoint)
             volumes.append({
                 "name": name,
                 "driver": data.get("Driver", "local"),
                 "scope": data.get("Scope", "local"),
-                "mountpoint": data.get("Mountpoint", ""),
+                "mountpoint": mountpoint,
+                "size": vol_size,
                 "inUse": name in used_volumes,
             })
         return volumes
@@ -455,7 +547,9 @@ class PodmanAdapter(ContainerEngineAdapter):
             return []
 
         containers = self.list_containers()
-        used_images = {c["image"] for c in containers}
+        used_image_refs = set()
+        for c in containers:
+            used_image_refs.update(normalize_image_ref(c.get("image", "")))
 
         images = []
         for item in data_list:
@@ -472,7 +566,15 @@ class PodmanAdapter(ContainerEngineAdapter):
                     tag = "latest"
 
             full_ref = f"{repo}:{tag}"
-            is_in_use = (full_ref in used_images) or (full_id in used_images) or (full_id[:12] in used_images)
+            img_refs = normalize_image_ref(full_id)
+            if isinstance(repo_tags, list):
+                for t in repo_tags:
+                    img_refs.update(normalize_image_ref(t))
+            elif repo_tags:
+                img_refs.update(normalize_image_ref(str(repo_tags)))
+            img_refs.update(normalize_image_ref(full_ref))
+            img_refs.update(normalize_image_ref(repo))
+            is_in_use = bool(img_refs.intersection(used_image_refs))
 
             size_bytes = item.get("size", item.get("Size", 0))
             size_formatted = f"{size_bytes / (1024 * 1024):.1f} MB" if isinstance(size_bytes, (int, float)) and size_bytes > 0 else str(size_bytes)
@@ -525,11 +627,14 @@ class PodmanAdapter(ContainerEngineAdapter):
         volumes = []
         for item in data_list:
             name = item.get("name", item.get("Name", ""))
+            mountpoint = item.get("mountPoint", item.get("mountpoint", item.get("MountPoint", item.get("Mountpoint", ""))))
+            vol_size = get_volume_size(mountpoint)
             volumes.append({
                 "name": name,
                 "driver": item.get("driver", item.get("Driver", "local")),
                 "scope": item.get("scope", item.get("Scope", "local")),
-                "mountpoint": item.get("mountPoint", item.get("mountpoint", item.get("MountPoint", item.get("Mountpoint", "")))),
+                "mountpoint": mountpoint,
+                "size": vol_size,
                 "inUse": name in used_volumes,
             })
         return volumes

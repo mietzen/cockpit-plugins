@@ -163,7 +163,32 @@ class TestEngineAdapter(unittest.TestCase):
         self.assertEqual(images[0]["tag"], "latest")
 
     @patch("engine_adapter.run_cmd")
-    def test_podman_list_volumes_and_networks(self, mock_run):
+    def test_image_in_use_normalization_traefik_whoami(self, mock_run):
+        # Container running traefik/whoami without registry or tag
+        # Image has docker.io/traefik/whoami:latest
+        mock_run.side_effect = [
+            (0, '{"ID":"img_whoami_123","Repository":"docker.io/traefik/whoami","Tag":"latest","Size":"10MB","CreatedAt":"2026-08-15"}\n', ""),
+            (0, '{"ID":"c_whoami","Names":"whoami-service","Image":"traefik/whoami"}\n', ""),
+        ]
+        adapter = DockerAdapter()
+        images = adapter.list_images()
+        self.assertEqual(len(images), 1)
+        self.assertTrue(images[0]["inUse"])
+
+    @patch("engine_adapter.run_cmd")
+    def test_podman_image_in_use_normalization_whoami(self, mock_run):
+        mock_run.side_effect = [
+            (0, json.dumps([{"Id": "img_whoami_456", "RepoTags": ["docker.io/traefik/whoami:latest"], "Size": 10000000}]), ""),
+            (0, json.dumps([{"Id": "c_whoami_pod", "Names": ["my-whoami"], "Image": "traefik/whoami", "State": "running"}]), ""),
+        ]
+        adapter = PodmanAdapter()
+        images = adapter.list_images()
+        self.assertEqual(len(images), 1)
+        self.assertTrue(images[0]["inUse"])
+
+    @patch("engine_adapter.get_volume_size", return_value="15.5 MB")
+    @patch("engine_adapter.run_cmd")
+    def test_podman_list_volumes_and_networks(self, mock_run, _mock_size):
         mock_run.side_effect = [
             (0, json.dumps([{"Name": "vol1", "Driver": "local", "MountPoint": "/data"}]), ""),
             (0, json.dumps([{"Mounts": [{"Name": "vol1"}]}]), ""),
@@ -175,6 +200,7 @@ class TestEngineAdapter(unittest.TestCase):
         vols = adapter.list_volumes()
         self.assertEqual(len(vols), 1)
         self.assertEqual(vols[0]["name"], "vol1")
+        self.assertEqual(vols[0]["size"], "15.5 MB")
         self.assertTrue(vols[0]["inUse"])
 
         nets = adapter.list_networks()
@@ -471,6 +497,70 @@ class TestEngineAdapter(unittest.TestCase):
         self.assertTrue(res_podman["podman"]["installed"])
         self.assertEqual(res_podman["podman"]["version"], "")
         self.assertEqual(res_podman["active_engine"], "podman")
+
+    def test_normalize_image_ref_edge_cases(self):
+        from engine_adapter import normalize_image_ref
+
+        # Empty or <none>
+        self.assertEqual(normalize_image_ref(""), set())
+        self.assertEqual(normalize_image_ref("<none>"), set())
+
+        # sha256 hash
+        refs = normalize_image_ref("sha256:1234567890abcdef1234567890abcdef")
+        self.assertIn("1234567890abcdef1234567890abcdef", refs)
+        self.assertIn("1234567890ab", refs)
+
+        # Standard hex ID
+        hex_refs = normalize_image_ref("1234567890abcdef1234")
+        self.assertIn("1234567890ab", hex_refs)
+
+        # Registries and custom domains
+        quay_refs = normalize_image_ref("quay.io/org/app:v2")
+        self.assertIn("org/app:v2", quay_refs)
+
+        custom_refs = normalize_image_ref("registry.internal.net:5000/myteam/service:latest")
+        self.assertIn("myteam/service", custom_refs)
+        self.assertIn("myteam/service:latest", custom_refs)
+
+    def test_get_volume_size_unit(self):
+        import tempfile
+        import os
+        from engine_adapter import get_volume_size
+
+        # Non-existent path
+        self.assertEqual(get_volume_size("/non/existent/path/123"), "")
+        self.assertEqual(get_volume_size(""), "")
+
+        # Single file
+        with tempfile.NamedTemporaryFile() as tmp:
+            tmp.write(b"x" * 500)
+            tmp.flush()
+            self.assertEqual(get_volume_size(tmp.name), "500 B")
+
+        # Directory with files
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # 0 B empty directory
+            self.assertEqual(get_volume_size(tmpdir), "0 B")
+
+            # 2 KB file
+            fpath = os.path.join(tmpdir, "file.bin")
+            with open(fpath, "wb") as f:
+                f.write(b"a" * 2048)
+            self.assertEqual(get_volume_size(tmpdir), "2.0 KB")
+
+            # 2 MB file
+            with open(fpath, "wb") as f:
+                f.write(b"a" * (2 * 1024 * 1024))
+            self.assertEqual(get_volume_size(tmpdir), "2.0 MB")
+
+            # 1.5 GB simulated via mock
+            with patch("os.walk", return_value=[(tmpdir, [], ["big.bin"])]):
+                with patch("os.path.getsize", return_value=int(1.5 * 1024 * 1024 * 1024)):
+                    self.assertEqual(get_volume_size(tmpdir), "1.50 GB")
+
+            # Exception handling
+            with patch("os.walk", side_effect=PermissionError("denied")):
+                self.assertEqual(get_volume_size(tmpdir), "")
 
 
 if __name__ == "__main__":

@@ -130,6 +130,32 @@ export const App: React.FC = () => {
 
   useEffect(() => {
     loadData();
+
+    const handleRefresh = () => {
+      loadData();
+    };
+
+    window.addEventListener('hashchange', handleRefresh);
+    window.addEventListener('focus', handleRefresh);
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        handleRefresh();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    if (typeof window !== 'undefined' && window.cockpit && typeof window.cockpit.addEventListener === 'function') {
+      window.cockpit.addEventListener('locationchanged', handleRefresh);
+    }
+
+    return () => {
+      window.removeEventListener('hashchange', handleRefresh);
+      window.removeEventListener('focus', handleRefresh);
+      document.removeEventListener('visibilitychange', handleVisibility);
+      if (typeof window !== 'undefined' && window.cockpit && typeof window.cockpit.removeEventListener === 'function') {
+        window.cockpit.removeEventListener('locationchanged', handleRefresh);
+      }
+    };
   }, [loadData]);
 
   const handleSelectEngine = (newEngine: EngineType) => {

@@ -290,6 +290,32 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
       await frame.locator('.pf-v5-c-modal-box button:has-text("Close")').click();
     }
   });
+
+  test('09. Verify Kill Action, Hash ID Copy, and Volume Size', async () => {
+    const frame = await getFrame();
+
+    // Navigate to Containers tab
+    await frame.locator('.cockpit-top-nav-bar button:has-text("Containers")').click();
+    await frame.waitForSelector('table[aria-label="Containers Table"]', { timeout: 10000 });
+
+    // Verify Kill button is present on running containers
+    const killBtn = frame.locator('table[aria-label="Containers Table"] button[aria-label="Kill"]').first();
+    if (await killBtn.count() > 0) {
+      await expect(killBtn).toBeVisible();
+    }
+
+    // Verify HashId copy button is present
+    const hashBtn = frame.locator('table[aria-label="Containers Table"] button[aria-label*="Copy ID"]').first();
+    await expect(hashBtn).toBeVisible({ timeout: 5000 });
+
+    // Switch to Volumes tab and verify Size column header
+    await frame.locator('.cockpit-top-nav-bar button:has-text("Volumes")').click();
+    await frame.waitForSelector('table[aria-label="Volumes Table"], div:has-text("No Volumes Found")', { timeout: 10000 });
+    const sizeTh = frame.locator('table[aria-label="Volumes Table"] th:has-text("Size")').first();
+    if (await sizeTh.count() > 0) {
+      await expect(sizeTh).toBeVisible();
+    }
+  });
 });
 
 

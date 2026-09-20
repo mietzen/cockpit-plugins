@@ -20,6 +20,7 @@ import {
 import { TrashIcon, InfoCircleIcon } from '@patternfly/react-icons';
 import { StatusBadge } from '@cockpit-plugins/common';
 import { ImageItem } from '../types';
+import { HashId } from './HashId';
 
 export interface ImagesTabProps {
   images: ImageItem[];
@@ -42,7 +43,8 @@ export const ImagesTab: React.FC<ImagesTabProps> = ({
     (img) =>
       img.repository.toLowerCase().includes(filterText.toLowerCase()) ||
       img.tag.toLowerCase().includes(filterText.toLowerCase()) ||
-      img.shortId.toLowerCase().includes(filterText.toLowerCase())
+      img.shortId.toLowerCase().includes(filterText.toLowerCase()) ||
+      img.id.toLowerCase().includes(filterText.toLowerCase())
   );
 
   const unusedCount = images.filter((i) => !i.inUse).length;
@@ -112,7 +114,7 @@ export const ImagesTab: React.FC<ImagesTabProps> = ({
                     <code style={{ fontSize: '0.85rem' }}>{img.tag}</code>
                   </Td>
                   <Td dataLabel="Image ID">
-                    <span style={{ fontSize: '0.85rem', fontFamily: 'monospace' }}>{img.shortId}</span>
+                    <HashId id={img.id} shortId={img.shortId} />
                   </Td>
                   <Td dataLabel="Size">
                     <span style={{ fontSize: '0.85rem' }}>{img.size}</span>

@@ -94,9 +94,10 @@ export const VolumesTab: React.FC<VolumesTabProps> = ({
           <Table aria-label="Volumes Table" variant="compact">
             <Thead>
               <Tr>
-                <Th width={30}>Volume Name</Th>
+                <Th width={25}>Volume Name</Th>
                 <Th width={15}>Driver</Th>
-                <Th width={30}>Mountpoint</Th>
+                <Th width={25}>Mountpoint</Th>
+                <Th width={10}>Size</Th>
                 <Th width={10}>Usage</Th>
                 <Th width={15} style={{ textAlign: 'right' }}>Actions</Th>
               </Tr>
@@ -113,6 +114,11 @@ export const VolumesTab: React.FC<VolumesTabProps> = ({
                   <Td dataLabel="Mountpoint">
                     <span style={{ fontSize: '0.85rem', fontFamily: 'monospace' }}>
                       {vol.mountpoint || '—'}
+                    </span>
+                  </Td>
+                  <Td dataLabel="Size">
+                    <span style={{ fontSize: '0.85rem' }}>
+                      {vol.size || '—'}
                     </span>
                   </Td>
                   <Td dataLabel="Usage">
