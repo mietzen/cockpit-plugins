@@ -163,30 +163,30 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     if (await ashiftSelect.isVisible({ timeout: 1000 }).catch(() => false)) {
       await ashiftSelect.selectOption("12");
     }
-    await frame.locator(".pf-v6-c-wizard__footer button:has-text('Next')").first().click();
+    await frame.locator("button:visible:has-text('Next'), .pf-v6-c-wizard__footer button:has-text('Next')").first().click();
 
     // Step 2: VDEV Configuration (Select available disks)
     const diskCheckbox = frame.locator("table tbody input[type=\"checkbox\"]").first();
     await diskCheckbox.waitFor({ state: "visible", timeout: 15000 });
     await diskCheckbox.setChecked(true);
-    await frame.locator(".pf-v6-c-wizard__footer button:has-text('Next')").first().click();
+    await frame.locator("button:visible:has-text('Next'), .pf-v6-c-wizard__footer button:has-text('Next')").first().click();
 
     // Step 3: Properties (leave defaults or toggle options)
     const autoexpandCheckbox = frame.locator("input#wizard-autoexpand, input#autoexpand").first();
     if (await autoexpandCheckbox.isVisible({ timeout: 1000 }).catch(() => false)) {
       await autoexpandCheckbox.setChecked(true);
     }
-    await frame.locator(".pf-v6-c-wizard__footer button:has-text('Next')").first().click();
+    await frame.locator("button:visible:has-text('Next'), .pf-v6-c-wizard__footer button:has-text('Next')").first().click();
 
     // Step 4: Filesystem Defaults
     const compSelect = frame.locator("select#wizard-compression, select#compression").first();
     if (await compSelect.isVisible({ timeout: 1000 }).catch(() => false)) {
       await compSelect.selectOption("lz4");
     }
-    await frame.locator(".pf-v6-c-wizard__footer button:has-text('Next')").first().click();
+    await frame.locator("button:visible:has-text('Next'), .pf-v6-c-wizard__footer button:has-text('Next')").first().click();
 
     // Step 5: Review & Create
-    await frame.locator(".pf-v6-c-wizard__footer button:has-text('Create')").first().click();
+    await frame.locator("button:visible:has-text('Create'), .pf-v6-c-wizard__footer button:has-text('Create')").first().click();
 
     // Verify on Host Filesystem using zpool CLI
     await expect.poll(() => runHostCmd(`sudo zpool list -H -o name,health ${TEST_POOL}`), { timeout: 10000 }).toContain("ONLINE");

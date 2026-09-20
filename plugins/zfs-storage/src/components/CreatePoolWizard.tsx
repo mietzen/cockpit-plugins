@@ -5,6 +5,7 @@ import {
   ModalBody,
   Wizard,
   WizardStep,
+  WizardHeader,
   Form,
   FormGroup,
   TextInput,
@@ -231,7 +232,7 @@ export const CreatePoolWizard: React.FC<CreatePoolWizardProps> = ({
     >
       <ModalBody style={{ padding: 0, height: "100%", minHeight: "560px" }}>
         <Wizard
-          title="Create ZFS Storage Pool"
+          header={<WizardHeader title="Create ZFS Storage Pool" onClose={onClose} />}
           onClose={onClose}
           style={{ height: "100%", minHeight: "560px", border: "none" }}
           footer={(activeStep, onNext, onBack) => {
