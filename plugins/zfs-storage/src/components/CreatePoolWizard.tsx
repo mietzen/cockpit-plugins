@@ -262,7 +262,7 @@ export const CreatePoolWizard: React.FC<CreatePoolWizardProps> = ({
 
           return (
             <div
-              className="pf-v5-c-wizard__footer"
+              className="pf-v6-c-wizard__footer pf-v5-c-wizard__footer"
               style={{
                 display: "flex",
                 alignItems: "center",
