@@ -166,15 +166,29 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       blob = new Blob([content], { type: mimeType });
     }
 
+    let targetDoc: Document = document;
+    try {
+      if (window.parent && window.parent.document && window.parent.document.body) {
+        targetDoc = window.parent.document;
+      }
+    } catch {
+      targetDoc = document;
+    }
+
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = targetDoc.createElement('a');
     a.href = url;
     a.download = filename;
-    document.body.appendChild(a);
+    a.style.display = 'none';
+    targetDoc.body.appendChild(a);
     a.click();
-    document.body.removeChild(a);
     setTimeout(() => {
-      URL.revokeObjectURL(url);
+      try {
+        targetDoc.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } catch {
+        // Ignore cleanup errors
+      }
     }, REVOKE_DELAY_MS);
   };
 

@@ -226,5 +226,64 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     await closeBtn.click();
     await frame.waitForSelector('.pf-v5-c-modal-box', { state: 'detached', timeout: 5000 });
   });
+
+  test('07. Inspect modal displays Restart Policy', async () => {
+    const frame = await getFrame();
+
+    // Navigate to Containers tab
+    await frame.locator('.cockpit-top-nav-bar button:has-text("Containers")').click();
+    await frame.waitForSelector('table[aria-label="Containers Table"]', { timeout: 10000 });
+
+    // Open Inspect on first container
+    const inspectBtn = frame.locator('table[aria-label="Containers Table"] button[aria-label="Inspect"]').first();
+    await inspectBtn.click();
+
+    // Verify Inspect modal is open
+    await frame.waitForSelector('.pf-v5-c-modal-box:has-text("Inspect:")', { timeout: 8000 });
+
+    // Verify Restart Policy row is displayed in Overview table
+    const restartPolicyCell = frame.locator('td:has-text("Restart Policy")');
+    await expect(restartPolicyCell).toBeVisible({ timeout: 5000 });
+
+    // Close Inspect modal
+    await frame.locator('.pf-v5-c-modal-box button:has-text("Close")').click();
+    await frame.waitForSelector('.pf-v5-c-modal-box', { state: 'detached', timeout: 5000 });
+  });
+
+  test('08. Download TLS Client Certificates', async () => {
+    const frame = await getFrame();
+
+    // Navigate to Settings
+    await frame.locator('.cockpit-top-nav-bar button:has-text("Settings")').click();
+    await frame.waitForSelector('h1:has-text("Container Settings")', { timeout: 10000 });
+
+    // Test downloading .zip from Settings view
+    const downloadZipBtn = frame.locator('button:has-text("Download Client Certs (.zip)")').first();
+    if (await downloadZipBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      const zipDownloadPromise = page.waitForEvent('download', { timeout: 8000 });
+      await downloadZipBtn.click();
+      const zipDownload = await zipDownloadPromise;
+      expect(zipDownload.suggestedFilename()).toContain('.zip');
+    }
+
+    // Click View Certificates to test individual file downloads
+    const viewCertsBtn = frame.locator('button:has-text("View Certificates")').first();
+    if (await viewCertsBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await viewCertsBtn.click();
+      await frame.waitForSelector('.pf-v5-c-modal-box:has-text("Client Certificates & Keys")', { timeout: 8000 });
+
+      // Click Download ca.pem and verify browser download event fires
+      const downloadPromise = page.waitForEvent('download', { timeout: 8000 });
+      const downloadCaBtn = frame.locator('button:has-text("Download ca.pem")').first();
+      await downloadCaBtn.click();
+
+      const download = await downloadPromise;
+      expect(download.suggestedFilename()).toBe('ca.pem');
+
+      // Close modal
+      await frame.locator('.pf-v5-c-modal-box button:has-text("Close")').click();
+    }
+  });
 });
+
 

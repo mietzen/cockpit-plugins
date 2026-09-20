@@ -145,6 +145,13 @@ export const InspectModal: React.FC<InspectModalProps> = ({
   const entrypointStr = Array.isArray(entrypointList) ? entrypointList.join(' ') : String(entrypointList || '');
   const workDir = config?.WorkingDir || config?.workingDir || '/';
 
+  // Restart Policy
+  const hostConfig = data?.HostConfig || data?.hostConfig || {};
+  const restartPolicyObj = hostConfig?.RestartPolicy || hostConfig?.restartPolicy || data?.RestartPolicy || {};
+  const restartPolicyName = restartPolicyObj?.Name || restartPolicyObj?.name || (typeof restartPolicyObj === 'string' ? restartPolicyObj : '') || 'no';
+  const restartPolicyRetries = restartPolicyObj?.MaximumRetryCount || restartPolicyObj?.maximumRetryCount;
+  const restartPolicyStr = restartPolicyRetries ? `${restartPolicyName} (max retries: ${restartPolicyRetries})` : restartPolicyName;
+
   return (
     <Modal
       variant={ModalVariant.large}
@@ -217,6 +224,10 @@ export const InspectModal: React.FC<InspectModalProps> = ({
                     </Tr>
                     {kind === 'container' && (
                       <>
+                        <Tr>
+                          <Td style={{ fontWeight: 600 }}>Restart Policy</Td>
+                          <Td><code>{restartPolicyStr}</code></Td>
+                        </Tr>
                         <Tr>
                           <Td style={{ fontWeight: 600 }}>IP Address</Td>
                           <Td><code>{ipAddress}</code></Td>
