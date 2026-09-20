@@ -36,6 +36,7 @@ export const ContainerTerminalModal: React.FC<ContainerTerminalModalProps> = ({
 }) => {
   const terminalRef = useRef<XtermTerminalHandle>(null);
   const processRef = useRef<any>(null);
+  const sessionIdRef = useRef<number>(0);
 
   const [availableShells, setAvailableShells] = useState<string[]>(DEFAULT_SHELL_PRESETS);
   const [selectedShell, setSelectedShell] = useState('/bin/sh');
@@ -45,7 +46,12 @@ export const ContainerTerminalModal: React.FC<ContainerTerminalModalProps> = ({
   const [error, setError] = useState<string | null>(null);
 
   const startSession = (overrideCmd?: string) => {
-    if (!container) return;
+    if (!container) {
+      return;
+    }
+
+    sessionIdRef.current += 1;
+    const currentSessionId = sessionIdRef.current;
 
     const cmdToRun = overrideCmd || (selectedShell === 'custom' ? (customCommand || '/bin/sh') : selectedShell);
 
@@ -76,18 +82,24 @@ export const ContainerTerminalModal: React.FC<ContainerTerminalModalProps> = ({
     processRef.current = proc;
 
     proc.stream((data: string) => {
-      terminalRef.current?.write(data);
+      if (sessionIdRef.current === currentSessionId) {
+        terminalRef.current?.write(data);
+      }
     });
 
     proc.then(() => {
-      setIsConnected(false);
-      terminalRef.current?.writeln('\r\n\x1b[1;31m[Process exited]\x1b[0m');
+      if (sessionIdRef.current === currentSessionId) {
+        setIsConnected(false);
+        terminalRef.current?.writeln('\r\n\x1b[1;31m[Process exited]\x1b[0m');
+      }
     }).catch((err: any) => {
-      setIsConnected(false);
-      const msg = err?.message || String(err);
-      if (msg !== 'terminate' && !msg.includes('terminate')) {
-        setError(msg);
-        terminalRef.current?.writeln(`\r\n\x1b[1;31m[Error: ${msg}]\x1b[0m`);
+      if (sessionIdRef.current === currentSessionId) {
+        setIsConnected(false);
+        const msg = err?.message || String(err);
+        if (msg !== 'terminate' && !msg.includes('terminate')) {
+          setError(msg);
+          terminalRef.current?.writeln(`\r\n\x1b[1;31m[Error: ${msg}]\x1b[0m`);
+        }
       }
     });
 
@@ -103,12 +115,18 @@ export const ContainerTerminalModal: React.FC<ContainerTerminalModalProps> = ({
       containerApi
         .checkShells(container.id, activeEngine)
         .then((res) => {
-          if (!isSubscribed) return;
+          if (!isSubscribed) {
+            return;
+          }
           const shells = res?.shells || [];
           const list: string[] = [...shells];
           if (list.length === 0) {
-            if (res.entrypoint) list.push(res.entrypoint);
-            if (res.cmd && res.cmd !== res.entrypoint) list.push(res.cmd);
+            if (res.entrypoint) {
+              list.push(res.entrypoint);
+            }
+            if (res.cmd && res.cmd !== res.entrypoint) {
+              list.push(res.cmd);
+            }
           }
           if (!list.includes('/bin/sh') && list.length === 0) {
             list.push('/bin/sh');
@@ -121,7 +139,9 @@ export const ContainerTerminalModal: React.FC<ContainerTerminalModalProps> = ({
           startSession(initial);
         })
         .catch(() => {
-          if (!isSubscribed) return;
+          if (!isSubscribed) {
+            return;
+          }
           setAvailableShells(DEFAULT_SHELL_PRESETS);
           setSelectedShell('/bin/sh');
           startSession('/bin/sh');

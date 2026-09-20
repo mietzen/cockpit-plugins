@@ -20,6 +20,8 @@ import {
   FormHelperText,
   HelperText,
   HelperTextItem,
+  Modal,
+  ModalVariant,
 } from '@patternfly/react-core';
 import {
   LockIcon,
@@ -27,9 +29,10 @@ import {
   CopyIcon,
   CheckIcon,
   TrashIcon,
+  EyeIcon,
 } from '@patternfly/react-icons';
 import { StatusBadge } from '@cockpit-plugins/common';
-import { EnginesDetection, EngineType, TlsStatus } from '../types';
+import { EnginesDetection, EngineType, TlsStatus, ClientCertBundle } from '../types';
 import { containerApi } from '../api/containerClient';
 
 export interface SettingsViewProps {
@@ -57,6 +60,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [sansInput, setSansInput] = useState<string>('');
   const [activeTab, setActiveTab] = useState<number>(0);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+  const [isCertModalOpen, setIsCertModalOpen] = useState(false);
+  const [certBundle, setCertBundle] = useState<ClientCertBundle | null>(null);
+  const [certTab, setCertTab] = useState<number>(0);
+  const [loadingCerts, setLoadingCerts] = useState(false);
 
   const hostIp = window.location.hostname || '127.0.0.1';
 
@@ -130,22 +138,64 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     }
   };
 
-  const handleDownloadCerts = async () => {
+  const downloadBlob = (content: string, filename: string, mimeType: string, isBase64: boolean = false) => {
+    let blob: Blob;
+    if (isBase64) {
+      const byteCharacters = atob(content);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      blob = new Blob([byteArray], { type: mimeType });
+    } else {
+      blob = new Blob([content], { type: mimeType });
+    }
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+    }, 1000);
+  };
+
+  const fetchBundle = async (): Promise<ClientCertBundle | null> => {
     try {
       const bundle = await containerApi.getClientBundle(activeEngine);
       if (bundle.status === 'error') {
         const msg = bundle.ca || 'Failed to get client certificate bundle';
         setError(msg);
-        onNotify?.('danger', 'Download Failed', msg);
+        onNotify?.('danger', 'Certificates Failed', msg);
+        return null;
+      }
+      setCertBundle(bundle);
+      return bundle;
+    } catch (e: any) {
+      const msg = e?.message || 'Failed to fetch certificate bundle';
+      setError(msg);
+      onNotify?.('danger', 'Certificates Failed', msg);
+      return null;
+    }
+  };
+
+  const handleDownloadCerts = async () => {
+    try {
+      const bundle = certBundle || (await fetchBundle());
+      if (!bundle) {
         return;
       }
 
-      const a = document.createElement('a');
-      a.href = `data:application/zip;base64,${bundle.zipBase64}`;
-      a.download = bundle.zipFilename || `${activeEngine}-client-certs.zip`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      downloadBlob(
+        bundle.zipBase64,
+        bundle.zipFilename || `${activeEngine}-client-certs.zip`,
+        'application/zip',
+        true
+      );
       onNotify?.('success', 'Download Started', `Downloaded ${bundle.zipFilename || 'client certificates'}`);
     } catch (e: any) {
       const msg = e?.message || 'Failed to download certificate bundle';
@@ -154,10 +204,22 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     }
   };
 
+  const handleOpenCertViewer = async () => {
+    setLoadingCerts(true);
+    setIsCertModalOpen(true);
+    try {
+      await fetchBundle();
+    } finally {
+      setLoadingCerts(false);
+    }
+  };
+
   const copyToClipboard = (text: string, key: string) => {
     navigator.clipboard.writeText(text);
     setCopiedKey(key);
-    setTimeout(() => setCopiedKey(null), 2000);
+    setTimeout(() => {
+      setCopiedKey(null);
+    }, 2000);
   };
 
   const isEnabled = tlsStatus?.enabled || false;
@@ -305,6 +367,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                         size="sm"
                       >
                         Download Client Certs (.zip)
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        icon={<EyeIcon />}
+                        onClick={handleOpenCertViewer}
+                        size="sm"
+                      >
+                        View Certificates
                       </Button>
                       <Button
                         variant="danger"
@@ -492,6 +562,161 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </GridItem>
         </Grid>
       </PageSection>
+
+      {/* Certificate Viewer Modal */}
+      <Modal
+        variant={ModalVariant.large}
+        title="Client Certificates &amp; Keys"
+        isOpen={isCertModalOpen}
+        onClose={() => setIsCertModalOpen(false)}
+        actions={[
+          <Button
+            key="download-all"
+            variant="primary"
+            icon={<DownloadIcon />}
+            onClick={handleDownloadCerts}
+          >
+            Download Bundle (.zip)
+          </Button>,
+          <Button key="close" variant="link" onClick={() => setIsCertModalOpen(false)}>
+            Close
+          </Button>,
+        ]}
+      >
+        <p style={{ fontSize: '0.9rem', color: '#8b949e', marginBottom: '1rem' }}>
+          Inspect or copy individual certificate files for client authentication.
+        </p>
+
+        {loadingCerts ? (
+          <p>Loading certificate bundle...</p>
+        ) : certBundle ? (
+          <div>
+            <Tabs
+              activeKey={certTab}
+              onSelect={(_e, key) => setCertTab(Number(key))}
+              isBox
+              style={{ marginBottom: '1rem' }}
+            >
+              <Tab eventKey={0} title={<TabTitleText>CA Certificate (ca.pem)</TabTitleText>}>
+                <div style={{ position: 'relative', marginTop: '1rem' }}>
+                  <pre
+                    style={{
+                      maxHeight: '300px',
+                      overflowY: 'auto',
+                      padding: '1rem',
+                      backgroundColor: 'var(--pf-v5-global--BackgroundColor--200, #161b22)',
+                      color: 'var(--pf-v5-global--Color--100, #c9d1d9)',
+                      border: '1px solid var(--pf-v5-global--BorderColor--100, #30363d)',
+                      borderRadius: '6px',
+                      fontFamily: 'monospace',
+                      fontSize: '0.8rem',
+                    }}
+                  >
+                    <code>{certBundle.ca}</code>
+                  </pre>
+                  <Flex style={{ marginTop: '0.5rem' }} spaceItems={{ default: 'spaceItemsSm' }}>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      icon={copiedKey === 'ca' ? <CheckIcon style={{ color: '#3fb950' }} /> : <CopyIcon />}
+                      onClick={() => copyToClipboard(certBundle.ca, 'ca')}
+                    >
+                      {copiedKey === 'ca' ? 'Copied!' : 'Copy ca.pem'}
+                    </Button>
+                    <Button
+                      variant="plain"
+                      size="sm"
+                      icon={<DownloadIcon />}
+                      onClick={() => downloadBlob(certBundle.ca, 'ca.pem', 'application/x-pem-file')}
+                    >
+                      Download ca.pem
+                    </Button>
+                  </Flex>
+                </div>
+              </Tab>
+
+              <Tab eventKey={1} title={<TabTitleText>Client Certificate (cert.pem)</TabTitleText>}>
+                <div style={{ position: 'relative', marginTop: '1rem' }}>
+                  <pre
+                    style={{
+                      maxHeight: '300px',
+                      overflowY: 'auto',
+                      padding: '1rem',
+                      backgroundColor: 'var(--pf-v5-global--BackgroundColor--200, #161b22)',
+                      color: 'var(--pf-v5-global--Color--100, #c9d1d9)',
+                      border: '1px solid var(--pf-v5-global--BorderColor--100, #30363d)',
+                      borderRadius: '6px',
+                      fontFamily: 'monospace',
+                      fontSize: '0.8rem',
+                    }}
+                  >
+                    <code>{certBundle.cert}</code>
+                  </pre>
+                  <Flex style={{ marginTop: '0.5rem' }} spaceItems={{ default: 'spaceItemsSm' }}>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      icon={copiedKey === 'cert' ? <CheckIcon style={{ color: '#3fb950' }} /> : <CopyIcon />}
+                      onClick={() => copyToClipboard(certBundle.cert, 'cert')}
+                    >
+                      {copiedKey === 'cert' ? 'Copied!' : 'Copy cert.pem'}
+                    </Button>
+                    <Button
+                      variant="plain"
+                      size="sm"
+                      icon={<DownloadIcon />}
+                      onClick={() => downloadBlob(certBundle.cert, 'cert.pem', 'application/x-pem-file')}
+                    >
+                      Download cert.pem
+                    </Button>
+                  </Flex>
+                </div>
+              </Tab>
+
+              <Tab eventKey={2} title={<TabTitleText>Client Key (key.pem)</TabTitleText>}>
+                <div style={{ position: 'relative', marginTop: '1rem' }}>
+                  <pre
+                    style={{
+                      maxHeight: '300px',
+                      overflowY: 'auto',
+                      padding: '1rem',
+                      backgroundColor: 'var(--pf-v5-global--BackgroundColor--200, #161b22)',
+                      color: 'var(--pf-v5-global--Color--100, #c9d1d9)',
+                      border: '1px solid var(--pf-v5-global--BorderColor--100, #30363d)',
+                      borderRadius: '6px',
+                      fontFamily: 'monospace',
+                      fontSize: '0.8rem',
+                    }}
+                  >
+                    <code>{certBundle.key}</code>
+                  </pre>
+                  <Flex style={{ marginTop: '0.5rem' }} spaceItems={{ default: 'spaceItemsSm' }}>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      icon={copiedKey === 'key' ? <CheckIcon style={{ color: '#3fb950' }} /> : <CopyIcon />}
+                      onClick={() => copyToClipboard(certBundle.key, 'key')}
+                    >
+                      {copiedKey === 'key' ? 'Copied!' : 'Copy key.pem'}
+                    </Button>
+                    <Button
+                      variant="plain"
+                      size="sm"
+                      icon={<DownloadIcon />}
+                      onClick={() => downloadBlob(certBundle.key, 'key.pem', 'application/x-pem-file')}
+                    >
+                      Download key.pem
+                    </Button>
+                  </Flex>
+                </div>
+              </Tab>
+            </Tabs>
+          </div>
+        ) : (
+          <p>No certificates available.</p>
+        )}
+      </Modal>
     </>
   );
 };
+
