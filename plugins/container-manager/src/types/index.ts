@@ -1,4 +1,4 @@
-export type EngineType = 'docker' | 'podman' | 'none';
+export type EngineType = 'docker' | 'podman' | 'none' | 'auto';
 
 export interface EngineInfo {
   installed: boolean;

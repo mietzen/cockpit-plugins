@@ -27,7 +27,6 @@ import {
   LayerGroupIcon,
   HddIcon,
   NetworkIcon,
-  PlayIcon,
   StopIcon,
   SyncAltIcon,
   TerminalIcon,

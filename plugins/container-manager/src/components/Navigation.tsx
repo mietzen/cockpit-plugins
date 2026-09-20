@@ -99,7 +99,6 @@ export const Navigation: React.FC<NavigationProps> = ({
                           ref={toggleRef}
                           onClick={() => setEngineDropdownOpen(!engineDropdownOpen)}
                           isExpanded={engineDropdownOpen}
-                          size="sm"
                         >
                           {activeEngine === 'docker' ? 'Docker' : 'Podman'} ({activeEngineInfo?.version || 'Active'})
                         </MenuToggle>

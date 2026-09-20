@@ -108,7 +108,7 @@ export const InspectModal: React.FC<InspectModalProps> = ({
 
   const networkSettings = data?.NetworkSettings || data?.networkSettings || {};
   const networksObj = networkSettings?.Networks || networkSettings?.networks || {};
-  const ipAddress = networkSettings?.IPAddress || networkSettings?.ipAddress || Object.values(networksObj)[0]?.IPAddress || '--';
+  const ipAddress = networkSettings?.IPAddress || networkSettings?.ipAddress || (Object.values(networksObj)[0] as any)?.IPAddress || '--';
 
   const portsObj = networkSettings?.Ports || networkSettings?.ports || {};
   const portRows: { containerPort: string; hostMapping: string }[] = [];
