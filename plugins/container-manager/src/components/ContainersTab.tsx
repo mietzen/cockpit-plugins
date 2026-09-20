@@ -25,9 +25,12 @@ import {
   FileAltIcon,
   TrashIcon,
   InfoCircleIcon,
+  BanIcon,
 } from '@patternfly/react-icons';
 import { StatusBadge, BadgeVariant } from '@cockpit-plugins/common';
 import { ContainerItem } from '../types';
+import { HashId } from './HashId';
+import { PortLinks } from './PortLinks';
 
 export interface ContainersTabProps {
   containers: ContainerItem[];
@@ -56,7 +59,8 @@ export const ContainersTab: React.FC<ContainersTabProps> = ({
     (c) =>
       c.name.toLowerCase().includes(filterText.toLowerCase()) ||
       c.image.toLowerCase().includes(filterText.toLowerCase()) ||
-      c.shortId.toLowerCase().includes(filterText.toLowerCase())
+      c.shortId.toLowerCase().includes(filterText.toLowerCase()) ||
+      c.id.toLowerCase().includes(filterText.toLowerCase())
   );
 
   const stoppedCount = containers.filter((c) => c.state !== 'running').length;
@@ -145,19 +149,15 @@ export const ContainersTab: React.FC<ContainersTabProps> = ({
                     </Td>
                     <Td dataLabel="Name">
                       <strong style={{ fontSize: '0.95rem' }}>{c.name}</strong>
-                      <div style={{ fontSize: '0.8rem', color: 'var(--pf-v5-global--Color--200, #8b949e)', fontFamily: 'monospace' }}>
-                        {c.shortId}
+                      <div style={{ marginTop: '2px' }}>
+                        <HashId id={c.id} shortId={c.shortId} />
                       </div>
                     </Td>
                     <Td dataLabel="Image">
                       <code style={{ fontSize: '0.85rem' }}>{c.image}</code>
                     </Td>
                     <Td dataLabel="Ports">
-                      {c.ports ? (
-                        <span style={{ fontSize: '0.85rem', fontFamily: 'monospace' }}>{c.ports}</span>
-                      ) : (
-                        <span style={{ color: 'var(--pf-v5-global--Color--200, #8b949e)', fontSize: '0.85rem' }}>—</span>
-                      )}
+                      <PortLinks ports={c.ports} />
                     </Td>
                     <Td dataLabel="Created">
                       <span style={{ fontSize: '0.85rem' }}>{c.created}</span>
@@ -172,6 +172,14 @@ export const ContainersTab: React.FC<ContainersTabProps> = ({
                                 icon={<StopIcon />}
                                 onClick={() => onAction(c.id, 'stop')}
                                 aria-label="Stop"
+                              />
+                            </Tooltip>
+                            <Tooltip content="Force Kill Container">
+                              <Button
+                                variant="plain"
+                                icon={<BanIcon style={{ color: 'var(--pf-v5-global--warning-color--100, #f0ab00)' }} />}
+                                onClick={() => onAction(c.id, 'kill')}
+                                aria-label="Kill"
                               />
                             </Tooltip>
                             <Tooltip content="Restart Container">

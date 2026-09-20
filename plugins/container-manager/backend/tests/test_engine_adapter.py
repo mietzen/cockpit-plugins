@@ -163,7 +163,32 @@ class TestEngineAdapter(unittest.TestCase):
         self.assertEqual(images[0]["tag"], "latest")
 
     @patch("engine_adapter.run_cmd")
-    def test_podman_list_volumes_and_networks(self, mock_run):
+    def test_image_in_use_normalization_traefik_whoami(self, mock_run):
+        # Container running traefik/whoami without registry or tag
+        # Image has docker.io/traefik/whoami:latest
+        mock_run.side_effect = [
+            (0, '{"ID":"img_whoami_123","Repository":"docker.io/traefik/whoami","Tag":"latest","Size":"10MB","CreatedAt":"2026-08-15"}\n', ""),
+            (0, '{"ID":"c_whoami","Names":"whoami-service","Image":"traefik/whoami"}\n', ""),
+        ]
+        adapter = DockerAdapter()
+        images = adapter.list_images()
+        self.assertEqual(len(images), 1)
+        self.assertTrue(images[0]["inUse"])
+
+    @patch("engine_adapter.run_cmd")
+    def test_podman_image_in_use_normalization_whoami(self, mock_run):
+        mock_run.side_effect = [
+            (0, json.dumps([{"Id": "img_whoami_456", "RepoTags": ["docker.io/traefik/whoami:latest"], "Size": 10000000}]), ""),
+            (0, json.dumps([{"Id": "c_whoami_pod", "Names": ["my-whoami"], "Image": "traefik/whoami", "State": "running"}]), ""),
+        ]
+        adapter = PodmanAdapter()
+        images = adapter.list_images()
+        self.assertEqual(len(images), 1)
+        self.assertTrue(images[0]["inUse"])
+
+    @patch("engine_adapter.get_volume_size", return_value="15.5 MB")
+    @patch("engine_adapter.run_cmd")
+    def test_podman_list_volumes_and_networks(self, mock_run, _mock_size):
         mock_run.side_effect = [
             (0, json.dumps([{"Name": "vol1", "Driver": "local", "MountPoint": "/data"}]), ""),
             (0, json.dumps([{"Mounts": [{"Name": "vol1"}]}]), ""),
@@ -175,6 +200,7 @@ class TestEngineAdapter(unittest.TestCase):
         vols = adapter.list_volumes()
         self.assertEqual(len(vols), 1)
         self.assertEqual(vols[0]["name"], "vol1")
+        self.assertEqual(vols[0]["size"], "15.5 MB")
         self.assertTrue(vols[0]["inUse"])
 
         nets = adapter.list_networks()

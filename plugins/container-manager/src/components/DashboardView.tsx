@@ -32,6 +32,7 @@ import {
   TerminalIcon,
   FileAltIcon,
   InfoCircleIcon,
+  BanIcon,
 } from '@patternfly/react-icons';
 import { StatusBadge } from '@cockpit-plugins/common';
 import {
@@ -40,6 +41,8 @@ import {
   VolumeItem,
   NetworkItem,
 } from '../types';
+import { HashId } from './HashId';
+import { PortLinks } from './PortLinks';
 
 export interface DashboardViewProps {
   containers: ContainerItem[];
@@ -231,8 +234,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       <Tr key={c.id}>
                         <Td dataLabel="Name">
                           <strong>{c.name}</strong>
-                          <div style={{ fontSize: '0.8rem', color: '#8b949e' }}>
-                            <code>{c.shortId}</code>
+                          <div style={{ marginTop: '2px' }}>
+                            <HashId id={c.id} shortId={c.shortId} />
                           </div>
                         </Td>
                         <Td dataLabel="Image">
@@ -242,9 +245,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                           <StatusBadge variant="green">{c.status}</StatusBadge>
                         </Td>
                         <Td dataLabel="Ports">
-                          <span style={{ fontSize: '0.85rem', fontFamily: 'monospace' }}>
-                            {c.ports || '--'}
-                          </span>
+                          <PortLinks ports={c.ports} />
                         </Td>
                         <Td dataLabel="Actions" style={{ textAlign: 'right' }}>
                           <Flex justifyContent={{ default: 'justifyContentFlexEnd' }} spaceItems={{ default: 'spaceItemsXs' }}>
@@ -254,6 +255,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                                 icon={<StopIcon />}
                                 onClick={() => onAction(c.id, 'stop')}
                                 aria-label="Stop"
+                              />
+                            </Tooltip>
+                            <Tooltip content="Force Kill Container">
+                              <Button
+                                variant="plain"
+                                icon={<BanIcon style={{ color: 'var(--pf-v5-global--warning-color--100, #f0ab00)' }} />}
+                                onClick={() => onAction(c.id, 'kill')}
+                                aria-label="Kill"
                               />
                             </Tooltip>
                             <Tooltip content="Restart Container">
