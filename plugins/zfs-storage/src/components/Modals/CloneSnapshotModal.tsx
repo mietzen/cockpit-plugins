@@ -2,6 +2,9 @@ import React, { useState } from "react";
 import {
   Modal,
   ModalVariant,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
   Form,
   FormGroup,
   TextInput,
@@ -66,10 +69,37 @@ export const CloneSnapshotModal: React.FC<CloneSnapshotModalProps> = ({
   return (
     <Modal
       variant={ModalVariant.small}
-      title="Clone ZFS Snapshot"
       isOpen={isOpen}
       onClose={onClose}
-      actions={[
+      appendTo={() => document.body}
+    >
+      <ModalHeader title="Clone ZFS Snapshot" />
+      <ModalBody>
+        <Form>
+          <FormGroup label="Source Snapshot" fieldId="cl-src">
+            <TextInput id="cl-src" value={snapshot.name} readOnly />
+          </FormGroup>
+
+          <FormGroup label="Target Clone Path" isRequired fieldId="cl-target">
+            <TextInput
+              id="cl-target"
+              value={clonePath}
+              onChange={(_event, val) => setClonePath(val)}
+              placeholder="e.g. pool/dataset-clone"
+              autoFocus
+            />
+          </FormGroup>
+
+          <CommandBox command={buildCommand()} />
+
+          {error && (
+            <Alert variant="danger" title="Error" style={{ marginTop: "1rem" }}>
+              {error}
+            </Alert>
+          )}
+        </Form>
+      </ModalBody>
+      <ModalFooter>
         <Button
           key="clone"
           variant="primary"
@@ -78,35 +108,11 @@ export const CloneSnapshotModal: React.FC<CloneSnapshotModalProps> = ({
           isLoading={loading}
         >
           Clone Snapshot
-        </Button>,
+        </Button>
         <Button key="cancel" variant="secondary" onClick={onClose} isDisabled={loading}>
           Cancel
-        </Button>,
-      ]}
-    >
-      <Form>
-        <FormGroup label="Source Snapshot" fieldId="cl-src">
-          <TextInput id="cl-src" value={snapshot.name} isReadOnly />
-        </FormGroup>
-
-        <FormGroup label="Target Clone Path" isRequired fieldId="cl-target">
-          <TextInput
-            id="cl-target"
-            value={clonePath}
-            onChange={(_event, val) => setClonePath(val)}
-            placeholder="e.g. pool/dataset-clone"
-            autoFocus
-          />
-        </FormGroup>
-
-        <CommandBox command={buildCommand()} />
-
-        {error && (
-          <Alert variant="danger" title="Error" style={{ marginTop: "1rem" }}>
-            {error}
-          </Alert>
-        )}
-      </Form>
+        </Button>
+      </ModalFooter>
     </Modal>
   );
 };

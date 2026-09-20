@@ -12,8 +12,6 @@ import {
   CardBody,
   Label,
   EmptyState,
-  EmptyStateHeader,
-  EmptyStateIcon,
   EmptyStateBody,
 } from "@patternfly/react-core";
 import { Table, Thead, Tbody, Tr, Th, Td } from "@patternfly/react-table";
@@ -52,7 +50,7 @@ export const SessionsTab: React.FC<SessionsTabProps> = ({
 
   return (
     <>
-      <PageSection variant="light" style={{ paddingBottom: "1rem" }}>
+      <PageSection style={{ paddingBottom: "1rem" }}>
         <Flex justifyContent={{ default: "justifyContentSpaceBetween" }} alignItems={{ default: "alignItemsCenter" }}>
           <FlexItem>
             <Title headingLevel="h1" size="2xl" style={{ fontWeight: 600, margin: 0, lineHeight: 1.2 }}>
@@ -125,12 +123,12 @@ export const SessionsTab: React.FC<SessionsTabProps> = ({
           </CardTitle>
           <CardBody style={{ padding: 0 }}>
             {sessions.length === 0 ? (
-              <EmptyState style={{ padding: "3rem 1.5rem" }}>
-                <EmptyStateHeader
-                  titleText="No active client connections"
-                  icon={<EmptyStateIcon icon={DesktopIcon} />}
-                  headingLevel="h4"
-                />
+              <EmptyState
+                style={{ padding: "3rem 1.5rem" }}
+                titleText="No active client connections"
+                icon={DesktopIcon}
+                headingLevel="h4"
+              >
                 <EmptyStateBody>
                   Connected client computers accessing Samba shares will automatically appear here.
                 </EmptyStateBody>
@@ -154,7 +152,7 @@ export const SessionsTab: React.FC<SessionsTabProps> = ({
                       <Td data-label="Client Machine / IP">{sess.machine || sess.ip}</Td>
                       <Td data-label="PID"><code>{sess.pid}</code></Td>
                       <Td data-label="Protocol Version">
-                        <Label color="cyan">{sess.protocol || "SMB3"}</Label>
+                        <Label color="teal">{sess.protocol || "SMB3"}</Label>
                       </Td>
                     </Tr>
                   ))}

@@ -10,8 +10,6 @@ import {
   Label,
   SearchInput,
   EmptyState,
-  EmptyStateHeader,
-  EmptyStateIcon,
   EmptyStateBody,
   EmptyStateFooter,
   EmptyStateActions,
@@ -22,6 +20,9 @@ import {
   MenuToggleElement,
   Modal,
   ModalVariant,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
   Form,
   FormGroup,
   TextInput,
@@ -37,7 +38,6 @@ import {
   FolderOpenIcon,
   LockIcon,
   EllipsisVIcon,
-  CheckCircleIcon,
   AppleIcon,
   PencilAltIcon,
   TrashIcon,
@@ -164,7 +164,7 @@ export const SmbSharesTab: React.FC<SmbSharesTabProps> = ({
 
   return (
     <>
-      <PageSection variant="light" style={{ paddingBottom: "1rem" }}>
+      <PageSection style={{ paddingBottom: "1rem" }}>
         <Flex justifyContent={{ default: "justifyContentSpaceBetween" }} alignItems={{ default: "alignItemsCenter" }}>
           <FlexItem>
             <Title headingLevel="h1" size="2xl" style={{ fontWeight: 600, margin: 0, lineHeight: 1.2 }}>
@@ -194,12 +194,11 @@ export const SmbSharesTab: React.FC<SmbSharesTabProps> = ({
 
       <PageSection style={{ paddingTop: "1.5rem" }}>
         {shares.length === 0 ? (
-          <EmptyState>
-            <EmptyStateHeader
-              titleText="No SMB shares configured"
-              icon={<EmptyStateIcon icon={FolderOpenIcon} />}
-              headingLevel="h4"
-            />
+          <EmptyState
+            titleText="No SMB shares configured"
+            icon={FolderOpenIcon}
+            headingLevel="h4"
+          >
             <EmptyStateBody>
               Share directories with Windows, macOS, and Linux clients using Samba.
             </EmptyStateBody>
@@ -265,7 +264,7 @@ export const SmbSharesTab: React.FC<SmbSharesTabProps> = ({
                           </FlexItem>
                           {s.browseable && (
                             <FlexItem>
-                              <Label color="cyan">Browseable</Label>
+                              <Label color="teal">Browseable</Label>
                             </FlexItem>
                           )}
                         </Flex>
@@ -343,10 +342,123 @@ export const SmbSharesTab: React.FC<SmbSharesTabProps> = ({
       {/* Create / Edit Modal */}
       <Modal
         variant={ModalVariant.medium}
-        title={editingShare ? `Edit SMB Share [${editingShare.name}]` : "Create SMB Share"}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        actions={[
+        appendTo={() => document.body}
+      >
+        <ModalHeader title={editingShare ? `Edit SMB Share [${editingShare.name}]` : "Create SMB Share"} />
+        <ModalBody>
+          <Form>
+            <FormGroup label="Share Name" isRequired fieldId="smb-name">
+              <TextInput
+                id="smb-name"
+                value={name}
+                onChange={(_event, val) => setName(val)}
+                placeholder="e.g. data, media, backups"
+                isDisabled={!!editingShare}
+                autoFocus
+              />
+            </FormGroup>
+
+            <FormGroup label="Share Path" isRequired fieldId="smb-path">
+              <TextInput
+                id="smb-path"
+                value={path}
+                onChange={(_event, val) => setPath(val)}
+                placeholder="/srv/samba/data"
+              />
+            </FormGroup>
+
+            {zfsMounts.length > 0 && (
+              <FormGroup label="Quick Pick ZFS Dataset Mount" fieldId="smb-zfs-mount">
+                <FormSelect
+                  id="smb-zfs-mount"
+                  value={path}
+                  onChange={(_event, val) => {
+                    if (val) {
+                      setPath(val);
+                      if (!name) setName(val.split("/").pop() || "");
+                    }
+                  }}
+                >
+                  <FormSelectOption value="" label="-- Choose ZFS dataset mountpoint --" />
+                  {zfsMounts.map((zm) => (
+                    <FormSelectOption key={zm.mountpoint} value={zm.mountpoint} label={`${zm.dataset} (${zm.mountpoint})`} />
+                  ))}
+                </FormSelect>
+              </FormGroup>
+            )}
+
+            <FormGroup label="Comment / Description" fieldId="smb-comment">
+              <TextInput
+                id="smb-comment"
+                value={comment}
+                onChange={(_event, val) => setComment(val)}
+                placeholder="e.g. Public Network Storage"
+              />
+            </FormGroup>
+
+            <Flex justifyContent={{ default: "justifyContentSpaceBetween" }} style={{ marginTop: "1rem" }}>
+              <FlexItem>
+                <Switch
+                  id="smb-readonly"
+                  label="Read-Only"
+                  isChecked={readOnly}
+                  onChange={(_event, checked) => setReadOnly(checked)}
+                />
+              </FlexItem>
+              <FlexItem>
+                <Switch
+                  id="smb-browseable"
+                  label="Browseable in Network"
+                  isChecked={browseable}
+                  onChange={(_event, checked) => setBrowseable(checked)}
+                />
+              </FlexItem>
+              <FlexItem>
+                <Switch
+                  id="smb-guest"
+                  label="Guest / Public Access"
+                  isChecked={guestOk}
+                  onChange={(_event, checked) => setGuestOk(checked)}
+                />
+              </FlexItem>
+              <FlexItem>
+                <Switch
+                  id="smb-fruit"
+                  label="Apple Time Machine"
+                  isChecked={timeMachine}
+                  onChange={(_event, checked) => setTimeMachine(checked)}
+                />
+              </FlexItem>
+            </Flex>
+
+            <FormGroup label="Valid Users (Optional)" fieldId="smb-valid-users" style={{ marginTop: "1rem" }}>
+              <TextInput
+                id="smb-valid-users"
+                value={validUsers}
+                onChange={(_event, val) => setValidUsers(val)}
+                placeholder="e.g. alice, bob, @developers"
+              />
+            </FormGroup>
+
+            <FormGroup label="Write List (Optional)" fieldId="smb-write-list">
+              <TextInput
+                id="smb-write-list"
+                value={writeList}
+                onChange={(_event, val) => setWriteList(val)}
+                placeholder="e.g. alice, @admins"
+              />
+            </FormGroup>
+
+            {error && (
+              <Alert variant="danger" title="Error" style={{ marginTop: "1rem" }}>
+                {error}
+              </Alert>
+            )}
+          </Form>
+        </ModalBody>
+        <ModalFooter>
           <Button
             key="save"
             variant="primary"
@@ -355,140 +467,33 @@ export const SmbSharesTab: React.FC<SmbSharesTabProps> = ({
             isLoading={loading}
           >
             {editingShare ? "Save changes" : "Create share"}
-          </Button>,
+          </Button>
           <Button key="cancel" variant="secondary" onClick={() => setIsModalOpen(false)} isDisabled={loading}>
             Cancel
-          </Button>,
-        ]}
-      >
-        <Form>
-          <FormGroup label="Share Name" isRequired fieldId="smb-name">
-            <TextInput
-              id="smb-name"
-              value={name}
-              onChange={(_event, val) => setName(val)}
-              placeholder="e.g. data, media, backups"
-              isDisabled={!!editingShare}
-              autoFocus
-            />
-          </FormGroup>
-
-          <FormGroup label="Share Path" isRequired fieldId="smb-path">
-            <TextInput
-              id="smb-path"
-              value={path}
-              onChange={(_event, val) => setPath(val)}
-              placeholder="/srv/samba/data"
-            />
-          </FormGroup>
-
-          {zfsMounts.length > 0 && (
-            <FormGroup label="Quick Pick ZFS Dataset Mount" fieldId="smb-zfs-mount">
-              <FormSelect
-                id="smb-zfs-mount"
-                value={path}
-                onChange={(_event, val) => {
-                  if (val) {
-                    setPath(val);
-                    if (!name) setName(val.split("/").pop() || "");
-                  }
-                }}
-              >
-                <FormSelectOption value="" label="-- Choose ZFS dataset mountpoint --" />
-                {zfsMounts.map((zm) => (
-                  <FormSelectOption key={zm.mountpoint} value={zm.mountpoint} label={`${zm.dataset} (${zm.mountpoint})`} />
-                ))}
-              </FormSelect>
-            </FormGroup>
-          )}
-
-          <FormGroup label="Comment / Description" fieldId="smb-comment">
-            <TextInput
-              id="smb-comment"
-              value={comment}
-              onChange={(_event, val) => setComment(val)}
-              placeholder="e.g. Public Network Storage"
-            />
-          </FormGroup>
-
-          <Flex justifyContent={{ default: "justifyContentSpaceBetween" }} style={{ marginTop: "1rem" }}>
-            <FlexItem>
-              <Switch
-                id="smb-readonly"
-                label="Read-Only"
-                isChecked={readOnly}
-                onChange={(_event, checked) => setReadOnly(checked)}
-              />
-            </FlexItem>
-            <FlexItem>
-              <Switch
-                id="smb-browseable"
-                label="Browseable in Network"
-                isChecked={browseable}
-                onChange={(_event, checked) => setBrowseable(checked)}
-              />
-            </FlexItem>
-            <FlexItem>
-              <Switch
-                id="smb-guest"
-                label="Guest / Public Access"
-                isChecked={guestOk}
-                onChange={(_event, checked) => setGuestOk(checked)}
-              />
-            </FlexItem>
-            <FlexItem>
-              <Switch
-                id="smb-fruit"
-                label="Apple Time Machine"
-                isChecked={timeMachine}
-                onChange={(_event, checked) => setTimeMachine(checked)}
-              />
-            </FlexItem>
-          </Flex>
-
-          <FormGroup label="Valid Users (Optional)" fieldId="smb-valid-users" style={{ marginTop: "1rem" }}>
-            <TextInput
-              id="smb-valid-users"
-              value={validUsers}
-              onChange={(_event, val) => setValidUsers(val)}
-              placeholder="e.g. alice, bob, @developers"
-            />
-          </FormGroup>
-
-          <FormGroup label="Write List (Optional)" fieldId="smb-write-list">
-            <TextInput
-              id="smb-write-list"
-              value={writeList}
-              onChange={(_event, val) => setWriteList(val)}
-              placeholder="e.g. alice, @admins"
-            />
-          </FormGroup>
-
-          {error && (
-            <Alert variant="danger" title="Error" style={{ marginTop: "1rem" }}>
-              {error}
-            </Alert>
-          )}
-        </Form>
+          </Button>
+        </ModalFooter>
       </Modal>
 
       {/* Delete Confirmation Modal */}
       <Modal
         variant={ModalVariant.small}
-        title="Delete SMB Share"
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
-        actions={[
+        appendTo={() => document.body}
+      >
+        <ModalHeader title="Delete SMB Share" />
+        <ModalBody>
+          Are you sure you want to delete share <strong>[{deletingShareName}]</strong> from <code>/etc/samba/smb.conf</code>?
+          The underlying filesystem directory will not be deleted.
+        </ModalBody>
+        <ModalFooter>
           <Button key="delete" variant="danger" onClick={handleDelete} isLoading={loading}>
             Delete share
-          </Button>,
+          </Button>
           <Button key="cancel" variant="secondary" onClick={() => setIsDeleteModalOpen(false)}>
             Cancel
-          </Button>,
-        ]}
-      >
-        Are you sure you want to delete share <strong>[{deletingShareName}]</strong> from <code>/etc/samba/smb.conf</code>?
-        The underlying filesystem directory will not be deleted.
+          </Button>
+        </ModalFooter>
       </Modal>
     </>
   );

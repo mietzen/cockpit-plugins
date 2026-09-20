@@ -14,7 +14,6 @@ import {
   FlexItem,
   EmptyState,
   EmptyStateBody,
-  Title,
   Tooltip,
 } from '@patternfly/react-core';
 import { TrashIcon, InfoCircleIcon } from '@patternfly/react-icons';
@@ -79,10 +78,10 @@ export const VolumesTab: React.FC<VolumesTabProps> = ({
       </Flex>
 
       {filteredVolumes.length === 0 ? (
-        <EmptyState>
-          <Title headingLevel="h4" size="lg">
-            No Volumes Found
-          </Title>
+        <EmptyState
+          titleText="No Volumes Found"
+          headingLevel="h4"
+        >
           <EmptyStateBody>
             {filterText
               ? `No volumes match "${filterText}".`

@@ -2,6 +2,9 @@ import React from "react";
 import {
   Modal,
   ModalVariant,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
   Button,
   DescriptionList,
   DescriptionListGroup,
@@ -42,15 +45,12 @@ export const ArcDetailsModal: React.FC<ArcDetailsModalProps> = ({
   return (
     <Modal
       variant={ModalVariant.medium}
-      title="OpenZFS ARC (Adaptive Replacement Cache) Details"
       isOpen={isOpen}
       onClose={onClose}
-      actions={[
-        <Button key="close" variant="primary" onClick={onClose}>
-          Close
-        </Button>,
-      ]}
+      appendTo={() => document.body}
     >
+      <ModalHeader title="OpenZFS ARC (Adaptive Replacement Cache) Details" />
+      <ModalBody>
       <div style={{ marginBottom: "1.5rem" }}>
         <Title headingLevel="h4" size="md" style={{ marginBottom: "0.5rem", fontWeight: 600 }}>
           ARC Memory Allocation
@@ -110,6 +110,12 @@ export const ArcDetailsModal: React.FC<ArcDetailsModalProps> = ({
           </DescriptionListDescription>
         </DescriptionListGroup>
       </DescriptionList>
+      </ModalBody>
+      <ModalFooter>
+        <Button key="close" variant="primary" onClick={onClose}>
+          Close
+        </Button>
+      </ModalFooter>
     </Modal>
   );
 };

@@ -14,7 +14,6 @@ import {
   FlexItem,
   EmptyState,
   EmptyStateBody,
-  Title,
   Tooltip,
 } from '@patternfly/react-core';
 import {
@@ -108,10 +107,10 @@ export const ContainersTab: React.FC<ContainersTabProps> = ({
       </Flex>
 
       {filteredContainers.length === 0 ? (
-        <EmptyState>
-          <Title headingLevel="h4" size="lg">
-            No Containers Found
-          </Title>
+        <EmptyState
+          titleText="No Containers Found"
+          headingLevel="h4"
+        >
           <EmptyStateBody>
             {filterText
               ? `No containers match "${filterText}".`

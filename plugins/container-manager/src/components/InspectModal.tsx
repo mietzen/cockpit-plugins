@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import {
   Modal,
   ModalVariant,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
   Button,
   Flex,
   FlexItem,
@@ -155,21 +158,17 @@ export const InspectModal: React.FC<InspectModalProps> = ({
   return (
     <Modal
       variant={ModalVariant.large}
-      title={`Inspect: ${titleName}`}
       isOpen={isOpen}
       onClose={onClose}
       appendTo={() => document.body}
-      actions={[
-        <Button key="close" variant="secondary" onClick={onClose}>
-          Close
-        </Button>,
-      ]}
     >
-      {error && (
-        <Alert variant="danger" isInline title="Inspection Error" style={{ marginBottom: '1rem' }}>
-          {error}
-        </Alert>
-      )}
+      <ModalHeader title={`Inspect: ${titleName}`} />
+      <ModalBody>
+        {error && (
+          <Alert variant="danger" isInline title="Inspection Error" style={{ marginBottom: '1rem' }}>
+            {error}
+          </Alert>
+        )}
 
       {loading ? (
         <div style={{ padding: '2rem', textAlign: 'center', color: '#8b949e' }}>
@@ -458,6 +457,12 @@ export const InspectModal: React.FC<InspectModalProps> = ({
         </div>
         </>
       )}
+      </ModalBody>
+      <ModalFooter>
+        <Button key="close" variant="secondary" onClick={onClose}>
+          Close
+        </Button>
+      </ModalFooter>
     </Modal>
   );
 };

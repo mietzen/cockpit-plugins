@@ -2,6 +2,9 @@ import React, { useState } from "react";
 import {
   Modal,
   ModalVariant,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
   Form,
   FormGroup,
   TextInput,
@@ -84,10 +87,63 @@ export const ReplaceDiskModal: React.FC<ReplaceDiskModalProps> = ({
   return (
     <Modal
       variant={ModalVariant.small}
-      title={`Replace Device: ${oldDevice}`}
       isOpen={isOpen}
       onClose={onClose}
-      actions={[
+      appendTo={() => document.body}
+    >
+      <ModalHeader title={`Replace Device: ${oldDevice}`} />
+      <ModalBody>
+        <Form style={{ maxWidth: "550px" }}>
+          <FormGroup label="Target Pool" fieldId="replace-pool">
+            <TextInput id="replace-pool" value={poolName} readOnly />
+          </FormGroup>
+
+          <FormGroup label="Device Being Replaced" fieldId="replace-old">
+            <TextInput id="replace-old" value={oldDevice} readOnly />
+          </FormGroup>
+
+          <FormGroup label="Select Replacement Device" isRequired fieldId="replace-new">
+            <FormSelect
+              id="replace-new"
+              value={newDevice}
+              onChange={(_event, val) => setNewDevice(val)}
+            >
+              {availableDisks.map((d) => (
+                <FormSelectOption
+                  key={d.path}
+                  value={d.path}
+                  label={`${d.path} (${d.name}) - ${formatBytes(d.size)} ${d.model ? `[${d.model}]` : ""}`}
+                />
+              ))}
+            </FormSelect>
+          </FormGroup>
+
+          <FormGroup fieldId="replace-force">
+            <Checkbox
+              id="replace-force"
+              label="Force replacement (-f)"
+              isChecked={force}
+              onChange={(_event, checked) => setForce(checked)}
+            />
+          </FormGroup>
+
+          <div style={{ marginTop: "1rem" }}>
+            <label style={{ fontWeight: "bold", display: "block", marginBottom: "0.5rem" }}>
+              Shell Command Preview:
+            </label>
+            <ClipboardCopy isReadOnly isCode>
+              {buildCommand().join(" ")}
+            </ClipboardCopy>
+          </div>
+
+          {error && (
+            <Alert variant="danger" title="Error" style={{ marginTop: "1rem" }}>
+              {error}
+            </Alert>
+          )}
+        </Form>
+      </ModalBody>
+      <ModalFooter>
         <Button
           key="replace"
           variant="primary"
@@ -96,61 +152,11 @@ export const ReplaceDiskModal: React.FC<ReplaceDiskModalProps> = ({
           isLoading={loading}
         >
           Replace Device
-        </Button>,
+        </Button>
         <Button key="cancel" variant="link" onClick={onClose} isDisabled={loading}>
           Cancel
-        </Button>,
-      ]}
-    >
-      <Form style={{ maxWidth: "550px" }}>
-        <FormGroup label="Target Pool" fieldId="replace-pool">
-          <TextInput id="replace-pool" value={poolName} isReadOnly />
-        </FormGroup>
-
-        <FormGroup label="Device Being Replaced" fieldId="replace-old">
-          <TextInput id="replace-old" value={oldDevice} isReadOnly />
-        </FormGroup>
-
-        <FormGroup label="Select Replacement Device" isRequired fieldId="replace-new">
-          <FormSelect
-            id="replace-new"
-            value={newDevice}
-            onChange={(_event, val) => setNewDevice(val)}
-          >
-            {availableDisks.map((d) => (
-              <FormSelectOption
-                key={d.path}
-                value={d.path}
-                label={`${d.path} (${d.name}) - ${formatBytes(d.size)} ${d.model ? `[${d.model}]` : ""}`}
-              />
-            ))}
-          </FormSelect>
-        </FormGroup>
-
-        <FormGroup fieldId="replace-force">
-          <Checkbox
-            id="replace-force"
-            label="Force replacement (-f)"
-            isChecked={force}
-            onChange={(_event, checked) => setForce(checked)}
-          />
-        </FormGroup>
-
-        <div style={{ marginTop: "1rem" }}>
-          <label style={{ fontWeight: "bold", display: "block", marginBottom: "0.5rem" }}>
-            Shell Command Preview:
-          </label>
-          <ClipboardCopy isReadOnly isCode>
-            {buildCommand().join(" ")}
-          </ClipboardCopy>
-        </div>
-
-        {error && (
-          <Alert variant="danger" title="Error" style={{ marginTop: "1rem" }}>
-            {error}
-          </Alert>
-        )}
-      </Form>
+        </Button>
+      </ModalFooter>
     </Modal>
   );
 };

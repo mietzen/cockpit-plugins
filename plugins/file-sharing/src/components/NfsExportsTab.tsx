@@ -10,8 +10,6 @@ import {
   Label,
   SearchInput,
   EmptyState,
-  EmptyStateHeader,
-  EmptyStateIcon,
   EmptyStateBody,
   EmptyStateFooter,
   EmptyStateActions,
@@ -25,6 +23,9 @@ import {
   MenuToggleElement,
   Modal,
   ModalVariant,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
   Form,
   FormGroup,
   TextInput,
@@ -162,7 +163,7 @@ export const NfsExportsTab: React.FC<NfsExportsTabProps> = ({
 
   return (
     <>
-      <PageSection variant="light" style={{ paddingBottom: "1rem" }}>
+      <PageSection style={{ paddingBottom: "1rem" }}>
         <Flex justifyContent={{ default: "justifyContentSpaceBetween" }} alignItems={{ default: "alignItemsCenter" }}>
           <FlexItem>
             <Title headingLevel="h1" size="2xl" style={{ fontWeight: 600, margin: 0, lineHeight: 1.2 }}>
@@ -202,12 +203,11 @@ export const NfsExportsTab: React.FC<NfsExportsTabProps> = ({
 
         {activeSubTab === "exports" ? (
           exports.length === 0 ? (
-            <EmptyState>
-              <EmptyStateHeader
-                titleText="No NFS exports configured"
-                icon={<EmptyStateIcon icon={GlobeIcon} />}
-                headingLevel="h4"
-              />
+            <EmptyState
+              titleText="No NFS exports configured"
+              icon={GlobeIcon}
+              headingLevel="h4"
+            >
               <EmptyStateBody>
                 Export filesystems and ZFS datasets to network clients using NFS.
               </EmptyStateBody>
@@ -252,7 +252,7 @@ export const NfsExportsTab: React.FC<NfsExportsTabProps> = ({
                           </Flex>
                         </Td>
                         <Td data-label="Allowed clients">
-                          <Flex wrap={{ default: "wrap" }} gap={{ default: "gapSm" }}>
+                          <Flex flexWrap={{ default: "wrap" }} gap={{ default: "gapSm" }}>
                             {exp.clients.map((c, i) => (
                               <FlexItem key={i}>
                                 <Label color={c.read_only ? "blue" : "green"}>
@@ -380,10 +380,91 @@ export const NfsExportsTab: React.FC<NfsExportsTabProps> = ({
       {/* Create / Edit Export Modal */}
       <Modal
         variant={ModalVariant.medium}
-        title={editingExport ? `Edit NFS Export for ${editingExport.path}` : "Create NFS Export"}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        actions={[
+        appendTo={() => document.body}
+      >
+        <ModalHeader title={editingExport ? `Edit NFS Export for ${editingExport.path}` : "Create NFS Export"} />
+        <ModalBody>
+          <Form>
+            <FormGroup label="Export Path" isRequired fieldId="nfs-path">
+              <TextInput
+                id="nfs-path"
+                value={path}
+                onChange={(_event, val) => setPath(val)}
+                placeholder="/srv/nfs/data"
+                isDisabled={!!editingExport}
+                autoFocus
+              />
+            </FormGroup>
+
+            {zfsMounts.length > 0 && !editingExport && (
+              <FormGroup label="Quick Pick ZFS Dataset Mount" fieldId="nfs-zfs-mount">
+                <FormSelect
+                  id="nfs-zfs-mount"
+                  value={path}
+                  onChange={(_event, val) => val && setPath(val)}
+                >
+                  <FormSelectOption value="" label="-- Choose ZFS dataset mountpoint --" />
+                  {zfsMounts.map((zm) => (
+                    <FormSelectOption key={zm.mountpoint} value={zm.mountpoint} label={`${zm.dataset} (${zm.mountpoint})`} />
+                  ))}
+                </FormSelect>
+              </FormGroup>
+            )}
+
+            <FormGroup label="Allowed Client / IP Subnet" isRequired fieldId="nfs-client">
+              <TextInput
+                id="nfs-client"
+                value={clientHost}
+                onChange={(_event, val) => setClientHost(val)}
+                placeholder="e.g. 192.168.1.0/24, 10.0.0.5, or * for all"
+              />
+            </FormGroup>
+
+            <Flex justifyContent={{ default: "justifyContentSpaceBetween" }} style={{ marginTop: "1rem" }}>
+              <FlexItem>
+                <Switch
+                  id="nfs-readonly"
+                  label="Read-Only (ro)"
+                  isChecked={readOnly}
+                  onChange={(_event, checked) => setReadOnly(checked)}
+                />
+              </FlexItem>
+              <FlexItem>
+                <Switch
+                  id="nfs-sync"
+                  label="Synchronous Writes (sync)"
+                  isChecked={sync}
+                  onChange={(_event, checked) => setSync(checked)}
+                />
+              </FlexItem>
+              <FlexItem>
+                <Switch
+                  id="nfs-squash"
+                  label="Root Squash (root_squash)"
+                  isChecked={rootSquash}
+                  onChange={(_event, checked) => setRootSquash(checked)}
+                />
+              </FlexItem>
+              <FlexItem>
+                <Switch
+                  id="nfs-subtree"
+                  label="No Subtree Check"
+                  isChecked={noSubtreeCheck}
+                  onChange={(_event, checked) => setNoSubtreeCheck(checked)}
+                />
+              </FlexItem>
+            </Flex>
+
+            {error && (
+              <Alert variant="danger" title="Error" style={{ marginTop: "1rem" }}>
+                {error}
+              </Alert>
+            )}
+          </Form>
+        </ModalBody>
+        <ModalFooter>
           <Button
             key="save"
             variant="primary"
@@ -392,108 +473,33 @@ export const NfsExportsTab: React.FC<NfsExportsTabProps> = ({
             isLoading={loading}
           >
             {editingExport ? "Save changes" : "Create export"}
-          </Button>,
+          </Button>
           <Button key="cancel" variant="secondary" onClick={() => setIsModalOpen(false)} isDisabled={loading}>
             Cancel
-          </Button>,
-        ]}
-      >
-        <Form>
-          <FormGroup label="Export Path" isRequired fieldId="nfs-path">
-            <TextInput
-              id="nfs-path"
-              value={path}
-              onChange={(_event, val) => setPath(val)}
-              placeholder="/srv/nfs/data"
-              isDisabled={!!editingExport}
-              autoFocus
-            />
-          </FormGroup>
-
-          {zfsMounts.length > 0 && !editingExport && (
-            <FormGroup label="Quick Pick ZFS Dataset Mount" fieldId="nfs-zfs-mount">
-              <FormSelect
-                id="nfs-zfs-mount"
-                value={path}
-                onChange={(_event, val) => val && setPath(val)}
-              >
-                <FormSelectOption value="" label="-- Choose ZFS dataset mountpoint --" />
-                {zfsMounts.map((zm) => (
-                  <FormSelectOption key={zm.mountpoint} value={zm.mountpoint} label={`${zm.dataset} (${zm.mountpoint})`} />
-                ))}
-              </FormSelect>
-            </FormGroup>
-          )}
-
-          <FormGroup label="Allowed Client / IP Subnet" isRequired fieldId="nfs-client">
-            <TextInput
-              id="nfs-client"
-              value={clientHost}
-              onChange={(_event, val) => setClientHost(val)}
-              placeholder="e.g. 192.168.1.0/24, 10.0.0.5, or * for all"
-            />
-          </FormGroup>
-
-          <Flex justifyContent={{ default: "justifyContentSpaceBetween" }} style={{ marginTop: "1rem" }}>
-            <FlexItem>
-              <Switch
-                id="nfs-readonly"
-                label="Read-Only (ro)"
-                isChecked={readOnly}
-                onChange={(_event, checked) => setReadOnly(checked)}
-              />
-            </FlexItem>
-            <FlexItem>
-              <Switch
-                id="nfs-sync"
-                label="Synchronous Writes (sync)"
-                isChecked={sync}
-                onChange={(_event, checked) => setSync(checked)}
-              />
-            </FlexItem>
-            <FlexItem>
-              <Switch
-                id="nfs-squash"
-                label="Root Squash (root_squash)"
-                isChecked={rootSquash}
-                onChange={(_event, checked) => setRootSquash(checked)}
-              />
-            </FlexItem>
-            <FlexItem>
-              <Switch
-                id="nfs-subtree"
-                label="No Subtree Check"
-                isChecked={noSubtreeCheck}
-                onChange={(_event, checked) => setNoSubtreeCheck(checked)}
-              />
-            </FlexItem>
-          </Flex>
-
-          {error && (
-            <Alert variant="danger" title="Error" style={{ marginTop: "1rem" }}>
-              {error}
-            </Alert>
-          )}
-        </Form>
+          </Button>
+        </ModalFooter>
       </Modal>
 
       {/* Delete Confirmation Modal */}
       <Modal
         variant={ModalVariant.small}
-        title="Delete NFS Export"
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
-        actions={[
+        appendTo={() => document.body}
+      >
+        <ModalHeader title="Delete NFS Export" />
+        <ModalBody>
+          Are you sure you want to remove the NFS export for <code>{deletingPath}</code>?
+          The directory contents on the server will not be deleted.
+        </ModalBody>
+        <ModalFooter>
           <Button key="delete" variant="danger" onClick={handleDelete} isLoading={loading}>
             Delete export
-          </Button>,
+          </Button>
           <Button key="cancel" variant="secondary" onClick={() => setIsDeleteModalOpen(false)}>
             Cancel
-          </Button>,
-        ]}
-      >
-        Are you sure you want to remove the NFS export for <code>{deletingPath}</code>?
-        The directory contents on the server will not be deleted.
+          </Button>
+        </ModalFooter>
       </Modal>
     </>
   );

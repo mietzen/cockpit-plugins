@@ -2,8 +2,10 @@ import React, { useState, useEffect } from "react";
 import {
   Modal,
   ModalVariant,
+  ModalBody,
   Wizard,
   WizardStep,
+  WizardHeader,
   Form,
   FormGroup,
   TextInput,
@@ -224,43 +226,43 @@ export const CreatePoolWizard: React.FC<CreatePoolWizardProps> = ({
       variant={ModalVariant.large}
       isOpen={isOpen}
       onClose={onClose}
-      showClose={true}
-      hasNoBodyPadding
+      appendTo={() => document.body}
       aria-label="Create ZFS Storage Pool Modal"
       style={{ minHeight: "600px" }}
     >
-      <Wizard
-        title="Create ZFS Storage Pool"
-        onClose={onClose}
-        style={{ height: "100%", minHeight: "560px", border: "none" }}
-        footer={(activeStep, onNext, onBack) => {
-          const isLastStep =
-            activeStep.id === "step-5" ||
-            activeStep.index === 5 ||
-            (typeof activeStep.id === "string" && activeStep.id.includes("5")) ||
-            (typeof activeStep.name === "string" && activeStep.name.includes("Review"));
+      <ModalBody style={{ padding: 0, height: "100%", minHeight: "560px" }}>
+        <Wizard
+          header={<WizardHeader title="Create ZFS Storage Pool" onClose={onClose} />}
+          onClose={onClose}
+          style={{ height: "100%", minHeight: "560px", border: "none" }}
+          footer={(activeStep, onNext, onBack) => {
+            const isLastStep =
+              activeStep.id === "step-5" ||
+              activeStep.index === 5 ||
+              (typeof activeStep.id === "string" && activeStep.id.includes("5")) ||
+              (typeof activeStep.name === "string" && activeStep.name.includes("Review"));
 
-          const isFirstStep =
-            activeStep.id === "step-1" ||
-            activeStep.index === 1 ||
-            (typeof activeStep.id === "string" && activeStep.id.includes("1"));
+            const isFirstStep =
+              activeStep.id === "step-1" ||
+              activeStep.index === 1 ||
+              (typeof activeStep.id === "string" && activeStep.id.includes("1"));
 
-          const handleNextClick = () => {
-            if (isFirstStep && !name.trim()) {
-              setError("Pool name is required");
-              return;
-            }
-            setError(null);
-            if (isLastStep) {
-              handleFinish();
-            } else {
-              onNext();
-            }
-          };
+            const handleNextClick = (e: React.MouseEvent) => {
+              if (isFirstStep && !name.trim()) {
+                setError("Pool name is required");
+                return;
+              }
+              setError(null);
+              if (isLastStep) {
+                handleFinish();
+              } else {
+                onNext(e as any);
+              }
+            };
 
           return (
             <div
-              className="pf-v5-c-wizard__footer"
+              className="pf-v6-c-wizard__footer pf-v5-c-wizard__footer"
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -619,6 +621,7 @@ export const CreatePoolWizard: React.FC<CreatePoolWizardProps> = ({
           </div>
         </WizardStep>
       </Wizard>
+      </ModalBody>
     </Modal>
   );
 };

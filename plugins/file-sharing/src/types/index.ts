@@ -105,6 +105,8 @@ export interface SmbSession {
   group: string;
   machine: string;
   protocol: string;
+  service?: string;
+  ip?: string;
 }
 
 export interface ZfsMount {
