@@ -46,7 +46,6 @@ export interface DashboardViewProps {
   images: ImageItem[];
   volumes: VolumeItem[];
   networks: NetworkItem[];
-  tlsStatus?: any;
   onNavigateTab: (tab: string) => void;
   onAction: (id: string, action: 'start' | 'stop' | 'kill' | 'restart') => void;
   onOpenTerminal: (container: ContainerItem) => void;
@@ -59,7 +58,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   images,
   volumes,
   networks,
-  tlsStatus,
   onNavigateTab,
   onAction,
   onOpenTerminal,

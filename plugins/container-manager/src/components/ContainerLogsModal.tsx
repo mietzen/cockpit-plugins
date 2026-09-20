@@ -149,7 +149,11 @@ export const ContainerLogsModal: React.FC<ContainerLogsModalProps> = ({
                   }}
                   onOpenChange={(open) => setTailDropdownOpen(open)}
                   toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
-                    <MenuToggle ref={toggleRef} onClick={() => setTailDropdownOpen(!tailDropdownOpen)}>
+                    <MenuToggle
+                      ref={toggleRef}
+                      onClick={() => setTailDropdownOpen(!tailDropdownOpen)}
+                      style={{ borderRadius: '999px' }}
+                    >
                       {tailLines} lines
                     </MenuToggle>
                   )}

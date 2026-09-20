@@ -20,7 +20,6 @@ import {
   VolumeItem,
   NetworkItem,
   EngineType,
-  TlsStatus,
 } from './types';
 import {
   containerApi,
@@ -46,7 +45,6 @@ export const App: React.FC = () => {
   const [overview, setOverview] = useState<ContainerOverview>(
     typeof window !== 'undefined' && window.cockpit ? DEFAULT_EMPTY_OVERVIEW : DEFAULT_MOCK_OVERVIEW
   );
-  const [tlsStatus, setTlsStatus] = useState<TlsStatus | null>(null);
   const [activeEngine, setActiveEngine] = useState<EngineType>(() => {
     try {
       const saved = localStorage.getItem('cockpit_container_engine');
@@ -123,9 +121,6 @@ export const App: React.FC = () => {
         ? preferred
         : (data.active_engine && data.active_engine !== 'none' ? data.active_engine : 'docker');
       setActiveEngine(effEngine);
-
-      const tls = await containerApi.getTlsStatus(effEngine).catch(() => null);
-      setTlsStatus(tls);
     } catch (err: any) {
       addAlert('Failed to load container overview', 'danger', err?.message);
     } finally {
