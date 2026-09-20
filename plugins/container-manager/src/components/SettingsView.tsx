@@ -35,6 +35,15 @@ import { StatusBadge } from '@cockpit-plugins/common';
 import { EnginesDetection, EngineType, TlsStatus, ClientCertBundle } from '../types';
 import { containerApi } from '../api/containerClient';
 
+enum PayloadEncoding {
+  Text = 'text',
+  Base64 = 'base64',
+}
+
+const REVOKE_DELAY_MS = 1000;
+const COPIED_RESET_MS = 2000;
+const DEFAULT_TLS_PORT = 2376;
+
 export interface SettingsViewProps {
   engines: EnginesDetection;
   activeEngine: EngineType;
@@ -56,7 +65,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [isSettingUp, setIsSettingUp] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [port, setPort] = useState<number>(2376);
+  const [port, setPort] = useState<number>(DEFAULT_TLS_PORT);
   const [sansInput, setSansInput] = useState<string>('');
   const [activeTab, setActiveTab] = useState<number>(0);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
@@ -73,7 +82,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     try {
       const status = await containerApi.getTlsStatus(activeEngine);
       setTlsStatus(status);
-      setPort(status.port || 2376);
+      setPort(status.port || DEFAULT_TLS_PORT);
       if (status.sans && status.sans.length > 0) {
         setSansInput(status.sans.join(', '));
       } else {
@@ -138,9 +147,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     }
   };
 
-  const downloadBlob = (content: string, filename: string, mimeType: string, isBase64: boolean = false) => {
+  const downloadBlob = (
+    content: string,
+    filename: string,
+    mimeType: string,
+    encoding: PayloadEncoding = PayloadEncoding.Text
+  ) => {
     let blob: Blob;
-    if (isBase64) {
+    if (encoding === PayloadEncoding.Base64) {
       const byteCharacters = atob(content);
       const byteNumbers = new Array(byteCharacters.length);
       for (let i = 0; i < byteCharacters.length; i++) {
@@ -161,7 +175,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     document.body.removeChild(a);
     setTimeout(() => {
       URL.revokeObjectURL(url);
-    }, 1000);
+    }, REVOKE_DELAY_MS);
   };
 
   const fetchBundle = async (): Promise<ClientCertBundle | null> => {
@@ -194,7 +208,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         bundle.zipBase64,
         bundle.zipFilename || `${activeEngine}-client-certs.zip`,
         'application/zip',
-        true
+        PayloadEncoding.Base64
       );
       onNotify?.('success', 'Download Started', `Downloaded ${bundle.zipFilename || 'client certificates'}`);
     } catch (e: any) {
@@ -219,7 +233,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     setCopiedKey(key);
     setTimeout(() => {
       setCopiedKey(null);
-    }, 2000);
+    }, COPIED_RESET_MS);
   };
 
   const isEnabled = tlsStatus?.enabled || false;
