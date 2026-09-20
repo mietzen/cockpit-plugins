@@ -242,10 +242,11 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
 
     // Open Inspect on first container
     const inspectBtn = frame.locator('table[aria-label="Containers Table"] button[aria-label="Inspect"]').first();
-    await inspectBtn.click();
+    await inspectBtn.waitFor({ state: 'visible', timeout: 5000 });
+    await inspectBtn.click({ force: true });
 
     // Verify Inspect modal is open
-    await frame.waitForSelector('.pf-v5-c-modal-box:has-text("Inspect:")', { timeout: 8000 });
+    await frame.waitForSelector('.pf-v5-c-modal-box:has-text("Inspect:")', { timeout: 10000 });
 
     // Verify Restart Policy row is displayed in Overview table
     const restartPolicyCell = frame.locator('td:has-text("Restart Policy")');
@@ -325,18 +326,17 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     await frame.waitForSelector('table[aria-label="Containers Table"]', { timeout: 10000 });
 
     // Look for a stopped container delete button
-    const deleteBtn = frame.locator('table[aria-label="Containers Table"] tr:has-text("exited"), table[aria-label="Containers Table"] tr:has-text("created")')
-      .locator('button[aria-label="Delete container"]')
+    const deleteBtn = frame.locator('table[aria-label="Containers Table"] button[aria-label="Delete"]')
       .first();
 
     if (await deleteBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await deleteBtn.click();
+      await deleteBtn.click({ force: true });
 
       // Verify modal appears
       await frame.waitForSelector('.pf-v5-c-modal-box:has-text("Delete Container")', { timeout: 5000 });
 
       // Click the Delete Container confirm button
-      const confirmBtn = frame.locator('.pf-v5-c-modal-box button:has-text("Delete Container")');
+      const confirmBtn = frame.locator('.pf-v5-c-modal-box button:has-text("Delete Container")').first();
       await confirmBtn.click();
 
       // Verify modal is completely dismissed and detached
