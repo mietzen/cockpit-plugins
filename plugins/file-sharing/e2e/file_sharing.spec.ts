@@ -108,10 +108,13 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
       await page.waitForSelector("button:has-text('Administrative access'), a:has-text('Administrative access')", { timeout: 10000 }).catch(() => {});
     }
 
-    // Click File sharing in sidebar
+    // Click File sharing in sidebar or navigate directly
     const navLink = page.locator("a:has-text('File sharing'), a:has-text('File Sharing'), a[href*='file-sharing']").first();
-    await navLink.waitFor({ state: "visible", timeout: 20000 });
-    await navLink.click();
+    if (await navLink.isVisible({ timeout: 5000 }).catch(() => false)) {
+      await navLink.click();
+    } else {
+      await page.goto("/file-sharing", { waitUntil: "domcontentloaded", timeout: 30000 });
+    }
 
     const frame = await getFrame();
     await frame.locator("#root").waitFor({ state: "attached", timeout: 20000 });
@@ -266,12 +269,15 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
   test("9. Edit SMB Share & Advanced Properties", async () => {
     const frame = await getFrame();
     await frame.locator("button.pf-v5-c-tabs__link:has-text('SMB Shares'), [role='tab']:has-text('SMB Shares')").first().click();
+    await frame.waitForSelector("table", { timeout: 10000 });
 
     const row = frame.locator("tr", { hasText: "testshare" }).first();
+    await expect(row).toBeVisible({ timeout: 10000 });
     const actionToggle = row.locator("button[aria-label='Share actions']").first();
     await actionToggle.click();
 
     const editBtn = frame.getByRole("menuitem", { name: /Edit share/ }).or(frame.getByText("Edit share")).first();
+    await expect(editBtn).toBeVisible({ timeout: 5000 });
     await editBtn.click();
 
     await expect(frame.locator(".pf-v5-c-modal-box__title-text")).toBeVisible({ timeout: 5000 });

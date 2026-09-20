@@ -33,6 +33,8 @@ def sanitize_description(pkg_name: str, desc: str) -> str:
             clean = "OpenZFS storage management plugin for Cockpit"
         elif "sharing" in pkg_name:
             clean = "SMB and NFS file sharing management plugin for Cockpit"
+        elif "container" in pkg_name:
+            clean = "Docker and Podman container management plugin for Cockpit"
         else:
             clean = "Cockpit plugin extension"
     return clean

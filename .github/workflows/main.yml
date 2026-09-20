@@ -26,7 +26,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        plugin: [zfs-storage, file-sharing]
+        plugin: [zfs-storage, file-sharing, container-manager]
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v7
@@ -149,7 +149,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        plugin: [zfs-storage, file-sharing]
+        plugin: [zfs-storage, file-sharing, container-manager]
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v7
@@ -184,6 +184,12 @@ jobs:
       - name: Setup Cockpit Test Environment
         run: |
           sudo bash tools/setup_e2e_env.sh
+
+      - name: Setup Plugin Specific E2E Fixtures
+        run: |
+          if [ -f "plugins/${{ matrix.plugin }}/e2e/setup_test_env.sh" ]; then
+            sudo bash plugins/${{ matrix.plugin }}/e2e/setup_test_env.sh
+          fi
 
       - name: Install Playwright & Browsers
         run: |
@@ -390,6 +396,8 @@ jobs:
             RELEASE_FILES=(all-debs/cockpit-zfs-storage_*.deb all-rpms/cockpit-zfs-storage-*.rpm)
           elif [[ "$TAG_NAME" == file-sharing-* ]]; then
             RELEASE_FILES=(all-debs/cockpit-file-sharing_*.deb all-rpms/cockpit-file-sharing-*.rpm)
+          elif [[ "$TAG_NAME" == container-manager-* ]]; then
+            RELEASE_FILES=(all-debs/cockpit-container-manager_*.deb all-rpms/cockpit-container-manager-*.rpm)
           else
             RELEASE_FILES=(all-debs/*.deb all-rpms/*.rpm)
           fi
