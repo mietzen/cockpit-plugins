@@ -269,12 +269,15 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
   test("9. Edit SMB Share & Advanced Properties", async () => {
     const frame = await getFrame();
     await frame.locator("button.pf-v5-c-tabs__link:has-text('SMB Shares'), [role='tab']:has-text('SMB Shares')").first().click();
+    await frame.waitForSelector("table", { timeout: 10000 });
 
     const row = frame.locator("tr", { hasText: "testshare" }).first();
+    await expect(row).toBeVisible({ timeout: 10000 });
     const actionToggle = row.locator("button[aria-label='Share actions']").first();
     await actionToggle.click();
 
     const editBtn = frame.getByRole("menuitem", { name: /Edit share/ }).or(frame.getByText("Edit share")).first();
+    await expect(editBtn).toBeVisible({ timeout: 5000 });
     await editBtn.click();
 
     await expect(frame.locator(".pf-v5-c-modal-box__title-text")).toBeVisible({ timeout: 5000 });
