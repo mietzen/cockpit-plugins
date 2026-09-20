@@ -371,6 +371,7 @@ class DockerAdapter(ContainerEngineAdapter):
                 continue
 
             full_id = data.get("ID", "")
+            clean_id = full_id.removeprefix("sha256:") if isinstance(full_id, str) else str(full_id)
             repo = data.get("Repository", "<none>")
             tag = data.get("Tag", "<none>")
             full_ref = f"{repo}:{tag}" if repo != "<none>" and tag != "<none>" else repo
@@ -381,8 +382,8 @@ class DockerAdapter(ContainerEngineAdapter):
             is_in_use = bool(img_refs.intersection(used_image_refs))
 
             images.append({
-                "id": full_id,
-                "shortId": full_id[:12] if full_id else "",
+                "id": clean_id,
+                "shortId": clean_id[:12] if clean_id else "",
                 "repository": repo,
                 "tag": tag,
                 "size": data.get("Size", ""),
@@ -554,6 +555,7 @@ class PodmanAdapter(ContainerEngineAdapter):
         images = []
         for item in data_list:
             full_id = item.get("id", item.get("Id", item.get("ID", "")))
+            clean_id = full_id.removeprefix("sha256:") if isinstance(full_id, str) else str(full_id)
             repo_tags = item.get("names", item.get("Names", item.get("repo_tags", item.get("RepoTags", []))))
             repo = item.get("repository", item.get("Repository", "<none>"))
             tag = item.get("tag", item.get("Tag", "<none>"))
@@ -580,8 +582,8 @@ class PodmanAdapter(ContainerEngineAdapter):
             size_formatted = f"{size_bytes / (1024 * 1024):.1f} MB" if isinstance(size_bytes, (int, float)) and size_bytes > 0 else str(size_bytes)
 
             images.append({
-                "id": full_id,
-                "shortId": full_id[:12] if full_id else "",
+                "id": clean_id,
+                "shortId": clean_id[:12] if clean_id else "",
                 "repository": repo,
                 "tag": tag,
                 "size": size_formatted,

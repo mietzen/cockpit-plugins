@@ -936,6 +936,47 @@ select:focus-visible {
   content: none !important;
 }
 
+/* =========================================================
+   Scrollbars: Theme-Scoped, Sleek & Distinct
+   ========================================================= */
+.pf-v5-c-modal-box__body::-webkit-scrollbar,
+.pf-v6-c-modal-box__body::-webkit-scrollbar,
+pre::-webkit-scrollbar,
+.cockpit-scroll-container::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.pf-v5-c-modal-box__body::-webkit-scrollbar-track,
+.pf-v6-c-modal-box__body::-webkit-scrollbar-track,
+pre::-webkit-scrollbar-track,
+.cockpit-scroll-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.pf-v5-c-modal-box__body::-webkit-scrollbar-thumb,
+.pf-v6-c-modal-box__body::-webkit-scrollbar-thumb,
+pre::-webkit-scrollbar-thumb,
+.cockpit-scroll-container::-webkit-scrollbar-thumb {
+  background: var(--zfs-card-border);
+  border-radius: 999px;
+}
+
+.pf-v5-c-modal-box__body::-webkit-scrollbar-thumb:hover,
+.pf-v6-c-modal-box__body::-webkit-scrollbar-thumb:hover,
+pre::-webkit-scrollbar-thumb:hover,
+.cockpit-scroll-container::-webkit-scrollbar-thumb:hover {
+  background: var(--zfs-text-secondary);
+}
+
+.pf-v5-c-modal-box__body,
+.pf-v6-c-modal-box__body,
+pre,
+.cockpit-scroll-container {
+  scrollbar-width: thin;
+  scrollbar-color: var(--zfs-card-border) transparent;
+}
+
 .pf-v5-c-modal-box {
   position: relative !important;
   z-index: 10000 !important;
@@ -953,6 +994,7 @@ select:focus-visible {
 .pf-v5-c-modal-box__body {
   flex: 1 1 auto !important;
   overflow-y: auto !important;
+  min-height: 0 !important;
   background-color: var(--zfs-card-bg) !important;
 }
 

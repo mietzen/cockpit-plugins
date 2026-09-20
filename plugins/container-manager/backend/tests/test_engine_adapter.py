@@ -83,13 +83,15 @@ class TestEngineAdapter(unittest.TestCase):
     def test_docker_list_images(self, mock_run):
         # mock list_images then list_containers
         mock_run.side_effect = [
-            (0, '{"ID":"img1","Repository":"nginx","Tag":"latest","Size":"140MB","CreatedAt":"2026-08-15"}\n{"ID":"img2","Repository":"redis","Tag":"alpine","Size":"30MB","CreatedAt":"2026-08-10"}\n', ""),
+            (0, '{"ID":"sha256:abcdef1234567890abcdef1234567890","Repository":"nginx","Tag":"latest","Size":"140MB","CreatedAt":"2026-08-15"}\n{"ID":"img2","Repository":"redis","Tag":"alpine","Size":"30MB","CreatedAt":"2026-08-10"}\n', ""),
             (0, '{"ID":"c1","Names":"web","Image":"nginx:latest"}\n', ""),
         ]
 
         adapter = DockerAdapter()
         images = adapter.list_images()
         self.assertEqual(len(images), 2)
+        self.assertEqual(images[0]["id"], "abcdef1234567890abcdef1234567890")
+        self.assertEqual(images[0]["shortId"], "abcdef123456")
         self.assertEqual(images[0]["repository"], "nginx")
         self.assertTrue(images[0]["inUse"])
         self.assertFalse(images[1]["inUse"])
@@ -152,13 +154,15 @@ class TestEngineAdapter(unittest.TestCase):
     def test_podman_list_images(self, mock_run):
         # mock list_images then list_containers
         mock_run.side_effect = [
-            (0, json.dumps([{"Id": "img1", "RepoTags": ["docker.io/library/alpine:latest"], "Size": 5000000}]), ""),
+            (0, json.dumps([{"Id": "sha256:1234567890abcdef1234567890abcdef", "RepoTags": ["docker.io/library/alpine:latest"], "Size": 5000000}]), ""),
             (0, "[]", ""),
         ]
 
         adapter = PodmanAdapter()
         images = adapter.list_images()
         self.assertEqual(len(images), 1)
+        self.assertEqual(images[0]["id"], "1234567890abcdef1234567890abcdef")
+        self.assertEqual(images[0]["shortId"], "1234567890ab")
         self.assertEqual(images[0]["repository"], "docker.io/library/alpine")
         self.assertEqual(images[0]["tag"], "latest")
 

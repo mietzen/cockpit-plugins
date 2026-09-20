@@ -195,12 +195,22 @@ export const InspectModal: React.FC<InspectModalProps> = ({
   const restartPolicyStr = restartPolicyRetries
     ? `${restartPolicyName} (max retries: ${restartPolicyRetries})`
     : restartPolicyName;
+  const entityId = data?.Id || data?.id || data?.ID || id || '';
+  const cleanEntityId = entityId.startsWith('sha256:') ? entityId.slice(7) : entityId;
+  const imageId = data?.ImageID || data?.ImageId || data?.Image || '';
+  const cleanImageId = typeof imageId === 'string' && imageId.startsWith('sha256:') ? imageId.slice(7) : String(imageId);
 
   return (
     <Modal
       variant={ModalVariant.large}
       width="90%"
-      style={{ maxWidth: '90vw', maxHeight: '90vh' }}
+      style={{
+        maxWidth: '90vw',
+        height: '90vh',
+        maxHeight: '90vh',
+        display: 'flex',
+        flexDirection: 'column',
+      }}
       title={`Inspect: ${titleName}`}
       isOpen={isOpen}
       onClose={onClose}
@@ -227,12 +237,11 @@ export const InspectModal: React.FC<InspectModalProps> = ({
       ) : (
         <div
           style={{
-            maxHeight: 'calc(90vh - 160px)',
-            overflowY: 'auto',
-            paddingRight: '6px',
             display: 'flex',
             flexDirection: 'column',
             gap: '1.25rem',
+            paddingRight: '4px',
+            paddingBottom: '1.25rem',
           }}
         >
           {/* Header Summary Card */}
@@ -245,28 +254,34 @@ export const InspectModal: React.FC<InspectModalProps> = ({
                 style={{ gap: '1rem' }}
               >
                 <FlexItem>
-                  <Flex spaceItems={{ default: 'spaceItemsMd' }} alignItems={{ default: 'alignItemsCenter' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
                     <Title headingLevel="h3" size="lg" style={{ margin: 0, fontWeight: 700 }}>
                       {titleName}
                     </Title>
-                    {kind === 'container' && (
+                    {kind === 'container' && stateStr && stateStr !== 'unknown' && (
                       <StatusBadge variant={getBadgeVariant(stateStr)}>
                         {stateStr.toUpperCase()}
                       </StatusBadge>
                     )}
-                  </Flex>
-                  <div style={{ fontSize: '0.85rem', color: '#8b949e', marginTop: '6px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  </div>
+                  <div style={{ fontSize: '0.85rem', color: '#8b949e', marginTop: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <span>ID:</span>
-                    <HashId id={id} shortId={id} />
+                    <HashId id={cleanEntityId} />
                   </div>
                 </FlexItem>
 
-                {data?.Image && (
+                {cleanImageId && (
                   <FlexItem>
                     <div style={{ fontSize: '0.82rem', color: '#8b949e' }}>Image</div>
-                    <strong style={{ fontSize: '0.9rem', fontFamily: 'monospace' }}>
-                      {String(data.Image)}
-                    </strong>
+                    <div style={{ marginTop: '2px' }}>
+                      {cleanImageId.length === 64 || cleanImageId.length === 12 ? (
+                        <HashId id={cleanImageId} />
+                      ) : (
+                        <strong style={{ fontSize: '0.9rem', fontFamily: 'monospace' }}>
+                          {cleanImageId}
+                        </strong>
+                      )}
+                    </div>
                   </FlexItem>
                 )}
 
@@ -298,6 +313,20 @@ export const InspectModal: React.FC<InspectModalProps> = ({
             <CardBody style={{ padding: 0 }}>
               <Table variant="compact" aria-label="Runtime Properties">
                 <Tbody>
+                  <Tr>
+                    <Td style={{ width: '220px', fontWeight: 600 }}>Full ID / SHA</Td>
+                    <Td>
+                      <HashId id={cleanEntityId} shortId={cleanEntityId} />
+                    </Td>
+                  </Tr>
+                  {cleanImageId && kind === 'container' && (
+                    <Tr>
+                      <Td style={{ fontWeight: 600 }}>Image ID</Td>
+                      <Td>
+                        <HashId id={cleanImageId} shortId={cleanImageId} />
+                      </Td>
+                    </Tr>
+                  )}
                   {kind === 'container' && (
                     <>
                       <Tr>
@@ -600,7 +629,8 @@ export const InspectModal: React.FC<InspectModalProps> = ({
                   padding: '1rem',
                   fontFamily: 'monospace',
                   fontSize: '0.82rem',
-                  maxHeight: '300px',
+                  maxHeight: '400px',
+                  overflowX: 'auto',
                   overflowY: 'auto',
                   whiteSpace: 'pre',
                   margin: 0,

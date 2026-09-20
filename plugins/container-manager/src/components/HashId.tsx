@@ -9,6 +9,8 @@ export interface HashIdProps {
   className?: string;
 }
 
+const SHA256_PREFIX = 'sha256:';
+
 export const HashId: React.FC<HashIdProps> = ({
   id,
   shortId,
@@ -17,26 +19,51 @@ export const HashId: React.FC<HashIdProps> = ({
 }) => {
   const [copied, setCopied] = useState<boolean>(false);
 
-  const cleanId = id || '';
-  let displayText = shortId;
-  if (!displayText) {
-    if (cleanId.startsWith('sha256:')) {
-      displayText = cleanId.slice(7, 19);
-    } else {
-      displayText = cleanId.slice(0, 12);
+  const rawId = id || '';
+  const cleanId = rawId.startsWith(SHA256_PREFIX) ? rawId.slice(SHA256_PREFIX.length) : rawId;
+  const rawShort = shortId || '';
+  const cleanShort = rawShort.startsWith(SHA256_PREFIX) ? rawShort.slice(SHA256_PREFIX.length) : rawShort;
+  const displayText = cleanShort || cleanId.slice(0, 12);
+
+  const fallbackCopy = (text: string) => {
+    const el = document.createElement('textarea');
+    el.value = text;
+    el.setAttribute('readonly', '');
+    el.style.position = 'absolute';
+    el.style.left = '-9999px';
+    document.body.appendChild(el);
+    el.select();
+    try {
+      document.execCommand('copy');
+    } catch {
+      // ignore
     }
-  }
+    document.body.removeChild(el);
+  };
 
   const handleCopy = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!cleanId) return;
-    navigator.clipboard.writeText(cleanId);
+    if (!cleanId) {
+      return;
+    }
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(cleanId).catch(() => {
+        fallbackCopy(cleanId);
+      });
+    } else {
+      fallbackCopy(cleanId);
+    }
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setTimeout(() => {
+      setCopied(false);
+    }, 2000);
   };
 
   return (
-    <Tooltip content={copied ? 'Copied to clipboard!' : `Click to copy: ${cleanId}`}>
+    <Tooltip
+      content={copied ? 'Copied to clipboard!' : `Click to copy: ${cleanId}`}
+      appendTo={() => document.body}
+    >
       <button
         type="button"
         onClick={handleCopy}

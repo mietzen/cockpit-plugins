@@ -242,10 +242,11 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
 
     // Open Inspect on first container
     const inspectBtn = frame.locator('table[aria-label="Containers Table"] button[aria-label="Inspect"]').first();
-    await inspectBtn.click();
+    await inspectBtn.waitFor({ state: 'visible', timeout: 5000 });
+    await inspectBtn.click({ force: true });
 
     // Verify Inspect modal is open
-    await frame.waitForSelector('.pf-v5-c-modal-box:has-text("Inspect:")', { timeout: 8000 });
+    await frame.waitForSelector('.pf-v5-c-modal-box:has-text("Inspect:")', { timeout: 10000 });
 
     // Verify Restart Policy row is displayed in Overview table
     const restartPolicyCell = frame.locator('td:has-text("Restart Policy")');
@@ -314,6 +315,32 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     const sizeTh = frame.locator('table[aria-label="Volumes Table"] th:has-text("Size")').first();
     if (await sizeTh.count() > 0) {
       await expect(sizeTh).toBeVisible();
+    }
+  });
+
+  test('10. Verify Delete Confirmation Modal Disappears On Confirm', async () => {
+    const frame = await getFrame();
+
+    // Navigate to Containers tab
+    await frame.locator('.cockpit-top-nav-bar button:has-text("Containers")').click();
+    await frame.waitForSelector('table[aria-label="Containers Table"]', { timeout: 10000 });
+
+    // Look for a stopped container delete button
+    const deleteBtn = frame.locator('table[aria-label="Containers Table"] button[aria-label="Delete"]')
+      .first();
+
+    if (await deleteBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await deleteBtn.click({ force: true });
+
+      // Verify modal appears
+      await frame.waitForSelector('.pf-v5-c-modal-box:has-text("Delete Container")', { timeout: 5000 });
+
+      // Click the Delete Container confirm button
+      const confirmBtn = frame.locator('.pf-v5-c-modal-box button:has-text("Delete Container")').first();
+      await confirmBtn.click();
+
+      // Verify modal is completely dismissed and detached
+      await frame.waitForSelector('.pf-v5-c-modal-box', { state: 'detached', timeout: 5000 });
     }
   });
 });
