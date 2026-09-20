@@ -149,9 +149,15 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     await frame.waitForSelector('h1:has-text("Container Settings")', { timeout: 10000 });
 
     // Test engine activation button
-    const activateBtn = frame.locator('button:has-text("Activate Docker"), button:has-text("Activate Podman")').first();
-    if (await activateBtn.count() > 0) {
-      await activateBtn.click();
+    const activatePodmanBtn = frame.locator('button:has-text("Activate Podman")').first();
+    if (await activatePodmanBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await activatePodmanBtn.click();
+      await frame.waitForSelector('.pf-v5-c-alert.pf-m-success', { timeout: 5000 }).catch(() => {});
+    }
+
+    const activateDockerBtn = frame.locator('button:has-text("Activate Docker")').first();
+    if (await activateDockerBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await activateDockerBtn.click();
       await frame.waitForSelector('.pf-v5-c-alert.pf-m-success', { timeout: 5000 }).catch(() => {});
     }
 

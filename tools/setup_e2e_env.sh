@@ -99,8 +99,11 @@ sudo chmod -R 755 /usr/share/cockpit/* || true
 sudo chmod -R 755 /usr/libexec/cockpit-* || true
 
 # Pre-configure test file sharing fixtures
-sudo mkdir -p /srv/samba/test /srv/nfs/test /srv/nfs/test_crud /tank/ansible
-if [ -f /etc/samba/smb.conf ]; then
+sudo mkdir -p /srv/samba/test /srv/nfs/test /srv/nfs/test_crud /tank/ansible /etc/samba
+if [ ! -f /etc/samba/smb.conf ]; then
+    sudo touch /etc/samba/smb.conf
+fi
+if ! grep -q "ansible_locked_share" /etc/samba/smb.conf 2>/dev/null; then
     sudo bash -c 'cat << "EOF" >> /etc/samba/smb.conf
 
 [testshare]
@@ -118,6 +121,7 @@ fi
 sudo mkdir -p /etc/exports.d
 echo "/srv/nfs/test 192.168.40.0/24(rw,sync,no_subtree_check,root_squash)" | sudo tee /etc/exports.d/cockpit.exports
 echo -e "password\npassword" | sudo smbpasswd -a -s test-user 2>/dev/null || true
+sudo systemctl restart smbd nmbd 2>/dev/null || true
 
 # Pre-configure Container Manager fixtures if docker/podman is installed
 if command -v docker &>/dev/null; then
@@ -129,6 +133,14 @@ if command -v docker &>/dev/null; then
     sudo docker create --name e2e-stopped alpine:latest echo "finished" 2>/dev/null || true
     sudo docker volume create e2e-data-volume 2>/dev/null || true
     sudo docker network create e2e-custom-net 2>/dev/null || true
+fi
+
+if command -v podman &>/dev/null; then
+    echo "==> Setting up Podman test fixtures..."
+    sudo podman pull alpine:latest 2>/dev/null || true
+    sudo podman rm -f e2e-web e2e-stopped 2>/dev/null || true
+    sudo podman run -d --name e2e-web -p 8082:80 alpine:latest sh -c "while true; do echo 'server live'; sleep 10; done" 2>/dev/null || true
+    sudo podman create --name e2e-stopped alpine:latest echo "finished" 2>/dev/null || true
 fi
 
 # 5. Start Cockpit service
