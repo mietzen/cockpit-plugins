@@ -200,7 +200,13 @@ export const InspectModal: React.FC<InspectModalProps> = ({
     <Modal
       variant={ModalVariant.large}
       width="90%"
-      style={{ maxWidth: '90vw', maxHeight: '90vh' }}
+      style={{
+        maxWidth: '90vw',
+        height: '90vh',
+        maxHeight: '90vh',
+        display: 'flex',
+        flexDirection: 'column',
+      }}
       title={`Inspect: ${titleName}`}
       isOpen={isOpen}
       onClose={onClose}
@@ -227,12 +233,11 @@ export const InspectModal: React.FC<InspectModalProps> = ({
       ) : (
         <div
           style={{
-            maxHeight: 'calc(90vh - 160px)',
-            overflowY: 'auto',
-            paddingRight: '6px',
             display: 'flex',
             flexDirection: 'column',
             gap: '1.25rem',
+            paddingRight: '4px',
+            paddingBottom: '1.25rem',
           }}
         >
           {/* Header Summary Card */}

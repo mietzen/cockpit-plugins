@@ -936,6 +936,32 @@ select:focus-visible {
   content: none !important;
 }
 
+/* =========================================================
+   Scrollbars: Clean, Sleek & Distinct
+   ========================================================= */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(128, 128, 128, 0.4);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(128, 128, 128, 0.6);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(128, 128, 128, 0.4) transparent;
+}
+
 .pf-v5-c-modal-box {
   position: relative !important;
   z-index: 10000 !important;
@@ -953,6 +979,7 @@ select:focus-visible {
 .pf-v5-c-modal-box__body {
   flex: 1 1 auto !important;
   overflow-y: auto !important;
+  min-height: 0 !important;
   background-color: var(--zfs-card-bg) !important;
 }
 
