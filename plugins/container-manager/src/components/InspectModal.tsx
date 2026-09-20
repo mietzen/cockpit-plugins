@@ -192,6 +192,9 @@ export const InspectModal: React.FC<InspectModalProps> = ({
     'no';
   const restartPolicyRetries =
     restartPolicyObj?.MaximumRetryCount || restartPolicyObj?.maximumRetryCount;
+  const restartPolicyStr = restartPolicyRetries
+    ? `${restartPolicyName} (max retries: ${restartPolicyRetries})`
+    : restartPolicyName;
   const entityId = data?.Id || data?.id || data?.ID || id || '';
   const cleanEntityId = entityId.startsWith('sha256:') ? entityId.slice(7) : entityId;
   const imageId = data?.ImageID || data?.ImageId || data?.Image || '';
