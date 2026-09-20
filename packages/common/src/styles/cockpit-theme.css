@@ -591,12 +591,23 @@ select.pf-v5-c-form-control {
 .pf-v5-c-form-control::before,
 .pf-v5-c-form-control::after,
 .pf-v5-c-text-input-group::before,
-.pf-v5-c-text-input-group::after {
+.pf-v5-c-text-input-group::after,
+.pf-v5-c-menu-toggle::before,
+.pf-v5-c-menu-toggle::after,
+.pf-v5-c-select .pf-v5-c-menu-toggle::before,
+.pf-v5-c-select .pf-v5-c-menu-toggle::after {
   display: none !important;
   content: none !important;
   border: none !important;
+  border-bottom: none !important;
   box-shadow: none !important;
   outline: none !important;
+}
+
+.pf-v5-c-menu-toggle {
+  --pf-v5-c-menu-toggle--BorderBottomColor: transparent !important;
+  --pf-v5-c-menu-toggle--BorderBottomWidth: 0 !important;
+  box-shadow: none !important;
 }
 
 .pf-v5-c-form-control:focus,
