@@ -83,7 +83,10 @@ export const ContainerLogsModal: React.FC<ContainerLogsModalProps> = ({
       setIsStreaming(false);
     }).catch((err: any) => {
       setIsStreaming(false);
-      setError(err?.message || String(err));
+      const msg = err?.message || String(err);
+      if (msg !== 'terminate' && !msg.includes('terminate')) {
+        setError(msg);
+      }
     });
   };
 

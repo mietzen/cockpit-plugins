@@ -127,6 +127,7 @@ export const XtermTerminal = forwardRef<XtermTerminalHandle, XtermTerminalProps>
 
       term.open(containerRef.current);
       fitAddon.fit();
+      term.focus();
 
       termRef.current = term;
       fitAddonRef.current = fitAddon;
@@ -169,6 +170,8 @@ export const XtermTerminal = forwardRef<XtermTerminalHandle, XtermTerminalProps>
       <div
         ref={containerRef}
         className={className}
+        onClick={() => termRef.current?.focus()}
+        tabIndex={0}
         style={{
           width: '100%',
           height: '100%',
@@ -177,6 +180,7 @@ export const XtermTerminal = forwardRef<XtermTerminalHandle, XtermTerminalProps>
           borderRadius: '6px',
           backgroundColor: isDark ? '#151515' : '#f8f9fa',
           padding: '4px',
+          outline: 'none',
           ...style,
         }}
       />

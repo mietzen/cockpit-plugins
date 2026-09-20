@@ -83,9 +83,16 @@ export const ContainerTerminalModal: React.FC<ContainerTerminalModalProps> = ({
       terminalRef.current?.writeln('\r\n\x1b[1;31m[Process exited]\x1b[0m');
     }).catch((err: any) => {
       setIsConnected(false);
-      setError(err?.message || String(err));
-      terminalRef.current?.writeln(`\r\n\x1b[1;31m[Error: ${err?.message || err}]\x1b[0m`);
+      const msg = err?.message || String(err);
+      if (msg !== 'terminate' && !msg.includes('terminate')) {
+        setError(msg);
+        terminalRef.current?.writeln(`\r\n\x1b[1;31m[Error: ${msg}]\x1b[0m`);
+      }
     });
+
+    setTimeout(() => {
+      terminalRef.current?.focus();
+    }, 200);
   };
 
   useEffect(() => {

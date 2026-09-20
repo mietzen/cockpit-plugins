@@ -20,7 +20,9 @@ class TestEngineAdapter(unittest.TestCase):
         mock_which.side_effect = lambda cmd: f"/usr/bin/{cmd}" if cmd in ("docker", "podman") else None
         mock_run.side_effect = [
             (0, "Docker version 27.1.1, build 6312585", ""),
+            (0, "Server Version: 27.1.1", ""),
             (0, "podman version 5.2.0", ""),
+            (0, "version: 5.2.0", ""),
         ]
         mock_svc.side_effect = [
             {"active": True, "state": "active", "enabled": True},
@@ -33,7 +35,16 @@ class TestEngineAdapter(unittest.TestCase):
         self.assertTrue(res["docker"]["active"])
         self.assertTrue(res["podman"]["installed"])
         self.assertEqual(res["podman"]["version"], "5.2.0")
+        self.assertTrue(res["podman"]["active"])
         self.assertEqual(res["active_engine"], "docker")
+
+    @patch("engine_adapter.run_cmd")
+    def test_inspect_entity(self, mock_run):
+        mock_run.return_value = (0, json.dumps([{"Id": "c1", "State": {"Status": "running"}}]), "")
+        adapter = DockerAdapter()
+        res = adapter.inspect_entity("container", "c1")
+        self.assertEqual(res["status"], "success")
+        self.assertEqual(res["data"]["Id"], "c1")
 
     @patch("shutil.which", return_value=None)
     @patch("engine_adapter.get_service_status", return_value={"active": False})

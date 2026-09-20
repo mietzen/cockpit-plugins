@@ -20,35 +20,49 @@ def detect_engines() -> Dict[str, Any]:
     podman_bin = shutil.which("podman")
 
     docker_version = ""
+    docker_active = False
     if docker_bin:
         rc, out, _ = run_cmd([docker_bin, "--version"])
         if rc == 0:
             docker_version = out.replace("Docker version", "").split(",")[0].strip()
+        info_rc, _, _ = run_cmd([docker_bin, "info"], timeout=5)
+        docker_active = info_rc == 0
 
     podman_version = ""
+    podman_active = False
     if podman_bin:
         rc, out, _ = run_cmd([podman_bin, "--version"])
         if rc == 0:
             podman_version = out.replace("podman version", "").strip()
+        info_rc, _, _ = run_cmd([podman_bin, "info"], timeout=5)
+        podman_active = info_rc == 0 or podman_version != ""
 
     docker_svc = get_service_status("docker")
     podman_svc = get_service_status("podman")
 
-    preferred = "docker" if docker_bin else ("podman" if podman_bin else "none")
+    preferred = (
+        "docker"
+        if (docker_bin and docker_active)
+        else (
+            "podman"
+            if (podman_bin and podman_active)
+            else ("docker" if docker_bin else ("podman" if podman_bin else "none"))
+        )
+    )
 
     return {
         "docker": {
             "installed": docker_bin is not None,
             "version": docker_version,
             "path": docker_bin or "",
-            "active": docker_svc.get("active", False),
+            "active": docker_active or docker_svc.get("active", False),
             "service": docker_svc,
         },
         "podman": {
             "installed": podman_bin is not None,
             "version": podman_version,
             "path": podman_bin or "",
-            "active": podman_svc.get("active", False),
+            "active": podman_active or podman_svc.get("active", False),
             "service": podman_svc,
         },
         "active_engine": preferred,
@@ -77,6 +91,29 @@ class ContainerEngineAdapter(ABC):
     @abstractmethod
     def list_networks(self) -> List[Dict[str, Any]]:
         pass
+
+    def inspect_entity(self, kind: str, id_or_name: str) -> Dict[str, Any]:
+        if kind == "container":
+            cmd = [self.bin, "inspect", id_or_name]
+        elif kind == "image":
+            cmd = [self.bin, "image", "inspect", id_or_name]
+        elif kind == "volume":
+            cmd = [self.bin, "volume", "inspect", id_or_name]
+        elif kind == "network":
+            cmd = [self.bin, "network", "inspect", id_or_name]
+        else:
+            cmd = [self.bin, "inspect", id_or_name]
+
+        rc, out, err = run_cmd(cmd, timeout=30)
+        if rc != 0:
+            return {"status": "error", "error": err or out}
+
+        try:
+            parsed = json.loads(out)
+            item = parsed[0] if isinstance(parsed, list) and len(parsed) > 0 else parsed
+            return {"status": "success", "data": item, "raw": out}
+        except Exception:
+            return {"status": "success", "data": {}, "raw": out}
 
     def container_action(self, container_id: str, action: str) -> Dict[str, Any]:
         valid_actions = {"start", "stop", "kill", "restart"}

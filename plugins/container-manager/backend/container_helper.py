@@ -46,6 +46,11 @@ def cmd_get_overview(args: argparse.Namespace) -> Dict[str, Any]:
     }
 
 
+def cmd_inspect_entity(args: argparse.Namespace) -> Dict[str, Any]:
+    adapter = get_adapter(args.engine)
+    return adapter.inspect_entity(args.kind, args.id)
+
+
 def cmd_container_action(args: argparse.Namespace) -> Dict[str, Any]:
     adapter = get_adapter(args.engine)
     return adapter.container_action(args.id, args.action)
@@ -93,6 +98,13 @@ def main() -> None:
     p_overview = subparsers.add_parser("get_overview")
     p_overview.add_argument("--engine", default="auto", choices=["auto", "docker", "podman"])
     p_overview.set_defaults(func=cmd_get_overview)
+
+    # inspect_entity
+    p_inspect = subparsers.add_parser("inspect_entity")
+    p_inspect.add_argument("--engine", default="auto")
+    p_inspect.add_argument("--kind", default="container", choices=["container", "image", "volume", "network"])
+    p_inspect.add_argument("--id", required=True, help="Entity ID or name")
+    p_inspect.set_defaults(func=cmd_inspect_entity)
 
     # container_action
     p_action = subparsers.add_parser("container_action")

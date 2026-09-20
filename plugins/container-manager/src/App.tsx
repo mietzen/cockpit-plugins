@@ -1,9 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Tabs,
-  Tab,
-  TabTitleText,
-  Badge,
   Alert,
   EmptyState,
   EmptyStateBody,
@@ -20,6 +16,7 @@ import {
   VolumeItem,
   NetworkItem,
   EngineType,
+  TlsStatus,
 } from './types';
 import {
   containerApi,
@@ -27,15 +24,17 @@ import {
   DEFAULT_EMPTY_OVERVIEW,
 } from './api/containerClient';
 
-import { Header } from './components/Header';
+import { Navigation } from './components/Navigation';
+import { DashboardView } from './components/DashboardView';
 import { ContainersTab } from './components/ContainersTab';
 import { ImagesTab } from './components/ImagesTab';
 import { VolumesTab } from './components/VolumesTab';
 import { NetworksTab } from './components/NetworksTab';
+import { SettingsView } from './components/SettingsView';
+import { InspectModal } from './components/InspectModal';
 import { ContainerTerminalModal } from './components/ContainerTerminalModal';
 import { ContainerLogsModal } from './components/ContainerLogsModal';
 import { SystemPruneModal } from './components/SystemPruneModal';
-import { RemoteApiModal } from './components/RemoteApiModal';
 
 export const App: React.FC = () => {
   const isDark = useCockpitTheme();
@@ -43,8 +42,9 @@ export const App: React.FC = () => {
   const [overview, setOverview] = useState<ContainerOverview>(
     typeof window !== 'undefined' && window.cockpit ? DEFAULT_EMPTY_OVERVIEW : DEFAULT_MOCK_OVERVIEW
   );
+  const [tlsStatus, setTlsStatus] = useState<TlsStatus | null>(null);
   const [activeEngine, setActiveEngine] = useState<EngineType>('auto');
-  const [activeTab, setActiveTab] = useState<string>('containers');
+  const [activeView, setActiveView] = useState<string>('dashboard');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [bannerError, setBannerError] = useState<string | null>(null);
 
@@ -52,7 +52,19 @@ export const App: React.FC = () => {
   const [terminalContainer, setTerminalContainer] = useState<ContainerItem | null>(null);
   const [logsContainer, setLogsContainer] = useState<ContainerItem | null>(null);
   const [systemPruneOpen, setSystemPruneOpen] = useState<boolean>(false);
-  const [remoteApiOpen, setRemoteApiOpen] = useState<boolean>(false);
+
+  // Inspect modal state
+  const [inspectModalState, setInspectModalState] = useState<{
+    isOpen: boolean;
+    kind: 'container' | 'image' | 'volume' | 'network';
+    id: string;
+    name?: string;
+  }>({
+    isOpen: false,
+    kind: 'container',
+    id: '',
+    name: '',
+  });
 
   // Generic Confirm Modal state
   const [confirmModal, setConfirmModal] = useState<{
@@ -69,25 +81,27 @@ export const App: React.FC = () => {
     onConfirm: async () => {},
   });
 
-  const loadData = async (engineToUse?: EngineType) => {
+  const loadData = useCallback(async (engineToUse?: EngineType) => {
     setIsLoading(true);
     setBannerError(null);
     try {
       const data = await containerApi.getOverview(engineToUse);
       setOverview(data);
-      if (data.active_engine && data.active_engine !== 'none') {
-        setActiveEngine(data.active_engine);
-      }
+      const effEngine = (engineToUse && engineToUse !== 'auto') ? engineToUse : (data.active_engine && data.active_engine !== 'none' ? data.active_engine : 'docker');
+      setActiveEngine(effEngine);
+
+      const tls = await containerApi.getTlsStatus(effEngine).catch(() => null);
+      setTlsStatus(tls);
     } catch (err: any) {
       setBannerError(err?.message || 'Failed to load container engine overview');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
 
   const handleSelectEngine = (newEngine: EngineType) => {
     setActiveEngine(newEngine);
@@ -104,7 +118,7 @@ export const App: React.FC = () => {
       if (res?.status === 'error') {
         setBannerError(res.error || `Failed to ${action} container`);
       } else {
-        await loadData();
+        await loadData(activeEngine);
       }
     } catch (err: any) {
       setBannerError(err?.message || `Failed to ${action} container`);
@@ -131,7 +145,7 @@ export const App: React.FC = () => {
             setBannerError(res.error || 'Failed to delete container');
           } else {
             setConfirmModal((prev) => ({ ...prev, isOpen: false }));
-            await loadData();
+            await loadData(activeEngine);
           }
         } catch (e: any) {
           setBannerError(e?.message || 'Failed to delete container');
@@ -158,7 +172,7 @@ export const App: React.FC = () => {
             setBannerError(res.error || 'Failed to delete image');
           } else {
             setConfirmModal((prev) => ({ ...prev, isOpen: false }));
-            await loadData();
+            await loadData(activeEngine);
           }
         } catch (e: any) {
           setBannerError(e?.message || 'Failed to delete image');
@@ -186,7 +200,7 @@ export const App: React.FC = () => {
             setBannerError(res.error || 'Failed to delete volume');
           } else {
             setConfirmModal((prev) => ({ ...prev, isOpen: false }));
-            await loadData();
+            await loadData(activeEngine);
           }
         } catch (e: any) {
           setBannerError(e?.message || 'Failed to delete volume');
@@ -213,7 +227,7 @@ export const App: React.FC = () => {
             setBannerError(res.error || 'Failed to delete network');
           } else {
             setConfirmModal((prev) => ({ ...prev, isOpen: false }));
-            await loadData();
+            await loadData(activeEngine);
           }
         } catch (e: any) {
           setBannerError(e?.message || 'Failed to delete network');
@@ -236,7 +250,7 @@ export const App: React.FC = () => {
             setBannerError(res.error || `Failed to prune ${kind}s`);
           } else {
             setConfirmModal((prev) => ({ ...prev, isOpen: false }));
-            await loadData();
+            await loadData(activeEngine);
           }
         } catch (e: any) {
           setBannerError(e?.message || `Failed to prune ${kind}s`);
@@ -253,7 +267,7 @@ export const App: React.FC = () => {
         setBannerError(res.error || 'System prune failed');
       } else {
         setSystemPruneOpen(false);
-        await loadData();
+        await loadData(activeEngine);
       }
     } catch (e: any) {
       setBannerError(e?.message || 'System prune failed');
@@ -262,19 +276,34 @@ export const App: React.FC = () => {
     }
   };
 
+  const handleOpenInspect = (kind: 'container' | 'image' | 'volume' | 'network', id: string, name?: string) => {
+    setInspectModalState({
+      isOpen: true,
+      kind,
+      id,
+      name: name || id,
+    });
+  };
+
   const isNoneInstalled =
     !overview.engines.docker.installed && !overview.engines.podman.installed;
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: 'var(--pf-v5-global--BackgroundColor--100, #0d1117)' }}>
-      <Header
+      {/* Top Sticky Navigation Bar */}
+      <Navigation
+        activeView={activeView}
+        onSelectView={(v) => setActiveView(v)}
         engines={overview.engines}
         activeEngine={activeEngine}
         onSelectEngine={handleSelectEngine}
-        onRefresh={() => loadData()}
+        onRefresh={() => loadData(activeEngine)}
         onOpenSystemPrune={() => setSystemPruneOpen(true)}
-        onOpenRemoteApi={() => setRemoteApiOpen(true)}
         isLoading={isLoading}
+        containerCount={overview.containers.length}
+        imageCount={overview.images.length}
+        volumeCount={overview.volumes.length}
+        networkCount={overview.networks.length}
       />
 
       {bannerError && (
@@ -303,7 +332,7 @@ export const App: React.FC = () => {
               style={{
                 marginTop: '1.5rem',
                 padding: '1rem',
-                backgroundColor: '#161b22',
+                backgroundColor: 'var(--pf-v5-global--BackgroundColor--200, #161b22)',
                 borderRadius: '6px',
                 fontFamily: 'monospace',
                 fontSize: '0.9rem',
@@ -316,90 +345,82 @@ export const App: React.FC = () => {
               # Or install Docker Engine<br />
               sudo apt-get install -y docker.io || sudo dnf install -y docker-ce
             </div>
-            <Button variant="primary" style={{ marginTop: '1.5rem' }} onClick={() => loadData()}>
+            <Button variant="primary" style={{ marginTop: '1.5rem' }} onClick={() => loadData(activeEngine)}>
               Re-check Installed Engines
             </Button>
           </EmptyState>
         </div>
       ) : (
         <div>
-          <Tabs
-            activeKey={activeTab}
-            onSelect={(_e, key) => setActiveTab(String(key))}
-            isBox
-            style={{ padding: '0 1.5rem', marginTop: '0.5rem' }}
-          >
-            <Tab
-              eventKey="containers"
-              title={
-                <TabTitleText>
-                  Containers <Badge isRead>{overview.containers.length}</Badge>
-                </TabTitleText>
-              }
-            />
-            <Tab
-              eventKey="images"
-              title={
-                <TabTitleText>
-                  Images <Badge isRead>{overview.images.length}</Badge>
-                </TabTitleText>
-              }
-            />
-            <Tab
-              eventKey="volumes"
-              title={
-                <TabTitleText>
-                  Volumes <Badge isRead>{overview.volumes.length}</Badge>
-                </TabTitleText>
-              }
-            />
-            <Tab
-              eventKey="networks"
-              title={
-                <TabTitleText>
-                  Networks <Badge isRead>{overview.networks.length}</Badge>
-                </TabTitleText>
-              }
-            />
-          </Tabs>
-
           {/* Persistent in-memory views to avoid layout thrashing and 0ms redraw */}
-          <div style={{ display: activeTab === 'containers' ? 'block' : 'none' }}>
+          <div style={{ display: activeView === 'dashboard' ? 'block' : 'none' }}>
+            <DashboardView
+              engines={overview.engines}
+              activeEngine={activeEngine}
+              containers={overview.containers}
+              images={overview.images}
+              volumes={overview.volumes}
+              networks={overview.networks}
+              tlsStatus={tlsStatus}
+              onNavigateTab={(tab) => setActiveView(tab)}
+              onAction={handleContainerAction}
+              onOpenTerminal={(c) => setTerminalContainer(c)}
+              onOpenLogs={(c) => setLogsContainer(c)}
+              onOpenInspect={handleOpenInspect}
+              onOpenSystemPrune={() => setSystemPruneOpen(true)}
+            />
+          </div>
+
+          <div style={{ display: activeView === 'containers' ? 'block' : 'none' }}>
             <ContainersTab
               containers={overview.containers}
               onAction={handleContainerAction}
               onDelete={handleDeleteContainer}
               onOpenTerminal={(c) => setTerminalContainer(c)}
               onOpenLogs={(c) => setLogsContainer(c)}
+              onOpenInspect={(kind, id, name) => handleOpenInspect(kind, id, name)}
               onPruneStopped={() => handlePruneEntity('container', 'Prune Stopped Containers')}
               isLoading={isLoading}
             />
           </div>
 
-          <div style={{ display: activeTab === 'images' ? 'block' : 'none' }}>
+          <div style={{ display: activeView === 'images' ? 'block' : 'none' }}>
             <ImagesTab
               images={overview.images}
               onDelete={handleDeleteImage}
               onPruneUnused={() => handlePruneEntity('image', 'Prune Unused Images')}
+              onOpenInspect={handleOpenInspect}
               isLoading={isLoading}
             />
           </div>
 
-          <div style={{ display: activeTab === 'volumes' ? 'block' : 'none' }}>
+          <div style={{ display: activeView === 'volumes' ? 'block' : 'none' }}>
             <VolumesTab
               volumes={overview.volumes}
               onDelete={handleDeleteVolume}
               onPruneUnused={() => handlePruneEntity('volume', 'Prune Unused Volumes')}
+              onOpenInspect={handleOpenInspect}
               isLoading={isLoading}
             />
           </div>
 
-          <div style={{ display: activeTab === 'networks' ? 'block' : 'none' }}>
+          <div style={{ display: activeView === 'networks' ? 'block' : 'none' }}>
             <NetworksTab
               networks={overview.networks}
               onDelete={handleDeleteNetwork}
               onPruneUnused={() => handlePruneEntity('network', 'Prune Unused Networks')}
+              onOpenInspect={handleOpenInspect}
               isLoading={isLoading}
+            />
+          </div>
+
+          <div style={{ display: activeView === 'settings' ? 'block' : 'none' }}>
+            <SettingsView
+              engines={overview.engines}
+              activeEngine={activeEngine}
+              onSelectEngine={handleSelectEngine}
+              onOpenSystemPrune={() => setSystemPruneOpen(true)}
+              onRefresh={() => loadData(activeEngine)}
             />
           </div>
         </div>
@@ -423,6 +444,16 @@ export const App: React.FC = () => {
         onClose={() => setLogsContainer(null)}
       />
 
+      {/* Inspect Modal */}
+      <InspectModal
+        isOpen={inspectModalState.isOpen}
+        kind={inspectModalState.kind}
+        id={inspectModalState.id}
+        name={inspectModalState.name}
+        activeEngine={activeEngine}
+        onClose={() => setInspectModalState((prev) => ({ ...prev, isOpen: false }))}
+      />
+
       {/* System Prune Modal */}
       <SystemPruneModal
         isOpen={systemPruneOpen}
@@ -430,13 +461,6 @@ export const App: React.FC = () => {
         onPrune={handleSystemPrune}
         onClose={() => setSystemPruneOpen(false)}
         isLoading={isLoading}
-      />
-
-      {/* Remote API & TLS Modal */}
-      <RemoteApiModal
-        isOpen={remoteApiOpen}
-        activeEngine={activeEngine}
-        onClose={() => setRemoteApiOpen(false)}
       />
 
       {/* Generic Confirmation Modal */}

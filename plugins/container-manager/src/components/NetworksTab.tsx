@@ -17,7 +17,7 @@ import {
   Title,
   Tooltip,
 } from '@patternfly/react-core';
-import { TrashIcon } from '@patternfly/react-icons';
+import { TrashIcon, InfoCircleIcon } from '@patternfly/react-icons';
 import { StatusBadge } from '@cockpit-plugins/common';
 import { NetworkItem } from '../types';
 
@@ -25,6 +25,7 @@ export interface NetworksTabProps {
   networks: NetworkItem[];
   onDelete: (network: NetworkItem) => void;
   onPruneUnused: () => void;
+  onOpenInspect: (kind: 'network', id: string, name?: string) => void;
   isLoading?: boolean;
 }
 
@@ -32,6 +33,7 @@ export const NetworksTab: React.FC<NetworksTabProps> = ({
   networks,
   onDelete,
   onPruneUnused,
+  onOpenInspect,
   isLoading = false,
 }) => {
   const [filterText, setFilterText] = useState('');
@@ -95,9 +97,9 @@ export const NetworksTab: React.FC<NetworksTabProps> = ({
                 <Th width={25}>Network Name</Th>
                 <Th width={15}>Driver</Th>
                 <Th width={15}>Scope</Th>
-                <Th width={25}>Subnet</Th>
+                <Th width={20}>Subnet</Th>
                 <Th width={10}>Type</Th>
-                <Th width={10} style={{ textAlign: 'right' }}>Action</Th>
+                <Th width={15} style={{ textAlign: 'right' }}>Actions</Th>
               </Tr>
             </Thead>
             <Tbody>
@@ -130,25 +132,34 @@ export const NetworksTab: React.FC<NetworksTabProps> = ({
                         {net.isBuiltIn ? 'System' : 'Custom'}
                       </StatusBadge>
                     </Td>
-                    <Td dataLabel="Action" style={{ textAlign: 'right' }}>
-                      <Tooltip
-                        content={
-                          net.isBuiltIn
-                            ? 'Default system networks cannot be deleted'
-                            : net.inUse
-                            ? 'Network currently has attached containers'
-                            : 'Delete network'
-                        }
-                      >
-                        <Button
-                          variant="plain"
-                          icon={<TrashIcon />}
-                          isDisabled={!canDelete || isLoading}
-                          onClick={() => onDelete(net)}
-                          aria-label="Delete network"
-                          style={{ color: canDelete ? 'var(--pf-v5-global--danger-color--100, #ff5555)' : undefined }}
-                        />
-                      </Tooltip>
+                    <Td dataLabel="Actions" style={{ textAlign: 'right' }}>
+                      <Flex justifyContent={{ default: 'justifyContentFlexEnd' }} spaceItems={{ default: 'spaceItemsXs' }}>
+                        <Tooltip content="Inspect Network Details">
+                          <Button
+                            variant="plain"
+                            icon={<InfoCircleIcon />}
+                            onClick={() => onOpenInspect('network', net.id || net.name, net.name)}
+                            aria-label="Inspect network"
+                          />
+                        </Tooltip>
+                        <Tooltip
+                          content={
+                            net.isBuiltIn
+                              ? 'Default system networks cannot be deleted'
+                              : net.inUse
+                              ? 'Network currently has attached containers'
+                              : 'Delete network'
+                          }
+                        >
+                          <Button
+                            variant="plain"
+                            icon={<TrashIcon style={{ color: canDelete ? 'var(--pf-v5-global--danger-color--100, #ff5555)' : '#8b949e' }} />}
+                            isDisabled={!canDelete || isLoading}
+                            onClick={() => onDelete(net)}
+                            aria-label="Delete network"
+                          />
+                        </Tooltip>
+                      </Flex>
                     </Td>
                   </Tr>
                 );

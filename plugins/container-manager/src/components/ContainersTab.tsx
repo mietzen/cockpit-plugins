@@ -15,22 +15,16 @@ import {
   EmptyState,
   EmptyStateBody,
   Title,
-  Dropdown,
-  DropdownList,
-  DropdownItem,
-  MenuToggle,
-  MenuToggleElement,
   Tooltip,
 } from '@patternfly/react-core';
 import {
   PlayIcon,
   StopIcon,
   SyncAltIcon,
-  TimesCircleIcon,
   TerminalIcon,
   FileAltIcon,
   TrashIcon,
-  EllipsisVIcon,
+  InfoCircleIcon,
 } from '@patternfly/react-icons';
 import { StatusBadge, BadgeVariant } from '@cockpit-plugins/common';
 import { ContainerItem } from '../types';
@@ -41,6 +35,7 @@ export interface ContainersTabProps {
   onDelete: (container: ContainerItem) => void;
   onOpenTerminal: (container: ContainerItem) => void;
   onOpenLogs: (container: ContainerItem) => void;
+  onOpenInspect: (kind: 'container', id: string, name?: string) => void;
   onPruneStopped: () => void;
   isLoading?: boolean;
 }
@@ -51,11 +46,11 @@ export const ContainersTab: React.FC<ContainersTabProps> = ({
   onDelete,
   onOpenTerminal,
   onOpenLogs,
+  onOpenInspect,
   onPruneStopped,
   isLoading = false,
 }) => {
   const [filterText, setFilterText] = useState('');
-  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
 
   const filteredContainers = containers.filter(
     (c) =>
@@ -131,15 +126,15 @@ export const ContainersTab: React.FC<ContainersTabProps> = ({
                 <Th width={15}>State</Th>
                 <Th width={20}>Name</Th>
                 <Th width={20}>Image</Th>
-                <Th width={20}>Ports</Th>
-                <Th width={15}>Created</Th>
-                <Th width={10} style={{ textAlign: 'right' }}>Actions</Th>
+                <Th width={15}>Ports</Th>
+                <Th width={10}>Created</Th>
+                <Th width={20} style={{ textAlign: 'right' }}>Actions</Th>
               </Tr>
             </Thead>
             <Tbody>
               {filteredContainers.map((c) => {
                 const isRunning = c.state === 'running';
-                const isOpen = openDropdownId === c.id;
+                const canDelete = !isRunning && c.state !== 'paused';
 
                 return (
                   <Tr key={c.id}>
@@ -168,103 +163,73 @@ export const ContainersTab: React.FC<ContainersTabProps> = ({
                       <span style={{ fontSize: '0.85rem' }}>{c.created}</span>
                     </Td>
                     <Td dataLabel="Actions" style={{ textAlign: 'right' }}>
-                      <Dropdown
-                        popperProps={{ appendTo: () => document.body, position: 'right' }}
-                        isOpen={isOpen}
-                        onOpenChange={(open) => setOpenDropdownId(open ? c.id : null)}
-                        toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
-                          <MenuToggle
-                            ref={toggleRef}
-                            variant="plain"
-                            onClick={() => setOpenDropdownId(isOpen ? null : c.id)}
-                            isExpanded={isOpen}
-                            aria-label="Actions"
-                          >
-                            <EllipsisVIcon />
-                          </MenuToggle>
-                        )}
-                      >
-                        <DropdownList>
-                          {isRunning ? (
-                            <>
-                              <DropdownItem
-                                key="stop"
+                      <Flex justifyContent={{ default: 'justifyContentFlexEnd' }} spaceItems={{ default: 'spaceItemsXs' }}>
+                        {isRunning ? (
+                          <>
+                            <Tooltip content="Stop Container">
+                              <Button
+                                variant="plain"
                                 icon={<StopIcon />}
-                                onClick={() => {
-                                  onAction(c.id, 'stop');
-                                  setOpenDropdownId(null);
-                                }}
-                              >
-                                Stop
-                              </DropdownItem>
-                              <DropdownItem
-                                key="restart"
+                                onClick={() => onAction(c.id, 'stop')}
+                                aria-label="Stop"
+                              />
+                            </Tooltip>
+                            <Tooltip content="Restart Container">
+                              <Button
+                                variant="plain"
                                 icon={<SyncAltIcon />}
-                                onClick={() => {
-                                  onAction(c.id, 'restart');
-                                  setOpenDropdownId(null);
-                                }}
-                              >
-                                Restart
-                              </DropdownItem>
-                              <DropdownItem
-                                key="kill"
-                                icon={<TimesCircleIcon />}
-                                onClick={() => {
-                                  onAction(c.id, 'kill');
-                                  setOpenDropdownId(null);
-                                }}
-                              >
-                                Kill
-                              </DropdownItem>
-                              <DropdownItem
-                                key="terminal"
+                                onClick={() => onAction(c.id, 'restart')}
+                                aria-label="Restart"
+                              />
+                            </Tooltip>
+                            <Tooltip content="Open Terminal">
+                              <Button
+                                variant="plain"
                                 icon={<TerminalIcon />}
-                                onClick={() => {
-                                  onOpenTerminal(c);
-                                  setOpenDropdownId(null);
-                                }}
-                              >
-                                Terminal
-                              </DropdownItem>
-                            </>
-                          ) : (
-                            <DropdownItem
-                              key="start"
+                                onClick={() => onOpenTerminal(c)}
+                                aria-label="Terminal"
+                              />
+                            </Tooltip>
+                          </>
+                        ) : (
+                          <Tooltip content="Start Container">
+                            <Button
+                              variant="plain"
                               icon={<PlayIcon />}
-                              onClick={() => {
-                                onAction(c.id, 'start');
-                                setOpenDropdownId(null);
-                              }}
-                            >
-                              Start
-                            </DropdownItem>
-                          )}
-                          <DropdownItem
-                            key="logs"
+                              onClick={() => onAction(c.id, 'start')}
+                              aria-label="Start"
+                            />
+                          </Tooltip>
+                        )}
+
+                        <Tooltip content="View Logs">
+                          <Button
+                            variant="plain"
                             icon={<FileAltIcon />}
-                            onClick={() => {
-                              onOpenLogs(c);
-                              setOpenDropdownId(null);
-                            }}
-                          >
-                            Logs
-                          </DropdownItem>
-                          {!isRunning && c.state !== 'paused' && (
-                            <DropdownItem
-                              key="delete"
-                              icon={<TrashIcon />}
-                              style={{ color: 'var(--pf-v5-global--danger-color--100, #ff5555)' }}
-                              onClick={() => {
-                                onDelete(c);
-                                setOpenDropdownId(null);
-                              }}
-                            >
-                              Delete
-                            </DropdownItem>
-                          )}
-                        </DropdownList>
-                      </Dropdown>
+                            onClick={() => onOpenLogs(c)}
+                            aria-label="Logs"
+                          />
+                        </Tooltip>
+
+                        <Tooltip content="Inspect Details">
+                          <Button
+                            variant="plain"
+                            icon={<InfoCircleIcon />}
+                            onClick={() => onOpenInspect('container', c.id, c.name)}
+                            aria-label="Inspect"
+                          />
+                        </Tooltip>
+
+                        <Tooltip content={canDelete ? 'Delete Container' : 'Cannot delete running container'}>
+                          <Button
+                            variant="plain"
+                            icon={<TrashIcon style={{ color: canDelete ? 'var(--pf-v5-global--danger-color--100, #ff5555)' : '#8b949e' }} />}
+                            onClick={() => onDelete(c)}
+                            isDisabled={!canDelete}
+                            aria-label="Delete"
+                          />
+                        </Tooltip>
+                      </Flex>
                     </Td>
                   </Tr>
                 );

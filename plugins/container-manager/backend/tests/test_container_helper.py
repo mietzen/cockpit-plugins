@@ -59,6 +59,11 @@ class TestContainerHelperCLI(unittest.TestCase):
         res_act = container_helper.cmd_container_action(MagicMock(engine="docker", id="c1", action="start"))
         self.assertEqual(res_act["status"], "success")
 
+        # inspect entity
+        mock_adapter.inspect_entity.return_value = {"status": "success", "data": {"Id": "c1"}}
+        res_insp = container_helper.cmd_inspect_entity(MagicMock(engine="docker", kind="container", id="c1"))
+        self.assertEqual(res_insp["status"], "success")
+
         # delete
         res_del = container_helper.cmd_delete_entity(MagicMock(engine="docker", kind="container", id="c1", force=True))
         self.assertEqual(res_del["status"], "success")

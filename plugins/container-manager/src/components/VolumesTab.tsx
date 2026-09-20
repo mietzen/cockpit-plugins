@@ -17,7 +17,7 @@ import {
   Title,
   Tooltip,
 } from '@patternfly/react-core';
-import { TrashIcon } from '@patternfly/react-icons';
+import { TrashIcon, InfoCircleIcon } from '@patternfly/react-icons';
 import { StatusBadge } from '@cockpit-plugins/common';
 import { VolumeItem } from '../types';
 
@@ -25,6 +25,7 @@ export interface VolumesTabProps {
   volumes: VolumeItem[];
   onDelete: (volume: VolumeItem) => void;
   onPruneUnused: () => void;
+  onOpenInspect: (kind: 'volume', id: string, name?: string) => void;
   isLoading?: boolean;
 }
 
@@ -32,6 +33,7 @@ export const VolumesTab: React.FC<VolumesTabProps> = ({
   volumes,
   onDelete,
   onPruneUnused,
+  onOpenInspect,
   isLoading = false,
 }) => {
   const [filterText, setFilterText] = useState('');
@@ -94,9 +96,9 @@ export const VolumesTab: React.FC<VolumesTabProps> = ({
               <Tr>
                 <Th width={30}>Volume Name</Th>
                 <Th width={15}>Driver</Th>
-                <Th width={35}>Mountpoint</Th>
+                <Th width={30}>Mountpoint</Th>
                 <Th width={10}>Usage</Th>
-                <Th width={10} style={{ textAlign: 'right' }}>Action</Th>
+                <Th width={15} style={{ textAlign: 'right' }}>Actions</Th>
               </Tr>
             </Thead>
             <Tbody>
@@ -118,17 +120,26 @@ export const VolumesTab: React.FC<VolumesTabProps> = ({
                       {vol.inUse ? 'In Use' : 'Unused'}
                     </StatusBadge>
                   </Td>
-                  <Td dataLabel="Action" style={{ textAlign: 'right' }}>
-                    <Tooltip content={vol.inUse ? 'Volume is currently mounted by a container' : 'Delete volume'}>
-                      <Button
-                        variant="plain"
-                        icon={<TrashIcon />}
-                        isDisabled={vol.inUse || isLoading}
-                        onClick={() => onDelete(vol)}
-                        aria-label="Delete volume"
-                        style={{ color: vol.inUse ? undefined : 'var(--pf-v5-global--danger-color--100, #ff5555)' }}
-                      />
-                    </Tooltip>
+                  <Td dataLabel="Actions" style={{ textAlign: 'right' }}>
+                    <Flex justifyContent={{ default: 'justifyContentFlexEnd' }} spaceItems={{ default: 'spaceItemsXs' }}>
+                      <Tooltip content="Inspect Volume Details">
+                        <Button
+                          variant="plain"
+                          icon={<InfoCircleIcon />}
+                          onClick={() => onOpenInspect('volume', vol.name, vol.name)}
+                          aria-label="Inspect volume"
+                        />
+                      </Tooltip>
+                      <Tooltip content={vol.inUse ? 'Volume is currently mounted by a container' : 'Delete volume'}>
+                        <Button
+                          variant="plain"
+                          icon={<TrashIcon style={{ color: vol.inUse ? '#8b949e' : 'var(--pf-v5-global--danger-color--100, #ff5555)' }} />}
+                          isDisabled={vol.inUse || isLoading}
+                          onClick={() => onDelete(vol)}
+                          aria-label="Delete volume"
+                        />
+                      </Tooltip>
+                    </Flex>
                   </Td>
                 </Tr>
               ))}

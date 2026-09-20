@@ -17,7 +17,7 @@ import {
   Title,
   Tooltip,
 } from '@patternfly/react-core';
-import { TrashIcon } from '@patternfly/react-icons';
+import { TrashIcon, InfoCircleIcon } from '@patternfly/react-icons';
 import { StatusBadge } from '@cockpit-plugins/common';
 import { ImageItem } from '../types';
 
@@ -25,6 +25,7 @@ export interface ImagesTabProps {
   images: ImageItem[];
   onDelete: (image: ImageItem) => void;
   onPruneUnused: () => void;
+  onOpenInspect: (kind: 'image', id: string, name?: string) => void;
   isLoading?: boolean;
 }
 
@@ -32,6 +33,7 @@ export const ImagesTab: React.FC<ImagesTabProps> = ({
   images,
   onDelete,
   onPruneUnused,
+  onOpenInspect,
   isLoading = false,
 }) => {
   const [filterText, setFilterText] = useState('');
@@ -43,7 +45,7 @@ export const ImagesTab: React.FC<ImagesTabProps> = ({
       img.shortId.toLowerCase().includes(filterText.toLowerCase())
   );
 
-  const unusedCount = images.filter((img) => !img.inUse).length;
+  const unusedCount = images.filter((i) => !i.inUse).length;
 
   return (
     <div style={{ padding: '1.5rem' }}>
@@ -63,7 +65,7 @@ export const ImagesTab: React.FC<ImagesTabProps> = ({
         </FlexItem>
 
         <FlexItem>
-          <Tooltip content="Remove all unreferenced/unused images">
+          <Tooltip content="Remove all unused and dangling container images">
             <Button
               variant="secondary"
               icon={<TrashIcon />}
@@ -96,8 +98,8 @@ export const ImagesTab: React.FC<ImagesTabProps> = ({
                 <Th width={15}>Tag</Th>
                 <Th width={15}>Image ID</Th>
                 <Th width={15}>Size</Th>
-                <Th width={15}>Usage</Th>
-                <Th width={10} style={{ textAlign: 'right' }}>Action</Th>
+                <Th width={10}>Usage</Th>
+                <Th width={15} style={{ textAlign: 'right' }}>Actions</Th>
               </Tr>
             </Thead>
             <Tbody>
@@ -120,17 +122,26 @@ export const ImagesTab: React.FC<ImagesTabProps> = ({
                       {img.inUse ? 'In Use' : 'Unused'}
                     </StatusBadge>
                   </Td>
-                  <Td dataLabel="Action" style={{ textAlign: 'right' }}>
-                    <Tooltip content={img.inUse ? 'Cannot delete an image currently in use by a container' : 'Delete image'}>
-                      <Button
-                        variant="plain"
-                        icon={<TrashIcon />}
-                        isDisabled={img.inUse || isLoading}
-                        onClick={() => onDelete(img)}
-                        aria-label="Delete image"
-                        style={{ color: img.inUse ? undefined : 'var(--pf-v5-global--danger-color--100, #ff5555)' }}
-                      />
-                    </Tooltip>
+                  <Td dataLabel="Actions" style={{ textAlign: 'right' }}>
+                    <Flex justifyContent={{ default: 'justifyContentFlexEnd' }} spaceItems={{ default: 'spaceItemsXs' }}>
+                      <Tooltip content="Inspect Image Details">
+                        <Button
+                          variant="plain"
+                          icon={<InfoCircleIcon />}
+                          onClick={() => onOpenInspect('image', img.id, `${img.repository}:${img.tag}`)}
+                          aria-label="Inspect image"
+                        />
+                      </Tooltip>
+                      <Tooltip content={img.inUse ? 'Cannot delete an image currently in use by a container' : 'Delete image'}>
+                        <Button
+                          variant="plain"
+                          icon={<TrashIcon style={{ color: img.inUse ? '#8b949e' : 'var(--pf-v5-global--danger-color--100, #ff5555)' }} />}
+                          isDisabled={img.inUse || isLoading}
+                          onClick={() => onDelete(img)}
+                          aria-label="Delete image"
+                        />
+                      </Tooltip>
+                    </Flex>
                   </Td>
                 </Tr>
               ))}

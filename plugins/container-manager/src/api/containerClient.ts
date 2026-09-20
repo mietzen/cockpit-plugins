@@ -208,6 +208,39 @@ export const containerApi = {
     return execHelper(args);
   },
 
+  async inspectEntity(
+    kind: 'container' | 'image' | 'volume' | 'network',
+    id: string,
+    engine?: string
+  ): Promise<any> {
+    if (!window.cockpit) {
+      return Promise.resolve({
+        status: 'success',
+        data: {
+          Id: id,
+          Name: id,
+          Created: new Date().toISOString(),
+          Config: {
+            Cmd: ['/bin/sh'],
+            Entrypoint: null,
+            WorkingDir: '/app',
+            Env: ['PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin', 'NODE_ENV=production', 'PORT=8080'],
+            Labels: { 'maintainer': 'admin@local', 'version': '1.0.0' }
+          },
+          NetworkSettings: {
+            IPAddress: '172.17.0.2',
+            Ports: { '80/tcp': [{ HostIp: '0.0.0.0', HostPort: '8080' }] }
+          },
+          Mounts: [{ Type: 'volume', Name: 'app_data', Source: '/var/lib/docker/volumes/app_data/_data', Destination: '/data', Mode: 'rw', RW: true }]
+        },
+        raw: JSON.stringify({ Id: id, Name: id }, null, 2),
+      });
+    }
+    const args = ['inspect_entity', '--kind', kind, '--id', id];
+    if (engine) args.push('--engine', engine);
+    return execHelper(args);
+  },
+
   async deleteEntity(
     kind: 'container' | 'image' | 'volume' | 'network',
     id: string,
