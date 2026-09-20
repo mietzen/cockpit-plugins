@@ -40,7 +40,7 @@ PASS_HASH=$(openssl passwd -6 "password")
 sudo usermod -p "$PASS_HASH" test-user || true
 echo "test-user:password" | sudo chpasswd || true
 sudo passwd -u test-user || true
-sudo usermod -aG sudo,adm,disk test-user || true
+sudo usermod -aG sudo,adm,disk,docker test-user || true
 sudo chage -d 20000 -m 0 -M 99999 -I -1 -E -1 test-user || true
 echo "test-user ALL=(ALL) NOPASSWD:ALL" | sudo tee /etc/sudoers.d/test-user
 
@@ -49,7 +49,7 @@ if id "runner" &>/dev/null; then
     sudo usermod -p "$PASS_HASH" runner || true
     echo "runner:password" | sudo chpasswd || true
     sudo passwd -u runner || true
-    sudo usermod -aG sudo,adm,disk runner || true
+    sudo usermod -aG sudo,adm,disk,docker runner || true
     sudo chage -d 20000 -m 0 -M 99999 -I -1 -E -1 runner || true
     echo "runner ALL=(ALL) NOPASSWD:ALL" | sudo tee /etc/sudoers.d/runner || true
 fi
@@ -86,21 +86,24 @@ if [ ! -f /etc/cockpit/ws-certs.d/0-self-signed.cert ]; then
     sudo rm -f /tmp/cockpit.key /tmp/cockpit.crt
 fi
 
-# 4. Install cockpit-zfs plugin
-echo "==> Installing plugin..."
+# 4. Install all cockpit plugins from dist-debs
+echo "==> Installing plugin packages..."
 if ls dist-debs/*.deb 1> /dev/null 2>&1; then
-    sudo dpkg -i dist-debs/*.deb || sudo apt-get install -f -y
+    sudo dpkg -i --force-overwrite dist-debs/*.deb || sudo apt-get install -f -y
 else
     echo "No .deb found, installing directly via make..."
-    sudo make -C plugins/zfs-storage install
+    sudo make -C plugins/zfs-storage install 2>/dev/null || true
 fi
 
 sudo chmod -R 755 /usr/share/cockpit/* || true
 sudo chmod -R 755 /usr/libexec/cockpit-* || true
 
 # Pre-configure test file sharing fixtures
-sudo mkdir -p /srv/samba/test /srv/nfs/test /srv/nfs/test_crud /tank/ansible
-if [ -f /etc/samba/smb.conf ]; then
+sudo mkdir -p /srv/samba/test /srv/nfs/test /srv/nfs/test_crud /tank/ansible /etc/samba
+if [ ! -f /etc/samba/smb.conf ]; then
+    sudo touch /etc/samba/smb.conf
+fi
+if ! grep -q "ansible_locked_share" /etc/samba/smb.conf 2>/dev/null; then
     sudo bash -c 'cat << "EOF" >> /etc/samba/smb.conf
 
 [testshare]
@@ -118,6 +121,27 @@ fi
 sudo mkdir -p /etc/exports.d
 echo "/srv/nfs/test 192.168.40.0/24(rw,sync,no_subtree_check,root_squash)" | sudo tee /etc/exports.d/cockpit.exports
 echo -e "password\npassword" | sudo smbpasswd -a -s test-user 2>/dev/null || true
+sudo systemctl restart smbd nmbd 2>/dev/null || true
+
+# Pre-configure Container Manager fixtures if docker/podman is installed
+if command -v docker &>/dev/null; then
+    echo "==> Setting up Docker test fixtures..."
+    sudo systemctl restart docker || true
+    sudo docker pull alpine:latest 2>/dev/null || true
+    sudo docker rm -f e2e-web e2e-stopped 2>/dev/null || true
+    sudo docker run -d --name e2e-web -p 8081:80 alpine:latest sh -c "while true; do echo 'server live'; sleep 10; done" 2>/dev/null || true
+    sudo docker create --name e2e-stopped alpine:latest echo "finished" 2>/dev/null || true
+    sudo docker volume create e2e-data-volume 2>/dev/null || true
+    sudo docker network create e2e-custom-net 2>/dev/null || true
+fi
+
+if command -v podman &>/dev/null; then
+    echo "==> Setting up Podman test fixtures..."
+    sudo podman pull alpine:latest 2>/dev/null || true
+    sudo podman rm -f e2e-web e2e-stopped 2>/dev/null || true
+    sudo podman run -d --name e2e-web -p 8082:80 alpine:latest sh -c "while true; do echo 'server live'; sleep 10; done" 2>/dev/null || true
+    sudo podman create --name e2e-stopped alpine:latest echo "finished" 2>/dev/null || true
+fi
 
 # 5. Start Cockpit service
 echo "==> Starting Cockpit service..."
