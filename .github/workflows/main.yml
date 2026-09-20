@@ -185,6 +185,12 @@ jobs:
         run: |
           sudo bash tools/setup_e2e_env.sh
 
+      - name: Setup Plugin Specific E2E Fixtures
+        run: |
+          if [ -f "plugins/${{ matrix.plugin }}/e2e/setup_test_env.sh" ]; then
+            sudo bash plugins/${{ matrix.plugin }}/e2e/setup_test_env.sh
+          fi
+
       - name: Install Playwright & Browsers
         run: |
           npm ci

@@ -142,10 +142,8 @@ PRERM_EOF
         cp -r "${PLUGIN_DIR}/backend/"* "$STAGE_DIR/usr/libexec/${HELPER_DIR_NAME}/"
     fi
 
-    # Shared common python library
+    # Shared common python library (packaged per-helper to prevent dpkg file conflicts)
     if [ -d "packages/common/python/cockpit_common" ]; then
-        mkdir -p "$STAGE_DIR/usr/lib/python3/dist-packages/cockpit_common"
-        cp -r "packages/common/python/cockpit_common/"* "$STAGE_DIR/usr/lib/python3/dist-packages/cockpit_common/"
         mkdir -p "$STAGE_DIR/usr/libexec/${HELPER_DIR_NAME}/cockpit_common"
         cp -r "packages/common/python/cockpit_common/"* "$STAGE_DIR/usr/libexec/${HELPER_DIR_NAME}/cockpit_common/"
     fi
