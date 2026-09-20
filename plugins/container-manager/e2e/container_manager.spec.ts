@@ -316,6 +316,33 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
       await expect(sizeTh).toBeVisible();
     }
   });
+
+  test('10. Verify Delete Confirmation Modal Disappears On Confirm', async () => {
+    const frame = await getFrame();
+
+    // Navigate to Containers tab
+    await frame.locator('.cockpit-top-nav-bar button:has-text("Containers")').click();
+    await frame.waitForSelector('table[aria-label="Containers Table"]', { timeout: 10000 });
+
+    // Look for a stopped container delete button
+    const deleteBtn = frame.locator('table[aria-label="Containers Table"] tr:has-text("exited"), table[aria-label="Containers Table"] tr:has-text("created")')
+      .locator('button[aria-label="Delete container"]')
+      .first();
+
+    if (await deleteBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await deleteBtn.click();
+
+      // Verify modal appears
+      await frame.waitForSelector('.pf-v5-c-modal-box:has-text("Delete Container")', { timeout: 5000 });
+
+      // Click the Delete Container confirm button
+      const confirmBtn = frame.locator('.pf-v5-c-modal-box button:has-text("Delete Container")');
+      await confirmBtn.click();
+
+      // Verify modal is completely dismissed and detached
+      await frame.waitForSelector('.pf-v5-c-modal-box', { state: 'detached', timeout: 5000 });
+    }
+  });
 });
 
 

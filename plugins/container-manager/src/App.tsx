@@ -546,7 +546,11 @@ export const App: React.FC = () => {
         message={confirmModal.message}
         confirmText={confirmModal.confirmText}
         confirmVariant={confirmModal.confirmVariant}
-        onConfirm={confirmModal.onConfirm}
+        isLoading={isLoading}
+        onConfirm={async () => {
+          setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+          await confirmModal.onConfirm();
+        }}
         onCancel={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
       />
     </Page>
