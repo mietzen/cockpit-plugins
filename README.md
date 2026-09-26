@@ -6,12 +6,13 @@ A collection of plugins and extensions for Cockpit server administration.
 
 | Plugin | Package Name | Version | Description | Status |
 | :--- | :--- | :--- | :--- | :--- |
-| [ZFS Storage](#zfs-storage) | `cockpit-zfs-storage` | `0.5.0` | Complete OpenZFS storage manager with pool creation wizards, dataset/zvol trees, snapshots, scrubs, trims, and SMART health monitoring. | Stable |
-| [File Sharing](#file-sharing) | `cockpit-file-sharing` | `0.1.0` | Comprehensive SMB (Samba) and NFS file sharing manager with user passdb management, effective permission matrix, and Ansible lock integration. | Stable |
+| [ZFS Storage](#zfs-storage) | `cockpit-zfs-storage` | `0.6.1` | Complete OpenZFS storage manager with pool creation wizards, dataset/zvol trees, snapshots, scrubs, trims, and SMART health monitoring. | Stable |
+| [File Sharing](#file-sharing) | `cockpit-file-sharing` | `0.2.1` | Comprehensive SMB (Samba) and NFS file sharing manager with user passdb management, effective permission matrix, and Ansible lock integration. | Stable |
+| [Container Manager](#container-manager) | `cockpit-container-manager` | `0.2.1` | Docker and Podman manager with Compose stack hierarchy, image pull/build, persistent volumes, networks, and live logs. | Stable |
 
 ## Installation
 
-### Debian, Ubuntu & Proxmox (APT)
+### .deb (APT)
 
 #### One-Line Automated Install (with GPG key):
 ```shell
@@ -35,10 +36,10 @@ EOF
 
 # 3. Update and install
 sudo apt update
-sudo apt install cockpit-zfs-storage cockpit-file-sharing
+sudo apt install cockpit-zfs-storage cockpit-file-sharing cockpit-container-manager
 ```
 
-### Rocky Linux, RHEL & Fedora (DNF / YUM)
+### .rpm (DNF/YUM)
 
 #### One-Line Automated Install:
 ```shell
@@ -59,7 +60,7 @@ repo_gpgcheck=1
 gpgkey=https://mietzen.github.io/cockpit-plugins/key.gpg
 EOF
 
-sudo dnf install -y cockpit-zfs-storage cockpit-file-sharing
+sudo dnf install -y cockpit-zfs-storage cockpit-file-sharing cockpit-container-manager
 ```
 
 ## Plugins
@@ -217,6 +218,71 @@ Comprehensive SMB (Samba) and NFS file sharing manager for Cockpit built with Pa
 | Light Theme | Dark Theme |
 | :---: | :---: |
 | ![Create Share Light](docs/screenshots/fs-08-create-share-modal-light.png) | ![Create Share Dark](docs/screenshots/fs-08-create-share-modal-dark.png) |
+
+### Container Manager
+
+Comprehensive Docker & Podman container, image, volume, and network manager for Cockpit built with PatternFly v5.
+
+#### Features
+
+- **Multi-Engine Support**:
+  - Auto-detection and runtime management for both Docker and Podman engines.
+  - Active backend switcher with live version information and service health monitoring.
+
+- **Containers & Compose Stacks**:
+  - Grouped Compose stack hierarchy with collapsible trees and standalone container management.
+  - Lifecycle controls (Start, Stop, Restart, Pause, Resume, Kill, Delete).
+  - Real-time container log streaming and live status indicators.
+
+- **Image Management**:
+  - Local image repository inspection with tag, size, and creation details.
+  - Pull images from Docker Hub, GHCR, Quay, or custom registries.
+  - Image removal and dangling image pruning.
+
+- **Volumes & Persistent Storage**:
+  - Persistent volume discovery, driver details, and mountpoint inspection.
+  - Create named volumes and prune unused volumes.
+
+- **Networks**:
+  - Bridge, host, macvlan, and custom network overview.
+  - Subnet/gateway inspection and connected container mapping.
+  - Create and remove custom networks.
+
+- **Engine Settings & System Info**:
+  - Detailed daemon configuration, storage driver, and cgroup version.
+  - Resource cleanup actions (Prune stopped containers, unused networks, images, volumes).
+
+#### Screenshots
+
+##### Overview & Dashboard
+| Light Theme | Dark Theme |
+| :---: | :---: |
+| ![Overview Light](docs/screenshots/cm-01-dashboard-light.png) | ![Overview Dark](docs/screenshots/cm-01-dashboard-dark.png) |
+
+##### Containers & Compose Stacks
+| Light Theme | Dark Theme |
+| :---: | :---: |
+| ![Containers Light](docs/screenshots/cm-02-containers-light.png) | ![Containers Dark](docs/screenshots/cm-02-containers-dark.png) |
+
+##### Container Images
+| Light Theme | Dark Theme |
+| :---: | :---: |
+| ![Images Light](docs/screenshots/cm-03-images-light.png) | ![Images Dark](docs/screenshots/cm-03-images-dark.png) |
+
+##### Persistent Volumes
+| Light Theme | Dark Theme |
+| :---: | :---: |
+| ![Volumes Light](docs/screenshots/cm-04-volumes-light.png) | ![Volumes Dark](docs/screenshots/cm-04-volumes-dark.png) |
+
+##### Networks
+| Light Theme | Dark Theme |
+| :---: | :---: |
+| ![Networks Light](docs/screenshots/cm-05-networks-light.png) | ![Networks Dark](docs/screenshots/cm-05-networks-dark.png) |
+
+##### Engine Settings & System Info
+| Light Theme | Dark Theme |
+| :---: | :---: |
+| ![Settings Light](docs/screenshots/cm-06-settings-light.png) | ![Settings Dark](docs/screenshots/cm-06-settings-dark.png) |
 
 ## Building From Source
 
