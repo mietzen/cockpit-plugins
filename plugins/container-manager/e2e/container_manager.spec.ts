@@ -44,6 +44,31 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     }
   });
 
+  test.afterEach(async ({}, testInfo) => {
+    try {
+      if (!page) return;
+      let coverageData = null;
+      for (const f of page.frames()) {
+        try {
+          const cov = await f.evaluate(() => (window as any).__coverage__);
+          if (cov && Object.keys(cov).length > 0) {
+            coverageData = cov;
+            break;
+          }
+        } catch {}
+      }
+      if (coverageData) {
+        const nycDir = path.join(process.cwd(), '.nyc_output');
+        fs.mkdirSync(nycDir, { recursive: true });
+        fs.writeFileSync(
+          path.join(nycDir, `coverage-cm-${testInfo.testId}-${Date.now()}.json`),
+          JSON.stringify(coverageData)
+        );
+      }
+    } catch {}
+  });
+
+
   test('01. Authenticate to Cockpit and navigate to Container Manager', async () => {
     const user = process.env.COCKPIT_USER || 'test-user';
     const pass = process.env.COCKPIT_PASSWORD || 'password';
