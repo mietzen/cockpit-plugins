@@ -11,11 +11,10 @@ import re
 import subprocess
 import sys
 from enum import Enum
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
 HASH_BUFFER_SIZE = 65536
 DEFAULT_RELEASE_LIMIT = 50
-KNOWN_PLUGINS = ["zfs-storage", "file-sharing", "container-manager"]
 
 
 class TriggerType(Enum):
@@ -43,6 +42,26 @@ def parse_pkg_info(filename: str) -> Tuple[str, str]:
         return rpm_match.group(1), rpm_match.group(2)
 
     return "", ""
+
+
+def discover_plugins(deb_dir: str, rpm_dir: str, repo_root: str = ".") -> List[str]:
+    """Discover plugin names from plugins/ directory and package directories."""
+    plugins: Set[str] = set()
+
+    plugins_dir = os.path.join(repo_root, "plugins")
+    if os.path.isdir(plugins_dir):
+        for entry in os.listdir(plugins_dir):
+            if os.path.isdir(os.path.join(plugins_dir, entry)) and not entry.startswith("."):
+                plugins.add(entry)
+
+    for d in (deb_dir, rpm_dir):
+        if d and os.path.isdir(d):
+            for fname in os.listdir(d):
+                name, _ = parse_pkg_info(fname)
+                if name:
+                    plugins.add(name)
+
+    return sorted(list(plugins))
 
 
 def fetch_release_tags(limit: int = DEFAULT_RELEASE_LIMIT) -> List[str]:
@@ -88,17 +107,30 @@ def download_asset(tag: str, filename: str, dest_path: str) -> bool:
     return res.returncode == 0
 
 
+def _parse_semver_key(tag_version: str) -> Tuple[int, ...]:
+    """Extract numeric semver tuple for version comparisons."""
+    clean = re.sub(r"^[^\d]*", "", tag_version)
+    parts = []
+    for part in re.split(r"[.\-+]", clean):
+        if part.isdigit():
+            parts.append(int(part))
+    return tuple(parts) if parts else (0,)
+
+
 def find_latest_tag(plugin: str, tags: List[str]) -> Optional[str]:
-    """Find the latest published release tag for a given plugin."""
+    """Find the latest published release tag for a given plugin using semver sorting."""
     prefix = f"{plugin}-v"
-    for tag in tags:
-        if tag.startswith(prefix):
-            return tag
-    return None
+    matched = [t for t in tags if t.startswith(prefix)]
+    if not matched:
+        return None
+
+    # Sort descending by semver tuple
+    matched.sort(key=lambda t: _parse_semver_key(t[len(prefix):]), reverse=True)
+    return matched[0]
 
 
 def clean_mismatched(plugin: str, directory: str, ext: str) -> None:
-    """Remove any existing files for the plugin that do not match the official release."""
+    """Remove existing files for the plugin that do not match the official release."""
     if not directory or not os.path.exists(directory):
         return
 
@@ -109,6 +141,34 @@ def clean_mismatched(plugin: str, directory: str, ext: str) -> None:
                 os.remove(fpath)
             except OSError:
                 pass
+
+
+def _sync_single_asset(
+    asset_name: str,
+    expected_digest: str,
+    target_dir: str,
+    tag: str,
+) -> bool:
+    """Download and verify a single release asset in the target directory."""
+    dest_file = os.path.join(target_dir, asset_name)
+    if os.path.exists(dest_file):
+        local_digest = compute_sha256(dest_file)
+        if expected_digest and local_digest == expected_digest:
+            print(f"  ✓ {asset_name}: Matches release {tag} digest ({local_digest[:16]}...)")
+            return True
+
+    print(f"  ↓ Downloading official release asset {asset_name} from {tag}...")
+    if not download_asset(tag, asset_name, dest_file):
+        print(f"  ✗ Failed to download {asset_name} from {tag}")
+        return False
+
+    actual_digest = compute_sha256(dest_file)
+    if expected_digest and actual_digest != expected_digest:
+        print(f"  ✗ Digest mismatch for downloaded {asset_name}")
+        return False
+
+    print(f"  ✓ Downloaded and verified {asset_name} ({actual_digest[:16]}...)")
+    return True
 
 
 def sync_plugin_assets(
@@ -124,56 +184,30 @@ def sync_plugin_assets(
         return False
 
     success = True
-
-    # Synchronize deb packages
     for asset_name, expected_digest in assets.items():
         if asset_name.endswith(".deb"):
-            dest_file = os.path.join(deb_dir, asset_name)
-            local_valid = False
-            if os.path.exists(dest_file):
-                local_digest = compute_sha256(dest_file)
-                if expected_digest and local_digest == expected_digest:
-                    local_valid = True
-                    print(f"  ✓ {asset_name}: Matches release {tag} digest ({local_digest[:16]}...)")
-
-            if not local_valid:
-                clean_mismatched(plugin, deb_dir, ".deb")
-                print(f"  ↓ Downloading official release asset {asset_name} from {tag}...")
-                if download_asset(tag, asset_name, dest_file):
-                    actual_digest = compute_sha256(dest_file)
-                    if expected_digest and actual_digest != expected_digest:
-                        print(f"  ✗ Digest mismatch for downloaded {asset_name}")
-                        success = False
-                    else:
-                        print(f"  ✓ Downloaded {asset_name} ({actual_digest[:16]}...)")
-                else:
-                    print(f"  ✗ Failed to download {asset_name} from {tag}")
-                    success = False
-
+            if not _sync_single_asset(asset_name, expected_digest, deb_dir, tag):
+                success = False
         elif asset_name.endswith(".rpm"):
-            dest_file = os.path.join(rpm_dir, asset_name)
-            local_valid = False
-            if os.path.exists(dest_file):
-                local_digest = compute_sha256(dest_file)
-                if expected_digest and local_digest == expected_digest:
-                    local_valid = True
-                    print(f"  ✓ {asset_name}: Matches release {tag} digest ({local_digest[:16]}...)")
-
-            if not local_valid:
-                clean_mismatched(plugin, rpm_dir, ".rpm")
-                print(f"  ↓ Downloading official release asset {asset_name} from {tag}...")
-                if download_asset(tag, asset_name, dest_file):
-                    actual_digest = compute_sha256(dest_file)
-                    if expected_digest and actual_digest != expected_digest:
-                        print(f"  ✗ Digest mismatch for downloaded {asset_name}")
-                        success = False
-                    else:
-                        print(f"  ✓ Downloaded {asset_name} ({actual_digest[:16]}...)")
-                else:
-                    print(f"  ✗ Failed to download {asset_name} from {tag}")
-                    success = False
+            if not _sync_single_asset(asset_name, expected_digest, rpm_dir, tag):
+                success = False
 
     return success
+
+
+def is_active_tag_target(plugin: str, current_tag: Optional[str]) -> bool:
+    """Check if the plugin is targeted by the active Git tag release."""
+    if not current_tag:
+        return False
+
+    if current_tag.startswith(f"{plugin}-v"):
+        return True
+
+    # Global release tag (e.g. v1.0.0) covers all plugins
+    if re.match(r"^v[0-9]+", current_tag):
+        return True
+
+    return False
 
 
 def sync_packages(
@@ -185,7 +219,7 @@ def sync_packages(
 ) -> bool:
     """Gating gate: verify and synchronize official release packages."""
     if plugins is None:
-        plugins = KNOWN_PLUGINS
+        plugins = discover_plugins(deb_dir, rpm_dir)
 
     os.makedirs(deb_dir, exist_ok=True)
     os.makedirs(rpm_dir, exist_ok=True)
@@ -196,14 +230,14 @@ def sync_packages(
     print(f"==> Release Gate Execution (Trigger: {trigger_mode.value.upper()}, Tag: {current_tag or 'None'})")
 
     for plugin in plugins:
-        # If triggered by a tag matching this plugin, keep the freshly built artifact
-        if trigger_mode == TriggerType.TAG and current_tag and current_tag.startswith(f"{plugin}-v"):
-            print(f"  ★ Plugin {plugin}: Active tag release ({current_tag}). Preserving freshly built artifacts.")
+        # If triggered by a tag targeting this plugin, preserve the freshly built artifact
+        if trigger_mode == TriggerType.TAG and is_active_tag_target(plugin, current_tag):
+            print(f"  ★ Plugin '{plugin}': Active tag release ({current_tag}). Preserving freshly built artifact.")
             continue
 
         latest_tag = find_latest_tag(plugin, published_tags)
         if not latest_tag:
-            print(f"  ℹ Plugin {plugin}: No published GitHub Release found. Discarding unreleased packages.")
+            print(f"  ℹ Plugin '{plugin}': No published GitHub Release found. Discarding unreleased packages.")
             clean_mismatched(plugin, deb_dir, ".deb")
             clean_mismatched(plugin, rpm_dir, ".rpm")
             continue

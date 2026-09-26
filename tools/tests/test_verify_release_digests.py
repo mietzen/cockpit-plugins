@@ -36,17 +36,43 @@ class TestVerifyReleaseDigests(unittest.TestCase):
         self.assertEqual(pkg, "")
         self.assertEqual(ver, "")
 
-    def test_find_latest_tag(self):
+    def test_discover_plugins(self):
+        with tempfile.TemporaryDirectory() as repo_root, \
+             tempfile.TemporaryDirectory() as deb_dir, \
+             tempfile.TemporaryDirectory() as rpm_dir:
+
+            # Create mock plugins folder
+            plugins_dir = os.path.join(repo_root, "plugins")
+            os.makedirs(os.path.join(plugins_dir, "zfs-storage"))
+            os.makedirs(os.path.join(plugins_dir, "custom-plugin"))
+
+            # Create mock deb
+            with open(os.path.join(deb_dir, "cockpit-file-sharing_0.2.1_all.deb"), "w") as f:
+                f.write("test")
+
+            discovered = vrd.discover_plugins(deb_dir, rpm_dir, repo_root=repo_root)
+            self.assertIn("zfs-storage", discovered)
+            self.assertIn("custom-plugin", discovered)
+            self.assertIn("file-sharing", discovered)
+
+    def test_find_latest_tag_semver(self):
         tags = [
-            "zfs-storage-v0.6.1",
-            "file-sharing-v0.2.1",
-            "container-manager-v0.2.1",
             "zfs-storage-v0.6.0",
+            "zfs-storage-v0.6.10",
+            "zfs-storage-v0.6.2",
+            "file-sharing-v0.2.1",
         ]
-        self.assertEqual(vrd.find_latest_tag("zfs-storage", tags), "zfs-storage-v0.6.1")
+        self.assertEqual(vrd.find_latest_tag("zfs-storage", tags), "zfs-storage-v0.6.10")
         self.assertEqual(vrd.find_latest_tag("file-sharing", tags), "file-sharing-v0.2.1")
-        self.assertEqual(vrd.find_latest_tag("container-manager", tags), "container-manager-v0.2.1")
         self.assertIsNone(vrd.find_latest_tag("non-existent", tags))
+
+    def test_is_active_tag_target(self):
+        self.assertTrue(vrd.is_active_tag_target("zfs-storage", "zfs-storage-v0.6.1"))
+        self.assertFalse(vrd.is_active_tag_target("file-sharing", "zfs-storage-v0.6.1"))
+        # Global tag covers all
+        self.assertTrue(vrd.is_active_tag_target("zfs-storage", "v1.0.0"))
+        self.assertTrue(vrd.is_active_tag_target("file-sharing", "v1.0.0"))
+        self.assertFalse(vrd.is_active_tag_target("zfs-storage", None))
 
     def test_clean_mismatched(self):
         with tempfile.TemporaryDirectory() as tmpdir:
