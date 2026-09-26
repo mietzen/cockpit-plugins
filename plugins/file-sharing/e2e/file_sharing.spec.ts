@@ -126,8 +126,8 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
     const frame = await getFrame();
     await frame.locator("button.pf-v5-c-tabs__link:has-text('SMB Shares'), [role='tab']:has-text('SMB Shares')").first().click();
 
-    // Verify Ansible lock badge in visible SMB table
-    await expect(frame.getByText("Ansible: storage_cluster").and(frame.locator(":visible")).first()).toBeVisible({ timeout: 10000 });
+    // Verify managed lock badge in visible SMB table
+    await expect(frame.getByText("storage_cluster").and(frame.locator(":visible")).first()).toBeVisible({ timeout: 10000 });
     await saveScreenshot(page, "media_fs_smb.png");
 
     // Create a new SMB share

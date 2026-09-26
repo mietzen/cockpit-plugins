@@ -71,11 +71,22 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   const [isCertModalOpen, setIsCertModalOpen] = useState(false);
+  const [loadingCerts, setLoadingCerts] = useState<boolean>(false);
   const [certBundle, setCertBundle] = useState<ClientCertBundle | null>(null);
   const [certTab, setCertTab] = useState<number>(0);
-  const [loadingCerts, setLoadingCerts] = useState(false);
+  const [currentUser, setCurrentUser] = useState<string>('');
 
-  const hostIp = window.location.hostname || '127.0.0.1';
+  const hostIp = (window.location.hostname ? window.location.hostname.split('.')[0] : '') || 'localhost';
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.cockpit && typeof window.cockpit.user === 'function') {
+      window.cockpit.user().then((u: any) => {
+        if (u && u.name) {
+          setCurrentUser(u.name);
+        }
+      }).catch(() => {});
+    }
+  }, []);
 
   const loadStatus = async () => {
     setError(null);
@@ -86,7 +97,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       if (status.sans && status.sans.length > 0) {
         setSansInput(status.sans.join(', '));
       } else {
-        setSansInput(`${hostIp}, localhost, 127.0.0.1`);
+        const hName = status.hostname || hostIp;
+        setSansInput(`${hName}, localhost, 127.0.0.1`);
       }
     } catch (e: any) {
       setError(e?.message || 'Failed to load TLS status');
@@ -253,15 +265,20 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const isEnabled = tlsStatus?.enabled || false;
   const isPodman = activeEngine === 'podman';
 
+  const effectiveHost = tlsStatus?.hostname || hostIp;
+  const effectiveUser = tlsStatus?.user || currentUser || 'user';
+
   const sshContextCode = isPodman
-    ? `podman system connection add remote-${hostIp} ssh://root@${hostIp}/run/podman/podman.sock\npodman system connection default remote-${hostIp}\npodman ps`
-    : `docker context create remote-${hostIp} --docker "host=ssh://root@${hostIp}"\ndocker context use remote-${hostIp}\ndocker ps`;
+    ? `podman system connection add remote-${effectiveHost} ssh://${effectiveUser}@${effectiveHost}/run/podman/podman.sock\npodman system connection default remote-${effectiveHost}\npodman ps`
+    : `docker context create remote-${effectiveHost} --docker "host=ssh://${effectiveUser}@${effectiveHost}"\ndocker context use remote-${effectiveHost}\ndocker ps`;
 
   const tcpTlsContextCode = isPodman
-    ? `podman system connection add remote-${hostIp} tcp://${hostIp}:${port}\npodman system connection default remote-${hostIp}\npodman ps`
-    : `# Unzip client certificates to ~/.docker/certs/\ndocker context create remote-${hostIp} \\\n  --docker "host=tcp://${hostIp}:${port},ca=~/.docker/certs/ca.pem,cert=~/.docker/certs/cert.pem,key=~/.docker/certs/key.pem"\ndocker context use remote-${hostIp}\ndocker ps`;
+    ? `podman system connection add remote-${effectiveHost} tcp://${effectiveHost}:${port}\npodman system connection default remote-${effectiveHost}\npodman ps`
+    : `# Unzip client certificates to ~/.docker/certs/\ndocker context create remote-${effectiveHost} \\\n  --docker "host=tcp://${effectiveHost}:${port},ca=~/.docker/certs/ca.pem,cert=~/.docker/certs/cert.pem,key=~/.docker/certs/key.pem"\ndocker context use remote-${effectiveHost}\ndocker ps`;
 
-  const envVarsCode = `export DOCKER_HOST="tcp://${hostIp}:${port}"\nexport DOCKER_TLS_VERIFY=1\nexport DOCKER_CERT_PATH="~/.docker/certs"\ndocker ps`;
+  const envVarsCode = `export DOCKER_HOST="tcp://${effectiveHost}:${port}"\nexport DOCKER_TLS_VERIFY=1\nexport DOCKER_CERT_PATH="~/.docker/certs"\ndocker ps`;
+
+  const installedEnginesCount = (engines.docker.installed ? 1 : 0) + (engines.podman.installed ? 1 : 0);
 
   return (
     <>
@@ -282,64 +299,66 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         )}
 
         <Grid hasGutter>
-          {/* Engine Selection Card */}
-          <GridItem span={12} md={6}>
-            <Card style={{ height: '100%' }}>
-              <CardTitle>Container Engine Selection</CardTitle>
-              <CardBody>
-                <p style={{ fontSize: '0.9rem', color: '#8b949e', marginBottom: '1rem' }}>
-                  Choose which container daemon or CLI backend to use for managing containers and resources.
-                </p>
+          {/* Engine Selection Card (only shown when multiple engines are installed) */}
+          {installedEnginesCount > 1 && (
+            <GridItem span={12} md={6}>
+              <Card style={{ height: '100%' }}>
+                <CardTitle>Container Engine Selection</CardTitle>
+                <CardBody>
+                  <p style={{ fontSize: '0.9rem', color: '#8b949e', marginBottom: '1rem' }}>
+                    Choose which container daemon or CLI backend to use for managing containers and resources.
+                  </p>
 
-                <Flex direction={{ default: 'column' }} spaceItems={{ default: 'spaceItemsMd' }}>
-                  <Flex justifyContent={{ default: 'justifyContentSpaceBetween' }} alignItems={{ default: 'alignItemsCenter' }}>
-                    <Flex spaceItems={{ default: 'spaceItemsSm' }} alignItems={{ default: 'alignItemsCenter' }}>
-                      <strong>Docker Engine</strong>
-                      <StatusBadge variant={engines.docker.installed ? (engines.docker.active ? 'green' : 'grey') : 'grey'}>
-                        {engines.docker.installed ? (engines.docker.active ? 'Active' : 'Installed') : 'Not Installed'}
-                      </StatusBadge>
+                  <Flex direction={{ default: 'column' }} spaceItems={{ default: 'spaceItemsMd' }}>
+                    <Flex justifyContent={{ default: 'justifyContentSpaceBetween' }} alignItems={{ default: 'alignItemsCenter' }}>
+                      <Flex spaceItems={{ default: 'spaceItemsSm' }} alignItems={{ default: 'alignItemsCenter' }}>
+                        <strong>Docker Engine</strong>
+                        <StatusBadge variant={engines.docker.installed ? (engines.docker.active ? 'green' : 'grey') : 'grey'}>
+                          {engines.docker.installed ? (engines.docker.active ? 'Active' : 'Installed') : 'Not Installed'}
+                        </StatusBadge>
+                      </Flex>
+                      {engines.docker.installed && (
+                        <Button
+                          variant={activeEngine === 'docker' ? 'primary' : 'secondary'}
+                          size="sm"
+                          onClick={() => {
+                            onSelectEngine('docker');
+                            onNotify?.('success', 'Backend Switched', 'Active container backend switched to Docker Engine.');
+                          }}
+                        >
+                          {activeEngine === 'docker' ? 'Active Backend' : 'Activate Docker'}
+                        </Button>
+                      )}
                     </Flex>
-                    {engines.docker.installed && (
-                      <Button
-                        variant={activeEngine === 'docker' ? 'primary' : 'secondary'}
-                        size="sm"
-                        onClick={() => {
-                          onSelectEngine('docker');
-                          onNotify?.('success', 'Backend Switched', 'Active container backend switched to Docker Engine.');
-                        }}
-                      >
-                        {activeEngine === 'docker' ? 'Active Backend' : 'Activate Docker'}
-                      </Button>
-                    )}
-                  </Flex>
 
-                  <Flex justifyContent={{ default: 'justifyContentSpaceBetween' }} alignItems={{ default: 'alignItemsCenter' }}>
-                    <Flex spaceItems={{ default: 'spaceItemsSm' }} alignItems={{ default: 'alignItemsCenter' }}>
-                      <strong>Podman</strong>
-                      <StatusBadge variant={engines.podman.installed ? (engines.podman.active ? 'green' : 'grey') : 'grey'}>
-                        {engines.podman.installed ? (engines.podman.active ? 'Active' : 'Installed') : 'Not Installed'}
-                      </StatusBadge>
+                    <Flex justifyContent={{ default: 'justifyContentSpaceBetween' }} alignItems={{ default: 'alignItemsCenter' }}>
+                      <Flex spaceItems={{ default: 'spaceItemsSm' }} alignItems={{ default: 'alignItemsCenter' }}>
+                        <strong>Podman</strong>
+                        <StatusBadge variant={engines.podman.installed ? (engines.podman.active ? 'green' : 'grey') : 'grey'}>
+                          {engines.podman.installed ? (engines.podman.active ? 'Active' : 'Installed') : 'Not Installed'}
+                        </StatusBadge>
+                      </Flex>
+                      {engines.podman.installed && (
+                        <Button
+                          variant={activeEngine === 'podman' ? 'primary' : 'secondary'}
+                          size="sm"
+                          onClick={() => {
+                            onSelectEngine('podman');
+                            onNotify?.('success', 'Backend Switched', 'Active container backend switched to Podman.');
+                          }}
+                        >
+                          {activeEngine === 'podman' ? 'Active Backend' : 'Activate Podman'}
+                        </Button>
+                      )}
                     </Flex>
-                    {engines.podman.installed && (
-                      <Button
-                        variant={activeEngine === 'podman' ? 'primary' : 'secondary'}
-                        size="sm"
-                        onClick={() => {
-                          onSelectEngine('podman');
-                          onNotify?.('success', 'Backend Switched', 'Active container backend switched to Podman.');
-                        }}
-                      >
-                        {activeEngine === 'podman' ? 'Active Backend' : 'Activate Podman'}
-                      </Button>
-                    )}
                   </Flex>
-                </Flex>
-              </CardBody>
-            </Card>
-          </GridItem>
+                </CardBody>
+              </Card>
+            </GridItem>
+          )}
 
           {/* Maintenance / System Prune Card */}
-          <GridItem span={12} md={6}>
+          <GridItem span={12} md={installedEnginesCount > 1 ? 6 : 12}>
             <Card style={{ height: '100%' }}>
               <CardTitle>Maintenance &amp; Clean Up</CardTitle>
               <CardBody>
@@ -585,6 +604,35 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     </Tab>
                   )}
                 </Tabs>
+              </CardBody>
+            </Card>
+          </GridItem>
+
+          {/* Card: About Cockpit Container Manager */}
+          <GridItem span={12}>
+            <Card isPlain style={{ border: '1px solid var(--zfs-card-border, #30363d)', marginTop: '0.5rem' }}>
+              <CardTitle>
+                <Title headingLevel="h2" size="xl">About Cockpit Container Manager</Title>
+              </CardTitle>
+              <CardBody>
+                <p style={{ marginBottom: '0.5rem' }}>
+                  <strong>Version:</strong> {typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '0.1.1'}
+                </p>
+                <p style={{ marginBottom: '0.5rem' }}>
+                  <strong>License:</strong> MIT
+                </p>
+                {engines.docker.installed && (
+                  <p style={{ marginBottom: '0.5rem' }}>
+                    <strong>Docker Engine:</strong>{' '}
+                    <span style={{ fontFamily: 'monospace' }}>{engines.docker.version || 'Installed'}</span>
+                  </p>
+                )}
+                {engines.podman.installed && (
+                  <p style={{ marginBottom: '0.5rem' }}>
+                    <strong>Podman:</strong>{' '}
+                    <span style={{ fontFamily: 'monospace' }}>{engines.podman.version || 'Installed'}</span>
+                  </p>
+                )}
               </CardBody>
             </Card>
           </GridItem>

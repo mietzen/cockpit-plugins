@@ -23,6 +23,7 @@ import {
   ServerIcon,
   ArrowRightIcon,
   LockIcon,
+  AppleIcon,
 } from "@patternfly/react-icons";
 import { FileSharingOverview, SmbShare, NfsExport, SmbSession } from "../types";
 
@@ -59,18 +60,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       <PageSection variant="light" style={{ paddingBottom: "1rem" }}>
         <Flex justifyContent={{ default: "justifyContentSpaceBetween" }} alignItems={{ default: "alignItemsCenter" }}>
           <FlexItem>
-            <Flex alignItems={{ default: "alignItemsCenter" }}>
-              <FlexItem>
-                <Title headingLevel="h1" size="2xl" style={{ fontWeight: 600, margin: 0, lineHeight: 1.2 }}>
-                  File Sharing
-                </Title>
-              </FlexItem>
-              <FlexItem>
-                <span style={{ color: "var(--zfs-text-secondary)", marginLeft: "0.5rem" }}>
-                  SMB &amp; NFS Management
-                </span>
-              </FlexItem>
-            </Flex>
+            <Title headingLevel="h1" size="2xl" style={{ fontWeight: 600, margin: 0, lineHeight: 1.2 }}>
+              File Sharing
+            </Title>
           </FlexItem>
           <FlexItem>
             <Flex alignItems={{ default: "alignItemsCenter" }} gap={{ default: "gapSm" }}>
@@ -195,11 +187,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       <strong>[{share.name}]</strong>
                       {share.is_managed && (
                         <Label color="blue" icon={<LockIcon />} style={{ marginLeft: "0.5rem" }}>
-                          Ansible: {share.managed_by || "managed"}
+                          {share.managed_by || "managed"}
+                        </Label>
+                      )}
+                      {(share.vfs_objects || "").includes("fruit") && (
+                        <Label color="grey" icon={<AppleIcon />} style={{ marginLeft: "0.5rem" }}>
+                          Time Machine
                         </Label>
                       )}
                     </Td>
-                    <Td data-label="Path">{share.path || "—"}</Td>
+                    <Td data-label="Path">{share.name === "homes" && share.path?.includes("%S") ? share.path.replace("%S", "$USER") : (share.path || "—")}</Td>
                     <Td data-label="Access">
                       <Label color={share.read_only ? "blue" : "green"}>
                         {share.read_only ? "Read-Only" : "Read/Write"}

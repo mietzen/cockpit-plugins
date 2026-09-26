@@ -235,9 +235,9 @@ export const SmbSharesTab: React.FC<SmbSharesTabProps> = ({
                           </FlexItem>
                           {s.is_managed && (
                             <FlexItem>
-                              <Tooltip content={`Managed by Ansible (${s.managed_by || "block"}). Locked as read-only.`}>
+                              <Tooltip content={`Managed configuration (${s.managed_by || "block"}). Locked as read-only.`}>
                                 <Label color="blue" icon={<LockIcon />}>
-                                  Ansible: {s.managed_by || "managed"}
+                                  {s.managed_by || "managed"}
                                 </Label>
                               </Tooltip>
                             </FlexItem>
@@ -252,7 +252,7 @@ export const SmbSharesTab: React.FC<SmbSharesTabProps> = ({
                         </Flex>
                       </Td>
                       <Td data-label="Path">
-                        <code>{s.path || "—"}</code>
+                        <code>{s.name === "homes" && s.path?.includes("%S") ? s.path.replace("%S", "$USER") : (s.path || "—")}</code>
                       </Td>
                       <Td data-label="Access">
                         <Flex spaceItems={{ default: "spaceItemsSm" }} alignItems={{ default: "alignItemsCenter" }}>
@@ -283,7 +283,7 @@ export const SmbSharesTab: React.FC<SmbSharesTabProps> = ({
                       <Td data-label="Description">{s.comment || "—"}</Td>
                       <Td data-label="Actions" style={{ textAlign: "right" }}>
                         {s.is_managed ? (
-                          <Tooltip content="Ansible managed shares cannot be modified directly">
+                          <Tooltip content="Managed shares cannot be modified directly">
                             <Button variant="plain" isDisabled icon={<LockIcon />} />
                           </Tooltip>
                         ) : (

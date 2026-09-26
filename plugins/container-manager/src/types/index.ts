@@ -27,6 +27,9 @@ export interface ContainerItem {
   ports: string;
   command: string;
   networks: string[];
+  labels?: Record<string, string>;
+  project?: string;
+  service?: string;
 }
 
 export interface ImageItem {
@@ -63,6 +66,8 @@ export interface ContainerOverview {
   status: string;
   engines: EnginesDetection;
   active_engine: EngineType;
+  hostname?: string;
+  user?: string;
   containers: ContainerItem[];
   images: ImageItem[];
   volumes: VolumeItem[];
@@ -77,6 +82,8 @@ export interface TlsStatus {
   expiry: string;
   sans: string[];
   service: string;
+  hostname?: string;
+  user?: string;
 }
 
 export interface ClientCertBundle {

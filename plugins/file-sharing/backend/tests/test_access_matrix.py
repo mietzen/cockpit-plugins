@@ -148,8 +148,57 @@ class TestAccessMatrix(unittest.TestCase):
         # Dave: in &blocked_users (invalid) -> denied
         self.assertEqual(matrix[3]["shares"][0]["access"], "denied")
 
+    def test_smb_matrix_homes_share(self):
+        shares = [
+            {
+                "name": "homes",
+                "path": "/home/%S",
+                "read_only": False,
+                "guest_ok": False,
+                "valid_users": "%S",
+                "write_list": "",
+                "invalid_users": "charlie",
+            },
+            {
+                "name": "homes_implicit",
+                "path": "/home/%u",
+                "read_only": False,
+                "guest_ok": False,
+                "valid_users": "",
+                "write_list": "",
+                "invalid_users": "",
+            }
+        ]
+        users = [
+            {"username": "alice", "full_name": "Alice Admin", "is_enabled": True},
+            {"username": "bob", "full_name": "Bob Buyer", "is_enabled": True},
+            {"username": "charlie", "full_name": "Charlie Restricted", "is_enabled": True},
+        ]
+        matrix = calculate_smb_user_matrix(shares, users)
+
+        # Alice: homes -> /home/alice, read_write
+        alice_homes = matrix[0]["shares"][0]
+        self.assertEqual(alice_homes["share_path"], "/home/alice")
+        self.assertEqual(alice_homes["access"], "read_write")
+
+        # Alice: homes_implicit -> /home/alice, read_write
+        alice_implicit = matrix[0]["shares"][1]
+        self.assertEqual(alice_implicit["share_path"], "/home/alice")
+        self.assertEqual(alice_implicit["access"], "read_write")
+
+        # Bob: homes -> /home/bob, read_write
+        bob_homes = matrix[1]["shares"][0]
+        self.assertEqual(bob_homes["share_path"], "/home/bob")
+        self.assertEqual(bob_homes["access"], "read_write")
+
+        # Charlie: homes -> /home/charlie, denied (in invalid_users)
+        charlie_homes = matrix[2]["shares"][0]
+        self.assertEqual(charlie_homes["share_path"], "/home/charlie")
+        self.assertEqual(charlie_homes["access"], "denied")
+
 
 if __name__ == "__main__":
     unittest.main()
+
 
 

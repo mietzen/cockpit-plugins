@@ -87,13 +87,27 @@ type ActiveModal =
     }
   | null;
 
-const parseRoute = (segments: string[]): AppRoute => {
-  let clean = segments ? [...segments] : [];
-  if (clean.length > 0 && (clean[0] === "zfs-storage" || clean[0] === "cockpit-zfs")) {
-    clean = clean.slice(1);
+const getSegmentsFromEnv = (): string[] => {
+  if (typeof window === "undefined") {
+    return [];
   }
+  const hash = window.location.hash.replace(/^#\/?/, "");
+  if (hash) {
+    return hash.split("/").filter(Boolean);
+  }
+  if (typeof cockpit !== "undefined" && cockpit.location && Array.isArray(cockpit.location.path)) {
+    const raw = cockpit.location.path;
+    if (raw.length > 0 && ["zfs-storage", "cockpit-zfs", "zfs", "index"].includes(raw[0].toLowerCase())) {
+      return raw.slice(1);
+    }
+    return raw;
+  }
+  return [];
+};
 
-  if (!clean || clean.length === 0 || clean[0] === "" || clean[0] === "dashboard" || clean[0] === "overview") {
+const parseRoute = (segments: string[]): AppRoute => {
+  const clean = segments.map((s) => s.trim().toLowerCase()).filter(Boolean);
+  if (clean.length === 0 || clean[0] === "dashboard" || clean[0] === "overview") {
     return { view: "dashboard", poolName: null, subTab: "topology" };
   }
 
@@ -118,16 +132,7 @@ export const App: React.FC = () => {
   useCockpitTheme();
 
   const [route, setRoute] = useState<AppRoute>(() => {
-    let initialSegments: string[] = [];
-    if (typeof cockpit !== "undefined" && cockpit.location && Array.isArray(cockpit.location.path)) {
-      initialSegments = cockpit.location.path;
-    } else {
-      const hash = window.location.hash.replace(/^#\/?/, "");
-      if (hash) {
-        initialSegments = hash.split("/").filter(Boolean);
-      }
-    }
-    return parseRoute(initialSegments);
+    return parseRoute(getSegmentsFromEnv());
   });
 
   const lastNavigatedPathRef = useRef<string>("");
@@ -147,8 +152,6 @@ export const App: React.FC = () => {
   // Consolidated Modal State (resolves state bloat)
   const [activeModal, setActiveModal] = useState<ActiveModal>(null);
 
-
-
   const navigateTo = useCallback((segments: string[]) => {
     const nextRoute = parseRoute(segments);
     setRoute(nextRoute);
@@ -156,23 +159,16 @@ export const App: React.FC = () => {
     const fullPathStr = segments.join("/");
     lastNavigatedPathRef.current = fullPathStr;
 
-    const targetHash = segments.length > 0 ? `#/${segments.join("/")}` : "#/";
-    if (window.location.hash !== targetHash) {
-      window.history.pushState(null, "", targetHash);
+    if (typeof window !== "undefined") {
+      const targetHash = segments.length > 0 ? `#/${segments.join("/")}` : "#/";
+      if (window.location.hash !== targetHash) {
+        window.history.replaceState(null, "", targetHash);
+      }
     }
   }, []);
 
   const syncFromUrl = useCallback(() => {
-    let segments: string[] = [];
-    if (typeof cockpit !== "undefined" && cockpit.location && Array.isArray(cockpit.location.path)) {
-      segments = cockpit.location.path;
-    } else {
-      const hash = window.location.hash.replace(/^#\/?/, "");
-      if (hash) {
-        segments = hash.split("/").filter(Boolean);
-      }
-    }
-
+    const segments = getSegmentsFromEnv();
     const currentPathStr = segments.join("/");
     if (currentPathStr === lastNavigatedPathRef.current) {
       return;

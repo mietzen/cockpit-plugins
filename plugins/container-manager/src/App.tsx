@@ -39,11 +39,92 @@ import { ContainerTerminalModal } from './components/ContainerTerminalModal';
 import { ContainerLogsModal } from './components/ContainerLogsModal';
 import { SystemPruneModal } from './components/SystemPruneModal';
 
+const getSegmentsFromEnv = (): string[] => {
+  if (typeof window === 'undefined') {
+    return [];
+  }
+  const hash = window.location.hash.replace(/^#\/?/, '');
+  if (hash) {
+    return hash.split('/').filter(Boolean);
+  }
+  if (window.cockpit && window.cockpit.location && Array.isArray(window.cockpit.location.path)) {
+    const raw = window.cockpit.location.path;
+    if (raw.length > 0 && ['container-manager', 'cockpit-container-manager', 'containers', 'index'].includes(raw[0].toLowerCase())) {
+      return raw.slice(1);
+    }
+    return raw;
+  }
+  return [];
+};
+
+const parseView = (segments: string[]): string => {
+  const cleanStr = segments.map((s) => s.trim().toLowerCase()).filter(Boolean);
+  if (cleanStr.length === 0 || cleanStr[0] === 'dashboard' || cleanStr[0] === 'overview') {
+    return 'dashboard';
+  }
+  const viewKey = cleanStr[0];
+  if (['dashboard', 'containers', 'images', 'volumes', 'networks', 'settings'].includes(viewKey)) {
+    return viewKey;
+  }
+  return 'dashboard';
+};
+
 export const App: React.FC = () => {
   const isDark = useCockpitTheme();
 
+  const [activeView, setActiveView] = useState<string>(() => {
+    return parseView(getSegmentsFromEnv());
+  });
+
+  const lastNavigatedPathRef = React.useRef<string>('');
+
+  const navigateToView = useCallback((view: string) => {
+    setActiveView(view);
+    lastNavigatedPathRef.current = view;
+
+    const segments = view === 'dashboard' ? [] : [view];
+    if (typeof window !== 'undefined') {
+      const targetHash = segments.length > 0 ? `#/${segments.join('/')}` : '#/';
+      if (window.location.hash !== targetHash) {
+        window.history.replaceState(null, '', targetHash);
+      }
+    }
+  }, []);
+
+  const syncFromUrl = useCallback(() => {
+    const segments = getSegmentsFromEnv();
+    const currentPathStr = segments.length > 0 ? segments[0].toLowerCase() : 'dashboard';
+    if (currentPathStr === lastNavigatedPathRef.current) {
+      return;
+    }
+    lastNavigatedPathRef.current = currentPathStr;
+    setActiveView(parseView(segments));
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.cockpit && window.cockpit.location) {
+      const handleLocationChanged = () => syncFromUrl();
+      window.cockpit.addEventListener('locationchanged', handleLocationChanged);
+      return () => window.cockpit.removeEventListener('locationchanged', handleLocationChanged);
+    }
+  }, [syncFromUrl]);
+
+  useEffect(() => {
+    const handleHashChange = () => syncFromUrl();
+    const handlePopState = () => syncFromUrl();
+    window.addEventListener('hashchange', handleHashChange);
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('hashchange', handleHashChange);
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [syncFromUrl]);
+
   const [overview, setOverview] = useState<ContainerOverview>(
     typeof window !== 'undefined' && window.cockpit ? DEFAULT_EMPTY_OVERVIEW : DEFAULT_MOCK_OVERVIEW
+  );
+  const [initialLoaded, setInitialLoaded] = useState<boolean>(
+    typeof window === 'undefined' || !window.cockpit
   );
   const [activeEngine, setActiveEngine] = useState<EngineType>(() => {
     try {
@@ -52,7 +133,6 @@ export const App: React.FC = () => {
     } catch {}
     return 'auto';
   });
-  const [activeView, setActiveView] = useState<string>('dashboard');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [alerts, setAlerts] = useState<
     Array<{ key: number; variant: 'success' | 'danger' | 'warning' | 'info'; title: string; message?: string }>
@@ -125,6 +205,7 @@ export const App: React.FC = () => {
       addAlert('Failed to load container overview', 'danger', err?.message);
     } finally {
       setIsLoading(false);
+      setInitialLoaded(true);
     }
   }, []);
 
@@ -366,7 +447,7 @@ export const App: React.FC = () => {
     });
   };
 
-  const isNoneInstalled = !overview.engines.docker.installed && !overview.engines.podman.installed;
+  const isNoneInstalled = initialLoaded && !overview.engines.docker.installed && !overview.engines.podman.installed;
 
   return (
     <Page style={{ minHeight: '100vh', backgroundColor: 'var(--zfs-canvas-bg)' }}>
@@ -388,7 +469,7 @@ export const App: React.FC = () => {
       {/* Top Sticky Navigation Bar */}
       <Navigation
         activeView={activeView}
-        onSelectView={(v) => setActiveView(v)}
+        onSelectView={(v) => navigateToView(v)}
         onRefresh={() => loadData(activeEngine)}
         isLoading={isLoading}
         containerCount={overview.containers.length}
@@ -438,7 +519,9 @@ export const App: React.FC = () => {
               images={overview.images}
               volumes={overview.volumes}
               networks={overview.networks}
-              onNavigateTab={(tab) => setActiveView(tab)}
+              engines={overview.engines}
+              activeEngine={activeEngine}
+              onNavigateTab={(tab) => navigateToView(tab)}
               onAction={handleContainerAction}
               onOpenTerminal={(c) => setTerminalContainer(c)}
               onOpenLogs={(c) => setLogsContainer(c)}
