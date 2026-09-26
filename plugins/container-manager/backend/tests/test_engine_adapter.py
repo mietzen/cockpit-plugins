@@ -65,7 +65,7 @@ class TestEngineAdapter(unittest.TestCase):
     @patch("engine_adapter.run_cmd")
     def test_docker_list_containers(self, mock_run):
         mock_output = (
-            '{"ID":"1234567890abcdef","Names":"web-app","Image":"nginx:latest","State":"running","Status":"Up 2 hours","CreatedAt":"2026-09-01","Ports":"0.0.0.0:80->80/tcp","Command":"nginx -g","Networks":"bridge"}\n'
+            '{"ID":"1234567890abcdef","Names":"web-app","Image":"nginx:latest","State":"running","Status":"Up 2 hours","CreatedAt":"2026-09-01","Ports":"0.0.0.0:80->80/tcp","Command":"nginx -g","Networks":"bridge","Labels":"com.docker.compose.project=my-stack,com.docker.compose.service=web"}\n'
             '{"ID":"abcdef1234567890","Names":"db-app","Image":"postgres:16","State":"","Status":"Exited (0) 10 minutes ago","CreatedAt":"2026-09-01","Ports":"","Command":"postgres","Networks":""}\n'
         )
         mock_run.return_value = (0, mock_output, "")
@@ -76,8 +76,11 @@ class TestEngineAdapter(unittest.TestCase):
         self.assertEqual(containers[0]["name"], "web-app")
         self.assertEqual(containers[0]["state"], "running")
         self.assertEqual(containers[0]["shortId"], "1234567890ab")
+        self.assertEqual(containers[0]["project"], "my-stack")
+        self.assertEqual(containers[0]["service"], "web")
         self.assertEqual(containers[1]["name"], "db-app")
         self.assertEqual(containers[1]["state"], "exited")
+        self.assertEqual(containers[1]["project"], "")
 
     @patch("engine_adapter.run_cmd")
     def test_docker_list_images(self, mock_run):

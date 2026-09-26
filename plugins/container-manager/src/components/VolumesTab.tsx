@@ -37,6 +37,8 @@ export const VolumesTab: React.FC<VolumesTabProps> = ({
   isLoading = false,
 }) => {
   const [filterText, setFilterText] = useState('');
+  const [activeSortIndex, setActiveSortIndex] = useState<number | null>(null);
+  const [activeSortDirection, setActiveSortDirection] = useState<'asc' | 'desc'>('asc');
 
   const filteredVolumes = volumes.filter(
     (v) =>
@@ -44,6 +46,50 @@ export const VolumesTab: React.FC<VolumesTabProps> = ({
       v.driver.toLowerCase().includes(filterText.toLowerCase()) ||
       v.mountpoint.toLowerCase().includes(filterText.toLowerCase())
   );
+
+  const sortedVolumes = [...filteredVolumes].sort((a, b) => {
+    if (activeSortIndex === null) return 0;
+    let aVal = '';
+    let bVal = '';
+    switch (activeSortIndex) {
+      case 0:
+        aVal = a.name;
+        bVal = b.name;
+        break;
+      case 1:
+        aVal = a.driver;
+        bVal = b.driver;
+        break;
+      case 2:
+        aVal = a.mountpoint;
+        bVal = b.mountpoint;
+        break;
+      case 3:
+        aVal = a.size || '';
+        bVal = b.size || '';
+        break;
+      case 4:
+        aVal = a.inUse ? '1' : '0';
+        bVal = b.inUse ? '1' : '0';
+        break;
+      default:
+        return 0;
+    }
+    const cmp = aVal.localeCompare(bVal, undefined, { numeric: true, sensitivity: 'base' });
+    return activeSortDirection === 'asc' ? cmp : -cmp;
+  });
+
+  const getSortParams = (columnIndex: number) => ({
+    sortBy: {
+      index: activeSortIndex ?? undefined,
+      direction: activeSortDirection,
+    },
+    onSort: (_event: any, index: number, direction: 'asc' | 'desc') => {
+      setActiveSortIndex(index);
+      setActiveSortDirection(direction);
+    },
+    columnIndex,
+  });
 
   const unusedCount = volumes.filter((v) => !v.inUse).length;
 
@@ -94,16 +140,16 @@ export const VolumesTab: React.FC<VolumesTabProps> = ({
           <Table aria-label="Volumes Table" variant="compact">
             <Thead>
               <Tr>
-                <Th width={25}>Volume Name</Th>
-                <Th width={15}>Driver</Th>
-                <Th width={25}>Mountpoint</Th>
-                <Th width={10}>Size</Th>
-                <Th width={10}>Usage</Th>
+                <Th width={25} sort={getSortParams(0)}>Volume Name</Th>
+                <Th width={15} sort={getSortParams(1)}>Driver</Th>
+                <Th width={25} sort={getSortParams(2)}>Mountpoint</Th>
+                <Th width={10} sort={getSortParams(3)}>Size</Th>
+                <Th width={10} sort={getSortParams(4)}>Usage</Th>
                 <Th width={15} style={{ textAlign: 'right' }}>Actions</Th>
               </Tr>
             </Thead>
             <Tbody>
-              {filteredVolumes.map((vol) => (
+              {sortedVolumes.map((vol) => (
                 <Tr key={vol.name}>
                   <Td dataLabel="Volume Name">
                     <strong style={{ fontSize: '0.95rem' }}>{vol.name}</strong>

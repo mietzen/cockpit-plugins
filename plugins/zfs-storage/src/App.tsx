@@ -156,9 +156,13 @@ export const App: React.FC = () => {
     const fullPathStr = segments.join("/");
     lastNavigatedPathRef.current = fullPathStr;
 
-    const targetHash = segments.length > 0 ? `#/${segments.join("/")}` : "#/";
-    if (window.location.hash !== targetHash) {
-      window.history.pushState(null, "", targetHash);
+    if (typeof cockpit !== "undefined" && cockpit.location && typeof cockpit.location.go === "function") {
+      cockpit.location.go(segments);
+    } else {
+      const targetHash = segments.length > 0 ? `#/${segments.join("/")}` : "#/";
+      if (window.location.hash !== targetHash) {
+        window.history.pushState(null, "", targetHash);
+      }
     }
   }, []);
 

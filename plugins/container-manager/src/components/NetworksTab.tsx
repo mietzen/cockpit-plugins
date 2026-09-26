@@ -38,6 +38,8 @@ export const NetworksTab: React.FC<NetworksTabProps> = ({
   isLoading = false,
 }) => {
   const [filterText, setFilterText] = useState('');
+  const [activeSortIndex, setActiveSortIndex] = useState<number | null>(null);
+  const [activeSortDirection, setActiveSortDirection] = useState<'asc' | 'desc'>('asc');
 
   const filteredNetworks = networks.filter(
     (n) =>
@@ -47,6 +49,50 @@ export const NetworksTab: React.FC<NetworksTabProps> = ({
       n.shortId.toLowerCase().includes(filterText.toLowerCase()) ||
       n.id.toLowerCase().includes(filterText.toLowerCase())
   );
+
+  const sortedNetworks = [...filteredNetworks].sort((a, b) => {
+    if (activeSortIndex === null) return 0;
+    let aVal = '';
+    let bVal = '';
+    switch (activeSortIndex) {
+      case 0:
+        aVal = a.name;
+        bVal = b.name;
+        break;
+      case 1:
+        aVal = a.driver;
+        bVal = b.driver;
+        break;
+      case 2:
+        aVal = a.scope;
+        bVal = b.scope;
+        break;
+      case 3:
+        aVal = a.subnet || '';
+        bVal = b.subnet || '';
+        break;
+      case 4:
+        aVal = a.isBuiltIn ? '1' : '0';
+        bVal = b.isBuiltIn ? '1' : '0';
+        break;
+      default:
+        return 0;
+    }
+    const cmp = aVal.localeCompare(bVal, undefined, { numeric: true, sensitivity: 'base' });
+    return activeSortDirection === 'asc' ? cmp : -cmp;
+  });
+
+  const getSortParams = (columnIndex: number) => ({
+    sortBy: {
+      index: activeSortIndex ?? undefined,
+      direction: activeSortDirection,
+    },
+    onSort: (_event: any, index: number, direction: 'asc' | 'desc') => {
+      setActiveSortIndex(index);
+      setActiveSortDirection(direction);
+    },
+    columnIndex,
+  });
 
   const unusedCustomCount = networks.filter((n) => !n.isBuiltIn && !n.inUse).length;
 
@@ -97,16 +143,16 @@ export const NetworksTab: React.FC<NetworksTabProps> = ({
           <Table aria-label="Networks Table" variant="compact">
             <Thead>
               <Tr>
-                <Th width={25}>Network Name</Th>
-                <Th width={15}>Driver</Th>
-                <Th width={15}>Scope</Th>
-                <Th width={20}>Subnet</Th>
-                <Th width={10}>Type</Th>
+                <Th width={25} sort={getSortParams(0)}>Network Name</Th>
+                <Th width={15} sort={getSortParams(1)}>Driver</Th>
+                <Th width={15} sort={getSortParams(2)}>Scope</Th>
+                <Th width={20} sort={getSortParams(3)}>Subnet</Th>
+                <Th width={10} sort={getSortParams(4)}>Type</Th>
                 <Th width={15} style={{ textAlign: 'right' }}>Actions</Th>
               </Tr>
             </Thead>
             <Tbody>
-              {filteredNetworks.map((net) => {
+              {sortedNetworks.map((net) => {
                 const canDelete = !net.isBuiltIn && !net.inUse;
 
                 return (

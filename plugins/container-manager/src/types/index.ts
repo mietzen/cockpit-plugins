@@ -1,3 +1,5 @@
+declare const __APP_VERSION__: string;
+
 export type EngineType = 'docker' | 'podman' | 'none' | 'auto';
 
 export interface EngineInfo {
@@ -27,6 +29,9 @@ export interface ContainerItem {
   ports: string;
   command: string;
   networks: string[];
+  labels?: Record<string, string>;
+  project?: string;
+  service?: string;
 }
 
 export interface ImageItem {

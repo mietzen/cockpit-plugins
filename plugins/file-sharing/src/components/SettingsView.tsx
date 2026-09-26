@@ -177,15 +177,15 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </Card>
           </GridItem>
 
-          {/* Card 2: Wildcard Ansible Markers */}
+          {/* Card 2: Managed Configuration Markers */}
           <GridItem span={12} lg={6}>
             <Card isFullHeight>
               <CardTitle>
-                <Title headingLevel="h2" size="xl">Ansible Managed Block Markers</Title>
+                <Title headingLevel="h2" size="xl">Managed Configuration Markers</Title>
               </CardTitle>
               <CardBody>
                 <div style={{ color: "var(--zfs-text-secondary)", marginBottom: "1rem", fontSize: "0.9rem" }}>
-                  Configure wildcard patterns to detect configuration sections managed by Ansible automation.
+                  Configure wildcard patterns to detect configuration sections managed by external automation or orchestration tools.
                   Any shares inside matched blocks are locked as read-only.
                 </div>
 
@@ -245,7 +245,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </CardTitle>
               <CardBody>
                 <p style={{ marginBottom: "0.5rem" }}>
-                  <strong>Version:</strong> 0.1.0
+                  <strong>Version:</strong> {typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "0.1.2"}
                 </p>
                 <p style={{ marginBottom: "0.5rem" }}>
                   <strong>License:</strong> MIT

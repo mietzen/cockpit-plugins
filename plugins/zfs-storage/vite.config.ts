@@ -2,6 +2,8 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import istanbul from 'vite-plugin-istanbul';
 
+import pkg from './package.json';
+
 const isCoverage = process.env.VITE_COVERAGE === 'true';
 
 export default defineConfig({
@@ -15,6 +17,9 @@ export default defineConfig({
       forceBuildInstrument: isCoverage,
     }),
   ],
+  define: {
+    __APP_VERSION__: JSON.stringify(pkg.version),
+  },
   base: './',
   build: {
     outDir: 'dist',

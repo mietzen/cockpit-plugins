@@ -38,6 +38,8 @@ export const ImagesTab: React.FC<ImagesTabProps> = ({
   isLoading = false,
 }) => {
   const [filterText, setFilterText] = useState('');
+  const [activeSortIndex, setActiveSortIndex] = useState<number | null>(null);
+  const [activeSortDirection, setActiveSortDirection] = useState<'asc' | 'desc'>('asc');
 
   const normalizedFilter = filterText.toLowerCase().replace(/^sha256:/, '');
   const filteredImages = images.filter(
@@ -47,6 +49,50 @@ export const ImagesTab: React.FC<ImagesTabProps> = ({
       img.shortId.toLowerCase().includes(normalizedFilter) ||
       img.id.toLowerCase().includes(normalizedFilter)
   );
+
+  const sortedImages = [...filteredImages].sort((a, b) => {
+    if (activeSortIndex === null) return 0;
+    let aVal = '';
+    let bVal = '';
+    switch (activeSortIndex) {
+      case 0:
+        aVal = a.repository;
+        bVal = b.repository;
+        break;
+      case 1:
+        aVal = a.tag;
+        bVal = b.tag;
+        break;
+      case 2:
+        aVal = a.shortId;
+        bVal = b.shortId;
+        break;
+      case 3:
+        aVal = a.size;
+        bVal = b.size;
+        break;
+      case 4:
+        aVal = a.inUse ? '1' : '0';
+        bVal = b.inUse ? '1' : '0';
+        break;
+      default:
+        return 0;
+    }
+    const cmp = aVal.localeCompare(bVal, undefined, { numeric: true, sensitivity: 'base' });
+    return activeSortDirection === 'asc' ? cmp : -cmp;
+  });
+
+  const getSortParams = (columnIndex: number) => ({
+    sortBy: {
+      index: activeSortIndex ?? undefined,
+      direction: activeSortDirection,
+    },
+    onSort: (_event: any, index: number, direction: 'asc' | 'desc') => {
+      setActiveSortIndex(index);
+      setActiveSortDirection(direction);
+    },
+    columnIndex,
+  });
 
   const unusedCount = images.filter((i) => !i.inUse).length;
 
@@ -97,16 +143,16 @@ export const ImagesTab: React.FC<ImagesTabProps> = ({
           <Table aria-label="Images Table" variant="compact">
             <Thead>
               <Tr>
-                <Th width={30}>Repository</Th>
-                <Th width={15}>Tag</Th>
-                <Th width={15}>Image ID</Th>
-                <Th width={15}>Size</Th>
-                <Th width={10}>Usage</Th>
+                <Th width={30} sort={getSortParams(0)}>Repository</Th>
+                <Th width={15} sort={getSortParams(1)}>Tag</Th>
+                <Th width={15} sort={getSortParams(2)}>Image ID</Th>
+                <Th width={15} sort={getSortParams(3)}>Size</Th>
+                <Th width={10} sort={getSortParams(4)}>Usage</Th>
                 <Th width={15} style={{ textAlign: 'right' }}>Actions</Th>
               </Tr>
             </Thead>
             <Tbody>
-              {filteredImages.map((img) => (
+              {sortedImages.map((img) => (
                 <Tr key={img.id}>
                   <Td dataLabel="Repository">
                     <strong style={{ fontSize: '0.95rem' }}>{img.repository}</strong>

@@ -62,6 +62,15 @@ def format_acl_reason(list_name: str, match_source: str) -> str:
     return f"Member of group '{match_source}' in {list_name} list"
 
 
+def expand_macros(text: str, username: str) -> str:
+    """Expands Samba macros (%S, %s, %U, %u, %H) for a given user."""
+    if not text:
+        return ""
+    expanded = text.replace("%S", username).replace("%s", username)
+    expanded = expanded.replace("%U", username).replace("%u", username)
+    return expanded.replace("%H", f"/home/{username}")
+
+
 def calculate_smb_user_matrix(shares: List[Dict[str, Any]], users: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     matrix: List[Dict[str, Any]] = []
 
@@ -72,14 +81,14 @@ def calculate_smb_user_matrix(shares: List[Dict[str, Any]], users: List[Dict[str
 
         for share in shares:
             share_name = share.get("name", "")
-            share_path = share.get("path", "")
+            share_path = expand_macros(share.get("path", ""), username)
             read_only = share.get("read_only", True)
             guest_ok = share.get("guest_ok", False)
 
-            inv_tokens = parse_acl_tokens(share.get("invalid_users", ""))
-            val_tokens = parse_acl_tokens(share.get("valid_users", ""))
-            wr_tokens = parse_acl_tokens(share.get("write_list", ""))
-            rd_tokens = parse_acl_tokens(share.get("read_list", ""))
+            inv_tokens = parse_acl_tokens(expand_macros(share.get("invalid_users", ""), username))
+            val_tokens = parse_acl_tokens(expand_macros(share.get("valid_users", ""), username))
+            wr_tokens = parse_acl_tokens(expand_macros(share.get("write_list", ""), username))
+            rd_tokens = parse_acl_tokens(expand_macros(share.get("read_list", ""), username))
 
             inv_match, inv_src = evaluate_acl(username, user_groups, inv_tokens)
             val_match, _ = evaluate_acl(username, user_groups, val_tokens)

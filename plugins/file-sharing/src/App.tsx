@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import "@patternfly/react-core/dist/styles/base.css";
 import "@cockpit-plugins/common/src/styles/cockpit-theme.css";
 import { useCockpitTheme } from "@cockpit-plugins/common";
@@ -22,10 +22,92 @@ import { UsersTab } from "./components/UsersTab";
 import { SessionsTab } from "./components/SessionsTab";
 import { SettingsView } from "./components/SettingsView";
 
+declare global {
+  interface Window {
+    cockpit?: any;
+  }
+}
+
+const parseView = (segments: string[]): string => {
+  const clean = segments.map((s) => s.trim().toLowerCase()).filter(Boolean);
+  if (clean.length === 0) return "dashboard";
+  const v = clean[0];
+  if (["dashboard", "smb", "nfs", "users", "sessions", "settings"].includes(v)) {
+    return v;
+  }
+  return "dashboard";
+};
+
 export const App: React.FC = () => {
   useCockpitTheme();
 
-  const [activeView, setActiveView] = useState<string>("dashboard");
+  const [activeView, setActiveView] = useState<string>(() => {
+    let initialSegments: string[] = [];
+    if (typeof cockpit !== "undefined" && cockpit.location && Array.isArray(cockpit.location.path) && cockpit.location.path.length > 0) {
+      initialSegments = cockpit.location.path;
+    } else if (typeof window !== "undefined") {
+      const hash = window.location.hash.replace(/^#\/?/, "");
+      if (hash) {
+        initialSegments = hash.split("/").filter(Boolean);
+      }
+    }
+    return parseView(initialSegments);
+  });
+
+  const lastNavigatedPathRef = useRef<string>("");
+
+  const navigateToView = useCallback((view: string) => {
+    setActiveView(view);
+    lastNavigatedPathRef.current = view;
+
+    const segments = view === "dashboard" ? [] : [view];
+    if (typeof cockpit !== "undefined" && cockpit.location && typeof cockpit.location.go === "function") {
+      cockpit.location.go(segments);
+    } else if (typeof window !== "undefined") {
+      const targetHash = segments.length > 0 ? `#/${segments.join("/")}` : "#/";
+      if (window.location.hash !== targetHash) {
+        window.history.pushState(null, "", targetHash);
+      }
+    }
+  }, []);
+
+  const syncFromUrl = useCallback(() => {
+    let segments: string[] = [];
+    if (typeof cockpit !== "undefined" && cockpit.location && Array.isArray(cockpit.location.path) && cockpit.location.path.length > 0) {
+      segments = cockpit.location.path;
+    } else if (typeof window !== "undefined") {
+      const hash = window.location.hash.replace(/^#\/?/, "");
+      if (hash) {
+        segments = hash.split("/").filter(Boolean);
+      }
+    }
+    const currentPathStr = segments.length > 0 ? segments[0].toLowerCase() : "dashboard";
+    if (currentPathStr === lastNavigatedPathRef.current) {
+      return;
+    }
+    lastNavigatedPathRef.current = currentPathStr;
+    setActiveView(parseView(segments));
+  }, []);
+
+  useEffect(() => {
+    if (typeof cockpit !== "undefined" && cockpit.location) {
+      const handleLocationChanged = () => syncFromUrl();
+      cockpit.addEventListener("locationchanged", handleLocationChanged);
+      return () => cockpit.removeEventListener("locationchanged", handleLocationChanged);
+    }
+  }, [syncFromUrl]);
+
+  useEffect(() => {
+    const handleHashChange = () => syncFromUrl();
+    const handlePopState = () => syncFromUrl();
+    window.addEventListener("hashchange", handleHashChange);
+    window.addEventListener("popstate", handlePopState);
+    return () => {
+      window.removeEventListener("hashchange", handleHashChange);
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, [syncFromUrl]);
+
   const [data, setData] = useState<FileSharingOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -194,7 +276,7 @@ export const App: React.FC = () => {
 
       <Navigation
         activeView={activeView}
-        onSelectView={(view) => setActiveView(view)}
+        onSelectView={(view) => navigateToView(view)}
         onRefresh={() => loadData(false)}
         isLoading={refreshing}
       />
@@ -202,10 +284,10 @@ export const App: React.FC = () => {
       {activeView === "dashboard" && (
         <DashboardView
           overview={overview}
-          onNavigate={(view) => setActiveView(view)}
-          onCreateSmbShare={() => setActiveView("smb")}
-          onCreateNfsExport={() => setActiveView("nfs")}
-          onAddUser={() => setActiveView("users")}
+          onNavigate={(view) => navigateToView(view)}
+          onCreateSmbShare={() => navigateToView("smb")}
+          onCreateNfsExport={() => navigateToView("nfs")}
+          onAddUser={() => navigateToView("users")}
         />
       )}
 

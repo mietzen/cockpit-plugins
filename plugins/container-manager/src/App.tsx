@@ -39,8 +39,85 @@ import { ContainerTerminalModal } from './components/ContainerTerminalModal';
 import { ContainerLogsModal } from './components/ContainerLogsModal';
 import { SystemPruneModal } from './components/SystemPruneModal';
 
+const parseView = (segments: string[]): string => {
+  const clean = segments.map((s) => s.trim().toLowerCase()).filter(Boolean);
+  if (clean.length === 0) return 'dashboard';
+  const v = clean[0];
+  if (['dashboard', 'containers', 'images', 'volumes', 'networks', 'settings'].includes(v)) {
+    return v;
+  }
+  return 'dashboard';
+};
+
 export const App: React.FC = () => {
   const isDark = useCockpitTheme();
+
+  const [activeView, setActiveView] = useState<string>(() => {
+    let initialSegments: string[] = [];
+    if (typeof window !== 'undefined' && window.cockpit && window.cockpit.location && Array.isArray(window.cockpit.location.path) && window.cockpit.location.path.length > 0) {
+      initialSegments = window.cockpit.location.path;
+    } else if (typeof window !== 'undefined') {
+      const hash = window.location.hash.replace(/^#\/?/, '');
+      if (hash) {
+        initialSegments = hash.split('/').filter(Boolean);
+      }
+    }
+    return parseView(initialSegments);
+  });
+
+  const lastNavigatedPathRef = React.useRef<string>('');
+
+  const navigateToView = useCallback((view: string) => {
+    setActiveView(view);
+    lastNavigatedPathRef.current = view;
+
+    const segments = view === 'dashboard' ? [] : [view];
+    if (typeof window !== 'undefined' && window.cockpit && window.cockpit.location && typeof window.cockpit.location.go === 'function') {
+      window.cockpit.location.go(segments);
+    } else if (typeof window !== 'undefined') {
+      const targetHash = segments.length > 0 ? `#/${segments.join('/')}` : '#/';
+      if (window.location.hash !== targetHash) {
+        window.history.pushState(null, '', targetHash);
+      }
+    }
+  }, []);
+
+  const syncFromUrl = useCallback(() => {
+    let segments: string[] = [];
+    if (typeof window !== 'undefined' && window.cockpit && window.cockpit.location && Array.isArray(window.cockpit.location.path) && window.cockpit.location.path.length > 0) {
+      segments = window.cockpit.location.path;
+    } else if (typeof window !== 'undefined') {
+      const hash = window.location.hash.replace(/^#\/?/, '');
+      if (hash) {
+        segments = hash.split('/').filter(Boolean);
+      }
+    }
+    const currentPathStr = segments.length > 0 ? segments[0].toLowerCase() : 'dashboard';
+    if (currentPathStr === lastNavigatedPathRef.current) {
+      return;
+    }
+    lastNavigatedPathRef.current = currentPathStr;
+    setActiveView(parseView(segments));
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.cockpit && window.cockpit.location) {
+      const handleLocationChanged = () => syncFromUrl();
+      window.cockpit.addEventListener('locationchanged', handleLocationChanged);
+      return () => window.cockpit.removeEventListener('locationchanged', handleLocationChanged);
+    }
+  }, [syncFromUrl]);
+
+  useEffect(() => {
+    const handleHashChange = () => syncFromUrl();
+    const handlePopState = () => syncFromUrl();
+    window.addEventListener('hashchange', handleHashChange);
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('hashchange', handleHashChange);
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [syncFromUrl]);
 
   const [overview, setOverview] = useState<ContainerOverview>(
     typeof window !== 'undefined' && window.cockpit ? DEFAULT_EMPTY_OVERVIEW : DEFAULT_MOCK_OVERVIEW
@@ -52,7 +129,6 @@ export const App: React.FC = () => {
     } catch {}
     return 'auto';
   });
-  const [activeView, setActiveView] = useState<string>('dashboard');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [alerts, setAlerts] = useState<
     Array<{ key: number; variant: 'success' | 'danger' | 'warning' | 'info'; title: string; message?: string }>
@@ -388,7 +464,7 @@ export const App: React.FC = () => {
       {/* Top Sticky Navigation Bar */}
       <Navigation
         activeView={activeView}
-        onSelectView={(v) => setActiveView(v)}
+        onSelectView={(v) => navigateToView(v)}
         onRefresh={() => loadData(activeEngine)}
         isLoading={isLoading}
         containerCount={overview.containers.length}
@@ -438,7 +514,7 @@ export const App: React.FC = () => {
               images={overview.images}
               volumes={overview.volumes}
               networks={overview.networks}
-              onNavigateTab={(tab) => setActiveView(tab)}
+              onNavigateTab={(tab) => navigateToView(tab)}
               onAction={handleContainerAction}
               onOpenTerminal={(c) => setTerminalContainer(c)}
               onOpenLogs={(c) => setLogsContainer(c)}

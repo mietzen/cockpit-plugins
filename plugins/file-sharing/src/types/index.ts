@@ -1,3 +1,5 @@
+declare const __APP_VERSION__: string;
+
 export interface SmbShare {
   name: string;
   path: string;

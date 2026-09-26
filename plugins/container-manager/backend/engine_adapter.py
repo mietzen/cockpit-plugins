@@ -153,6 +153,31 @@ def get_volume_size(mountpoint: str) -> str:
     return f"{total / (1024 * 1024 * 1024):.2f} GB"
 
 
+def extract_compose_metadata(raw_labels: Any) -> Tuple[Dict[str, str], str, str]:
+    """Extracts labels dictionary, compose project name, and service name."""
+    labels_dict: Dict[str, str] = {}
+    if isinstance(raw_labels, dict):
+        labels_dict = {str(k): str(v) for k, v in raw_labels.items()}
+    elif isinstance(raw_labels, str) and raw_labels.strip():
+        for pair in raw_labels.split(","):
+            if "=" in pair:
+                k, v = pair.split("=", 1)
+                labels_dict[k.strip()] = v.strip()
+
+    project = (
+        labels_dict.get("com.docker.compose.project")
+        or labels_dict.get("io.podman.compose.project")
+        or labels_dict.get("com.docker.stack.namespace")
+        or ""
+    )
+    service = (
+        labels_dict.get("com.docker.compose.service")
+        or labels_dict.get("io.podman.compose.service")
+        or ""
+    )
+    return labels_dict, project, service
+
+
 class ContainerEngineAdapter(ABC):
     """Abstract adapter unifying Docker and Podman CLI interactions."""
 
@@ -335,6 +360,9 @@ class DockerAdapter(ContainerEngineAdapter):
                     raw_state = "created"
 
             full_id = data.get("ID", "")
+            raw_labels = data.get("Labels", "")
+            labels_dict, project, service = extract_compose_metadata(raw_labels)
+
             containers.append({
                 "id": full_id,
                 "shortId": full_id[:12] if full_id else "",
@@ -346,6 +374,9 @@ class DockerAdapter(ContainerEngineAdapter):
                 "ports": data.get("Ports", ""),
                 "command": data.get("Command", ""),
                 "networks": data.get("Networks", "").split(",") if data.get("Networks") else [],
+                "labels": labels_dict,
+                "project": project,
+                "service": service,
             })
         return containers
 
@@ -522,6 +553,8 @@ class PodmanAdapter(ContainerEngineAdapter):
             raw_cmd = item.get("command", item.get("Command", []))
             cmd_str = " ".join(raw_cmd) if isinstance(raw_cmd, list) else str(raw_cmd)
             net_list = item.get("networks", item.get("Networks", []))
+            raw_labels = item.get("labels", item.get("Labels", {}))
+            labels_dict, project, service = extract_compose_metadata(raw_labels)
 
             containers.append({
                 "id": full_id,
@@ -534,6 +567,9 @@ class PodmanAdapter(ContainerEngineAdapter):
                 "ports": ports_str,
                 "command": cmd_str,
                 "networks": net_list if isinstance(net_list, list) else [],
+                "labels": labels_dict,
+                "project": project,
+                "service": service,
             })
         return containers
 

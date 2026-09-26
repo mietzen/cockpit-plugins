@@ -263,6 +263,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   const envVarsCode = `export DOCKER_HOST="tcp://${hostIp}:${port}"\nexport DOCKER_TLS_VERIFY=1\nexport DOCKER_CERT_PATH="~/.docker/certs"\ndocker ps`;
 
+  const installedEnginesCount = (engines.docker.installed ? 1 : 0) + (engines.podman.installed ? 1 : 0);
+
   return (
     <>
       <PageSection variant="light" style={{ paddingBottom: '1rem' }}>
@@ -299,7 +301,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                         {engines.docker.installed ? (engines.docker.active ? 'Active' : 'Installed') : 'Not Installed'}
                       </StatusBadge>
                     </Flex>
-                    {engines.docker.installed && (
+                    {engines.docker.installed && installedEnginesCount > 1 && (
                       <Button
                         variant={activeEngine === 'docker' ? 'primary' : 'secondary'}
                         size="sm"
@@ -320,7 +322,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                         {engines.podman.installed ? (engines.podman.active ? 'Active' : 'Installed') : 'Not Installed'}
                       </StatusBadge>
                     </Flex>
-                    {engines.podman.installed && (
+                    {engines.podman.installed && installedEnginesCount > 1 && (
                       <Button
                         variant={activeEngine === 'podman' ? 'primary' : 'secondary'}
                         size="sm"
@@ -585,6 +587,35 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     </Tab>
                   )}
                 </Tabs>
+              </CardBody>
+            </Card>
+          </GridItem>
+
+          {/* Card: About Cockpit Container Manager */}
+          <GridItem span={12}>
+            <Card isPlain style={{ border: '1px solid var(--zfs-card-border, #30363d)', marginTop: '0.5rem' }}>
+              <CardTitle>
+                <Title headingLevel="h2" size="xl">About Cockpit Container Manager</Title>
+              </CardTitle>
+              <CardBody>
+                <p style={{ marginBottom: '0.5rem' }}>
+                  <strong>Version:</strong> {typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '0.1.1'}
+                </p>
+                <p style={{ marginBottom: '0.5rem' }}>
+                  <strong>License:</strong> MIT
+                </p>
+                {engines.docker.installed && (
+                  <p style={{ marginBottom: '0.5rem' }}>
+                    <strong>Docker Engine:</strong>{' '}
+                    <span style={{ fontFamily: 'monospace' }}>{engines.docker.version || 'Installed'}</span>
+                  </p>
+                )}
+                {engines.podman.installed && (
+                  <p style={{ marginBottom: '0.5rem' }}>
+                    <strong>Podman:</strong>{' '}
+                    <span style={{ fontFamily: 'monospace' }}>{engines.podman.version || 'Installed'}</span>
+                  </p>
+                )}
               </CardBody>
             </Card>
           </GridItem>
