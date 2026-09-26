@@ -40,9 +40,13 @@ import { ContainerLogsModal } from './components/ContainerLogsModal';
 import { SystemPruneModal } from './components/SystemPruneModal';
 
 const parseView = (segments: string[]): string => {
-  const clean = segments.map((s) => s.trim().toLowerCase()).filter(Boolean);
-  if (clean.length === 0) return 'dashboard';
-  const v = clean[0];
+  let clean = segments ? [...segments] : [];
+  if (clean.length > 0 && (clean[0] === 'container-manager' || clean[0] === 'cockpit-container-manager')) {
+    clean = clean.slice(1);
+  }
+  const cleanStr = clean.map((s) => s.trim().toLowerCase()).filter(Boolean);
+  if (cleanStr.length === 0 || cleanStr[0] === 'dashboard' || cleanStr[0] === 'overview') return 'dashboard';
+  const v = cleanStr[0];
   if (['dashboard', 'containers', 'images', 'volumes', 'networks', 'settings'].includes(v)) {
     return v;
   }
