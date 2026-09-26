@@ -11,6 +11,7 @@ import {
   CardTitle,
   CardBody,
   Label,
+  Badge,
   EmptyState,
   EmptyStateHeader,
   EmptyStateIcon,
