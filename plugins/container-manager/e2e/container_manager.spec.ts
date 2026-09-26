@@ -134,6 +134,19 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     await expect(frame.locator('.pf-v5-c-card', { hasText: 'Volumes' }).first()).toBeVisible({ timeout: 10000 });
     await expect(frame.locator('.pf-v5-c-card', { hasText: 'Networks' }).first()).toBeVisible({ timeout: 10000 });
 
+    // Click metric cards to exercise dashboard navigation callback
+    await frame.locator('.pf-v5-c-card', { hasText: 'Images' }).first().click();
+    await frame.waitForSelector('table[aria-label="Images Table"], div:has-text("No Images Found")', { timeout: 10000 });
+
+    await frame.locator('.cockpit-top-nav-bar button:has-text("Overview")').click();
+    await frame.waitForSelector('.pf-v5-c-card', { timeout: 10000 });
+
+    await frame.locator('.pf-v5-c-card', { hasText: 'Volumes' }).first().click();
+    await frame.waitForSelector('table[aria-label="Volumes Table"], div:has-text("No Volumes Found")', { timeout: 10000 });
+
+    await frame.locator('.cockpit-top-nav-bar button:has-text("Overview")').click();
+    await frame.waitForSelector('.pf-v5-c-card', { timeout: 10000 });
+
     await saveScreenshot(page, '02_overview_metrics.png');
   });
 
@@ -550,6 +563,13 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
       const closeBtn = frame.locator('.pf-v5-c-modal-box button:has-text("Close Logs"), .pf-v5-c-modal-box button[aria-label="Close"]').first();
       await closeBtn.click();
       await frame.waitForSelector('.pf-v5-c-modal-box:has-text("Logs:")', { state: 'detached', timeout: 5000 });
+    }
+
+    // Test Restart button on Dashboard active containers card
+    const restartBtn = frame.locator('table[aria-label="Active Containers Table"] button[aria-label="Restart"]').first();
+    if (await restartBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await restartBtn.click({ force: true });
+      await frame.waitForTimeout(1000);
     }
   });
 
