@@ -368,6 +368,87 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
       await frame.waitForSelector('.pf-v5-c-modal-box', { state: 'detached', timeout: 5000 });
     }
   });
+
+  test('11. View Container Logs Modal', async () => {
+    const frame = await getFrame();
+
+    // Navigate to Containers tab
+    await frame.locator('.cockpit-top-nav-bar button:has-text("Containers")').click();
+    await frame.waitForSelector('table[aria-label="Containers Table"]', { timeout: 10000 });
+
+    // Click logs button on first container
+    const logsBtn = frame.locator('table[aria-label="Containers Table"] button[aria-label="Logs"]').first();
+    if (await logsBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await logsBtn.click({ force: true });
+      await frame.waitForSelector('.pf-v5-c-modal-box:has-text("Logs:")', { timeout: 8000 });
+
+      // Toggle Wrap Lines switch
+      const wrapSwitch = frame.locator('input[aria-label="Wrap lines"], #log-wrap-switch').first();
+      if (await wrapSwitch.count() > 0) {
+        await wrapSwitch.click({ force: true }).catch(() => {});
+      }
+
+      // Close logs modal
+      const closeBtn = frame.locator('.pf-v5-c-modal-box button:has-text("Close")').first();
+      await closeBtn.click();
+      await frame.waitForSelector('.pf-v5-c-modal-box', { state: 'detached', timeout: 5000 });
+    }
+  });
+
+  test('12. Images Tab Prune Unused Modal', async () => {
+    const frame = await getFrame();
+
+    // Navigate to Images tab
+    await frame.locator('.cockpit-top-nav-bar button:has-text("Images")').click();
+    await frame.waitForSelector('table[aria-label="Images Table"], div:has-text("No Images Found")', { timeout: 10000 });
+
+    const pruneImagesBtn = frame.locator('button:has-text("Prune Unused Images"), button:has-text("Prune Images")').first();
+    if (await pruneImagesBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await pruneImagesBtn.click();
+      await frame.waitForSelector('.pf-v5-c-modal-box', { timeout: 5000 });
+
+      const cancelBtn = frame.locator('.pf-v5-c-modal-box button:has-text("Cancel")').first();
+      await cancelBtn.click();
+      await frame.waitForSelector('.pf-v5-c-modal-box', { state: 'detached', timeout: 5000 });
+    }
+  });
+
+  test('13. Volumes Tab Prune Modal', async () => {
+    const frame = await getFrame();
+
+    // Navigate to Volumes tab
+    await frame.locator('.cockpit-top-nav-bar button:has-text("Volumes")').click();
+    await frame.waitForSelector('table[aria-label="Volumes Table"], div:has-text("No Volumes Found")', { timeout: 10000 });
+
+    const pruneVolumesBtn = frame.locator('button:has-text("Prune Unused Volumes"), button:has-text("Prune Volumes")').first();
+    if (await pruneVolumesBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await pruneVolumesBtn.click();
+      await frame.waitForSelector('.pf-v5-c-modal-box', { timeout: 5000 });
+
+      const cancelBtn = frame.locator('.pf-v5-c-modal-box button:has-text("Cancel")').first();
+      await cancelBtn.click();
+      await frame.waitForSelector('.pf-v5-c-modal-box', { state: 'detached', timeout: 5000 });
+    }
+  });
+
+  test('14. Networks Tab Prune Modal', async () => {
+    const frame = await getFrame();
+
+    // Navigate to Networks tab
+    await frame.locator('.cockpit-top-nav-bar button:has-text("Networks")').click();
+    await frame.waitForSelector('table[aria-label="Networks Table"], div:has-text("No Networks Found")', { timeout: 10000 });
+
+    const pruneNetsBtn = frame.locator('button:has-text("Prune Unused Networks"), button:has-text("Prune Networks")').first();
+    if (await pruneNetsBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await pruneNetsBtn.click();
+      await frame.waitForSelector('.pf-v5-c-modal-box', { timeout: 5000 });
+
+      const cancelBtn = frame.locator('.pf-v5-c-modal-box button:has-text("Cancel")').first();
+      await cancelBtn.click();
+      await frame.waitForSelector('.pf-v5-c-modal-box', { state: 'detached', timeout: 5000 });
+    }
+  });
 });
+
 
 
