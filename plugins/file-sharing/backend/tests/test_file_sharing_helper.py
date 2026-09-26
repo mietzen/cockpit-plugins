@@ -411,9 +411,14 @@ Account Flags:        [UD         ]
         res = json.loads(mock_print.call_args[0][0])
         self.assertEqual(res["status"], "error")
 
+    @patch("pwd.getpwall")
     @patch("grp.getgrall")
     @patch("file_sharing_helper.get_smb_users", return_value=[{"username": "alice"}])
-    def test_get_smb_groups(self, mock_users, mock_grall):
+    def test_get_smb_groups(self, mock_users, mock_grall, mock_getpwall):
+        mock_getpwall.return_value = [
+            MagicMock(pw_name="alice", pw_uid=1001, pw_gid=1001),
+            MagicMock(pw_name="root", pw_uid=0, pw_gid=0),
+        ]
         g1 = MagicMock(gr_name="smbusers", gr_gid=1001, gr_mem=["alice", "bob"])
         g2 = MagicMock(gr_name="sysgrp", gr_gid=20, gr_mem=["root"])
         mock_grall.return_value = [g1, g2]
