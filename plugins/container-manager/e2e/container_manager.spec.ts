@@ -505,7 +505,116 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
       await frame.waitForSelector('.pf-v5-c-modal-box:has-text("Logs:")', { state: 'detached', timeout: 5000 });
     }
   });
+
+  test('17. Filter and Search Containers Table', async () => {
+    const frame = await getFrame();
+
+    // Navigate to Containers tab
+    await frame.locator('.cockpit-top-nav-bar button:has-text("Containers")').click();
+    await frame.waitForSelector('table[aria-label="Containers Table"]', { timeout: 10000 });
+
+    const searchInput = frame.locator('input[placeholder*="Filter containers"]').first();
+    if (await searchInput.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await searchInput.fill('e2e-web');
+      await frame.waitForTimeout(500);
+
+      // Clear search
+      const clearBtn = frame.locator('button[aria-label="Clear input"], .pf-v5-c-search-input__clear').first();
+      if (await clearBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await clearBtn.click();
+      } else {
+        await searchInput.fill('');
+      }
+    }
+  });
+
+  test('18. Inspect Image, Volume, and Network Modals', async () => {
+    const frame = await getFrame();
+
+    // Inspect first image
+    await frame.locator('.cockpit-top-nav-bar button:has-text("Images")').click();
+    await frame.waitForSelector('table[aria-label="Images Table"], div:has-text("No Images Found")', { timeout: 10000 });
+
+    const inspectImageBtn = frame.locator('table[aria-label="Images Table"] button[aria-label="Inspect"]').first();
+    if (await inspectImageBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await inspectImageBtn.click({ force: true });
+      await frame.waitForSelector('.pf-v5-c-modal-box:has-text("Inspect:")', { timeout: 8000 });
+
+      const closeBtn = frame.locator('.pf-v5-c-modal-box button:has-text("Close")').first();
+      await closeBtn.click();
+      await frame.waitForSelector('.pf-v5-c-modal-box', { state: 'detached', timeout: 5000 });
+    }
+
+    // Inspect first volume
+    await frame.locator('.cockpit-top-nav-bar button:has-text("Volumes")').click();
+    await frame.waitForSelector('table[aria-label="Volumes Table"], div:has-text("No Volumes Found")', { timeout: 10000 });
+
+    const inspectVolBtn = frame.locator('table[aria-label="Volumes Table"] button[aria-label="Inspect"]').first();
+    if (await inspectVolBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await inspectVolBtn.click({ force: true });
+      await frame.waitForSelector('.pf-v5-c-modal-box:has-text("Inspect:")', { timeout: 8000 });
+
+      const closeBtn = frame.locator('.pf-v5-c-modal-box button:has-text("Close")').first();
+      await closeBtn.click();
+      await frame.waitForSelector('.pf-v5-c-modal-box', { state: 'detached', timeout: 5000 });
+    }
+
+    // Inspect first network
+    await frame.locator('.cockpit-top-nav-bar button:has-text("Networks")').click();
+    await frame.waitForSelector('table[aria-label="Networks Table"], div:has-text("No Networks Found")', { timeout: 10000 });
+
+    const inspectNetBtn = frame.locator('table[aria-label="Networks Table"] button[aria-label="Inspect"]').first();
+    if (await inspectNetBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await inspectNetBtn.click({ force: true });
+      await frame.waitForSelector('.pf-v5-c-modal-box:has-text("Inspect:")', { timeout: 8000 });
+
+      const closeBtn = frame.locator('.pf-v5-c-modal-box button:has-text("Close")').first();
+      await closeBtn.click();
+      await frame.waitForSelector('.pf-v5-c-modal-box', { state: 'detached', timeout: 5000 });
+    }
+  });
+
+  test('19. Delete Confirmation Modals for Images, Volumes, and Networks', async () => {
+    const frame = await getFrame();
+
+    // Images delete modal
+    await frame.locator('.cockpit-top-nav-bar button:has-text("Images")').click();
+    await frame.waitForSelector('table[aria-label="Images Table"], div:has-text("No Images Found")', { timeout: 10000 });
+    const deleteImageBtn = frame.locator('table[aria-label="Images Table"] button[aria-label="Delete"]').first();
+    if (await deleteImageBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await deleteImageBtn.click({ force: true });
+      await frame.waitForSelector('.pf-v5-c-modal-box:has-text("Delete Image")', { timeout: 5000 });
+      const cancelBtn = frame.locator('.pf-v5-c-modal-box button:has-text("Cancel")').first();
+      await cancelBtn.click();
+      await frame.waitForSelector('.pf-v5-c-modal-box', { state: 'detached', timeout: 5000 });
+    }
+
+    // Volumes delete modal
+    await frame.locator('.cockpit-top-nav-bar button:has-text("Volumes")').click();
+    await frame.waitForSelector('table[aria-label="Volumes Table"], div:has-text("No Volumes Found")', { timeout: 10000 });
+    const deleteVolBtn = frame.locator('table[aria-label="Volumes Table"] button[aria-label="Delete"]').first();
+    if (await deleteVolBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await deleteVolBtn.click({ force: true });
+      await frame.waitForSelector('.pf-v5-c-modal-box:has-text("Delete Volume")', { timeout: 5000 });
+      const cancelBtn = frame.locator('.pf-v5-c-modal-box button:has-text("Cancel")').first();
+      await cancelBtn.click();
+      await frame.waitForSelector('.pf-v5-c-modal-box', { state: 'detached', timeout: 5000 });
+    }
+
+    // Networks delete modal
+    await frame.locator('.cockpit-top-nav-bar button:has-text("Networks")').click();
+    await frame.waitForSelector('table[aria-label="Networks Table"], div:has-text("No Networks Found")', { timeout: 10000 });
+    const deleteNetBtn = frame.locator('table[aria-label="Networks Table"] button[aria-label="Delete"]').first();
+    if (await deleteNetBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await deleteNetBtn.click({ force: true });
+      await frame.waitForSelector('.pf-v5-c-modal-box:has-text("Delete Network")', { timeout: 5000 });
+      const cancelBtn = frame.locator('.pf-v5-c-modal-box button:has-text("Cancel")').first();
+      await cancelBtn.click();
+      await frame.waitForSelector('.pf-v5-c-modal-box', { state: 'detached', timeout: 5000 });
+    }
+  });
 });
+
 
 
 
