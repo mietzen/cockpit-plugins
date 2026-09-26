@@ -17,12 +17,12 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
 
   async function getFrame(): Promise<Frame> {
     const frameElement = await page.waitForSelector(
-      "iframe[name*='container'], iframe[src*='container']",
+      "iframe[name*='container-manager']",
       { state: 'attached', timeout: 25000 }
     );
     const frame = await frameElement.contentFrame();
     if (!frame) {
-      const match = page.frames().find((f) => f.url().includes('container'));
+      const match = page.frames().find((f) => f.url().includes('container-manager'));
       if (match) return match;
       throw new Error('Cockpit container-manager iframe contentFrame is null');
     }
@@ -113,8 +113,11 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
 
     // Click Containers in sidebar or navigate directly
     const navLink = page.locator("a:has-text('Containers'), a:has-text('Container Manager'), a[href*='container-manager']").first();
-    await navLink.waitFor({ state: 'visible', timeout: 20000 });
-    await navLink.click();
+    if (await navLink.isVisible({ timeout: 5000 }).catch(() => false)) {
+      await navLink.click();
+    } else {
+      await page.goto('/container-manager', { waitUntil: 'domcontentloaded', timeout: 30000 });
+    }
 
     const frame = await getFrame();
     await frame.locator('#root').waitFor({ state: 'attached', timeout: 20000 });
