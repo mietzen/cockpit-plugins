@@ -137,17 +137,23 @@ def get_smb_groups() -> List[Dict[str, Any]]:
 
     smb_users = {u.get("username", "").lower() for u in get_smb_users() if u.get("username")}
 
+    primary_group_users: Dict[int, List[str]] = {}
+    for p in pwd.getpwall():
+        if p.pw_uid >= 1000 or p.pw_name in smb_users:
+            primary_group_users.setdefault(p.pw_gid, []).append(p.pw_name)
+
     for g in grp.getgrall():
+        members_set = set(g.gr_mem) | set(primary_group_users.get(g.gr_gid, []))
         is_sharing = (
             g.gr_gid >= 1000
             or g.gr_name.lower() in sharing_group_names
-            or any(m.lower() in smb_users for m in g.gr_mem)
+            or any(m.lower() in smb_users for m in members_set)
         )
         if is_sharing:
             groups.append({
                 "name": g.gr_name,
                 "gid": g.gr_gid,
-                "members": sorted(list(g.gr_mem)),
+                "members": sorted(list(members_set)),
             })
     return sorted(groups, key=lambda x: x["name"])
 

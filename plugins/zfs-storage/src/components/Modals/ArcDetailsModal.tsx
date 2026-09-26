@@ -126,6 +126,12 @@ export const ArcDetailsModal: React.FC<ArcDetailsModalProps> = ({
                     {(arcStats.prefetch_data_hits || 0).toLocaleString()} hits / {(arcStats.prefetch_data_misses || 0).toLocaleString()} misses
                   </DescriptionListDescription>
                 </DescriptionListGroup>
+                <DescriptionListGroup>
+                  <DescriptionListTerm>Prefetch Metadata</DescriptionListTerm>
+                  <DescriptionListDescription>
+                    {(arcStats.prefetch_metadata_hits || 0).toLocaleString()} hits / {(arcStats.prefetch_metadata_misses || 0).toLocaleString()} misses
+                  </DescriptionListDescription>
+                </DescriptionListGroup>
               </DescriptionList>
             </CardBody>
           </Card>

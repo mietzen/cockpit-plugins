@@ -127,8 +127,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         aVal = a.machine || a.ip || '';
         bVal = b.machine || b.ip || '';
       } else if (sessSortIndex === 3) {
-        aVal = a.pid || '';
-        bVal = b.pid || '';
+        const aPid = parseInt(String(a.pid || '0'), 10) || 0;
+        const bPid = parseInt(String(b.pid || '0'), 10) || 0;
+        return sessSortDirection === 'asc' ? aPid - bPid : bPid - aPid;
       } else if (sessSortIndex === 4) {
         aVal = a.protocol || '';
         bVal = b.protocol || '';

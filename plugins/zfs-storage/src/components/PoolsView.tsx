@@ -105,7 +105,9 @@ export const PoolsView: React.FC<PoolsViewProps> = ({
         aVal = a.health;
         bVal = b.health;
       } else if (sortIndex === 2) {
-        return sortDirection === 'asc' ? a.alloc - b.alloc : b.alloc - a.alloc;
+        const aUsage = a.size > 0 ? a.alloc / a.size : 0;
+        const bUsage = b.size > 0 ? b.alloc / b.size : 0;
+        return sortDirection === 'asc' ? aUsage - bUsage : bUsage - aUsage;
       } else if (sortIndex === 3) {
         return sortDirection === 'asc' ? a.free - b.free : b.free - a.free;
       } else if (sortIndex === 4) {
