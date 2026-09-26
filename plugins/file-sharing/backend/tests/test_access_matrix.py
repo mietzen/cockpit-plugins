@@ -119,7 +119,37 @@ class TestAccessMatrix(unittest.TestCase):
         # Bob on ro_share (in read_list) -> read_only
         self.assertEqual(matrix[1]["shares"][1]["access"], "read_only")
 
+    def test_smb_matrix_groups(self):
+        shares = [
+            {
+                "name": "group_share",
+                "path": "/srv/group",
+                "read_only": True,
+                "guest_ok": False,
+                "valid_users": "@smb_users",
+                "write_list": "@smb_admin +power_users",
+                "invalid_users": "&blocked_users",
+            }
+        ]
+        users = [
+            {"username": "alice", "full_name": "Alice", "groups": ["smb_users", "smb_admin"]},
+            {"username": "bob", "full_name": "Bob", "groups": ["smb_users"]},
+            {"username": "charlie", "full_name": "Charlie", "groups": ["other_group"]},
+            {"username": "dave", "full_name": "Dave", "groups": ["smb_users", "blocked_users"]},
+        ]
+        matrix = calculate_smb_user_matrix(shares, users)
+
+        # Alice: in @smb_users (valid) and @smb_admin (write) -> read_write
+        self.assertEqual(matrix[0]["shares"][0]["access"], "read_write")
+        # Bob: in @smb_users (valid), read_only -> read_only
+        self.assertEqual(matrix[1]["shares"][0]["access"], "read_only")
+        # Charlie: not in @smb_users -> denied
+        self.assertEqual(matrix[2]["shares"][0]["access"], "denied")
+        # Dave: in &blocked_users (invalid) -> denied
+        self.assertEqual(matrix[3]["shares"][0]["access"], "denied")
+
 
 if __name__ == "__main__":
     unittest.main()
+
 

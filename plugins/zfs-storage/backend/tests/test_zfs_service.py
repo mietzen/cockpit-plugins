@@ -549,7 +549,10 @@ class TestZfsServiceActions(unittest.TestCase):
         }]
         lsblk_json = json.dumps({
             "blockdevices": [
-                {"name": "sda", "kname": "sda", "path": "/dev/sda", "size": 107374182400, "rota": False, "type": "disk", "children": [{"name": "sda1", "path": "/dev/sda1", "mountpoint": None}]},
+                {"name": "sda", "kname": "sda", "path": "/dev/sda", "size": 107374182400, "rota": False, "type": "disk", "children": [
+                    {"name": "sda1", "path": "/dev/sda1", "mountpoint": None},
+                    {"name": "sda2", "path": "/dev/sda2", "mountpoint": "/boot/efi"}
+                ]},
                 {"name": "sdb", "kname": "sdb", "path": "/dev/sdb", "size": 0, "rota": False, "type": "disk"},
                 {"name": "sdc", "kname": "sdc", "path": "/dev/sdc", "size": 107374182400, "rota": False, "type": "disk", "mountpoint": "/"},
                 {"name": "loop0", "kname": "loop0", "path": "/dev/loop0", "size": 1073741824, "rota": False, "type": "loop"}
@@ -558,11 +561,41 @@ class TestZfsServiceActions(unittest.TestCase):
         mock_run.side_effect = [
             MagicMock(returncode=0, stdout=lsblk_json, stderr=""),
             MagicMock(returncode=0, stdout=json.dumps({"smart_status": {"passed": True}}), stderr=""),
+            MagicMock(returncode=0, stdout=json.dumps({"smart_status": {"passed": True}}), stderr=""),
         ]
         disks = self.svc.get_disks()
-        self.assertEqual(len(disks), 2)
+        # sda, sdc, loop0 should all be returned (sdb size 0 skipped)
+        self.assertEqual(len(disks), 3)
         sda = next(d for d in disks if d["name"] == "sda")
-        self.assertIn("tank", sda["pool"])
+        self.assertIn("tank (sda1)", sda["pool"])
+        sdc = next(d for d in disks if d["name"] == "sdc")
+        self.assertEqual(sdc["pool"], "System (/)")
+
+    @patch("os.path.realpath")
+    @patch("os.path.exists", return_value=True)
+    @patch("backend.zfs_helper.ZfsService.get_pools")
+    @patch("backend.zfs_helper.run_cmd")
+    def test_get_disks_by_id_symlink_resolution(self, mock_run, mock_pools, mock_exists, mock_realpath):
+        mock_pools.return_value = [{
+            "name": "datapool",
+            "vdevs": [{"name": "/dev/disk/by-id/ata-HUH721010ALE601_7JJVAZVC-part1"}]
+        }]
+        mock_realpath.side_effect = lambda p: "/dev/sdb1" if "HUH721010ALE601" in p else p
+        lsblk_json = json.dumps({
+            "blockdevices": [
+                {"name": "sdb", "kname": "sdb", "path": "/dev/sdb", "size": 10000000000000, "rota": True, "type": "disk", "children": [
+                    {"name": "sdb1", "path": "/dev/sdb1", "mountpoint": None}
+                ]}
+            ]
+        })
+        mock_run.side_effect = [
+            MagicMock(returncode=0, stdout=lsblk_json, stderr=""),
+            MagicMock(returncode=0, stdout=json.dumps({"smart_status": {"passed": True}}), stderr=""),
+        ]
+        disks = self.svc.get_disks()
+        self.assertEqual(len(disks), 1)
+        self.assertEqual(disks[0]["pool"], "datapool (sdb1)")
+
 
     @patch("backend.zfs_helper.run_cmd")
     def test_main_cli_dataset_and_snapshot_commands(self, mock_run):

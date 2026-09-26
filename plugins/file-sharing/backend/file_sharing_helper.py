@@ -16,7 +16,11 @@ from typing import Any, Dict, List, Optional, Tuple
 # Ensure local backend imports resolve
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from access_matrix import calculate_nfs_client_matrix, calculate_smb_user_matrix
+from access_matrix import (
+    calculate_nfs_client_matrix,
+    calculate_smb_user_matrix,
+    get_user_system_groups,
+)
 from nfs_parser import NfsParser
 from smb_parser import SmbParser
 
@@ -39,25 +43,30 @@ def get_service_status(unit: str) -> Dict[str, Any]:
     rc, out, _ = run_cmd(["systemctl", "is-active", unit])
     active_state = out.strip() if rc == 0 else "inactive"
     rc_enabled, out_enabled, _ = run_cmd(["systemctl", "is-enabled", unit])
-    enabled_state = out_enabled.strip() if rc_enabled == 0 else "disabled"
-    is_installed = shutil.which("systemctl") is not None and rc in (0, 3)
+    enabled_state = out_enabled.strip()
+    is_enabled = rc_enabled == 0 and enabled_state in ("enabled", "alias", "static", "indirect")
+    is_installed = shutil.which("systemctl") is not None and (rc in (0, 3) or rc_enabled == 0)
 
     return {
         "unit": unit,
         "active": active_state == "active",
         "state": active_state,
-        "enabled": enabled_state == "enabled",
-        "installed": active_state != "unknown",
+        "enabled": is_enabled,
+        "installed": is_installed and active_state != "unknown",
     }
 
 
 def get_all_services_status() -> Dict[str, Any]:
-    # Check Debian nfs-kernel-server vs RHEL nfs-server
-    nfs_unit = "nfs-kernel-server" if os.path.exists("/lib/systemd/system/nfs-kernel-server.service") else "nfs-server"
+    nfs_status = get_service_status("nfs-server")
+    if not nfs_status["active"] and not nfs_status["enabled"]:
+        alt_status = get_service_status("nfs-kernel-server")
+        if alt_status["active"] or alt_status["enabled"] or alt_status["installed"]:
+            nfs_status = alt_status
+
     return {
         "smbd": get_service_status("smbd"),
         "nmbd": get_service_status("nmbd"),
-        "nfs": get_service_status(nfs_unit),
+        "nfs": nfs_status,
     }
 
 
@@ -97,7 +106,13 @@ def get_smb_users() -> List[Dict[str, Any]]:
     if current.get("username"):
         users.append(current)
 
+    for u in users:
+        u_name = u.get("username", "")
+        if u_name:
+            u["groups"] = sorted(list(get_user_system_groups(u_name)))
+
     return users
+
 
 
 def get_system_unix_users() -> List[str]:

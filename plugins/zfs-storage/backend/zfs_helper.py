@@ -192,7 +192,7 @@ class ZfsService:
         pool_device_map: Dict[str, str] = {}
         for pool in pools:
             pool_name = pool["name"]
-            
+
             def map_vdevs(vdev_list):
                 for v in vdev_list:
                     dev_name = v.get("name", "")
@@ -200,6 +200,20 @@ class ZfsService:
                         pool_device_map[dev_name] = pool_name
                         base_dev = os.path.basename(dev_name)
                         pool_device_map[base_dev] = pool_name
+                        candidates = [
+                            dev_name,
+                            f"/dev/{dev_name}",
+                            f"/dev/disk/by-id/{dev_name}",
+                            f"/dev/disk/by-path/{dev_name}",
+                        ]
+                        for c in candidates:
+                            try:
+                                if os.path.exists(c):
+                                    real = os.path.realpath(c)
+                                    pool_device_map[real] = pool_name
+                                    pool_device_map[os.path.basename(real)] = pool_name
+                            except Exception:
+                                pass
                     if v.get("children"):
                         map_vdevs(v["children"])
 
@@ -210,14 +224,15 @@ class ZfsService:
             map_vdevs(pool.get("special", []))
             map_vdevs(pool.get("dedup", []))
 
-        def has_system_mount(d: Dict[str, Any]) -> bool:
+        def get_sys_mount(d: Dict[str, Any]) -> Optional[str]:
             mp = d.get("mountpoint")
             if mp and (mp in ("/", "/boot", "/boot/efi", "/usr", "/var", "/home", "/etc") or mp.startswith("/snap") or mp == "[SWAP]"):
-                return True
+                return mp
             for c in d.get("children", []):
-                if has_system_mount(c):
-                    return True
-            return False
+                s = get_sys_mount(c)
+                if s:
+                    return s
+            return None
 
         for dev in raw_devices:
             dev_name = dev.get("name", "")
@@ -225,10 +240,8 @@ class ZfsService:
             if dev_type in ("disk", "loop") and not dev_name.startswith("zd") and not dev_name.startswith("ram"):
                 if dev.get("size", 0) <= 0:
                     continue
-                if has_system_mount(dev):
-                    continue
                 path = dev.get("path") or f"/dev/{dev.get('name')}"
-                
+
                 smart_info = {"health": "UNKNOWN", "temperature": None}
                 if not dev_name.startswith("loop"):
                     try:
@@ -240,11 +253,23 @@ class ZfsService:
 
                 pool_name = pool_device_map.get(path) or pool_device_map.get(dev.get("name"))
                 if not pool_name and dev.get("children"):
+                    matched_pools = []
                     for child in dev["children"]:
                         cpath = child.get("path") or f"/dev/{child.get('name')}"
-                        if cpath in pool_device_map or child.get("name") in pool_device_map:
-                            pool_name = f"{pool_device_map.get(cpath) or pool_device_map.get(child.get('name'))} ({child.get('name')})"
-                            break
+                        cname = child.get("name", "")
+                        cp = pool_device_map.get(cpath) or pool_device_map.get(cname)
+                        if cp:
+                            entry = f"{cp} ({cname})"
+                            if entry not in matched_pools:
+                                matched_pools.append(entry)
+                    if matched_pools:
+                        pool_name = ", ".join(matched_pools)
+
+                if not pool_name:
+                    sys_mount = get_sys_mount(dev)
+                    if sys_mount:
+                        pool_name = f"System ({sys_mount})"
+
 
                 disks.append({
                     "name": dev.get("name"),

@@ -46,6 +46,27 @@ class TestFileSharingHelper(unittest.TestCase):
         self.assertFalse(status["enabled"])
         self.assertEqual(status["state"], "inactive")
 
+    @patch("file_sharing_helper.run_cmd")
+    @patch("shutil.which", return_value="/bin/systemctl")
+    def test_get_service_status_alias_and_static(self, mock_which, mock_cmd):
+        # On Debian 12, systemctl is-enabled nfs-kernel-server returns 'alias' with rc=0
+        mock_cmd.side_effect = [
+            (0, "active", ""),
+            (0, "alias\n", ""),
+        ]
+        status = file_sharing_helper.get_service_status("nfs-kernel-server")
+        self.assertTrue(status["active"])
+        self.assertTrue(status["enabled"])
+
+        mock_cmd.side_effect = [
+            (0, "active", ""),
+            (0, "static\n", ""),
+        ]
+        status_static = file_sharing_helper.get_service_status("nfs-server")
+        self.assertTrue(status_static["active"])
+        self.assertTrue(status_static["enabled"])
+
+
     @patch("file_sharing_helper.get_service_status")
     @patch("os.path.exists", return_value=True)
     def test_get_all_services_status(self, mock_exists, mock_svc):
