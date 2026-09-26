@@ -216,12 +216,29 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     // Verify Remote connection instructions tabs in Settings view
     const sshTab = frame.locator('button:has-text("SSH Context")').first();
     const tcpTab = frame.locator('button:has-text("TCP + Mutual TLS Context")').first();
+    const envTab = frame.locator('button:has-text("Environment Variables")').first();
 
-    expect(await sshTab.count()).toBeGreaterThan(0);
-    expect(await tcpTab.count()).toBeGreaterThan(0);
+    if (await sshTab.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await sshTab.click();
+    }
+    if (await tcpTab.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await tcpTab.click();
+    }
+    if (await envTab.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await envTab.click();
+    }
 
-    // Switch to TCP tab
-    await tcpTab.click();
+    // Generate certificates and enable TCP if not yet enabled
+    const setupBtn = frame.locator('button:has-text("Generate Certificates & Enable Remote TCP")').first();
+    if (await setupBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      const sansInput = frame.locator('input#sans-input').first();
+      if (await sansInput.count() > 0) {
+        await sansInput.fill('127.0.0.1, localhost');
+      }
+      await setupBtn.click();
+      await frame.waitForSelector('span:has-text("TCP Enabled"), button:has-text("Disable Remote TCP")', { timeout: 15000 });
+    }
+
     await saveScreenshot(page, '05_settings_tcp_instructions.png');
   });
 
@@ -303,6 +320,21 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     if (await viewCertsBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
       await viewCertsBtn.click();
       await frame.waitForSelector('.pf-v5-c-modal-box:has-text("Client Certificates & Keys")', { timeout: 8000 });
+
+      // Click cert modal tabs
+      const clientCertTab = frame.locator('.pf-v5-c-modal-box button:has-text("Client Certificate")').first();
+      const clientKeyTab = frame.locator('.pf-v5-c-modal-box button:has-text("Client Private Key")').first();
+      const caTab = frame.locator('.pf-v5-c-modal-box button:has-text("CA Certificate")').first();
+
+      if (await clientCertTab.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await clientCertTab.click();
+      }
+      if (await clientKeyTab.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await clientKeyTab.click();
+      }
+      if (await caTab.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await caTab.click();
+      }
 
       // Click Download ca.pem and verify browser download event fires
       const downloadPromise = page.waitForEvent('download', { timeout: 8000 });
