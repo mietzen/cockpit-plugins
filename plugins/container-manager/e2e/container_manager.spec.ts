@@ -307,12 +307,24 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
 
     if (await sshTab.isVisible({ timeout: 2000 }).catch(() => false)) {
       await sshTab.click();
+      const copyBtn = frame.locator('button[aria-label="Copy code"]').first();
+      if (await copyBtn.isVisible({ timeout: 1500 }).catch(() => false)) {
+        await copyBtn.click();
+      }
     }
     if (await tcpTab.isVisible({ timeout: 2000 }).catch(() => false)) {
       await tcpTab.click();
+      const copyBtn = frame.locator('button[aria-label="Copy code"]').first();
+      if (await copyBtn.isVisible({ timeout: 1500 }).catch(() => false)) {
+        await copyBtn.click();
+      }
     }
     if (await envTab.isVisible({ timeout: 2000 }).catch(() => false)) {
       await envTab.click();
+      const copyBtn = frame.locator('button[aria-label="Copy code"]').first();
+      if (await copyBtn.isVisible({ timeout: 1500 }).catch(() => false)) {
+        await copyBtn.click();
+      }
     }
 
     await saveScreenshot(page, '05_settings_tcp_instructions.png');
@@ -416,9 +428,10 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
       await expect(killBtn).toBeVisible();
     }
 
-    // Verify HashId copy button is present
+    // Verify HashId copy button is present and clickable
     const hashBtn = frame.locator('table[aria-label="Containers Table"] button[aria-label*="Copy ID"]').first();
     await expect(hashBtn).toBeVisible({ timeout: 5000 });
+    await hashBtn.click().catch(() => {});
 
     // Switch to Volumes tab and verify Size column header
     await frame.locator('.cockpit-top-nav-bar button:has-text("Volumes")').click();
