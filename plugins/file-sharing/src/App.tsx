@@ -284,7 +284,7 @@ export const App: React.FC = () => {
       ansible_markers: { begin: ansibleBegin, end: ansibleEnd },
     },
     nfs: { exports: [], client_map: [], global: {} },
-    users: { smb_users: [], unix_users: [], groups: [], access_matrix: [] },
+    users: { smb_users: [], smb_groups: [], unix_users: [], access_matrix: [] },
     sessions: [],
     zfs_mounts: [],
   };
@@ -342,7 +342,7 @@ export const App: React.FC = () => {
       {activeView === "users" && (
         <UsersTab
           users={overview.users.smb_users}
-          groups={overview.users.groups}
+          groups={overview.users.smb_groups}
           unixUsers={overview.users.unix_users}
           accessMatrix={overview.users.access_matrix}
           onCreateUser={handleCreateUser}
@@ -354,6 +354,7 @@ export const App: React.FC = () => {
           onDeleteGroup={handleDeleteGroup}
         />
       )}
+
 
       {activeView === "sessions" && (
         <SessionsTab

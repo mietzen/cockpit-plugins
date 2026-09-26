@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   PageSection,
   Title,
@@ -16,7 +16,7 @@ import {
   EmptyStateIcon,
   EmptyStateBody,
 } from "@patternfly/react-core";
-import { Table, Thead, Tbody, Tr, Th, Td } from "@patternfly/react-table";
+import { Table, Thead, Tbody, Tr, Th, Td, ThProps } from "@patternfly/react-table";
 import {
   SyncAltIcon,
   CheckCircleIcon,
@@ -44,6 +44,46 @@ export const SessionsTab: React.FC<SessionsTabProps> = ({
   onServiceAction,
   onRefresh,
 }) => {
+  const [sortIndex, setSortIndex] = useState<number | null>(0);
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+
+  const getSortParams = (columnIndex: number): ThProps['sort'] => ({
+    sortBy: {
+      index: sortIndex ?? undefined,
+      direction: sortDirection,
+      defaultDirection: 'asc',
+    },
+    onSort: (_event, index, direction) => {
+      setSortIndex(index);
+      setSortDirection(direction);
+    },
+    columnIndex,
+  });
+
+  const sortedSessions = React.useMemo(() => {
+    if (sortIndex === null) {
+      return sessions;
+    }
+    return [...sessions].sort((a, b) => {
+      if (sortIndex === 0) {
+        const aVal = a.group || '';
+        const bVal = b.group || '';
+        return sortDirection === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+      } else if (sortIndex === 1) {
+        return sortDirection === 'asc' ? a.username.localeCompare(b.username) : b.username.localeCompare(a.username);
+      } else if (sortIndex === 2) {
+        return sortDirection === 'asc' ? a.machine.localeCompare(b.machine) : b.machine.localeCompare(a.machine);
+      } else if (sortIndex === 3) {
+        const aPid = parseInt(a.pid, 10) || 0;
+        const bPid = parseInt(b.pid, 10) || 0;
+        return sortDirection === 'asc' ? aPid - bPid : bPid - aPid;
+      } else if (sortIndex === 4) {
+        return sortDirection === 'asc' ? a.protocol.localeCompare(b.protocol) : b.protocol.localeCompare(a.protocol);
+      }
+      return 0;
+    });
+  }, [sessions, sortIndex, sortDirection]);
+
   const serviceList = [
     { name: "Samba File Daemon (smbd)", id: "smbd", status: services.smbd },
     { name: "NetBIOS Name Daemon (nmbd)", id: "nmbd", status: services.nmbd },
@@ -76,7 +116,7 @@ export const SessionsTab: React.FC<SessionsTabProps> = ({
                 <CardTitle>
                   <Flex justifyContent={{ default: "justifyContentSpaceBetween" }} alignItems={{ default: "alignItemsCenter" }}>
                     <FlexItem>
-                      <ServerIcon style={{ marginRight: 8, color: "var(--zfs-tab-active-color)" }} />
+                      <ServerIcon style={{ marginRight: 8, color: "var(--pf-v5-global--primary-color--100)" }} />
                       {svc.name}
                     </FlexItem>
                     <FlexItem>
@@ -89,7 +129,7 @@ export const SessionsTab: React.FC<SessionsTabProps> = ({
                   </Flex>
                 </CardTitle>
                 <CardBody>
-                  <div style={{ fontSize: "0.85rem", color: "var(--zfs-text-secondary)", marginBottom: "1rem" }}>
+                  <div style={{ fontSize: "0.85rem", color: "var(--pf-v5-global--Color--200)", marginBottom: "1rem" }}>
                     Unit: <code>{svc.status.unit}</code> ({svc.status.enabled ? "enabled" : "disabled"})
                   </div>
                   <Flex gap={{ default: "gapSm" }}>
@@ -139,22 +179,28 @@ export const SessionsTab: React.FC<SessionsTabProps> = ({
               <Table aria-label="Active Client Sessions Table">
                 <Thead>
                   <Tr>
-                    <Th>Service / Share</Th>
-                    <Th>Username</Th>
-                    <Th>Client Machine / IP</Th>
-                    <Th>Process ID (PID)</Th>
-                    <Th>Protocol Version</Th>
+                    <Th sort={getSortParams(0)}>Service / Share</Th>
+                    <Th sort={getSortParams(1)}>Username</Th>
+                    <Th sort={getSortParams(2)}>Client Machine / IP</Th>
+                    <Th sort={getSortParams(3)}>Process ID (PID)</Th>
+                    <Th sort={getSortParams(4)}>Protocol Version</Th>
                   </Tr>
                 </Thead>
                 <Tbody>
-                  {sessions.map((sess, idx) => (
-                    <Tr key={idx}>
-                      <Td data-label="Service / Share"><strong>[{sess.service}]</strong></Td>
+                  {sortedSessions.map((sess, idx) => (
+                    <Tr key={`${sess.pid}-${sess.username}-${idx}`}>
+                      <Td data-label="Service / Share">
+                        <strong>[{sess.group || "IPC$"}]</strong>
+                      </Td>
                       <Td data-label="Username">{sess.username}</Td>
-                      <Td data-label="Client Machine / IP">{sess.machine || sess.ip}</Td>
-                      <Td data-label="PID"><code>{sess.pid}</code></Td>
+                      <Td data-label="Client Machine / IP">
+                        <code>{sess.machine}</code>
+                      </Td>
+                      <Td data-label="Process ID (PID)">
+                        <Badge isRead>{sess.pid}</Badge>
+                      </Td>
                       <Td data-label="Protocol Version">
-                        <Label color="cyan">{sess.protocol || "SMB3"}</Label>
+                        <Label color="blue">{sess.protocol}</Label>
                       </Td>
                     </Tr>
                   ))}
@@ -167,3 +213,4 @@ export const SessionsTab: React.FC<SessionsTabProps> = ({
     </>
   );
 };
+

@@ -1,4 +1,4 @@
-import { FileSharingOverview, SmbShare, NfsExport, SmbGlobal } from '../types';
+import { FileSharingOverview, SmbShare, NfsExport, SmbGlobal, NfsGlobal } from '../types';
 
 declare global {
   interface Window {
@@ -153,7 +153,7 @@ export const fileSharingApi = {
     }
   },
 
-  async getNfsGlobal(): Promise<any> {
+  async getNfsGlobal(): Promise<NfsGlobal> {
     const res = await execHelper(['get_nfs_global']);
     if (res.status === 'error') {
       throw new Error(res.message);
@@ -161,7 +161,7 @@ export const fileSharingApi = {
     return res.global;
   },
 
-  async saveNfsGlobal(settings: any): Promise<void> {
+  async saveNfsGlobal(settings: Partial<NfsGlobal>): Promise<void> {
     const res = await execHelper(['save_nfs_global', '--data', JSON.stringify(settings)]);
     if (res.status === 'error') {
       throw new Error(res.message);

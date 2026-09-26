@@ -154,7 +154,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <Grid hasGutter style={{ marginBottom: "2rem" }}>
           {/* Card 1: Health */}
           <GridItem span={6} md={3}>
-            <Card isFullHeight isPlain style={{ border: "1px solid #333333" }}>
+            <Card isFullHeight isPlain style={{ border: "1px solid var(--zfs-card-border)" }}>
               <CardTitle>Health</CardTitle>
               <CardBody>
                 <Flex alignItems={{ default: "alignItemsCenter" }} style={{ marginBottom: "0.75rem" }}>
@@ -182,7 +182,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
           {/* Card 2: Storage Usage */}
           <GridItem span={6} md={3}>
-            <Card isFullHeight isPlain style={{ border: "1px solid #333333" }}>
+            <Card isFullHeight isPlain style={{ border: "1px solid var(--zfs-card-border)" }}>
               <CardTitle>Storage usage</CardTitle>
               <CardBody>
                 <Title headingLevel="h3" size="xl" style={{ marginBottom: "0.5rem" }}>
@@ -208,13 +208,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               isPlain
               isHoverable
               onClick={onViewArcDetails}
-              style={{ border: "1px solid #333333", cursor: "pointer" }}
+              style={{ border: "1px solid var(--zfs-card-border)", cursor: "pointer" }}
             >
               <CardTitle>
                 <Flex justifyContent={{ default: "justifyContentSpaceBetween" }}>
                   <FlexItem>ARC Cache</FlexItem>
                   <FlexItem>
-                    <InfoCircleIcon style={{ color: "rgb(146, 197, 249)" }} />
+                    <InfoCircleIcon style={{ color: "var(--pf-v5-global--primary-color--100)" }} />
                   </FlexItem>
                 </Flex>
               </CardTitle>
@@ -248,7 +248,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
           {/* Card 4: System Information */}
           <GridItem span={6} md={3}>
-            <Card isFullHeight isPlain style={{ border: "1px solid #333333" }}>
+            <Card isFullHeight isPlain style={{ border: "1px solid var(--zfs-card-border)" }}>
               <CardTitle>ZFS Subsystem</CardTitle>
               <CardBody>
                 <div style={{ marginBottom: "0.5rem" }}>
@@ -281,7 +281,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   isPlain
                   onClick={() => onSelectPool(pool.name)}
                   style={{
-                    border: "1px solid #333333",
+                    border: "1px solid var(--zfs-card-border)",
                     cursor: "pointer",
                   }}
                 >
@@ -354,7 +354,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <Title headingLevel="h2" size="xl" style={{ marginBottom: "1rem", fontWeight: 600 }}>
               Sanoid &amp; Syncoid Snapshot Automations
             </Title>
-            <Card isPlain style={{ border: "1px solid #333333" }}>
+            <Card isPlain style={{ border: "1px solid var(--zfs-card-border)" }}>
               <CardBody>
                 <Flex gap={{ default: "gapMd" }} style={{ marginBottom: "1rem" }}>
                   {sanoidInfo.sanoid_installed && (
@@ -422,7 +422,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           Host Disks Overview
         </Title>
 
-        <Card isPlain style={{ border: "1px solid #333333" }}>
+        <Card isPlain style={{ border: "1px solid var(--zfs-card-border)" }}>
           <CardBody style={{ padding: 0 }}>
             <Table aria-label="Dashboard Disks Table" variant="compact">
               <Thead>

@@ -455,7 +455,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({
                     {sortedUsers.map((u) => (
                       <Tr key={u.username}>
                         <Td data-label="Username">
-                          <strong><UserIcon style={{ marginRight: 8, color: "var(--zfs-tab-active-color)" }} />{u.username}</strong>
+                          <strong><UserIcon style={{ marginRight: 8, color: "var(--pf-v5-global--primary-color--100)" }} />{u.username}</strong>
                         </Td>
                         <Td data-label="Full name">{u.full_name || "—"}</Td>
                         <Td data-label="Status">
@@ -563,7 +563,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({
                     {sortedGroups.map((grp) => (
                       <Tr key={grp.name}>
                         <Td data-label="Group Name">
-                          <strong><UsersIcon style={{ marginRight: 8, color: "var(--zfs-tab-active-color)" }} />{grp.name}</strong>
+                          <strong><UsersIcon style={{ marginRight: 8, color: "var(--pf-v5-global--primary-color--100)" }} />{grp.name}</strong>
                         </Td>
                         <Td data-label="GID">{grp.gid}</Td>
                         <Td data-label="Members">
@@ -574,7 +574,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({
                               ))}
                             </Flex>
                           ) : (
-                            <span style={{ color: "var(--zfs-text-secondary)" }}>No members</span>
+                            <span style={{ color: "var(--pf-v5-global--Color--200)" }}>No members</span>
                           )}
                         </Td>
                         <Td data-label="Actions" style={{ textAlign: "right" }}>
@@ -666,7 +666,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({
                   ))}
                   {filteredMatrix.length === 0 && (
                     <Tr>
-                      <Td colSpan={allShareNames.length + 1} style={{ textAlign: "center", padding: "2rem", color: "var(--zfs-text-secondary)" }}>
+                      <Td colSpan={allShareNames.length + 1} style={{ textAlign: "center", padding: "2rem", color: "var(--pf-v5-global--Color--200)" }}>
                         No user access matrix data available.
                       </Td>
                     </Tr>

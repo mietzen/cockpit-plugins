@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   PageSection,
   Title,
@@ -77,6 +77,31 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [nfsLoading, setNfsLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (nfsGlobal) {
+      setNfsThreads(nfsGlobal.threads !== undefined ? String(nfsGlobal.threads) : "8");
+      setNfsPort(nfsGlobal.port !== undefined ? String(nfsGlobal.port) : "");
+      setNfsGraceTime(nfsGlobal.grace_time !== undefined ? String(nfsGlobal.grace_time) : "");
+      setNfsLeaseTime(nfsGlobal.lease_time !== undefined ? String(nfsGlobal.lease_time) : "");
+      setNfsVers3(nfsGlobal.vers3 !== false);
+      setNfsVers4(nfsGlobal.vers4 !== false);
+      setNfsVers41(nfsGlobal.vers4_1 !== false);
+      setNfsVers42(nfsGlobal.vers4_2 !== false);
+    }
+  }, [nfsGlobal]);
+
+  useEffect(() => {
+    setWorkgroup(globalSettings.workgroup || "WORKGROUP");
+    setServerString(globalSettings.server_string || "Samba Server");
+    setNetbiosName(globalSettings.netbios_name || "");
+    setMinProtocol(globalSettings.server_min_protocol || "SMB2_02");
+  }, [globalSettings]);
+
+  useEffect(() => {
+    setBeginMarker(ansibleBegin);
+    setEndMarker(ansibleEnd);
+  }, [ansibleBegin, ansibleEnd]);
 
   const handleSaveSamba = async () => {
     setLoading(true);
