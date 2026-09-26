@@ -57,6 +57,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [sessSortIndex, setSessSortIndex] = useState<number | null>(0);
   const [sessSortDirection, setSessSortDirection] = useState<'asc' | 'desc'>('asc');
 
+  const [shareSortIndex, setShareSortIndex] = useState<number | null>(0);
+  const [shareSortDirection, setShareSortDirection] = useState<'asc' | 'desc'>('asc');
+
   const getSessSortParams = (columnIndex: number): ThProps['sort'] => ({
     sortBy: {
       index: sessSortIndex ?? undefined,
@@ -69,6 +72,43 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     },
     columnIndex,
   });
+
+  const getShareSortParams = (columnIndex: number): ThProps['sort'] => ({
+    sortBy: {
+      index: shareSortIndex ?? undefined,
+      direction: shareSortDirection,
+      defaultDirection: 'asc',
+    },
+    onSort: (_event, index, direction) => {
+      setShareSortIndex(index);
+      setShareSortDirection(direction);
+    },
+    columnIndex,
+  });
+
+  const sortedShares = React.useMemo(() => {
+    if (shareSortIndex === null) {
+      return smbShares;
+    }
+    return [...smbShares].sort((a, b) => {
+      let aVal = '';
+      let bVal = '';
+      if (shareSortIndex === 0) {
+        aVal = a.name;
+        bVal = b.name;
+      } else if (shareSortIndex === 1) {
+        aVal = a.path || '';
+        bVal = b.path || '';
+      } else if (shareSortIndex === 2) {
+        aVal = a.read_only ? 'Read-Only' : 'Read/Write';
+        bVal = b.read_only ? 'Read-Only' : 'Read/Write';
+      } else if (shareSortIndex === 3) {
+        aVal = a.guest_ok ? 'Allowed' : 'No';
+        bVal = b.guest_ok ? 'Allowed' : 'No';
+      }
+      return shareSortDirection === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+    });
+  }, [smbShares, shareSortIndex, shareSortDirection]);
 
   const sortedSessions = React.useMemo(() => {
     if (sessSortIndex === null) {
@@ -216,15 +256,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <Table aria-label="Active SMB Shares Table">
               <Thead>
                 <Tr>
-                  <Th>Share name</Th>
-                  <Th>Path</Th>
-                  <Th>Access</Th>
-                  <Th>Guest access</Th>
+                  <Th sort={getShareSortParams(0)}>Share name</Th>
+                  <Th sort={getShareSortParams(1)}>Path</Th>
+                  <Th sort={getShareSortParams(2)}>Access</Th>
+                  <Th sort={getShareSortParams(3)}>Guest access</Th>
                   <Th>Status</Th>
                 </Tr>
               </Thead>
               <Tbody>
-                {smbShares.slice(0, 5).map((share) => {
+                {sortedShares.slice(0, 5).map((share) => {
                   const isFruit = Boolean(
                     share.fruit_time_machine ||
                     (share.vfs_objects || "").includes("fruit") ||

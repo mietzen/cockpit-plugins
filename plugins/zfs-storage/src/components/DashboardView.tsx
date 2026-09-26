@@ -373,7 +373,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   )}
                 </Flex>
 
-                {sanoidInfo.policies.length > 0 ? (
+                {sanoidInfo.sanoid_installed && sanoidInfo.policies.length > 0 ? (
                   <Table aria-label="Sanoid Policies Table" variant="compact">
                     <Thead>
                       <Tr>
@@ -407,9 +407,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       ))}
                     </Tbody>
                   </Table>
-                ) : (
+                ) : sanoidInfo.sanoid_installed ? (
                   <div style={{ color: "var(--pf-v5-global--Color--200)", fontSize: "0.875rem" }}>
                     Sanoid is installed, but no dataset policies are configured in /etc/sanoid/sanoid.conf.
+                  </div>
+                ) : (
+                  <div style={{ color: "var(--pf-v5-global--Color--200)", fontSize: "0.875rem" }}>
+                    Syncoid replication tooling is active.
                   </div>
                 )}
               </CardBody>

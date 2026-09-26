@@ -471,6 +471,92 @@ Account Flags:        [UD         ]
         self.assertEqual(res["status"], "success")
 
 
+    @patch("shutil.which", return_value=None)
+    def test_create_smb_group_no_groupadd(self, mock_which):
+        ok, msg = file_sharing_helper.create_smb_group("testgrp")
+        self.assertFalse(ok)
+        self.assertIn("groupadd utility not found", msg)
+
+    @patch("shutil.which", return_value="/bin/groupadd")
+    @patch("file_sharing_helper.run_cmd", return_value=(1, "", "group already exists"))
+    def test_create_smb_group_cmd_fail(self, mock_cmd, mock_which):
+        ok, msg = file_sharing_helper.create_smb_group("testgrp")
+        self.assertFalse(ok)
+        self.assertIn("group already exists", msg)
+
+    def test_modify_smb_group_invalid_name(self):
+        ok, msg = file_sharing_helper.modify_smb_group("testgrp", new_name="bad name!")
+        self.assertFalse(ok)
+        self.assertIn("Invalid new group name", msg)
+
+    @patch("file_sharing_helper.run_cmd", return_value=(1, "", "cannot rename group"))
+    def test_modify_smb_group_cmd_fail(self, mock_cmd):
+        ok, msg = file_sharing_helper.modify_smb_group("testgrp", new_name="testgrp2")
+        self.assertFalse(ok)
+        self.assertIn("cannot rename group", msg)
+
+    @patch("shutil.which", return_value=None)
+    def test_delete_smb_group_no_groupdel(self, mock_which):
+        ok, msg = file_sharing_helper.delete_smb_group("testgrp")
+        self.assertFalse(ok)
+        self.assertIn("groupdel utility not found", msg)
+
+    @patch("shutil.which", return_value="/bin/groupdel")
+    @patch("file_sharing_helper.run_cmd", return_value=(1, "", "cannot remove group"))
+    def test_delete_smb_group_cmd_fail(self, mock_cmd, mock_which):
+        ok, msg = file_sharing_helper.delete_smb_group("testgrp")
+        self.assertFalse(ok)
+        self.assertIn("cannot remove group", msg)
+
+    @patch("sys.argv", ["file_sharing_helper.py", "create_smb_group", "--name", "newgrp"])
+    @patch("file_sharing_helper.create_smb_group", return_value=(False, "Failed to create"))
+    def test_main_create_smb_group_error(self, mock_create):
+        with patch("builtins.print") as mock_print, self.assertRaises(SystemExit):
+            file_sharing_helper.main()
+        res = json.loads(mock_print.call_args[0][0])
+        self.assertEqual(res["status"], "error")
+
+    @patch("sys.argv", ["file_sharing_helper.py", "modify_smb_group", "--name", "oldgrp", "--new-name", "newgrp", "--members", "alice"])
+    @patch("file_sharing_helper.modify_smb_group", return_value=(True, "Group modified"))
+    def test_main_modify_smb_group(self, mock_mod):
+        with patch("builtins.print") as mock_print:
+            file_sharing_helper.main()
+        res = json.loads(mock_print.call_args[0][0])
+        self.assertEqual(res["status"], "success")
+
+    @patch("sys.argv", ["file_sharing_helper.py", "modify_smb_group", "--name", "oldgrp", "--new-name", "newgrp"])
+    @patch("file_sharing_helper.modify_smb_group", return_value=(False, "Failed to modify"))
+    def test_main_modify_smb_group_error(self, mock_mod):
+        with patch("builtins.print") as mock_print, self.assertRaises(SystemExit):
+            file_sharing_helper.main()
+        res = json.loads(mock_print.call_args[0][0])
+        self.assertEqual(res["status"], "error")
+
+    @patch("sys.argv", ["file_sharing_helper.py", "delete_smb_group", "--name", "oldgrp"])
+    @patch("file_sharing_helper.delete_smb_group", return_value=(True, "Group deleted"))
+    def test_main_delete_smb_group(self, mock_del):
+        with patch("builtins.print") as mock_print:
+            file_sharing_helper.main()
+        res = json.loads(mock_print.call_args[0][0])
+        self.assertEqual(res["status"], "success")
+
+    @patch("sys.argv", ["file_sharing_helper.py", "delete_smb_group", "--name", "oldgrp"])
+    @patch("file_sharing_helper.delete_smb_group", return_value=(False, "Failed to delete"))
+    def test_main_delete_smb_group_error(self, mock_del):
+        with patch("builtins.print") as mock_print, self.assertRaises(SystemExit):
+            file_sharing_helper.main()
+        res = json.loads(mock_print.call_args[0][0])
+        self.assertEqual(res["status"], "error")
+
+    @patch("sys.argv", ["file_sharing_helper.py", "save_nfs_global", "--data", json.dumps({"threads": 16})])
+    @patch("file_sharing_helper.save_nfs_global", return_value=(False, "Failed to save"))
+    def test_main_save_nfs_global_error(self, mock_save):
+        with patch("builtins.print") as mock_print, self.assertRaises(SystemExit):
+            file_sharing_helper.main()
+        res = json.loads(mock_print.call_args[0][0])
+        self.assertEqual(res["status"], "error")
+
+
 if __name__ == "__main__":
     unittest.main()
 

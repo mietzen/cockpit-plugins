@@ -192,11 +192,11 @@ export const SmbSharesTab: React.FC<SmbSharesTabProps> = ({
         aVal = a.path || '';
         bVal = b.path || '';
       } else if (sortIndex === 2) {
-        aVal = a.read_only ? 'Read-Only' : 'Read/Write';
-        bVal = b.read_only ? 'Read-Only' : 'Read/Write';
-      } else if (sortIndex === 3) {
         aVal = a.guest_ok ? 'Guest Allowed' : 'Restricted';
         bVal = b.guest_ok ? 'Guest Allowed' : 'Restricted';
+      } else if (sortIndex === 3) {
+        aVal = a.read_only ? 'Read-Only' : 'Read/Write';
+        bVal = b.read_only ? 'Read-Only' : 'Read/Write';
       } else if (sortIndex === 4) {
         aVal = a.comment || '';
         bVal = b.comment || '';
