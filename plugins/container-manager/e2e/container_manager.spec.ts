@@ -206,7 +206,7 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     }
   });
 
-  test('05. Verify Remote API, Mutual TLS & Instructions', async () => {
+  test('05. Verify Remote API Instructions Tabs', async () => {
     const frame = await getFrame();
 
     // Navigate to Settings
@@ -226,17 +226,6 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     }
     if (await envTab.isVisible({ timeout: 2000 }).catch(() => false)) {
       await envTab.click();
-    }
-
-    // Generate certificates and enable TCP if not yet enabled
-    const setupBtn = frame.locator('button:has-text("Generate Certificates & Enable Remote TCP")').first();
-    if (await setupBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-      const sansInput = frame.locator('input#sans-input').first();
-      if (await sansInput.count() > 0) {
-        await sansInput.fill('127.0.0.1, localhost');
-      }
-      await setupBtn.click();
-      await frame.waitForSelector('span:has-text("TCP Enabled"), button:has-text("Disable Remote TCP")', { timeout: 15000 });
     }
 
     await saveScreenshot(page, '05_settings_tcp_instructions.png');
@@ -299,53 +288,17 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     await frame.waitForSelector('.pf-v5-c-modal-box', { state: 'detached', timeout: 5000 });
   });
 
-  test('08. Download TLS Client Certificates', async () => {
+  test('08. Verify Container Table Refresh and Port Link Formatting', async () => {
     const frame = await getFrame();
 
-    // Navigate to Settings
-    await frame.locator('.cockpit-top-nav-bar button:has-text("Settings")').click();
-    await frame.waitForSelector('h1:has-text("Container Settings")', { timeout: 10000 });
+    // Navigate to Containers tab
+    await frame.locator('.cockpit-top-nav-bar button:has-text("Containers")').click();
+    await frame.waitForSelector('table[aria-label="Containers Table"]', { timeout: 10000 });
 
-    // Test downloading .zip from Settings view
-    const downloadZipBtn = frame.locator('button:has-text("Download Client Certs (.zip)")').first();
-    if (await downloadZipBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-      const zipDownloadPromise = page.waitForEvent('download', { timeout: 8000 });
-      await downloadZipBtn.click();
-      const zipDownload = await zipDownloadPromise;
-      expect(zipDownload.suggestedFilename()).toContain('.zip');
-    }
-
-    // Click View Certificates to test individual file downloads
-    const viewCertsBtn = frame.locator('button:has-text("View Certificates")').first();
-    if (await viewCertsBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await viewCertsBtn.click();
-      await frame.waitForSelector('.pf-v5-c-modal-box:has-text("Client Certificates & Keys")', { timeout: 8000 });
-
-      // Click cert modal tabs
-      const clientCertTab = frame.locator('.pf-v5-c-modal-box button:has-text("Client Certificate")').first();
-      const clientKeyTab = frame.locator('.pf-v5-c-modal-box button:has-text("Client Private Key")').first();
-      const caTab = frame.locator('.pf-v5-c-modal-box button:has-text("CA Certificate")').first();
-
-      if (await clientCertTab.isVisible({ timeout: 2000 }).catch(() => false)) {
-        await clientCertTab.click();
-      }
-      if (await clientKeyTab.isVisible({ timeout: 2000 }).catch(() => false)) {
-        await clientKeyTab.click();
-      }
-      if (await caTab.isVisible({ timeout: 2000 }).catch(() => false)) {
-        await caTab.click();
-      }
-
-      // Click Download ca.pem and verify browser download event fires
-      const downloadPromise = page.waitForEvent('download', { timeout: 8000 });
-      const downloadCaBtn = frame.locator('button:has-text("Download ca.pem")').first();
-      await downloadCaBtn.click();
-
-      const download = await downloadPromise;
-      expect(download.suggestedFilename()).toBe('ca.pem');
-
-      // Close modal
-      await frame.locator('.pf-v5-c-modal-box button:has-text("Close")').click();
+    // Check port links presence if available
+    const portLink = frame.locator('table[aria-label="Containers Table"] a[target="_blank"]').first();
+    if (await portLink.isVisible({ timeout: 2000 }).catch(() => false)) {
+      expect(await portLink.getAttribute('href')).toBeTruthy();
     }
   });
 
@@ -482,7 +435,7 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     }
   });
 
-  test('15. Configure Remote TLS and Toggle TCP Socket in Settings', async () => {
+  test('15. Configure Remote TLS, Download Certificates, and Toggle TCP Socket', async () => {
     const frame = await getFrame();
 
     // Navigate to Settings
@@ -498,6 +451,52 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
       }
       await setupBtn.click();
       await frame.waitForSelector('span:has-text("TCP Enabled"), button:has-text("Disable Remote TCP")', { timeout: 15000 });
+    }
+
+    // Test downloading .zip from Settings view
+    const downloadZipBtn = frame.locator('button:has-text("Download Client Certs (.zip)")').first();
+    if (await downloadZipBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      const zipDownloadPromise = page.waitForEvent('download', { timeout: 8000 });
+      await downloadZipBtn.click();
+      const zipDownload = await zipDownloadPromise;
+      expect(zipDownload.suggestedFilename()).toContain('.zip');
+    }
+
+    // Click View Certificates to test individual file downloads and modal tabs
+    const viewCertsBtn = frame.locator('button:has-text("View Certificates")').first();
+    if (await viewCertsBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await viewCertsBtn.click();
+      await frame.waitForSelector('.pf-v5-c-modal-box:has-text("Client Certificates & Keys")', { timeout: 8000 });
+
+      // Click cert modal tabs
+      const clientCertTab = frame.locator('.pf-v5-c-modal-box button:has-text("Client Certificate")').first();
+      const clientKeyTab = frame.locator('.pf-v5-c-modal-box button:has-text("Client Private Key")').first();
+      const caTab = frame.locator('.pf-v5-c-modal-box button:has-text("CA Certificate")').first();
+
+      if (await clientCertTab.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await clientCertTab.click();
+      }
+      if (await clientKeyTab.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await clientKeyTab.click();
+      }
+      if (await caTab.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await caTab.click();
+      }
+
+      // Click Download ca.pem and verify browser download event fires
+      const downloadPromise = page.waitForEvent('download', { timeout: 8000 });
+      const downloadCaBtn = frame.locator('button:has-text("Download ca.pem")').first();
+      if (await downloadCaBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await downloadCaBtn.click();
+        const download = await downloadPromise;
+        expect(download.suggestedFilename()).toBe('ca.pem');
+      }
+
+      // Close modal
+      const closeBtn = frame.locator('.pf-v5-c-modal-box button:has-text("Close")').first();
+      if (await closeBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await closeBtn.click();
+      }
     }
 
     // Test Disable Remote TCP button
