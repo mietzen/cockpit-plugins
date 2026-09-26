@@ -133,7 +133,7 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
     // Create a new SMB share
     const createBtn = frame.getByRole("button", { name: /Create SMB share/ }).first();
     await createBtn.click();
-    await expect(frame.locator(".pf-v6-c-modal-box, .pf-v5-c-modal-box, [role='dialog']__title-text")).toBeVisible({ timeout: 5000 });
+    await expect(frame.locator("[class*='modal-box__title-text'], [role='dialog'] h1, [role='dialog'] h2, [role='dialog'] header")).toBeVisible({ timeout: 5000 });
 
     const shareNameInput = frame.locator("input#share-name, input[aria-label*='Share Name'], input[placeholder*='data']").first();
     await shareNameInput.fill("e2e_crud_share");
@@ -223,7 +223,7 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
     const createBtn = frame.getByRole("button", { name: /Create SMB share/ }).first();
     await createBtn.click();
 
-    const modalTitle = frame.locator(".pf-v6-c-modal-box, .pf-v5-c-modal-box, [role='dialog']__title-text");
+    const modalTitle = frame.locator("[class*='modal-box__title-text'], [role='dialog'] h1, [role='dialog'] h2, [role='dialog'] header");
     await expect(modalTitle).toBeVisible({ timeout: 5000 });
     await saveScreenshot(page, "media_test_modal_dimming.png");
 
@@ -280,7 +280,7 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
     await expect(editBtn).toBeVisible({ timeout: 5000 });
     await editBtn.click();
 
-    await expect(frame.locator(".pf-v6-c-modal-box, .pf-v5-c-modal-box, [role='dialog']__title-text")).toBeVisible({ timeout: 5000 });
+    await expect(frame.locator("[class*='modal-box__title-text'], [role='dialog'] h1, [role='dialog'] h2, [role='dialog'] header")).toBeVisible({ timeout: 5000 });
     const commentInput = frame.locator("input#share-comment, input[placeholder*='Comment']").first();
     if (await commentInput.isVisible({ timeout: 2000 }).catch(() => false)) {
       await commentInput.fill("Updated Test Share Comment");
@@ -322,7 +322,7 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
 
     const createNfsBtn = frame.getByRole("button", { name: /Create NFS export/ }).first();
     await createNfsBtn.click();
-    await expect(frame.locator(".pf-v6-c-modal-box, .pf-v5-c-modal-box, [role='dialog']__title-text")).toBeVisible({ timeout: 5000 });
+    await expect(frame.locator("[class*='modal-box__title-text'], [role='dialog'] h1, [role='dialog'] h2, [role='dialog'] header")).toBeVisible({ timeout: 5000 });
 
     const pathInput = frame.locator("input#nfs-path, input[placeholder*='/srv']").first();
     await pathInput.fill("/srv/nfs/test_crud");
@@ -360,7 +360,7 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
     // Click Add user
     const addUserBtn = frame.getByRole("button", { name: /Add user/ }).first();
     await addUserBtn.click();
-    await expect(frame.locator(".pf-v6-c-modal-box, .pf-v5-c-modal-box, [role='dialog']__title-text")).toBeVisible({ timeout: 5000 });
+    await expect(frame.locator("[class*='modal-box__title-text'], [role='dialog'] h1, [role='dialog'] h2, [role='dialog'] header")).toBeVisible({ timeout: 5000 });
 
     const userInput = frame.locator("input#add-username, select#add-username").first();
     if (await userInput.isVisible({ timeout: 2000 }).catch(() => false)) {
@@ -468,7 +468,7 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
       await actionToggle.click();
       const editBtn = frame.getByRole("menuitem", { name: /Edit export/ }).or(frame.getByText("Edit export")).first();
       await editBtn.click();
-      await expect(frame.locator(".pf-v6-c-modal-box, .pf-v5-c-modal-box, [role='dialog']__title-text")).toBeVisible({ timeout: 5000 });
+      await expect(frame.locator("[class*='modal-box__title-text'], [role='dialog'] h1, [role='dialog'] h2, [role='dialog'] header")).toBeVisible({ timeout: 5000 });
 
       const saveChangesBtn = frame.getByRole("button", { name: /Save changes/ }).first();
       await saveChangesBtn.click();
@@ -965,7 +965,7 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
     if (await userKebab.isVisible({ timeout: 1000 }).catch(() => false)) {
       await userKebab.click({ timeout: 1000 }).catch(() => {});
       await page.waitForTimeout(200);
-      const setPassItem = frame.locator("button[role='menuitem'], button.pf-v6-c-menu__item, button.pf-v5-c-menu__item:has-text('Set password')").first();
+      const setPassItem = frame.locator("button[role='menuitem']:has-text('Set password'), button.pf-v6-c-menu__item:has-text('Set password'), button.pf-v5-c-menu__item:has-text('Set password')").first();
       if (await setPassItem.isVisible({ timeout: 1000 }).catch(() => false)) {
         await setPassItem.click({ timeout: 1000 }).catch(() => {});
         await page.waitForTimeout(200);
@@ -991,7 +991,7 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
 
       await userKebab.click({ timeout: 1000 }).catch(() => {});
       await page.waitForTimeout(200);
-      const deleteUserItem = frame.locator("button[role='menuitem'], button.pf-v6-c-menu__item, button.pf-v5-c-menu__item:has-text('Delete Samba user')").first();
+      const deleteUserItem = frame.locator("button[role='menuitem']:has-text('Delete Samba user'), button.pf-v6-c-menu__item:has-text('Delete Samba user'), button.pf-v5-c-menu__item:has-text('Delete Samba user')").first();
       if (await deleteUserItem.isVisible({ timeout: 1000 }).catch(() => false)) {
         await deleteUserItem.click({ timeout: 1000 }).catch(() => {});
         await page.waitForTimeout(200);
@@ -1014,7 +1014,7 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
     if (await smbKebab.isVisible({ timeout: 1000 }).catch(() => false)) {
       await smbKebab.click({ timeout: 1000 }).catch(() => {});
       await page.waitForTimeout(200);
-      const editItem = frame.locator("button[role='menuitem'], button.pf-v6-c-menu__item, button.pf-v5-c-menu__item:has-text('Edit share')").first();
+      const editItem = frame.locator("button[role='menuitem']:has-text('Edit share'), button.pf-v6-c-menu__item:has-text('Edit share'), button.pf-v5-c-menu__item:has-text('Edit share')").first();
       if (await editItem.isVisible({ timeout: 1000 }).catch(() => false)) {
         await editItem.click({ timeout: 1000 }).catch(() => {});
         await page.waitForTimeout(200);
@@ -1035,7 +1035,7 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
 
       await smbKebab.click({ timeout: 1000 }).catch(() => {});
       await page.waitForTimeout(200);
-      const deleteShareItem = frame.locator("button[role='menuitem'], button.pf-v6-c-menu__item, button.pf-v5-c-menu__item:has-text('Delete share')").first();
+      const deleteShareItem = frame.locator("button[role='menuitem']:has-text('Delete share'), button.pf-v6-c-menu__item:has-text('Delete share'), button.pf-v5-c-menu__item:has-text('Delete share')").first();
       if (await deleteShareItem.isVisible({ timeout: 1000 }).catch(() => false)) {
         await deleteShareItem.click({ timeout: 1000 }).catch(() => {});
         await page.waitForTimeout(200);
@@ -1058,7 +1058,7 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
     if (await nfsKebab.isVisible({ timeout: 1000 }).catch(() => false)) {
       await nfsKebab.click({ timeout: 1000 }).catch(() => {});
       await page.waitForTimeout(200);
-      const editNfsItem = frame.locator("button[role='menuitem'], button.pf-v6-c-menu__item, button.pf-v5-c-menu__item:has-text('Edit export')").first();
+      const editNfsItem = frame.locator("button[role='menuitem']:has-text('Edit export'), button.pf-v6-c-menu__item:has-text('Edit export'), button.pf-v5-c-menu__item:has-text('Edit export')").first();
       if (await editNfsItem.isVisible({ timeout: 1000 }).catch(() => false)) {
         await editNfsItem.click({ timeout: 1000 }).catch(() => {});
         await page.waitForTimeout(200);
@@ -1079,7 +1079,7 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
 
       await nfsKebab.click({ timeout: 1000 }).catch(() => {});
       await page.waitForTimeout(200);
-      const deleteExportItem = frame.locator("button[role='menuitem'], button.pf-v6-c-menu__item, button.pf-v5-c-menu__item:has-text('Delete export')").first();
+      const deleteExportItem = frame.locator("button[role='menuitem']:has-text('Delete export'), button.pf-v6-c-menu__item:has-text('Delete export'), button.pf-v5-c-menu__item:has-text('Delete export')").first();
       if (await deleteExportItem.isVisible({ timeout: 1000 }).catch(() => false)) {
         await deleteExportItem.click({ timeout: 1000 }).catch(() => {});
         await page.waitForTimeout(200);
@@ -1272,7 +1272,7 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
     if (await userKebab.isVisible({ timeout: 1000 }).catch(() => false)) {
       await userKebab.click({ timeout: 1000 }).catch(() => {});
       await page.waitForTimeout(200);
-      const setPassItem = frame.locator("button[role='menuitem'], button.pf-v6-c-menu__item, button.pf-v5-c-menu__item:has-text('Set password')").first();
+      const setPassItem = frame.locator("button[role='menuitem']:has-text('Set password'), button.pf-v6-c-menu__item:has-text('Set password'), button.pf-v5-c-menu__item:has-text('Set password')").first();
       if (await setPassItem.isVisible({ timeout: 1000 }).catch(() => false)) {
         await setPassItem.click({ timeout: 1000 }).catch(() => {});
         await page.waitForTimeout(200);
@@ -1284,7 +1284,7 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
 
       await userKebab.click({ timeout: 1000 }).catch(() => {});
       await page.waitForTimeout(200);
-      const toggleItem = frame.locator("button[role='menuitem'], button.pf-v6-c-menu__item, button.pf-v5-c-menu__item:has-text('Disable user'), button[role='menuitem'], button.pf-v6-c-menu__item, button.pf-v5-c-menu__item:has-text('Enable user')").first();
+      const toggleItem = frame.locator("button[role='menuitem']:has-text('Disable user'), button.pf-v6-c-menu__item:has-text('Disable user'), button.pf-v5-c-menu__item:has-text('Disable user'), button[role='menuitem']:has-text('Enable user'), button.pf-v6-c-menu__item:has-text('Enable user'), button.pf-v5-c-menu__item:has-text('Enable user')").first();
       if (await toggleItem.isVisible({ timeout: 1000 }).catch(() => false)) {
         await toggleItem.click({ timeout: 1000 }).catch(() => {});
         await page.waitForTimeout(200);

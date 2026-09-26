@@ -1249,7 +1249,7 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     if (await dsKebab.isVisible({ timeout: 1000 }).catch(() => false)) {
       await dsKebab.click({ timeout: 1000 }).catch(() => {});
       await page.waitForTimeout(200);
-      const editPropItem = frame.locator("button.pf-v6-c-menu__item, button.pf-v5-c-menu__item, [role='menuitem']:has-text('Edit properties')").first();
+      const editPropItem = frame.locator("button[role='menuitem']:has-text('Edit properties'), button.pf-v6-c-menu__item:has-text('Edit properties'), button.pf-v5-c-menu__item:has-text('Edit properties')").first();
       if (await editPropItem.isVisible({ timeout: 1000 }).catch(() => false)) {
         await editPropItem.click({ timeout: 1000 }).catch(() => {});
         await page.waitForTimeout(200);
@@ -1261,7 +1261,7 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
 
       await dsKebab.click({ timeout: 1000 }).catch(() => {});
       await page.waitForTimeout(200);
-      const renameItem = frame.locator("button.pf-v6-c-menu__item, button.pf-v5-c-menu__item, [role='menuitem']:has-text('Rename')").first();
+      const renameItem = frame.locator("button[role='menuitem']:has-text('Rename'), button.pf-v6-c-menu__item:has-text('Rename'), button.pf-v5-c-menu__item:has-text('Rename')").first();
       if (await renameItem.isVisible({ timeout: 1000 }).catch(() => false)) {
         await renameItem.click({ timeout: 1000 }).catch(() => {});
         await page.waitForTimeout(200);
@@ -1288,7 +1288,7 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     if (await snapKebab.isVisible({ timeout: 1000 }).catch(() => false)) {
       await snapKebab.click({ timeout: 1000 }).catch(() => {});
       await page.waitForTimeout(200);
-      const cloneItem = frame.locator("button.pf-v6-c-menu__item, button.pf-v5-c-menu__item, [role='menuitem']:has-text('Clone to new dataset')").first();
+      const cloneItem = frame.locator("button[role='menuitem']:has-text('Clone to new dataset'), button.pf-v6-c-menu__item:has-text('Clone to new dataset'), button.pf-v5-c-menu__item:has-text('Clone to new dataset')").first();
       if (await cloneItem.isVisible({ timeout: 1000 }).catch(() => false)) {
         await cloneItem.click({ timeout: 1000 }).catch(() => {});
         await page.waitForTimeout(200);
@@ -1509,7 +1509,7 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     if (await poolKebab.isVisible({ timeout: 1000 }).catch(() => false)) {
       await poolKebab.click({ timeout: 1000 }).catch(() => {});
       await page.waitForTimeout(200);
-      const scrubItem = frame.locator("button.pf-v6-c-menu__item, button.pf-v5-c-menu__item, [role='menuitem']:has-text('scrub'), button.pf-v6-c-menu__item, button.pf-v5-c-menu__item, [role='menuitem']:has-text('Scrub')").first();
+      const scrubItem = frame.locator("button[role='menuitem']:has-text('scrub'), button.pf-v6-c-menu__item:has-text('scrub'), button.pf-v5-c-menu__item:has-text('scrub'), button[role='menuitem']:has-text('Scrub'), button.pf-v6-c-menu__item:has-text('Scrub'), button.pf-v5-c-menu__item:has-text('Scrub')").first();
       if (await scrubItem.isVisible({ timeout: 1000 }).catch(() => false)) {
         await scrubItem.click({ timeout: 1000 }).catch(() => {});
         await page.waitForTimeout(200);
@@ -1517,7 +1517,7 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
 
       await poolKebab.click({ timeout: 1000 }).catch(() => {});
       await page.waitForTimeout(200);
-      const trimItem = frame.locator("button.pf-v6-c-menu__item, button.pf-v5-c-menu__item, [role='menuitem']:has-text('trim'), button.pf-v6-c-menu__item, button.pf-v5-c-menu__item, [role='menuitem']:has-text('Trim')").first();
+      const trimItem = frame.locator("button[role='menuitem']:has-text('trim'), button.pf-v6-c-menu__item:has-text('trim'), button.pf-v5-c-menu__item:has-text('trim'), button[role='menuitem']:has-text('Trim'), button.pf-v6-c-menu__item:has-text('Trim'), button.pf-v5-c-menu__item:has-text('Trim')").first();
       if (await trimItem.isVisible({ timeout: 1000 }).catch(() => false)) {
         await trimItem.click({ timeout: 1000 }).catch(() => {});
         await page.waitForTimeout(200);
@@ -1532,7 +1532,7 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     if (await diskKebab.isVisible({ timeout: 1000 }).catch(() => false)) {
       await diskKebab.click({ timeout: 1000 }).catch(() => {});
       await page.waitForTimeout(200);
-      const shortTest = frame.locator("button.pf-v6-c-menu__item, button.pf-v5-c-menu__item, [role='menuitem']:has-text('short')").first();
+      const shortTest = frame.locator("button[role='menuitem']:has-text('short'), button.pf-v6-c-menu__item:has-text('short'), button.pf-v5-c-menu__item:has-text('short')").first();
       if (await shortTest.isVisible({ timeout: 1000 }).catch(() => false)) {
         await shortTest.click({ timeout: 1000 }).catch(() => {});
         await page.waitForTimeout(200);
@@ -1540,7 +1540,7 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
 
       await diskKebab.click({ timeout: 1000 }).catch(() => {});
       await page.waitForTimeout(200);
-      const longTest = frame.locator("button.pf-v6-c-menu__item, button.pf-v5-c-menu__item, [role='menuitem']:has-text('extended')").first();
+      const longTest = frame.locator("button[role='menuitem']:has-text('extended'), button.pf-v6-c-menu__item:has-text('extended'), button.pf-v5-c-menu__item:has-text('extended')").first();
       if (await longTest.isVisible({ timeout: 1000 }).catch(() => false)) {
         await longTest.click({ timeout: 1000 }).catch(() => {});
         await page.waitForTimeout(200);
@@ -1570,7 +1570,7 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     if (await devKebab.isVisible({ timeout: 1000 }).catch(() => false)) {
       await devKebab.click({ timeout: 1000 }).catch(() => {});
       await page.waitForTimeout(200);
-      const replaceItem = frame.locator("button.pf-v6-c-menu__item, button.pf-v5-c-menu__item, [role='menuitem']:has-text('Replace device')").first();
+      const replaceItem = frame.locator("button[role='menuitem']:has-text('Replace device'), button.pf-v6-c-menu__item:has-text('Replace device'), button.pf-v5-c-menu__item:has-text('Replace device')").first();
       if (await replaceItem.isVisible({ timeout: 1000 }).catch(() => false)) {
         await replaceItem.click({ timeout: 1000 }).catch(() => {});
         await page.waitForTimeout(200);
@@ -1582,7 +1582,7 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
 
       await devKebab.click({ timeout: 1000 }).catch(() => {});
       await page.waitForTimeout(200);
-      const trimDevItem = frame.locator("button.pf-v6-c-menu__item, button.pf-v5-c-menu__item, [role='menuitem']:has-text('Trim device')").first();
+      const trimDevItem = frame.locator("button[role='menuitem']:has-text('Trim device'), button.pf-v6-c-menu__item:has-text('Trim device'), button.pf-v5-c-menu__item:has-text('Trim device')").first();
       if (await trimDevItem.isVisible({ timeout: 1000 }).catch(() => false)) {
         await trimDevItem.click({ timeout: 1000 }).catch(() => {});
         await page.waitForTimeout(200);

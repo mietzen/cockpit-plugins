@@ -47,8 +47,7 @@ never deploy from a local build.
    branch; re-run CI until green. Final review of implemented issues
 6. **Merge**: merge the PR to `main` only after CI is green AND the AI review
    passed.
-7. **Deploy**: pushing to `main` triggers the CI deploy to GitHub Pages — this
-   is the ONLY deploy path. No local-build deploys.
+7. **Deploy**: pushing release tags (`*-v*`) triggers the CI release workflow to publish GitHub releases and deploy the APT/RPM repository to GitHub Pages. Direct pushes on `main` ignore plugin/package source paths to protect immutable release artifacts. No local-build deploys.
 8. **E2E on the test VM**: after the deploy job completes, install
    the updated package, and verify the issue's acceptance criteria on the VM
    (WebUI via the 9090 tunnel + playwright, service checks via ssh).
