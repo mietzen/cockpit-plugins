@@ -13,7 +13,7 @@ import {
   SearchInput,
   Button,
 } from "@patternfly/react-core";
-import { Table, Thead, Tr, Th, Tbody, Td } from "@patternfly/react-table";
+import { Table, Thead, Tr, Th, Tbody, Td, ThProps } from "@patternfly/react-table";
 import { HddIcon, EllipsisVIcon, CheckCircleIcon, ExclamationCircleIcon } from "@patternfly/react-icons";
 import { DiskDevice } from "../types";
 import { formatBytes } from "../utils/formatters";
@@ -36,9 +36,25 @@ export const DisksView: React.FC<DisksViewProps> = ({
   const [selectedDiskForSmart, setSelectedDiskForSmart] = useState<DiskDevice | null>(null);
   const [searchValue, setSearchValue] = useState("");
 
+  const [sortIndex, setSortIndex] = useState<number | null>(0);
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+
   const toggleDropdown = (diskName: string) => {
     setOpenDropdown(openDropdown === diskName ? null : diskName);
   };
+
+  const getSortParams = (columnIndex: number): ThProps['sort'] => ({
+    sortBy: {
+      index: sortIndex ?? undefined,
+      direction: sortDirection,
+      defaultDirection: 'asc',
+    },
+    onSort: (_event, index, direction) => {
+      setSortIndex(index);
+      setSortDirection(direction);
+    },
+    columnIndex,
+  });
 
   const handleShowSmart = (disk: DiskDevice) => {
     if (onViewSmartDetails) {
@@ -63,6 +79,42 @@ export const DisksView: React.FC<DisksViewProps> = ({
       d.path.toLowerCase().includes(searchValue.toLowerCase()) ||
       d.model.toLowerCase().includes(searchValue.toLowerCase())
   );
+
+  const sortedDisks = React.useMemo(() => {
+    if (sortIndex === null) {
+      return filteredDisks;
+    }
+    return [...filteredDisks].sort((a, b) => {
+      let aVal: any = '';
+      let bVal: any = '';
+      if (sortIndex === 0) {
+        aVal = a.name;
+        bVal = b.name;
+      } else if (sortIndex === 1) {
+        aVal = `${a.model || ''} ${a.serial || ''}`;
+        bVal = `${b.model || ''} ${b.serial || ''}`;
+      } else if (sortIndex === 2) {
+        return sortDirection === 'asc' ? a.size - b.size : b.size - a.size;
+      } else if (sortIndex === 3) {
+        aVal = a.rotational ? 'HDD' : 'SSD';
+        bVal = b.rotational ? 'HDD' : 'SSD';
+      } else if (sortIndex === 4) {
+        aVal = a.transport || '';
+        bVal = b.transport || '';
+      } else if (sortIndex === 5) {
+        aVal = a.smart_health || '';
+        bVal = b.smart_health || '';
+      } else if (sortIndex === 6) {
+        const aTemp = a.temperature ?? -999;
+        const bTemp = b.temperature ?? -999;
+        return sortDirection === 'asc' ? aTemp - bTemp : bTemp - aTemp;
+      } else if (sortIndex === 7) {
+        aVal = a.pool || '';
+        bVal = b.pool || '';
+      }
+      return sortDirection === 'asc' ? String(aVal).localeCompare(String(bVal)) : String(bVal).localeCompare(String(aVal));
+    });
+  }, [filteredDisks, sortIndex, sortDirection]);
 
   return (
     <>
@@ -89,19 +141,19 @@ export const DisksView: React.FC<DisksViewProps> = ({
         <Table aria-label="Disks Table" variant="compact">
           <Thead>
             <Tr>
-              <Th>Device</Th>
-              <Th>Model / Serial</Th>
-              <Th>Size</Th>
-              <Th>Type</Th>
-              <Th>Transport</Th>
-              <Th>SMART status</Th>
-              <Th>Temperature</Th>
-              <Th>Pool assignment</Th>
+              <Th sort={getSortParams(0)}>Device</Th>
+              <Th sort={getSortParams(1)}>Model / Serial</Th>
+              <Th sort={getSortParams(2)}>Size</Th>
+              <Th sort={getSortParams(3)}>Type</Th>
+              <Th sort={getSortParams(4)}>Transport</Th>
+              <Th sort={getSortParams(5)}>SMART status</Th>
+              <Th sort={getSortParams(6)}>Temperature</Th>
+              <Th sort={getSortParams(7)}>Pool assignment</Th>
               <Th screenReaderText="Actions" />
             </Tr>
           </Thead>
           <Tbody>
-            {filteredDisks.map((disk) => {
+            {sortedDisks.map((disk) => {
               const isSmartPassed = disk.smart_health === "PASSED";
               const isSmartFailed = disk.smart_health === "FAILED";
 
@@ -165,6 +217,7 @@ export const DisksView: React.FC<DisksViewProps> = ({
                     )}
                   </Td>
                   <Td isActionCell>
+
                     <Dropdown
                       popperProps={{ position: "right", preventOverflow: true, appendTo: () => document.body }}
                       isOpen={openDropdown === disk.name}

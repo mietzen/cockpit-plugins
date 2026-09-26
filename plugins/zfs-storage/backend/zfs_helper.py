@@ -32,6 +32,7 @@ try:
         parse_lsblk,
         parse_smartctl,
         parse_arcstats,
+        parse_sanoid_conf,
     )
 except ImportError:
     from enums import (
@@ -52,6 +53,7 @@ except ImportError:
         parse_lsblk,
         parse_smartctl,
         parse_arcstats,
+        parse_sanoid_conf,
     )
 
 SAFE_NAME_RE = re.compile(r"^[a-zA-Z0-9_\-\.\:\/\@\#\%\=\+]+$")
@@ -78,6 +80,39 @@ class ZfsService:
     def __init__(self):
         self.builder = CommandBuilder()
 
+    def get_sanoid_info(self) -> Dict[str, Any]:
+        sanoid_bin = run_cmd(["which", "sanoid"]).returncode == 0
+        syncoid_bin = run_cmd(["which", "syncoid"]).returncode == 0
+        conf_exists = os.path.exists("/etc/sanoid/sanoid.conf")
+        if not sanoid_bin and not syncoid_bin and not conf_exists:
+            return {"installed": False, "sanoid_installed": False, "syncoid_installed": False, "policies": []}
+
+        policies = []
+        conf_path = "/etc/sanoid/sanoid.conf"
+        if conf_exists:
+            try:
+                with open(conf_path, "r") as f:
+                    policies = parse_sanoid_conf(f.read())
+            except Exception:
+                pass
+
+        sanoid_timer = run_cmd(["systemctl", "is-active", "sanoid.timer"]).stdout.strip() == "active"
+        sanoid_svc = run_cmd(["systemctl", "is-active", "sanoid.service"]).stdout.strip() == "active"
+        syncoid_timer = run_cmd(["systemctl", "is-active", "syncoid.timer"]).stdout.strip() == "active"
+        syncoid_svc = run_cmd(["systemctl", "is-active", "syncoid.service"]).stdout.strip() == "active"
+
+        return {
+            "installed": True,
+            "sanoid_installed": sanoid_bin or conf_exists,
+            "syncoid_installed": syncoid_bin,
+            "sanoid_timer_active": sanoid_timer,
+            "sanoid_service_active": sanoid_svc,
+            "syncoid_timer_active": syncoid_timer,
+            "syncoid_service_active": syncoid_svc,
+            "policies": policies,
+        }
+
+
     def get_system_info(self) -> Dict[str, Any]:
         kmod_loaded = os.path.exists("/proc/spl/kstat/zfs") or os.path.exists("/sys/module/zfs")
         zfs_ver = ""
@@ -97,11 +132,15 @@ class ZfsService:
             except Exception:
                 pass
 
+        sanoid_info = self.get_sanoid_info()
+
         return {
             "kernel_module_loaded": kmod_loaded,
             "version": zfs_ver,
             "arc": arc_stats,
+            "sanoid": sanoid_info,
         }
+
 
     def get_pools(self) -> List[Dict[str, Any]]:
         p_list = run_cmd(["zpool", "list", "-p", "-H", "-o", "name,size,alloc,free,frag,cap,dedup,health,altroot,guid"])

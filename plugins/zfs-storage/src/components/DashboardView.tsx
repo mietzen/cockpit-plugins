@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   PageSection,
   Card,
@@ -16,7 +16,7 @@ import {
   Label,
   Divider,
 } from "@patternfly/react-core";
-import { Table, Thead, Tr, Th, Tbody, Td } from "@patternfly/react-table";
+import { Table, Thead, Tr, Th, Tbody, Td, ThProps } from "@patternfly/react-table";
 import {
   CheckCircleIcon,
   ExclamationTriangleIcon,
@@ -26,6 +26,7 @@ import {
   ArrowRightIcon,
   HddIcon,
   InfoCircleIcon,
+  SyncAltIcon,
 } from "@patternfly/react-icons";
 import { ZPool, SystemInfo, DiskDevice } from "../types";
 import { formatBytes, formatPercentage } from "../utils/formatters";
@@ -51,6 +52,55 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onViewArcDetails,
   onViewSmartDetails,
 }) => {
+  const [diskSortIndex, setDiskSortIndex] = useState<number | null>(0);
+  const [diskSortDirection, setDiskSortDirection] = useState<'asc' | 'desc'>('asc');
+
+  const getDiskSortParams = (columnIndex: number): ThProps['sort'] => ({
+    sortBy: {
+      index: diskSortIndex ?? undefined,
+      direction: diskSortDirection,
+      defaultDirection: 'asc',
+    },
+    onSort: (_event, index, direction) => {
+      setDiskSortIndex(index);
+      setDiskSortDirection(direction);
+    },
+    columnIndex,
+  });
+
+  const sortedDisks = React.useMemo(() => {
+    if (diskSortIndex === null) {
+      return disks;
+    }
+    return [...disks].sort((a, b) => {
+      let aVal: any = '';
+      let bVal: any = '';
+      if (diskSortIndex === 0) {
+        aVal = a.name;
+        bVal = b.name;
+      } else if (diskSortIndex === 1) {
+        aVal = `${a.model || ''} ${a.serial || ''}`;
+        bVal = `${b.model || ''} ${b.serial || ''}`;
+      } else if (diskSortIndex === 2) {
+        return diskSortDirection === 'asc' ? a.size - b.size : b.size - a.size;
+      } else if (diskSortIndex === 3) {
+        aVal = a.rotational ? 'HDD' : 'SSD';
+        bVal = b.rotational ? 'HDD' : 'SSD';
+      } else if (diskSortIndex === 4) {
+        aVal = a.smart_health || '';
+        bVal = b.smart_health || '';
+      } else if (diskSortIndex === 5) {
+        const aTemp = a.temperature ?? -999;
+        const bTemp = b.temperature ?? -999;
+        return diskSortDirection === 'asc' ? aTemp - bTemp : bTemp - aTemp;
+      } else if (diskSortIndex === 6) {
+        aVal = a.pool || '';
+        bVal = b.pool || '';
+      }
+      return diskSortDirection === 'asc' ? String(aVal).localeCompare(String(bVal)) : String(bVal).localeCompare(String(aVal));
+    });
+  }, [disks, diskSortIndex, diskSortDirection]);
+
   const totalSize = pools.reduce((acc, p) => acc + p.size, 0);
   const totalAlloc = pools.reduce((acc, p) => acc + p.alloc, 0);
   const totalFree = pools.reduce((acc, p) => acc + p.free, 0);
@@ -58,6 +108,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   const allHealthy = pools.length > 0 && pools.every((p) => p.health === "ONLINE");
   const faultedPools = pools.filter((p) => p.health !== "ONLINE");
+
+  const sanoidInfo = systemInfo?.sanoid;
 
   return (
     <>
@@ -296,6 +348,75 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           })}
         </Grid>
 
+        {/* Sanoid & Syncoid Jobs (Shown only if installed) */}
+        {sanoidInfo?.installed && (
+          <div style={{ marginBottom: "2rem" }}>
+            <Title headingLevel="h2" size="xl" style={{ marginBottom: "1rem", fontWeight: 600 }}>
+              Sanoid &amp; Syncoid Snapshot Automations
+            </Title>
+            <Card isPlain style={{ border: "1px solid #333333" }}>
+              <CardBody>
+                <Flex gap={{ default: "gapMd" }} style={{ marginBottom: "1rem" }}>
+                  {sanoidInfo.sanoid_installed && (
+                    <FlexItem>
+                      <Label color={sanoidInfo.sanoid_timer_active ? "green" : "grey"} icon={<SyncAltIcon />}>
+                        Sanoid Timer: {sanoidInfo.sanoid_timer_active ? "Active" : "Inactive"}
+                      </Label>
+                    </FlexItem>
+                  )}
+                  {sanoidInfo.syncoid_installed && (
+                    <FlexItem>
+                      <Label color={sanoidInfo.syncoid_timer_active ? "green" : "grey"} icon={<SyncAltIcon />}>
+                        Syncoid Timer: {sanoidInfo.syncoid_timer_active ? "Active" : "Inactive"}
+                      </Label>
+                    </FlexItem>
+                  )}
+                </Flex>
+
+                {sanoidInfo.policies.length > 0 ? (
+                  <Table aria-label="Sanoid Policies Table" variant="compact">
+                    <Thead>
+                      <Tr>
+                        <Th>Dataset / Path</Th>
+                        <Th>Template</Th>
+                        <Th>Hourly</Th>
+                        <Th>Daily</Th>
+                        <Th>Monthly</Th>
+                        <Th>Yearly</Th>
+                        <Th>Autosnap / Autoprune</Th>
+                        <Th>Recursive</Th>
+                      </Tr>
+                    </Thead>
+                    <Tbody>
+                      {sanoidInfo.policies.map((p) => (
+                        <Tr key={p.dataset}>
+                          <Td dataLabel="Dataset"><strong>{p.dataset}</strong></Td>
+                          <Td dataLabel="Template">{p.template || "default"}</Td>
+                          <Td dataLabel="Hourly">{p.hourly !== undefined ? p.hourly : "—"}</Td>
+                          <Td dataLabel="Daily">{p.daily !== undefined ? p.daily : "—"}</Td>
+                          <Td dataLabel="Monthly">{p.monthly !== undefined ? p.monthly : "—"}</Td>
+                          <Td dataLabel="Yearly">{p.yearly !== undefined ? p.yearly : "—"}</Td>
+                          <Td dataLabel="Autosnap / Autoprune">
+                            <Flex gap={{ default: "gapXs" }}>
+                              <Label color={p.autosnap !== false ? "green" : "grey"}>Snap: {p.autosnap !== false ? "on" : "off"}</Label>
+                              <Label color={p.autoprune !== false ? "blue" : "grey"}>Prune: {p.autoprune !== false ? "on" : "off"}</Label>
+                            </Flex>
+                          </Td>
+                          <Td dataLabel="Recursive">{p.recursive ? "Yes" : "No"}</Td>
+                        </Tr>
+                      ))}
+                    </Tbody>
+                  </Table>
+                ) : (
+                  <div style={{ color: "var(--pf-v5-global--Color--200)", fontSize: "0.875rem" }}>
+                    Sanoid is installed, but no dataset policies are configured in /etc/sanoid/sanoid.conf.
+                  </div>
+                )}
+              </CardBody>
+            </Card>
+          </div>
+        )}
+
         {/* Host Disks Overview Section */}
         <Title headingLevel="h2" size="xl" style={{ marginBottom: "1rem", fontWeight: 600 }}>
           Host Disks Overview
@@ -306,17 +427,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <Table aria-label="Dashboard Disks Table" variant="compact">
               <Thead>
                 <Tr>
-                  <Th>Device</Th>
-                  <Th>Model / Serial</Th>
-                  <Th>Capacity</Th>
-                  <Th>Type</Th>
-                  <Th>SMART Health</Th>
-                  <Th>Temp</Th>
-                  <Th>Pool Assignment</Th>
+                  <Th sort={getDiskSortParams(0)}>Device</Th>
+                  <Th sort={getDiskSortParams(1)}>Model / Serial</Th>
+                  <Th sort={getDiskSortParams(2)}>Capacity</Th>
+                  <Th sort={getDiskSortParams(3)}>Type</Th>
+                  <Th sort={getDiskSortParams(4)}>SMART Health</Th>
+                  <Th sort={getDiskSortParams(5)}>Temp</Th>
+                  <Th sort={getDiskSortParams(6)}>Pool Assignment</Th>
                 </Tr>
               </Thead>
               <Tbody>
-                {disks.map((disk) => {
+                {sortedDisks.map((disk) => {
                   const isSmartPassed = disk.smart_health === "PASSED";
                   const isSmartFailed = disk.smart_health === "FAILED";
 
@@ -382,3 +503,4 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     </>
   );
 };
+

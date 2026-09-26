@@ -17,12 +17,14 @@ import {
   Label,
   Grid,
   GridItem,
+  Checkbox,
 } from "@patternfly/react-core";
 import { SaveIcon, CheckCircleIcon, ExclamationCircleIcon } from "@patternfly/react-icons";
-import { SmbGlobal } from "../types";
+import { SmbGlobal, NfsGlobal } from "../types";
 
 interface SettingsViewProps {
   globalSettings: SmbGlobal;
+  nfsGlobal?: NfsGlobal;
   ansibleBegin: string;
   ansibleEnd: string;
   versions?: {
@@ -30,15 +32,18 @@ interface SettingsViewProps {
     nfs: string;
   };
   onSaveGlobal: (global: Record<string, string>) => Promise<void>;
+  onSaveNfsGlobal?: (nfs: NfsGlobal) => Promise<void>;
   onSaveAnsibleMarkers: (begin: string, end: string) => void;
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
   globalSettings,
+  nfsGlobal,
   ansibleBegin,
   ansibleEnd,
   versions,
   onSaveGlobal,
+  onSaveNfsGlobal,
   onSaveAnsibleMarkers,
 }) => {
   const [workgroup, setWorkgroup] = useState(globalSettings.workgroup || "WORKGROUP");
@@ -46,11 +51,30 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [netbiosName, setNetbiosName] = useState(globalSettings.netbios_name || "");
   const [minProtocol, setMinProtocol] = useState(globalSettings.server_min_protocol || "SMB2_02");
 
+  // NFS Global State
+  const [nfsThreads, setNfsThreads] = useState<string>(
+    nfsGlobal?.threads !== undefined ? String(nfsGlobal.threads) : "8"
+  );
+  const [nfsPort, setNfsPort] = useState<string>(
+    nfsGlobal?.port !== undefined ? String(nfsGlobal.port) : ""
+  );
+  const [nfsGraceTime, setNfsGraceTime] = useState<string>(
+    nfsGlobal?.grace_time !== undefined ? String(nfsGlobal.grace_time) : ""
+  );
+  const [nfsLeaseTime, setNfsLeaseTime] = useState<string>(
+    nfsGlobal?.lease_time !== undefined ? String(nfsGlobal.lease_time) : ""
+  );
+  const [nfsVers3, setNfsVers3] = useState<boolean>(nfsGlobal?.vers3 !== false);
+  const [nfsVers4, setNfsVers4] = useState<boolean>(nfsGlobal?.vers4 !== false);
+  const [nfsVers41, setNfsVers41] = useState<boolean>(nfsGlobal?.vers4_1 !== false);
+  const [nfsVers42, setNfsVers42] = useState<boolean>(nfsGlobal?.vers4_2 !== false);
+
   const [beginMarker, setBeginMarker] = useState(ansibleBegin);
   const [endMarker, setEndMarker] = useState(ansibleEnd);
   const [testComment, setTestComment] = useState("# <-- BEGIN ANSIBLE MANAGED storage_cluster CONFIG -->");
 
   const [loading, setLoading] = useState(false);
+  const [nfsLoading, setNfsLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -67,15 +91,50 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       });
       setSuccessMsg("Global Samba settings saved successfully");
     } catch (err: any) {
-      setErrorMsg(err.message || "Failed to save settings");
+      setErrorMsg(err.message || "Failed to save Samba settings");
     } finally {
       setLoading(false);
     }
   };
 
+  const handleSaveNfs = async () => {
+    if (!onSaveNfsGlobal) {
+      return;
+    }
+    setNfsLoading(true);
+    setSuccessMsg(null);
+    setErrorMsg(null);
+    try {
+      const payload: NfsGlobal = {
+        vers3: nfsVers3,
+        vers4: nfsVers4,
+        vers4_1: nfsVers41,
+        vers4_2: nfsVers42,
+      };
+      if (nfsThreads.trim()) {
+        payload.threads = parseInt(nfsThreads.trim(), 10) || 8;
+      }
+      if (nfsPort.trim()) {
+        payload.port = parseInt(nfsPort.trim(), 10);
+      }
+      if (nfsGraceTime.trim()) {
+        payload.grace_time = parseInt(nfsGraceTime.trim(), 10);
+      }
+      if (nfsLeaseTime.trim()) {
+        payload.lease_time = parseInt(nfsLeaseTime.trim(), 10);
+      }
+      await onSaveNfsGlobal(payload);
+      setSuccessMsg("Global NFS settings saved successfully");
+    } catch (err: any) {
+      setErrorMsg(err.message || "Failed to save NFS settings");
+    } finally {
+      setNfsLoading(false);
+    }
+  };
+
   const handleSaveMarkers = () => {
     onSaveAnsibleMarkers(beginMarker.trim(), endMarker.trim());
-    setSuccessMsg("Ansible marker patterns saved");
+    setSuccessMsg("Configuration marker patterns saved");
   };
 
   // Test regex match
@@ -177,7 +236,104 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </Card>
           </GridItem>
 
-          {/* Card 2: Managed Configuration Markers */}
+          {/* Card 2: Global NFS Configuration */}
+          <GridItem span={12} lg={6}>
+            <Card isFullHeight>
+              <CardTitle>
+                <Title headingLevel="h2" size="xl">Global NFS Configuration</Title>
+              </CardTitle>
+              <CardBody>
+                <Form>
+                  <FormGroup label="NFS Server Threads" fieldId="nfs-threads">
+                    <TextInput
+                      id="nfs-threads"
+                      type="number"
+                      value={nfsThreads}
+                      onChange={(_event, val) => setNfsThreads(val)}
+                      placeholder="8"
+                    />
+                  </FormGroup>
+
+                  <FormGroup label="TCP/UDP Port (Default: 2049)" fieldId="nfs-port">
+                    <TextInput
+                      id="nfs-port"
+                      type="number"
+                      value={nfsPort}
+                      onChange={(_event, val) => setNfsPort(val)}
+                      placeholder="2049"
+                    />
+                  </FormGroup>
+
+                  <Grid hasGutter>
+                    <GridItem span={6}>
+                      <FormGroup label="Grace Time (s)" fieldId="nfs-grace">
+                        <TextInput
+                          id="nfs-grace"
+                          type="number"
+                          value={nfsGraceTime}
+                          onChange={(_event, val) => setNfsGraceTime(val)}
+                          placeholder="90"
+                        />
+                      </FormGroup>
+                    </GridItem>
+                    <GridItem span={6}>
+                      <FormGroup label="Lease Time (s)" fieldId="nfs-lease">
+                        <TextInput
+                          id="nfs-lease"
+                          type="number"
+                          value={nfsLeaseTime}
+                          onChange={(_event, val) => setNfsLeaseTime(val)}
+                          placeholder="90"
+                        />
+                      </FormGroup>
+                    </GridItem>
+                  </Grid>
+
+                  <FormGroup label="Supported NFS Protocol Versions" fieldId="nfs-protocols">
+                    <Flex gap={{ default: "gapMd" }}>
+                      <Checkbox
+                        id="nfs-v3"
+                        label="NFSv3"
+                        isChecked={nfsVers3}
+                        onChange={(_event, checked) => setNfsVers3(checked)}
+                      />
+                      <Checkbox
+                        id="nfs-v4"
+                        label="NFSv4"
+                        isChecked={nfsVers4}
+                        onChange={(_event, checked) => setNfsVers4(checked)}
+                      />
+                      <Checkbox
+                        id="nfs-v41"
+                        label="NFSv4.1"
+                        isChecked={nfsVers41}
+                        onChange={(_event, checked) => setNfsVers41(checked)}
+                      />
+                      <Checkbox
+                        id="nfs-v42"
+                        label="NFSv4.2"
+                        isChecked={nfsVers42}
+                        onChange={(_event, checked) => setNfsVers42(checked)}
+                      />
+                    </Flex>
+                  </FormGroup>
+
+                  <div style={{ marginTop: "1.5rem" }}>
+                    <Button
+                      variant="primary"
+                      icon={<SaveIcon />}
+                      onClick={handleSaveNfs}
+                      isLoading={nfsLoading}
+                    >
+                      Save NFS settings
+                    </Button>
+                  </div>
+                </Form>
+              </CardBody>
+            </Card>
+          </GridItem>
+
+          {/* Card 3: Managed Configuration Markers */}
           <GridItem span={12} lg={6}>
             <Card isFullHeight>
               <CardTitle>
@@ -237,15 +393,15 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </Card>
           </GridItem>
 
-          {/* Card 3: About Cockpit File Sharing */}
-          <GridItem span={12}>
-            <Card isPlain style={{ border: "1px solid var(--zfs-card-border)", marginTop: "1rem" }}>
+          {/* Card 4: About Cockpit File Sharing */}
+          <GridItem span={12} lg={6}>
+            <Card isPlain style={{ border: "1px solid var(--zfs-card-border)", height: "100%" }}>
               <CardTitle>
                 <Title headingLevel="h2" size="xl">About Cockpit File Sharing</Title>
               </CardTitle>
               <CardBody>
                 <p style={{ marginBottom: "0.5rem" }}>
-                  <strong>Version:</strong> {typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "0.1.2"}
+                  <strong>Version:</strong> {typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "0.2.1"}
                 </p>
                 <p style={{ marginBottom: "0.5rem" }}>
                   <strong>License:</strong> MIT

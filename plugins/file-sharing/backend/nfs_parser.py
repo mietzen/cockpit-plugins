@@ -217,3 +217,129 @@ class NfsParser:
             f.write(final_content)
         os.replace(tmp_path, self.cockpit_exports_file)
         return True, f"NFS export '{export_path}' deleted successfully"
+
+
+def parse_nfs_conf(content: str) -> Dict[str, Dict[str, str]]:
+    """Parses /etc/nfs.conf INI-style configuration file."""
+    sections: Dict[str, Dict[str, str]] = {}
+    current_section = "global"
+    sections[current_section] = {}
+
+    for line in content.splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#") or stripped.startswith(";"):
+            continue
+
+        if stripped.startswith("[") and stripped.endswith("]"):
+            current_section = stripped[1:-1].strip().lower()
+            if current_section not in sections:
+                sections[current_section] = {}
+            continue
+
+        if "=" in stripped:
+            k, v = stripped.split("=", 1)
+            k = k.strip().lower()
+            v = v.strip()
+            sections[current_section][k] = v
+
+    return sections
+
+
+def get_nfs_global(config_path: str = "/etc/nfs.conf") -> Dict[str, Any]:
+    """Retrieves global NFS server configuration from /etc/nfs.conf with safe defaults."""
+    content = ""
+    if os.path.exists(config_path):
+        try:
+            with open(config_path, "r", encoding="utf-8", errors="replace") as f:
+                content = f.read()
+        except Exception:
+            pass
+
+    parsed = parse_nfs_conf(content)
+    nfsd = parsed.get("nfsd", {})
+
+    def is_enabled(val: str, default: bool = True) -> bool:
+        if not val:
+            return default
+        return val.lower() in ("y", "yes", "1", "true", "on")
+
+    return {
+        "threads": int(nfsd.get("threads", 8)) if nfsd.get("threads", "").isdigit() else 8,
+        "vers3": is_enabled(nfsd.get("vers3", "y"), default=True),
+        "vers4": is_enabled(nfsd.get("vers4", "y"), default=True),
+        "vers4_1": is_enabled(nfsd.get("vers4.1", "y"), default=True),
+        "vers4_2": is_enabled(nfsd.get("vers4.2", "y"), default=True),
+        "grace_time": int(nfsd.get("grace-time", 90)) if nfsd.get("grace-time", "").isdigit() else 90,
+        "lease_time": int(nfsd.get("lease-time", 90)) if nfsd.get("lease-time", "").isdigit() else 90,
+        "port": int(nfsd.get("port", 2049)) if nfsd.get("port", "").isdigit() else 2049,
+    }
+
+
+def save_nfs_global(settings: Dict[str, Any], config_path: str = "/etc/nfs.conf") -> Tuple[bool, str]:
+    """Saves global NFS server configuration to /etc/nfs.conf under [nfsd]."""
+    content = ""
+    if os.path.exists(config_path):
+        try:
+            with open(config_path, "r", encoding="utf-8", errors="replace") as f:
+                content = f.read()
+        except Exception:
+            pass
+
+    lines = content.splitlines()
+    in_nfsd = False
+    nfsd_found = False
+    new_lines = []
+
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith("[") and stripped.endswith("]"):
+            sec = stripped[1:-1].strip().lower()
+            if sec == "nfsd":
+                in_nfsd = True
+                nfsd_found = True
+                new_lines.append("[nfsd]")
+                continue
+            else:
+                if in_nfsd:
+                    in_nfsd = False
+                new_lines.append(line)
+                continue
+
+        if in_nfsd:
+            # Skip old nfsd parameters we manage
+            if "=" in stripped:
+                k = stripped.split("=", 1)[0].strip().lower()
+                if k in ("threads", "vers3", "vers4", "vers4.0", "vers4.1", "vers4.2", "grace-time", "lease-time", "port"):
+                    continue
+            new_lines.append(line)
+        else:
+            new_lines.append(line)
+
+    nfsd_params = [
+        f"threads = {settings.get('threads', 8)}",
+        f"vers3 = {'y' if settings.get('vers3', True) else 'n'}",
+        f"vers4 = {'y' if settings.get('vers4', True) else 'n'}",
+        f"vers4.1 = {'y' if settings.get('vers4_1', True) else 'n'}",
+        f"vers4.2 = {'y' if settings.get('vers4_2', True) else 'n'}",
+        f"grace-time = {settings.get('grace_time', 90)}",
+        f"lease-time = {settings.get('lease_time', 90)}",
+        f"port = {settings.get('port', 2049)}",
+    ]
+
+    if not nfsd_found:
+        new_lines.append("\n[nfsd]")
+        for p in nfsd_params:
+            new_lines.append(f" {p}")
+    else:
+        # Insert params right after [nfsd]
+        idx = new_lines.index("[nfsd]") + 1
+        for i, p in enumerate(nfsd_params):
+            new_lines.insert(idx + i, f" {p}")
+
+    final_content = "\n".join(new_lines).strip() + "\n"
+    tmp_path = f"{config_path}.tmp"
+    os.makedirs(os.path.dirname(config_path) or ".", exist_ok=True)
+    with open(tmp_path, "w", encoding="utf-8") as f:
+        f.write(final_content)
+    os.replace(tmp_path, config_path)
+    return True, "Global NFS settings saved successfully"

@@ -136,6 +136,26 @@ class SmbParser:
                 current_comments.append(line)
 
         flush_section()
+
+        global_vfs = global_params.get("vfs objects", global_params.get("vfs object", ""))
+        for s in shares:
+            raw = s.get("raw_params", {})
+            share_vfs = raw.get("vfs objects", raw.get("vfs object", ""))
+            effective_vfs = share_vfs if share_vfs else global_vfs
+            s["vfs_objects"] = effective_vfs
+
+            # Detect fruit / time machine
+            is_time_machine = (
+                "fruit" in effective_vfs.lower()
+                or raw.get("fruit:time machine", "").lower() in ("yes", "true", "1")
+                or global_params.get("fruit:time machine", "").lower() in ("yes", "true", "1")
+                or raw.get("fruit:aapl", "").lower() in ("yes", "true", "1")
+                or "time machine" in s.get("comment", "").lower()
+                or "timemachine" in s.get("name", "").lower()
+                or any("fruit" in k.lower() for k in raw.keys())
+            )
+            s["fruit_time_machine"] = is_time_machine
+
         return {
             "global": global_params,
             "shares": shares,

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   PageSection,
   Card,
@@ -13,7 +13,7 @@ import {
   Label,
   Divider,
 } from "@patternfly/react-core";
-import { Table, Thead, Tr, Th, Tbody, Td } from "@patternfly/react-table";
+import { Table, Thead, Tr, Th, Tbody, Td, ThProps } from "@patternfly/react-table";
 import {
   CheckCircleIcon,
   ExclamationTriangleIcon,
@@ -54,6 +54,49 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const managedSmbCount = smbShares.filter((s) => s.is_managed).length;
   const managedNfsCount = nfsExports.filter((e) => e.is_managed).length;
 
+  const [sessSortIndex, setSessSortIndex] = useState<number | null>(0);
+  const [sessSortDirection, setSessSortDirection] = useState<'asc' | 'desc'>('asc');
+
+  const getSessSortParams = (columnIndex: number): ThProps['sort'] => ({
+    sortBy: {
+      index: sessSortIndex ?? undefined,
+      direction: sessSortDirection,
+      defaultDirection: 'asc',
+    },
+    onSort: (_event, index, direction) => {
+      setSessSortIndex(index);
+      setSessSortDirection(direction);
+    },
+    columnIndex,
+  });
+
+  const sortedSessions = React.useMemo(() => {
+    if (sessSortIndex === null) {
+      return sessions;
+    }
+    return [...sessions].sort((a: any, b: any) => {
+      let aVal = '';
+      let bVal = '';
+      if (sessSortIndex === 0) {
+        aVal = a.service || a.group || '';
+        bVal = b.service || b.group || '';
+      } else if (sessSortIndex === 1) {
+        aVal = a.username || '';
+        bVal = b.username || '';
+      } else if (sessSortIndex === 2) {
+        aVal = a.machine || a.ip || '';
+        bVal = b.machine || b.ip || '';
+      } else if (sessSortIndex === 3) {
+        aVal = a.pid || '';
+        bVal = b.pid || '';
+      } else if (sessSortIndex === 4) {
+        aVal = a.protocol || '';
+        bVal = b.protocol || '';
+      }
+      return sessSortDirection === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+    });
+  }, [sessions, sessSortIndex, sessSortDirection]);
+
   return (
     <>
       {/* Top Header */}
@@ -78,7 +121,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </FlexItem>
               <FlexItem>
                 <Button variant="secondary" icon={<UsersIcon />} onClick={onAddUser}>
-                  Add user
+                  Add SMB User
                 </Button>
               </FlexItem>
             </Flex>
@@ -181,33 +224,42 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </Tr>
               </Thead>
               <Tbody>
-                {smbShares.slice(0, 5).map((share) => (
-                  <Tr key={share.name}>
-                    <Td data-label="Share name">
-                      <strong>[{share.name}]</strong>
-                      {share.is_managed && (
-                        <Label color="blue" icon={<LockIcon />} style={{ marginLeft: "0.5rem" }}>
-                          {share.managed_by || "managed"}
+                {smbShares.slice(0, 5).map((share) => {
+                  const isFruit = Boolean(
+                    share.fruit_time_machine ||
+                    (share.vfs_objects || "").includes("fruit") ||
+                    share.name.toLowerCase().includes("time-machine") ||
+                    share.name.toLowerCase().includes("timemachine") ||
+                    Object.keys(share.raw_params || {}).some((k) => k.toLowerCase().includes("fruit"))
+                  );
+                  return (
+                    <Tr key={share.name}>
+                      <Td data-label="Share name">
+                        <strong>[{share.name}]</strong>
+                        {share.is_managed && (
+                          <Label color="blue" icon={<LockIcon />} style={{ marginLeft: "0.5rem" }}>
+                            {share.managed_by || "managed"}
+                          </Label>
+                        )}
+                        {isFruit && (
+                          <Label color="grey" icon={<AppleIcon />} style={{ marginLeft: "0.5rem" }}>
+                            Time Machine
+                          </Label>
+                        )}
+                      </Td>
+                      <Td data-label="Path">{share.name === "homes" && share.path?.includes("%S") ? share.path.replace("%S", "$USER") : (share.path || "—")}</Td>
+                      <Td data-label="Access">
+                        <Label color={share.read_only ? "blue" : "green"}>
+                          {share.read_only ? "Read-Only" : "Read/Write"}
                         </Label>
-                      )}
-                      {(share.vfs_objects || "").includes("fruit") && (
-                        <Label color="grey" icon={<AppleIcon />} style={{ marginLeft: "0.5rem" }}>
-                          Time Machine
-                        </Label>
-                      )}
-                    </Td>
-                    <Td data-label="Path">{share.name === "homes" && share.path?.includes("%S") ? share.path.replace("%S", "$USER") : (share.path || "—")}</Td>
-                    <Td data-label="Access">
-                      <Label color={share.read_only ? "blue" : "green"}>
-                        {share.read_only ? "Read-Only" : "Read/Write"}
-                      </Label>
-                    </Td>
-                    <Td data-label="Guest access">{share.guest_ok ? "Allowed" : "No"}</Td>
-                    <Td data-label="Status">
-                      <Label color="green" icon={<CheckCircleIcon />}>Active</Label>
-                    </Td>
-                  </Tr>
-                ))}
+                      </Td>
+                      <Td data-label="Guest access">{share.guest_ok ? "Allowed" : "No"}</Td>
+                      <Td data-label="Status">
+                        <Label color="green" icon={<CheckCircleIcon />}>Active</Label>
+                      </Td>
+                    </Tr>
+                  );
+                })}
               </Tbody>
             </Table>
           </CardBody>
@@ -236,19 +288,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <Table aria-label="Active Client Sessions Table">
                 <Thead>
                   <Tr>
-                    <Th>Service / Share</Th>
-                    <Th>Username</Th>
-                    <Th>Client Machine / IP</Th>
-                    <Th>PID</Th>
-                    <Th>Protocol</Th>
+                    <Th sort={getSessSortParams(0)}>Service / Share</Th>
+                    <Th sort={getSessSortParams(1)}>Username</Th>
+                    <Th sort={getSessSortParams(2)}>Client Machine / IP</Th>
+                    <Th sort={getSessSortParams(3)}>PID</Th>
+                    <Th sort={getSessSortParams(4)}>Protocol</Th>
                   </Tr>
                 </Thead>
                 <Tbody>
-                  {sessions.map((sess, idx) => (
+                  {sortedSessions.map((sess: any, idx: number) => (
                     <Tr key={idx}>
-                      <Td data-label="Service / Share"><strong>{sess.service}</strong></Td>
+                      <Td data-label="Service / Share"><strong>{sess.service || sess.group || "SMB"}</strong></Td>
                       <Td data-label="Username">{sess.username}</Td>
-                      <Td data-label="Client Machine / IP">{sess.machine || sess.ip}</Td>
+                      <Td data-label="Client Machine / IP">{sess.machine || sess.ip || "—"}</Td>
                       <Td data-label="PID">{sess.pid}</Td>
                       <Td data-label="Protocol">{sess.protocol || "SMB3"}</Td>
                     </Tr>

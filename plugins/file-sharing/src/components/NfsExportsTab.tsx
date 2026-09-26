@@ -34,7 +34,7 @@ import {
   Tooltip,
   Alert,
 } from "@patternfly/react-core";
-import { Table, Thead, Tbody, Tr, Th, Td } from "@patternfly/react-table";
+import { Table, Thead, Tbody, Tr, Th, Td, ThProps } from "@patternfly/react-table";
 import {
   PlusCircleIcon,
   GlobeIcon,
@@ -150,10 +150,50 @@ export const NfsExportsTab: React.FC<NfsExportsTabProps> = ({
     }
   };
 
+  const [sortIndex, setSortIndex] = useState<number | null>(0);
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+
+  const getSortParams = (columnIndex: number): ThProps['sort'] => ({
+    sortBy: {
+      index: sortIndex ?? undefined,
+      direction: sortDirection,
+      defaultDirection: 'asc',
+    },
+    onSort: (_event, index, direction) => {
+      setSortIndex(index);
+      setSortDirection(direction);
+    },
+    columnIndex,
+  });
+
   const filteredExports = exports.filter((e) =>
     e.path.toLowerCase().includes(searchValue.toLowerCase()) ||
     e.clients.some((c) => c.host.toLowerCase().includes(searchValue.toLowerCase()))
   );
+
+  const sortedExports = React.useMemo(() => {
+    if (sortIndex === null) {
+      return filteredExports;
+    }
+    return [...filteredExports].sort((a, b) => {
+      let aVal = '';
+      let bVal = '';
+      if (sortIndex === 0) {
+        aVal = a.path;
+        bVal = b.path;
+      } else if (sortIndex === 1) {
+        aVal = a.clients.map((c) => c.host).join(', ');
+        bVal = b.clients.map((c) => c.host).join(', ');
+      } else if (sortIndex === 2) {
+        aVal = a.file || '';
+        bVal = b.file || '';
+      } else if (sortIndex === 3) {
+        aVal = a.is_managed ? 'Managed' : 'Active';
+        bVal = b.is_managed ? 'Managed' : 'Active';
+      }
+      return sortDirection === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+    });
+  }, [filteredExports, sortIndex, sortDirection]);
 
   const filteredClientMap = clientMap.filter((c) =>
     c.client.toLowerCase().includes(searchValue.toLowerCase()) ||
@@ -225,15 +265,15 @@ export const NfsExportsTab: React.FC<NfsExportsTabProps> = ({
                 <Table aria-label="NFS Exports Table">
                   <Thead>
                     <Tr>
-                      <Th>Export path</Th>
-                      <Th>Allowed clients &amp; networks</Th>
-                      <Th>Configuration file</Th>
-                      <Th>Status</Th>
+                      <Th sort={getSortParams(0)}>Export path</Th>
+                      <Th sort={getSortParams(1)}>Allowed clients &amp; networks</Th>
+                      <Th sort={getSortParams(2)}>Configuration file</Th>
+                      <Th sort={getSortParams(3)}>Status</Th>
                       <Th screenReaderText="Actions" style={{ textAlign: "right", width: "80px" }} />
                     </Tr>
                   </Thead>
                   <Tbody>
-                    {filteredExports.map((exp) => (
+                    {sortedExports.map((exp) => (
                       <Tr key={exp.path}>
                         <Td data-label="Export path">
                           <Flex alignItems={{ default: "alignItemsCenter" }} gap={{ default: "gapSm" }}>

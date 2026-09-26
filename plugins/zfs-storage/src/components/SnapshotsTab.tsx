@@ -21,7 +21,7 @@ import {
   EmptyStateFooter,
   EmptyStateActions,
 } from "@patternfly/react-core";
-import { Table, Thead, Tr, Th, Tbody, Td } from "@patternfly/react-table";
+import { Table, Thead, Tr, Th, Tbody, Td, ThProps } from "@patternfly/react-table";
 import {
   CameraIcon,
   PlusCircleIcon,
@@ -65,6 +65,22 @@ export const SnapshotsTab: React.FC<SnapshotsTabProps> = ({
   const [selectedSnaps, setSelectedSnaps] = useState<string[]>([]);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [uncollapsedDatasets, setUncollapsedDatasets] = useState<Set<string>>(new Set());
+
+  const [snapSortIndex, setSnapSortIndex] = useState<number | null>(1);
+  const [snapSortDirection, setSnapSortDirection] = useState<'asc' | 'desc'>('desc');
+
+  const getSnapSortParams = (columnIndex: number): ThProps['sort'] => ({
+    sortBy: {
+      index: snapSortIndex ?? undefined,
+      direction: snapSortDirection,
+      defaultDirection: 'desc',
+    },
+    onSort: (_event, index, direction) => {
+      setSnapSortIndex(index);
+      setSnapSortDirection(direction);
+    },
+    columnIndex,
+  });
 
   useEffect(() => {
     if (focusedDataset) {
@@ -179,6 +195,30 @@ export const SnapshotsTab: React.FC<SnapshotsTabProps> = ({
     }
   });
 
+  const sortGroupSnapshots = (snaps: ZSnapshot[]) => {
+    if (snapSortIndex === null) {
+      return snaps;
+    }
+    return [...snaps].sort((a, b) => {
+      let aVal: any = '';
+      let bVal: any = '';
+      if (snapSortIndex === 0) {
+        aVal = a.snapshot_name;
+        bVal = b.snapshot_name;
+      } else if (snapSortIndex === 1) {
+        return snapSortDirection === 'asc' ? a.creation - b.creation : b.creation - a.creation;
+      } else if (snapSortIndex === 2) {
+        return snapSortDirection === 'asc' ? a.used - b.used : b.used - a.used;
+      } else if (snapSortIndex === 3) {
+        return snapSortDirection === 'asc' ? a.refer - b.refer : b.refer - a.refer;
+      } else if (snapSortIndex === 4) {
+        aVal = (a.clones || []).join(', ');
+        bVal = (b.clones || []).join(', ');
+      }
+      return snapSortDirection === 'asc' ? String(aVal).localeCompare(String(bVal)) : String(bVal).localeCompare(String(aVal));
+    });
+  };
+
   return (
     <div>
       <Flex
@@ -285,6 +325,7 @@ export const SnapshotsTab: React.FC<SnapshotsTabProps> = ({
               const isGroupAllSelected =
                 groupSnapNames.length > 0 &&
                 groupSnapNames.every((name) => selectedSnaps.includes(name));
+              const sortedSnaps = sortGroupSnapshots(group.snapshots);
 
               return (
                 <Card
@@ -357,16 +398,16 @@ export const SnapshotsTab: React.FC<SnapshotsTabProps> = ({
                                 isSelected: isGroupAllSelected,
                               }}
                             />
-                            <Th>Snapshot</Th>
-                            <Th>Creation date</Th>
-                            <Th>Used</Th>
-                            <Th>Referenced</Th>
-                            <Th>Clones</Th>
+                            <Th sort={getSnapSortParams(0)}>Snapshot</Th>
+                            <Th sort={getSnapSortParams(1)}>Creation date</Th>
+                            <Th sort={getSnapSortParams(2)}>Used</Th>
+                            <Th sort={getSnapSortParams(3)}>Referenced</Th>
+                            <Th sort={getSnapSortParams(4)}>Clones</Th>
                             <Th screenReaderText="Actions" />
                           </Tr>
                         </Thead>
                         <Tbody>
-                          {group.snapshots.map((snap) => (
+                          {sortedSnaps.map((snap) => (
                             <Tr key={snap.name}>
                               <Td
                                 select={{
@@ -395,6 +436,7 @@ export const SnapshotsTab: React.FC<SnapshotsTabProps> = ({
                                   : "-"}
                               </Td>
                               <Td isActionCell>
+
                                 <Dropdown
                                   popperProps={{ position: "right", preventOverflow: true, appendTo: () => document.body }}
                                   isOpen={openDropdown === snap.name}

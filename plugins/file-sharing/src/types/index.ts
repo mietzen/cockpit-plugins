@@ -14,8 +14,10 @@ export interface SmbShare {
   create_mask?: string;
   directory_mask?: string;
   vfs_objects?: string;
+  fruit_time_machine?: boolean;
   is_managed: boolean;
   managed_by?: string;
+  raw_params?: Record<string, string>;
 }
 
 export interface SmbGlobal {
@@ -26,6 +28,17 @@ export interface SmbGlobal {
   "server min protocol"?: string;
   "server max protocol"?: string;
   [key: string]: string | undefined;
+}
+
+export interface NfsGlobal {
+  threads: number;
+  vers3: boolean;
+  vers4: boolean;
+  vers4_1: boolean;
+  vers4_2: boolean;
+  grace_time: number;
+  lease_time: number;
+  port: number;
 }
 
 export interface NfsClient {
@@ -55,6 +68,13 @@ export interface SmbUser {
   sid?: string;
   flags?: string;
   is_enabled: boolean;
+  groups?: string[];
+}
+
+export interface SmbGroup {
+  name: string;
+  gid: number;
+  members: string[];
 }
 
 export interface UserShareAccess {
@@ -124,10 +144,12 @@ export interface FileSharingOverview {
   };
   nfs: {
     exports: NfsExport[];
+    global?: NfsGlobal;
     client_map: NfsClientMapItem[];
   };
   users: {
     smb_users: SmbUser[];
+    smb_groups?: SmbGroup[];
     unix_users: string[];
     access_matrix: UserAccessMatrixItem[];
   };
