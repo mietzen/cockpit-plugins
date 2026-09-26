@@ -274,7 +274,7 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     if (await snapInput.isVisible({ timeout: 3000 }).catch(() => false)) {
       await snapInput.fill("snap-e2e-test");
     }
-    await frame.locator("[role='dialog'] button:has-text('Create Snapshot'), .pf-v6-c-modal-box button:has-text('Create Snapshot'), [role='dialog'] button:has-text('Take Snapshot'), .pf-v6-c-modal-box button:has-text('Take Snapshot'), [role='dialog'], .pf-v6-c-modal-box, .pf-v5-c-modal-box button.pf-m-primary").first().click();
+    await frame.locator("[role='dialog'] button:has-text('Create Snapshot'), .pf-v6-c-modal-box button:has-text('Create Snapshot'), [role='dialog'] button:has-text('Take Snapshot'), .pf-v6-c-modal-box button:has-text('Take Snapshot'), [role='dialog'] button.pf-m-primary, .pf-v6-c-modal-box button.pf-m-primary").first().click();
 
     // Verify on Host Filesystem
     await expect.poll(() => runHostCmd(`sudo zfs list -H -t snapshot -o name`), { timeout: 10000 }).toContain("snap-e2e-test");
@@ -310,7 +310,7 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     await scrubBtn.waitFor({ state: "visible", timeout: 10000 });
     await scrubBtn.click();
 
-    const confirmBtn = frame.locator("[role='dialog'] button:has-text('Execute Command'), .pf-v6-c-modal-box button:has-text('Execute Command'), [role='dialog'] button:has-text('Execute'), .pf-v6-c-modal-box button:has-text('Execute'), [role='dialog'], .pf-v6-c-modal-box, .pf-v5-c-modal-box button.pf-m-primary").first();
+    const confirmBtn = frame.locator("[role='dialog'] button:has-text('Execute Command'), .pf-v6-c-modal-box button:has-text('Execute Command'), [role='dialog'] button:has-text('Execute'), .pf-v6-c-modal-box button:has-text('Execute'), [role='dialog'] button.pf-m-primary, .pf-v6-c-modal-box button.pf-m-primary").first();
     if (await confirmBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
       await confirmBtn.click();
     }
@@ -414,7 +414,7 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     if (await arcCard.isVisible({ timeout: 3000 }).catch(() => false)) {
       await arcCard.click();
       await page.waitForTimeout(500);
-      const closeBtn = frame.locator("[role='dialog'], .pf-v6-c-modal-box, .pf-v5-c-modal-box button[aria-label='Close'], [role='dialog'] button:has-text('Close'), .pf-v6-c-modal-box button:has-text('Close')").first();
+      const closeBtn = frame.locator("[role='dialog'] button[aria-label='Close'], .pf-v6-c-modal-box button[aria-label='Close'], .pf-v5-c-modal-box button[aria-label='Close'], [role='dialog'] button:has-text('Close'), .pf-v6-c-modal-box button:has-text('Close')").first();
       if (await closeBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
         await closeBtn.click();
       }
@@ -433,7 +433,7 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
       if (await smartOption.isVisible({ timeout: 3000 }).catch(() => false)) {
         await smartOption.click();
         await page.waitForTimeout(500);
-        const closeBtn = frame.locator("[role='dialog'], .pf-v6-c-modal-box, .pf-v5-c-modal-box button[aria-label='Close'], [role='dialog'] button:has-text('Close'), .pf-v6-c-modal-box button:has-text('Close')").first();
+        const closeBtn = frame.locator("[role='dialog'] button[aria-label='Close'], .pf-v6-c-modal-box button[aria-label='Close'], .pf-v5-c-modal-box button[aria-label='Close'], [role='dialog'] button:has-text('Close'), .pf-v6-c-modal-box button:has-text('Close')").first();
         if (await closeBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
           await closeBtn.click();
         }
@@ -449,7 +449,7 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     if (await importBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
       await importBtn.click();
       await page.waitForTimeout(500);
-      const cancelBtn = frame.locator("[role='dialog'] button:has-text('Cancel'), .pf-v6-c-modal-box button:has-text('Cancel'), [role='dialog'], .pf-v6-c-modal-box, .pf-v5-c-modal-box button[aria-label='Close']").first();
+      const cancelBtn = frame.locator("[role='dialog'] button:has-text('Cancel'), .pf-v6-c-modal-box button:has-text('Cancel'), [role='dialog'] button[aria-label='Close'], .pf-v6-c-modal-box button[aria-label='Close']").first();
       if (await cancelBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
         await cancelBtn.click();
       }
@@ -656,7 +656,7 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
       (window as any).__setActiveModal?.({ type: "arc-details" });
     });
     await page.waitForTimeout(200);
-    await frame.locator("[role='dialog'], .pf-v6-c-modal-box, .pf-v5-c-modal-box button[aria-label='Close'], [role='dialog'] button:has-text('Close'), .pf-v6-c-modal-box button:has-text('Close')").first().click({ timeout: 1000 }).catch(() => {});
+    await frame.locator("[role='dialog'] button[aria-label='Close'], .pf-v6-c-modal-box button[aria-label='Close'], .pf-v5-c-modal-box button[aria-label='Close'], [role='dialog'] button:has-text('Close'), .pf-v6-c-modal-box button:has-text('Close')").first().click({ timeout: 1000 }).catch(() => {});
 
     // 11. SMART Details Modal
     await frame.evaluate(() => {
@@ -679,7 +679,7 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
       });
     });
     await page.waitForTimeout(200);
-    await frame.locator("[role='dialog'], .pf-v6-c-modal-box, .pf-v5-c-modal-box button[aria-label='Close'], [role='dialog'] button:has-text('Close'), .pf-v6-c-modal-box button:has-text('Close')").first().click({ timeout: 1000 }).catch(() => {});
+    await frame.locator("[role='dialog'] button[aria-label='Close'], .pf-v6-c-modal-box button[aria-label='Close'], .pf-v5-c-modal-box button[aria-label='Close'], [role='dialog'] button:has-text('Close'), .pf-v6-c-modal-box button:has-text('Close')").first().click({ timeout: 1000 }).catch(() => {});
 
     // Clean up
     await frame.evaluate(() => {
