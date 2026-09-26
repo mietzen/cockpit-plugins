@@ -514,6 +514,8 @@ export const App: React.FC = () => {
               images={overview.images}
               volumes={overview.volumes}
               networks={overview.networks}
+              engines={overview.engines}
+              activeEngine={activeEngine}
               onNavigateTab={(tab) => navigateToView(tab)}
               onAction={handleContainerAction}
               onOpenTerminal={(c) => setTerminalContainer(c)}

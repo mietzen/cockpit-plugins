@@ -23,6 +23,7 @@ import {
   ServerIcon,
   ArrowRightIcon,
   LockIcon,
+  AppleIcon,
 } from "@patternfly/react-icons";
 import { FileSharingOverview, SmbShare, NfsExport, SmbSession } from "../types";
 
@@ -186,7 +187,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       <strong>[{share.name}]</strong>
                       {share.is_managed && (
                         <Label color="blue" icon={<LockIcon />} style={{ marginLeft: "0.5rem" }}>
-                          Ansible: {share.managed_by || "managed"}
+                          {share.managed_by || "managed"}
+                        </Label>
+                      )}
+                      {(share.vfs_objects || "").includes("fruit") && (
+                        <Label color="grey" icon={<AppleIcon />} style={{ marginLeft: "0.5rem" }}>
+                          Time Machine
                         </Label>
                       )}
                     </Td>

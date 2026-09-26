@@ -40,6 +40,8 @@ import {
   ImageItem,
   VolumeItem,
   NetworkItem,
+  EnginesDetection,
+  EngineType,
 } from '../types';
 import { HashId } from './HashId';
 import { PortLinks } from './PortLinks';
@@ -49,6 +51,8 @@ export interface DashboardViewProps {
   images: ImageItem[];
   volumes: VolumeItem[];
   networks: NetworkItem[];
+  engines?: EnginesDetection;
+  activeEngine?: EngineType;
   onNavigateTab: (tab: string) => void;
   onAction: (id: string, action: 'start' | 'stop' | 'kill' | 'restart') => void;
   onOpenTerminal: (container: ContainerItem) => void;
@@ -61,6 +65,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   images,
   volumes,
   networks,
+  engines,
+  activeEngine,
   onNavigateTab,
   onAction,
   onOpenTerminal,
@@ -73,13 +79,28 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const inUseImages = images.filter((i) => i.inUse).length;
   const inUseVolumes = volumes.filter((v) => v.inUse).length;
 
+  const currentEngineKey = activeEngine === 'podman' ? 'podman' : 'docker';
+  const currentEngine = engines ? engines[currentEngineKey] : undefined;
+
   return (
     <>
       {/* Top Header Section */}
       <PageSection style={{ paddingBottom: '0.5rem', backgroundColor: 'transparent' }}>
-        <Title headingLevel="h1" size="2xl" style={{ fontWeight: 600, margin: 0 }}>
-          Containers
-        </Title>
+        <Flex justifyContent={{ default: 'justifyContentSpaceBetween' }} alignItems={{ default: 'alignItemsCenter' }}>
+          <FlexItem>
+            <Title headingLevel="h1" size="2xl" style={{ fontWeight: 600, margin: 0 }}>
+              Containers
+            </Title>
+          </FlexItem>
+          {currentEngine && currentEngine.installed && (
+            <FlexItem>
+              <StatusBadge variant="blue">
+                {currentEngineKey === 'podman' ? 'Podman' : 'Docker'}
+                {currentEngine.version ? ` v${currentEngine.version}` : ''}
+              </StatusBadge>
+            </FlexItem>
+          )}
+        </Flex>
       </PageSection>
 
       {/* Metric Cards Grid */}

@@ -41,6 +41,8 @@ class TestContainerHelperCLI(unittest.TestCase):
         args = MagicMock(engine="docker")
         res = container_helper.cmd_get_overview(args)
         self.assertEqual(res["status"], "success")
+        self.assertIn("hostname", res)
+        self.assertIn("user", res)
         self.assertEqual(len(res["containers"]), 1)
         self.assertEqual(len(res["images"]), 1)
         self.assertEqual(len(res["volumes"]), 1)
@@ -87,6 +89,8 @@ class TestContainerHelperCLI(unittest.TestCase):
         res = container_helper.cmd_get_tls_status(MagicMock(engine="docker"))
         self.assertEqual(res["status"], "success")
         self.assertTrue(res["tls"]["enabled"])
+        self.assertIn("hostname", res["tls"])
+        self.assertIn("user", res["tls"])
 
     @patch("container_helper.setup_tls", return_value={"status": "success", "port": 2376})
     def test_setup_tls(self, mock_setup):

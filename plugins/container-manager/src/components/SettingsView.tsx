@@ -75,7 +75,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [certTab, setCertTab] = useState<number>(0);
   const [loadingCerts, setLoadingCerts] = useState(false);
 
-  const hostIp = window.location.hostname || '127.0.0.1';
+  const hostIp = (window.location.hostname ? window.location.hostname.split('.')[0] : '') || 'localhost';
 
   const loadStatus = async () => {
     setError(null);
@@ -86,7 +86,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       if (status.sans && status.sans.length > 0) {
         setSansInput(status.sans.join(', '));
       } else {
-        setSansInput(`${hostIp}, localhost, 127.0.0.1`);
+        const hName = status.hostname || hostIp;
+        setSansInput(`${hName}, localhost, 127.0.0.1`);
       }
     } catch (e: any) {
       setError(e?.message || 'Failed to load TLS status');
@@ -253,15 +254,18 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const isEnabled = tlsStatus?.enabled || false;
   const isPodman = activeEngine === 'podman';
 
+  const effectiveHost = tlsStatus?.hostname || hostIp;
+  const effectiveUser = tlsStatus?.user || 'user';
+
   const sshContextCode = isPodman
-    ? `podman system connection add remote-${hostIp} ssh://root@${hostIp}/run/podman/podman.sock\npodman system connection default remote-${hostIp}\npodman ps`
-    : `docker context create remote-${hostIp} --docker "host=ssh://root@${hostIp}"\ndocker context use remote-${hostIp}\ndocker ps`;
+    ? `podman system connection add remote-${effectiveHost} ssh://${effectiveUser}@${effectiveHost}/run/podman/podman.sock\npodman system connection default remote-${effectiveHost}\npodman ps`
+    : `docker context create remote-${effectiveHost} --docker "host=ssh://${effectiveUser}@${effectiveHost}"\ndocker context use remote-${effectiveHost}\ndocker ps`;
 
   const tcpTlsContextCode = isPodman
-    ? `podman system connection add remote-${hostIp} tcp://${hostIp}:${port}\npodman system connection default remote-${hostIp}\npodman ps`
-    : `# Unzip client certificates to ~/.docker/certs/\ndocker context create remote-${hostIp} \\\n  --docker "host=tcp://${hostIp}:${port},ca=~/.docker/certs/ca.pem,cert=~/.docker/certs/cert.pem,key=~/.docker/certs/key.pem"\ndocker context use remote-${hostIp}\ndocker ps`;
+    ? `podman system connection add remote-${effectiveHost} tcp://${effectiveHost}:${port}\npodman system connection default remote-${effectiveHost}\npodman ps`
+    : `# Unzip client certificates to ~/.docker/certs/\ndocker context create remote-${effectiveHost} \\\n  --docker "host=tcp://${effectiveHost}:${port},ca=~/.docker/certs/ca.pem,cert=~/.docker/certs/cert.pem,key=~/.docker/certs/key.pem"\ndocker context use remote-${effectiveHost}\ndocker ps`;
 
-  const envVarsCode = `export DOCKER_HOST="tcp://${hostIp}:${port}"\nexport DOCKER_TLS_VERIFY=1\nexport DOCKER_CERT_PATH="~/.docker/certs"\ndocker ps`;
+  const envVarsCode = `export DOCKER_HOST="tcp://${effectiveHost}:${port}"\nexport DOCKER_TLS_VERIFY=1\nexport DOCKER_CERT_PATH="~/.docker/certs"\ndocker ps`;
 
   const installedEnginesCount = (engines.docker.installed ? 1 : 0) + (engines.podman.installed ? 1 : 0);
 

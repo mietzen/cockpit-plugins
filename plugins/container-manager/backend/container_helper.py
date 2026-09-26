@@ -3,6 +3,8 @@ import argparse
 import json
 import os
 import sys
+import getpass
+import socket
 from typing import Any, Dict
 
 # Ensure local libexec directory and parent paths are resolvable
@@ -14,15 +16,25 @@ from engine_adapter import detect_engines, get_adapter
 from tls_manager import disable_tls, get_client_bundle, get_tls_status, setup_tls
 
 
+# Resolve short hostname and effective user for SSH/context commands
+def _get_host_and_user() -> Dict[str, str]:
+    hostname = socket.gethostname().split(".")[0]
+    user = os.environ.get("SUDO_USER") or os.environ.get("USER") or getpass.getuser()
+    return {"hostname": hostname, "user": user}
+
+
 def cmd_get_overview(args: argparse.Namespace) -> Dict[str, Any]:
     engines = detect_engines()
     active_engine = args.engine if args.engine and args.engine != "auto" else engines.get("active_engine", "docker")
+    host_info = _get_host_and_user()
 
     if active_engine == "none" or (not engines["docker"]["installed"] and not engines["podman"]["installed"]):
         return {
             "status": "success",
             "engines": engines,
             "active_engine": "none",
+            "hostname": host_info["hostname"],
+            "user": host_info["user"],
             "containers": [],
             "images": [],
             "volumes": [],
@@ -39,6 +51,8 @@ def cmd_get_overview(args: argparse.Namespace) -> Dict[str, Any]:
         "status": "success",
         "engines": engines,
         "active_engine": active_engine,
+        "hostname": host_info["hostname"],
+        "user": host_info["user"],
         "containers": containers,
         "images": images,
         "volumes": volumes,
@@ -76,6 +90,9 @@ def cmd_prune(args: argparse.Namespace) -> Dict[str, Any]:
 def cmd_get_tls_status(args: argparse.Namespace) -> Dict[str, Any]:
     engine = args.engine or "docker"
     status = get_tls_status(engine)
+    host_info = _get_host_and_user()
+    status["hostname"] = host_info["hostname"]
+    status["user"] = host_info["user"]
     return {"status": "success", "tls": status}
 
 

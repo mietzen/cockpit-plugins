@@ -235,9 +235,9 @@ export const SmbSharesTab: React.FC<SmbSharesTabProps> = ({
                           </FlexItem>
                           {s.is_managed && (
                             <FlexItem>
-                              <Tooltip content={`Managed by Ansible (${s.managed_by || "block"}). Locked as read-only.`}>
+                              <Tooltip content={`Managed configuration (${s.managed_by || "block"}). Locked as read-only.`}>
                                 <Label color="blue" icon={<LockIcon />}>
-                                  Ansible: {s.managed_by || "managed"}
+                                  {s.managed_by || "managed"}
                                 </Label>
                               </Tooltip>
                             </FlexItem>
