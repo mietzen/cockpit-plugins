@@ -382,18 +382,19 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
       await logsBtn.click({ force: true });
       await frame.waitForSelector('.pf-v5-c-modal-box:has-text("Logs:")', { timeout: 8000 });
 
-      // Toggle Wrap Lines switch
-      const wrapSwitch = frame.locator('input[aria-label="Wrap lines"], #log-wrap-switch').first();
-      if (await wrapSwitch.count() > 0) {
-        await wrapSwitch.click({ force: true }).catch(() => {});
+      // Toggle Show Timestamps checkbox
+      const timestampsCheckbox = frame.locator('input#timestamps-toggle, label:has-text("Show Timestamps")').first();
+      if (await timestampsCheckbox.count() > 0) {
+        await timestampsCheckbox.click({ force: true }).catch(() => {});
       }
 
       // Close logs modal
-      const closeBtn = frame.locator('.pf-v5-c-modal-box button:has-text("Close")').first();
+      const closeBtn = frame.locator('.pf-v5-c-modal-box button:has-text("Close Logs"), .pf-v5-c-modal-box button[aria-label="Close"]').first();
       await closeBtn.click();
-      await frame.waitForSelector('.pf-v5-c-modal-box', { state: 'detached', timeout: 5000 });
+      await frame.waitForSelector('.pf-v5-c-modal-box:has-text("Logs:")', { state: 'detached', timeout: 5000 });
     }
   });
+
 
   test('12. Images Tab Prune Unused Modal', async () => {
     const frame = await getFrame();
@@ -499,12 +500,13 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
       await logsBtn.click({ force: true });
       await frame.waitForSelector('.pf-v5-c-modal-box:has-text("Logs:")', { timeout: 8000 });
 
-      const closeBtn = frame.locator('.pf-v5-c-modal-box button:has-text("Close")').first();
+      const closeBtn = frame.locator('.pf-v5-c-modal-box button:has-text("Close Logs"), .pf-v5-c-modal-box button[aria-label="Close"]').first();
       await closeBtn.click();
-      await frame.waitForSelector('.pf-v5-c-modal-box', { state: 'detached', timeout: 5000 });
+      await frame.waitForSelector('.pf-v5-c-modal-box:has-text("Logs:")', { state: 'detached', timeout: 5000 });
     }
   });
 });
+
 
 
 
