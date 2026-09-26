@@ -18,6 +18,7 @@ TIER_CONFIG = {
             "smb_parser.py",
             "samba_parser.py",
             "nfs_parser.py",
+            "parsers.py",
             "access_matrix.py",
             "system.py",
             "DestroyModal.tsx",

@@ -419,8 +419,8 @@ export const UsersTab: React.FC<UsersTabProps> = ({
           <Tab eventKey="matrix" title={<TabTitleText>User Access Matrix</TabTitleText>} />
         </Tabs>
 
-        {activeSubTab === "users" && (
-          users.length === 0 ? (
+        <div style={{ display: activeSubTab === "users" ? "block" : "none" }}>
+          {users.length === 0 ? (
             <EmptyState>
               <EmptyStateHeader
                 titleText="No Samba users configured"
@@ -525,11 +525,11 @@ export const UsersTab: React.FC<UsersTabProps> = ({
                 </Table>
               </CardBody>
             </Card>
-          )
-        )}
+          )}
+        </div>
 
-        {activeSubTab === "groups" && (
-          groups.length === 0 ? (
+        <div style={{ display: activeSubTab === "groups" ? "block" : "none" }}>
+          {groups.length === 0 ? (
             <EmptyState>
               <EmptyStateHeader
                 titleText="No SMB groups configured"
@@ -624,10 +624,10 @@ export const UsersTab: React.FC<UsersTabProps> = ({
                 </Table>
               </CardBody>
             </Card>
-          )
-        )}
+          )}
+        </div>
 
-        {activeSubTab === "matrix" && (
+        <div style={{ display: activeSubTab === "matrix" ? "block" : "none" }}>
           <Card>
             <CardBody style={{ padding: 0 }}>
               <Table aria-label="User Access Matrix Table">
@@ -675,7 +675,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({
               </Table>
             </CardBody>
           </Card>
-        )}
+        </div>
       </PageSection>
 
       {/* Add User Modal */}
