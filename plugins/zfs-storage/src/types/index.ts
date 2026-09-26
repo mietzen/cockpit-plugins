@@ -1,5 +1,3 @@
-declare const __APP_VERSION__: string;
-
 export type ZPoolHealth = "ONLINE" | "DEGRADED" | "FAULTED" | "OFFLINE" | "UNAVAIL" | "SUSPENDED";
 
 export interface ScanStatus {

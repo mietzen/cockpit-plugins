@@ -88,7 +88,9 @@ type ActiveModal =
   | null;
 
 const getSegmentsFromEnv = (): string[] => {
-  if (typeof window === "undefined") return [];
+  if (typeof window === "undefined") {
+    return [];
+  }
   const hash = window.location.hash.replace(/^#\/?/, "");
   if (hash) {
     return hash.split("/").filter(Boolean);

@@ -1,5 +1,3 @@
-declare const __APP_VERSION__: string;
-
 export type EngineType = 'docker' | 'podman' | 'none' | 'auto';
 
 export interface EngineInfo {

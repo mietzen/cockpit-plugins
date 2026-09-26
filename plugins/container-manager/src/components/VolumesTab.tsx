@@ -48,7 +48,9 @@ export const VolumesTab: React.FC<VolumesTabProps> = ({
   );
 
   const sortedVolumes = [...filteredVolumes].sort((a, b) => {
-    if (activeSortIndex === null) return 0;
+    if (activeSortIndex === null) {
+      return 0;
+    }
     let aVal = '';
     let bVal = '';
     switch (activeSortIndex) {

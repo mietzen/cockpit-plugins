@@ -29,7 +29,9 @@ declare global {
 }
 
 const getSegmentsFromEnv = (): string[] => {
-  if (typeof window === "undefined") return [];
+  if (typeof window === "undefined") {
+    return [];
+  }
   const hash = window.location.hash.replace(/^#\/?/, "");
   if (hash) {
     return hash.split("/").filter(Boolean);
@@ -46,10 +48,12 @@ const getSegmentsFromEnv = (): string[] => {
 
 const parseView = (segments: string[]): string => {
   const cleanStr = segments.map((s) => s.trim().toLowerCase()).filter(Boolean);
-  if (cleanStr.length === 0 || cleanStr[0] === "dashboard" || cleanStr[0] === "overview") return "dashboard";
-  const v = cleanStr[0];
-  if (["dashboard", "smb", "nfs", "users", "sessions", "settings"].includes(v)) {
-    return v;
+  if (cleanStr.length === 0 || cleanStr[0] === "dashboard" || cleanStr[0] === "overview") {
+    return "dashboard";
+  }
+  const viewKey = cleanStr[0];
+  if (["dashboard", "smb", "nfs", "users", "sessions", "settings"].includes(viewKey)) {
+    return viewKey;
   }
   return "dashboard";
 };
