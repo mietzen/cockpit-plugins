@@ -288,7 +288,7 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     const pruneBtn = frame.locator('button:has-text("Open System Prune Modal")').first();
     if (await pruneBtn.count() > 0) {
       await pruneBtn.click();
-      await frame.waitForSelector('[role="dialog"], .pf-v6-c-modal-box, .pf-v5-c-modal-box:has-text("System Prune")', { timeout: 5000 });
+      await frame.waitForSelector('[role="dialog"]:has-text("System Prune"), .pf-v6-c-modal-box:has-text("System Prune"), .pf-v5-c-modal-box:has-text("System Prune")', { timeout: 5000 });
 
       const checkbox = frame.locator('#prune-volumes-checkbox');
       if ((await checkbox.count()) > 0) {
@@ -387,7 +387,7 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     await inspectBtn.click({ force: true });
 
     // Verify Inspect modal is open
-    await frame.waitForSelector('[role="dialog"], .pf-v6-c-modal-box, .pf-v5-c-modal-box:has-text("Inspect:")', { timeout: 10000 });
+    await frame.waitForSelector('[role="dialog"]:has-text("Inspect:"), .pf-v6-c-modal-box:has-text("Inspect:"), .pf-v5-c-modal-box:has-text("Inspect:")', { timeout: 10000 });
 
     // Verify Restart Policy row is displayed in Overview table
     const restartPolicyCell = frame.locator('td:has-text("Restart Policy")');
@@ -468,7 +468,7 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
       await deleteBtn.click({ force: true });
 
       // Verify modal appears
-      await frame.waitForSelector('[role="dialog"], .pf-v6-c-modal-box, .pf-v5-c-modal-box:has-text("Delete Container")', { timeout: 5000 });
+      await frame.waitForSelector('[role="dialog"]:has-text("Delete Container"), .pf-v6-c-modal-box:has-text("Delete Container"), .pf-v5-c-modal-box:has-text("Delete Container")', { timeout: 5000 });
 
       // Click the Delete Container confirm button
       const confirmBtn = frame.locator('[role="dialog"] button:has-text("Delete Container"), .pf-v6-c-modal-box button:has-text("Delete Container")').first();
@@ -490,7 +490,7 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     const logsBtn = frame.locator('table[aria-label="Containers Table"] button[aria-label="Logs"]').first();
     if (await logsBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
       await logsBtn.click();
-      await frame.waitForSelector('[role="dialog"], .pf-v6-c-modal-box, .pf-v5-c-modal-box:has-text("Logs:")', { timeout: 10000 });
+      await frame.waitForSelector('[role="dialog"]:has-text("Logs:"), .pf-v6-c-modal-box:has-text("Logs:"), .pf-v5-c-modal-box:has-text("Logs:")', { timeout: 10000 });
 
       // Toggle Show Timestamps checkbox
       const timestampsCheckbox = frame.locator('input#timestamps-toggle, label:has-text("Show Timestamps")').first();
@@ -501,7 +501,7 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
       // Close logs modal
       const closeBtn = frame.locator('[role="dialog"] button:has-text("Close Logs"), .pf-v6-c-modal-box button:has-text("Close Logs"), [role="dialog"] button[aria-label="Close"], .pf-v6-c-modal-box button[aria-label="Close"], .pf-v5-c-modal-box button[aria-label="Close"]').first();
       await closeBtn.click();
-      await frame.waitForSelector('[role="dialog"], .pf-v6-c-modal-box, .pf-v5-c-modal-box:has-text("Logs:")', { state: 'detached', timeout: 5000 });
+      await frame.waitForSelector('[role="dialog"]:has-text("Logs:"), .pf-v6-c-modal-box:has-text("Logs:"), .pf-v5-c-modal-box:has-text("Logs:")', { state: 'detached', timeout: 5000 });
     }
   });
 
@@ -592,7 +592,7 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     const viewCertsBtn = frame.locator('button:has-text("View Certificates")').first();
     if (await viewCertsBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
       await viewCertsBtn.click();
-      await frame.waitForSelector('[role="dialog"], .pf-v6-c-modal-box, .pf-v5-c-modal-box:has-text("Client Certificates & Keys")', { timeout: 8000 });
+      await frame.waitForSelector('[role="dialog"]:has-text("Client Certificates & Keys"), .pf-v6-c-modal-box:has-text("Client Certificates & Keys"), .pf-v5-c-modal-box:has-text("Client Certificates & Keys")', { timeout: 8000 });
 
       // Click cert modal tabs
       const clientCertTab = frame.locator('[role="dialog"] button:has-text("Client Certificate"), .pf-v6-c-modal-box button:has-text("Client Certificate")').first();
@@ -651,7 +651,7 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     const inspectBtn = frame.locator('table[aria-label="Active Containers Table"] button[aria-label="Inspect"]').first();
     if (await inspectBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
       await inspectBtn.click({ force: true });
-      await frame.waitForSelector('[role="dialog"], .pf-v6-c-modal-box, .pf-v5-c-modal-box:has-text("Inspect:")', { timeout: 8000 });
+      await frame.waitForSelector('[role="dialog"]:has-text("Inspect:"), .pf-v6-c-modal-box:has-text("Inspect:"), .pf-v5-c-modal-box:has-text("Inspect:")', { timeout: 8000 });
 
       const closeBtn = frame.locator('[role="dialog"] button:has-text("Close"), .pf-v6-c-modal-box button:has-text("Close")').first();
       await closeBtn.click();
@@ -662,11 +662,11 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     const logsBtn = frame.locator('table[aria-label="Active Containers Table"] button[aria-label="Logs"]').first();
     if (await logsBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
       await logsBtn.click({ force: true });
-      await frame.waitForSelector('[role="dialog"], .pf-v6-c-modal-box, .pf-v5-c-modal-box:has-text("Logs:")', { timeout: 8000 });
+      await frame.waitForSelector('[role="dialog"]:has-text("Logs:"), .pf-v6-c-modal-box:has-text("Logs:"), .pf-v5-c-modal-box:has-text("Logs:")', { timeout: 8000 });
 
       const closeBtn = frame.locator('[role="dialog"] button:has-text("Close Logs"), .pf-v6-c-modal-box button:has-text("Close Logs"), [role="dialog"] button[aria-label="Close"], .pf-v6-c-modal-box button[aria-label="Close"], .pf-v5-c-modal-box button[aria-label="Close"]').first();
       await closeBtn.click();
-      await frame.waitForSelector('[role="dialog"], .pf-v6-c-modal-box, .pf-v5-c-modal-box:has-text("Logs:")', { state: 'detached', timeout: 5000 });
+      await frame.waitForSelector('[role="dialog"]:has-text("Logs:"), .pf-v6-c-modal-box:has-text("Logs:"), .pf-v5-c-modal-box:has-text("Logs:")', { state: 'detached', timeout: 5000 });
     }
 
     // Test Restart button on Dashboard active containers card
@@ -736,7 +736,7 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     const inspectImageBtn = frame.locator('table[aria-label="Images Table"] button[aria-label="Inspect"]').first();
     if (await inspectImageBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
       await inspectImageBtn.click({ force: true });
-      await frame.waitForSelector('[role="dialog"], .pf-v6-c-modal-box, .pf-v5-c-modal-box:has-text("Inspect:")', { timeout: 8000 });
+      await frame.waitForSelector('[role="dialog"]:has-text("Inspect:"), .pf-v6-c-modal-box:has-text("Inspect:"), .pf-v5-c-modal-box:has-text("Inspect:")', { timeout: 8000 });
       const copyBtn = frame.locator('button[aria-label="Copy raw JSON"]').first();
       if (await copyBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
         await copyBtn.click();
@@ -753,7 +753,7 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     const inspectVolBtn = frame.locator('table[aria-label="Volumes Table"] button[aria-label="Inspect"]').first();
     if (await inspectVolBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
       await inspectVolBtn.click({ force: true });
-      await frame.waitForSelector('[role="dialog"], .pf-v6-c-modal-box, .pf-v5-c-modal-box:has-text("Inspect:")', { timeout: 8000 });
+      await frame.waitForSelector('[role="dialog"]:has-text("Inspect:"), .pf-v6-c-modal-box:has-text("Inspect:"), .pf-v5-c-modal-box:has-text("Inspect:")', { timeout: 8000 });
       const copyBtn = frame.locator('button[aria-label="Copy raw JSON"]').first();
       if (await copyBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
         await copyBtn.click();
@@ -770,7 +770,7 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     const inspectNetBtn = frame.locator('table[aria-label="Networks Table"] button[aria-label="Inspect"]').first();
     if (await inspectNetBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
       await inspectNetBtn.click({ force: true });
-      await frame.waitForSelector('[role="dialog"], .pf-v6-c-modal-box, .pf-v5-c-modal-box:has-text("Inspect:")', { timeout: 8000 });
+      await frame.waitForSelector('[role="dialog"]:has-text("Inspect:"), .pf-v6-c-modal-box:has-text("Inspect:"), .pf-v5-c-modal-box:has-text("Inspect:")', { timeout: 8000 });
       const copyBtn = frame.locator('button[aria-label="Copy raw JSON"]').first();
       if (await copyBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
         await copyBtn.click();
@@ -790,7 +790,7 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     const deleteImageBtn = frame.locator('table[aria-label="Images Table"] button[aria-label="Delete"]').first();
     if (await deleteImageBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
       await deleteImageBtn.click({ force: true });
-      await frame.waitForSelector('[role="dialog"], .pf-v6-c-modal-box, .pf-v5-c-modal-box:has-text("Delete Image")', { timeout: 5000 });
+      await frame.waitForSelector('[role="dialog"]:has-text("Delete Image"), .pf-v6-c-modal-box:has-text("Delete Image"), .pf-v5-c-modal-box:has-text("Delete Image")', { timeout: 5000 });
       const cancelBtn = frame.locator('[role="dialog"] button:has-text("Cancel"), .pf-v6-c-modal-box button:has-text("Cancel")').first();
       await cancelBtn.click();
       await frame.waitForSelector('[role="dialog"], .pf-v6-c-modal-box, .pf-v5-c-modal-box', { state: 'detached', timeout: 5000 });
@@ -802,7 +802,7 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     const deleteVolBtn = frame.locator('table[aria-label="Volumes Table"] button[aria-label="Delete"]').first();
     if (await deleteVolBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
       await deleteVolBtn.click({ force: true });
-      await frame.waitForSelector('[role="dialog"], .pf-v6-c-modal-box, .pf-v5-c-modal-box:has-text("Delete Volume")', { timeout: 5000 });
+      await frame.waitForSelector('[role="dialog"]:has-text("Delete Volume"), .pf-v6-c-modal-box:has-text("Delete Volume"), .pf-v5-c-modal-box:has-text("Delete Volume")', { timeout: 5000 });
       const cancelBtn = frame.locator('[role="dialog"] button:has-text("Cancel"), .pf-v6-c-modal-box button:has-text("Cancel")').first();
       await cancelBtn.click();
       await frame.waitForSelector('[role="dialog"], .pf-v6-c-modal-box, .pf-v5-c-modal-box', { state: 'detached', timeout: 5000 });
@@ -814,7 +814,7 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     const deleteNetBtn = frame.locator('table[aria-label="Networks Table"] button[aria-label="Delete"]').first();
     if (await deleteNetBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
       await deleteNetBtn.click({ force: true });
-      await frame.waitForSelector('[role="dialog"], .pf-v6-c-modal-box, .pf-v5-c-modal-box:has-text("Delete Network")', { timeout: 5000 });
+      await frame.waitForSelector('[role="dialog"]:has-text("Delete Network"), .pf-v6-c-modal-box:has-text("Delete Network"), .pf-v5-c-modal-box:has-text("Delete Network")', { timeout: 5000 });
       const cancelBtn = frame.locator('[role="dialog"] button:has-text("Cancel"), .pf-v6-c-modal-box button:has-text("Cancel")').first();
       await cancelBtn.click();
       await frame.waitForSelector('[role="dialog"], .pf-v6-c-modal-box, .pf-v5-c-modal-box', { state: 'detached', timeout: 5000 });

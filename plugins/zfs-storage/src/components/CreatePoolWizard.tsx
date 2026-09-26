@@ -17,7 +17,6 @@ import {
   Title,
   Card,
   CardBody,
-  useWizardContext,
 } from "@patternfly/react-core";
 import { Table, Thead, Tr, Th, Tbody, Td } from "@patternfly/react-table";
 import { PlusCircleIcon, TrashIcon } from "@patternfly/react-icons";
