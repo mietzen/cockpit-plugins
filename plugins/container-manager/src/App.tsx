@@ -120,6 +120,9 @@ export const App: React.FC = () => {
   const [overview, setOverview] = useState<ContainerOverview>(
     typeof window !== 'undefined' && window.cockpit ? DEFAULT_EMPTY_OVERVIEW : DEFAULT_MOCK_OVERVIEW
   );
+  const [initialLoaded, setInitialLoaded] = useState<boolean>(
+    typeof window === 'undefined' || !window.cockpit
+  );
   const [activeEngine, setActiveEngine] = useState<EngineType>(() => {
     try {
       const saved = localStorage.getItem('cockpit_container_engine');
@@ -199,6 +202,7 @@ export const App: React.FC = () => {
       addAlert('Failed to load container overview', 'danger', err?.message);
     } finally {
       setIsLoading(false);
+      setInitialLoaded(true);
     }
   }, []);
 
@@ -440,7 +444,7 @@ export const App: React.FC = () => {
     });
   };
 
-  const isNoneInstalled = !overview.engines.docker.installed && !overview.engines.podman.installed;
+  const isNoneInstalled = initialLoaded && !overview.engines.docker.installed && !overview.engines.podman.installed;
 
   return (
     <Page style={{ minHeight: '100vh', backgroundColor: 'var(--zfs-canvas-bg)' }}>
