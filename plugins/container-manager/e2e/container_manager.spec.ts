@@ -460,12 +460,12 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     await frame.locator('.cockpit-top-nav-bar button:has-text("Containers")').click();
     await frame.waitForSelector('table[aria-label="Containers Table"]', { timeout: 10000 });
 
-    // Look for a stopped container delete button
-    const deleteBtn = frame.locator('table[aria-label="Containers Table"] button[aria-label="Delete"]')
+    // Look for an enabled container delete button
+    const deleteBtn = frame.locator('table[aria-label="Containers Table"] button[aria-label="Delete"]:not([disabled])')
       .first();
 
     if (await deleteBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await deleteBtn.click({ force: true });
+      await deleteBtn.click();
 
       // Verify modal appears
       await frame.waitForSelector('[role="dialog"]:has-text("Delete Container"), .pf-v6-c-modal-box:has-text("Delete Container"), .pf-v5-c-modal-box:has-text("Delete Container")', { timeout: 5000 });
@@ -787,9 +787,9 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     // Images delete modal
     await frame.locator('.cockpit-top-nav-bar button:has-text("Images")').click();
     await frame.waitForSelector('table[aria-label="Images Table"], div:has-text("No Images Found")', { timeout: 10000 });
-    const deleteImageBtn = frame.locator('table[aria-label="Images Table"] button[aria-label="Delete"]').first();
+    const deleteImageBtn = frame.locator('table[aria-label="Images Table"] button[aria-label="Delete"]:not([disabled])').first();
     if (await deleteImageBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await deleteImageBtn.click({ force: true });
+      await deleteImageBtn.click();
       await frame.waitForSelector('[role="dialog"]:has-text("Delete Image"), .pf-v6-c-modal-box:has-text("Delete Image"), .pf-v5-c-modal-box:has-text("Delete Image")', { timeout: 5000 });
       const cancelBtn = frame.locator('[role="dialog"] button:has-text("Cancel"), .pf-v6-c-modal-box button:has-text("Cancel")').first();
       await cancelBtn.click();
@@ -799,9 +799,9 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     // Volumes delete modal
     await frame.locator('.cockpit-top-nav-bar button:has-text("Volumes")').click();
     await frame.waitForSelector('table[aria-label="Volumes Table"], div:has-text("No Volumes Found")', { timeout: 10000 });
-    const deleteVolBtn = frame.locator('table[aria-label="Volumes Table"] button[aria-label="Delete"]').first();
+    const deleteVolBtn = frame.locator('table[aria-label="Volumes Table"] button[aria-label="Delete"]:not([disabled])').first();
     if (await deleteVolBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await deleteVolBtn.click({ force: true });
+      await deleteVolBtn.click();
       await frame.waitForSelector('[role="dialog"]:has-text("Delete Volume"), .pf-v6-c-modal-box:has-text("Delete Volume"), .pf-v5-c-modal-box:has-text("Delete Volume")', { timeout: 5000 });
       const cancelBtn = frame.locator('[role="dialog"] button:has-text("Cancel"), .pf-v6-c-modal-box button:has-text("Cancel")').first();
       await cancelBtn.click();
@@ -811,9 +811,9 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     // Networks delete modal
     await frame.locator('.cockpit-top-nav-bar button:has-text("Networks")').click();
     await frame.waitForSelector('table[aria-label="Networks Table"], div:has-text("No Networks Found")', { timeout: 10000 });
-    const deleteNetBtn = frame.locator('table[aria-label="Networks Table"] button[aria-label="Delete"]').first();
+    const deleteNetBtn = frame.locator('table[aria-label="Networks Table"] button[aria-label="Delete"]:not([disabled])').first();
     if (await deleteNetBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await deleteNetBtn.click({ force: true });
+      await deleteNetBtn.click();
       await frame.waitForSelector('[role="dialog"]:has-text("Delete Network"), .pf-v6-c-modal-box:has-text("Delete Network"), .pf-v5-c-modal-box:has-text("Delete Network")', { timeout: 5000 });
       const cancelBtn = frame.locator('[role="dialog"] button:has-text("Cancel"), .pf-v6-c-modal-box button:has-text("Cancel")').first();
       await cancelBtn.click();
