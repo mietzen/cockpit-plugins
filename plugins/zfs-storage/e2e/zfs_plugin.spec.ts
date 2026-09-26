@@ -163,13 +163,13 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     if (await ashiftSelect.isVisible({ timeout: 1000 }).catch(() => false)) {
       await ashiftSelect.selectOption("12");
     }
-    await frame.locator("[role='dialog'] button:visible:has-text('Next')").first().click();
+    await frame.locator("button#wizard-create-pool-btn, [role='dialog'] .pf-v5-c-wizard__footer button.pf-m-primary").first().click();
 
     // Step 2: VDEV Configuration (Select available disks)
     const diskCheckbox = frame.locator("table tbody input[type=\"checkbox\"]").first();
     await diskCheckbox.waitFor({ state: "visible", timeout: 15000 });
     await diskCheckbox.setChecked(true);
-    await frame.locator("[role='dialog'] button:visible:has-text('Next')").first().click();
+    await frame.locator("button#wizard-create-pool-btn, [role='dialog'] .pf-v5-c-wizard__footer button.pf-m-primary").first().click();
 
     // Step 3: Properties (leave defaults or toggle options)
     await frame.locator("text=Step 3: Pool Properties").waitFor({ state: "visible", timeout: 10000 });
@@ -177,7 +177,7 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     if (await autoexpandCheckbox.isVisible({ timeout: 1000 }).catch(() => false)) {
       await autoexpandCheckbox.setChecked(true);
     }
-    await frame.locator("[role='dialog'] button:visible:has-text('Next')").first().click();
+    await frame.locator("button#wizard-create-pool-btn, [role='dialog'] .pf-v5-c-wizard__footer button.pf-m-primary").first().click();
 
     // Step 4: Filesystem Defaults
     await frame.locator("text=Step 4: Root Filesystem Defaults").waitFor({ state: "visible", timeout: 10000 });
@@ -185,11 +185,11 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     if (await compSelect.isVisible({ timeout: 1000 }).catch(() => false)) {
       await compSelect.selectOption("lz4");
     }
-    await frame.locator("[role='dialog'] button:visible:has-text('Next')").first().click();
+    await frame.locator("button#wizard-create-pool-btn, [role='dialog'] .pf-v5-c-wizard__footer button.pf-m-primary").first().click();
 
     // Step 5: Review & Create
     await frame.locator("text=Step 5: Review Configuration").waitFor({ state: "visible", timeout: 10000 });
-    const createBtn = frame.locator("[role='dialog'] button:visible:has-text('Create')").first();
+    const createBtn = frame.locator("button#wizard-create-pool-btn, [role='dialog'] .pf-v5-c-wizard__footer button.pf-m-primary").first();
     await createBtn.waitFor({ state: "visible", timeout: 10000 });
     await createBtn.click();
 

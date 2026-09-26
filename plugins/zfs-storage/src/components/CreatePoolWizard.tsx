@@ -282,6 +282,7 @@ export const CreatePoolWizard: React.FC<CreatePoolWizardProps> = ({
                 Back
               </Button>
               <Button
+                id="wizard-create-pool-btn"
                 variant="primary"
                 onClick={handleNextClick}
                 isDisabled={loading}
