@@ -172,6 +172,7 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     await frame.locator("[role='dialog'] button:visible:has-text('Next')").first().click();
 
     // Step 3: Properties (leave defaults or toggle options)
+    await frame.locator("text=Step 3: Pool Properties").waitFor({ state: "visible", timeout: 10000 });
     const autoexpandCheckbox = frame.locator("input#wizard-autoexpand, input#autoexpand").first();
     if (await autoexpandCheckbox.isVisible({ timeout: 1000 }).catch(() => false)) {
       await autoexpandCheckbox.setChecked(true);
@@ -179,6 +180,7 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     await frame.locator("[role='dialog'] button:visible:has-text('Next')").first().click();
 
     // Step 4: Filesystem Defaults
+    await frame.locator("text=Step 4: Root Filesystem Defaults").waitFor({ state: "visible", timeout: 10000 });
     const compSelect = frame.locator("select#wizard-compression, select#compression").first();
     if (await compSelect.isVisible({ timeout: 1000 }).catch(() => false)) {
       await compSelect.selectOption("lz4");
@@ -186,7 +188,10 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     await frame.locator("[role='dialog'] button:visible:has-text('Next')").first().click();
 
     // Step 5: Review & Create
-    await frame.locator("[role='dialog'] button:visible:has-text('Create')").first().click();
+    await frame.locator("text=Step 5: Review Configuration").waitFor({ state: "visible", timeout: 10000 });
+    const createBtn = frame.locator("[role='dialog'] button:visible:has-text('Create')").first();
+    await createBtn.waitFor({ state: "visible", timeout: 10000 });
+    await createBtn.click();
 
     // Verify on Host Filesystem using zpool CLI
     await expect.poll(() => runHostCmd(`sudo zpool list -H -o name,health ${TEST_POOL}`), { timeout: 10000 }).toContain("ONLINE");

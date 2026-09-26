@@ -200,16 +200,17 @@ export const CreatePoolWizard: React.FC<CreatePoolWizardProps> = ({
     }
   });
 
-  const toggleDiskInVDev = (vdevId: string, diskPath: string) => {
+  const toggleDiskInVDev = (vdevId: string, diskPath: string, shouldAdd?: boolean) => {
     setVdevs(
       vdevs.map((v) => {
         if (v.id === vdevId) {
           const exists = v.devices.includes(diskPath);
+          const add = shouldAdd !== undefined ? shouldAdd : !exists;
           return {
             ...v,
-            devices: exists
-              ? v.devices.filter((d) => d !== diskPath)
-              : [...v.devices, diskPath],
+            devices: add
+              ? (exists ? v.devices : [...v.devices, diskPath])
+              : v.devices.filter((d) => d !== diskPath),
           };
         }
         return {
@@ -219,81 +220,6 @@ export const CreatePoolWizard: React.FC<CreatePoolWizardProps> = ({
       })
     );
   };
-
-const CreatePoolWizardFooter: React.FC<{
-  name: string;
-  loading: boolean;
-  onFinish: () => void;
-  onClose: () => void;
-  onError: (msg: string | null) => void;
-}> = ({ name, loading, onFinish, onClose, onError }) => {
-  const { activeStep, goToNextStep, goToPrevStep } = useWizardContext();
-
-  const isLastStep =
-    activeStep?.id === "step-5" ||
-    activeStep?.index === 5 ||
-    (typeof activeStep?.id === "string" && activeStep.id.includes("5")) ||
-    (typeof activeStep?.name === "string" && activeStep.name.includes("Review"));
-
-  const isFirstStep =
-    activeStep?.id === "step-1" ||
-    activeStep?.index === 1 ||
-    (typeof activeStep?.id === "string" && activeStep.id.includes("1"));
-
-  const handleNextClick = () => {
-    if (isFirstStep && !name.trim()) {
-      onError("Pool name is required");
-      return;
-    }
-    onError(null);
-    if (isLastStep) {
-      onFinish();
-    } else {
-      goToNextStep();
-    }
-  };
-
-  return (
-    <div
-      className="pf-v5-c-wizard__footer"
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: "0.75rem",
-        padding: "1rem 1.5rem",
-        borderTop: "1px solid var(--zfs-card-border)",
-        backgroundColor: "var(--zfs-card-bg)",
-        boxShadow: "none",
-      }}
-    >
-      <Button
-        variant="secondary"
-        onClick={goToPrevStep}
-        isDisabled={isFirstStep || loading}
-        style={{ width: "90px" }}
-      >
-        Back
-      </Button>
-      <Button
-        variant="primary"
-        onClick={handleNextClick}
-        isDisabled={loading}
-        isLoading={loading}
-        style={{ width: "90px" }}
-      >
-        {isLastStep ? (loading ? "Creating..." : "Create") : "Next"}
-      </Button>
-      <Button
-        variant="secondary"
-        onClick={onClose}
-        isDisabled={loading}
-        style={{ width: "90px" }}
-      >
-        Cancel
-      </Button>
-    </div>
-  );
-};
 
   return (
     <Modal
@@ -309,15 +235,72 @@ const CreatePoolWizardFooter: React.FC<{
         title="Create ZFS Storage Pool"
         onClose={onClose}
         style={{ height: "100%", minHeight: "560px", border: "none" }}
-        footer={
-          <CreatePoolWizardFooter
-            name={name}
-            loading={loading}
-            onFinish={handleFinish}
-            onClose={onClose}
-            onError={setError}
-          />
-        }
+        footer={(activeStep, onNext, onBack, onClose) => {
+          const isLastStep =
+            activeStep?.id === "step-5" ||
+            activeStep?.index === 5 ||
+            (typeof activeStep?.id === "string" && activeStep.id.includes("5")) ||
+            (typeof activeStep?.name === "string" && activeStep.name.includes("Review"));
+
+          const isFirstStep =
+            activeStep?.id === "step-1" ||
+            activeStep?.index === 1 ||
+            (typeof activeStep?.id === "string" && activeStep.id.includes("1"));
+
+          const handleNextClick = () => {
+            if (isFirstStep && !name.trim()) {
+              setError("Pool name is required");
+              return;
+            }
+            setError(null);
+            if (isLastStep) {
+              handleFinish();
+            } else {
+              onNext(null as any);
+            }
+          };
+
+          return (
+            <div
+              className="pf-v5-c-wizard__footer"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.75rem",
+                padding: "1rem 1.5rem",
+                borderTop: "1px solid var(--zfs-card-border)",
+                backgroundColor: "var(--zfs-card-bg)",
+                boxShadow: "none",
+              }}
+            >
+              <Button
+                variant="secondary"
+                onClick={onBack}
+                isDisabled={isFirstStep || loading}
+                style={{ width: "90px" }}
+              >
+                Back
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleNextClick}
+                isDisabled={loading}
+                isLoading={loading}
+                style={{ width: "90px" }}
+              >
+                {isLastStep ? (loading ? "Creating..." : "Create") : "Next"}
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={onClose}
+                isDisabled={loading}
+                style={{ width: "90px" }}
+              >
+                Cancel
+              </Button>
+            </div>
+          );
+        }}
       >
         {/* Step 1: Identity & Sector Size */}
         <WizardStep name="Name &amp; Ashift" id="step-1">
@@ -461,7 +444,7 @@ const CreatePoolWizardFooter: React.FC<{
                                 id={`check-${vdev.id}-${disk.name}`}
                                 isChecked={isChecked}
                                 isDisabled={isUsedElsewhere}
-                                onChange={() => toggleDiskInVDev(vdev.id, disk.path)}
+                                onChange={(_event, checked) => toggleDiskInVDev(vdev.id, disk.path, checked)}
                               />
                             </Td>
                             <Td>
@@ -488,36 +471,36 @@ const CreatePoolWizardFooter: React.FC<{
               Step 3: Pool Properties &amp; Behavior
             </Title>
 
-            <FormGroup fieldId="create-autoexpand">
+            <FormGroup fieldId="wizard-autoexpand">
               <Checkbox
-                id="create-autoexpand"
+                id="wizard-autoexpand"
                 label="Autoexpand pool capacity when disks are replaced with larger ones"
                 isChecked={autoexpand}
                 onChange={(_event, checked) => setAutoexpand(checked)}
               />
             </FormGroup>
 
-            <FormGroup fieldId="create-autoreplace">
+            <FormGroup fieldId="wizard-autoreplace">
               <Checkbox
-                id="create-autoreplace"
+                id="wizard-autoreplace"
                 label="Autoreplace failed devices automatically with hot spares"
                 isChecked={autoreplace}
                 onChange={(_event, checked) => setAutoreplace(checked)}
               />
             </FormGroup>
 
-            <FormGroup fieldId="create-autotrim">
+            <FormGroup fieldId="wizard-autotrim">
               <Checkbox
-                id="create-autotrim"
+                id="wizard-autotrim"
                 label="Autotrim SSD / NVMe devices in the background"
                 isChecked={autotrim}
                 onChange={(_event, checked) => setAutotrim(checked)}
               />
             </FormGroup>
 
-            <FormGroup label="Failure Action (failmode)" fieldId="create-failmode">
+            <FormGroup label="Failure Action (failmode)" fieldId="wizard-failmode">
               <FormSelect
-                id="create-failmode"
+                id="wizard-failmode"
                 value={failmode}
                 onChange={(_event, val) => setFailmode(val)}
               >
@@ -536,9 +519,9 @@ const CreatePoolWizardFooter: React.FC<{
               Step 4: Root Filesystem Defaults
             </Title>
 
-            <FormGroup label="Compression" fieldId="create-comp">
+            <FormGroup label="Compression" fieldId="wizard-compression">
               <FormSelect
-                id="create-comp"
+                id="wizard-compression"
                 value={compression}
                 onChange={(_event, val) => setCompression(val)}
               >
@@ -549,9 +532,9 @@ const CreatePoolWizardFooter: React.FC<{
               </FormSelect>
             </FormGroup>
 
-            <FormGroup label="Deduplication" fieldId="create-dedup">
+            <FormGroup label="Deduplication" fieldId="wizard-dedup">
               <FormSelect
-                id="create-dedup"
+                id="wizard-dedup"
                 value={dedup}
                 onChange={(_event, val) => setDedup(val)}
               >
@@ -561,9 +544,9 @@ const CreatePoolWizardFooter: React.FC<{
               </FormSelect>
             </FormGroup>
 
-            <FormGroup label="Recordsize (Block Size)" fieldId="create-recsize">
+            <FormGroup label="Recordsize (Block Size)" fieldId="wizard-recordsize">
               <FormSelect
-                id="create-recsize"
+                id="wizard-recordsize"
                 value={recordsize}
                 onChange={(_event, val) => setRecordsize(val)}
               >
@@ -575,9 +558,9 @@ const CreatePoolWizardFooter: React.FC<{
               </FormSelect>
             </FormGroup>
 
-            <FormGroup label="Synchronous I/O (sync)" fieldId="create-sync">
+            <FormGroup label="Synchronous I/O (sync)" fieldId="wizard-sync">
               <FormSelect
-                id="create-sync"
+                id="wizard-sync"
                 value={sync}
                 onChange={(_event, val) => setSync(val)}
               >
@@ -587,9 +570,9 @@ const CreatePoolWizardFooter: React.FC<{
               </FormSelect>
             </FormGroup>
 
-            <FormGroup fieldId="create-atime">
+            <FormGroup fieldId="wizard-atime">
               <Checkbox
-                id="create-atime"
+                id="wizard-atime"
                 label="Update access times on file reads (atime)"
                 isChecked={atime}
                 onChange={(_event, checked) => setAtime(checked)}
