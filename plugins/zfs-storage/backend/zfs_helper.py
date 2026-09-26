@@ -279,6 +279,7 @@ class ZfsService:
                     "smart_health": smart_info.get("health", "UNKNOWN"),
                     "temperature": smart_info.get("temperature"),
                     "pool": pool_name,
+                    "system_mount": get_system_mount(dev),
                     "partitions": dev.get("children", []),
                 })
 

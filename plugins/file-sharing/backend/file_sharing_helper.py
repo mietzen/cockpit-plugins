@@ -20,24 +20,11 @@ from access_matrix import calculate_nfs_client_matrix, calculate_smb_user_matrix
 from nfs_parser import NfsParser
 from smb_parser import SmbParser
 
-try:
-    from cockpit_common.services import get_service_status
-except ImportError:
-    def get_service_status(unit: str) -> Dict[str, Any]:
-        rc, out, _ = run_cmd(["systemctl", "is-active", unit])
-        active_state = out.strip() if rc == 0 else "inactive"
-        rc_enabled, out_enabled, _ = run_cmd(["systemctl", "is-enabled", unit])
-        enabled_state = out_enabled.strip()
-        is_enabled = rc_enabled == 0 and enabled_state in ("enabled", "alias", "static", "indirect")
-        is_installed = shutil.which("systemctl") is not None and (rc in (0, 3) or rc_enabled == 0)
+COMMON_PY_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../packages/common/python"))
+if os.path.exists(COMMON_PY_DIR) and COMMON_PY_DIR not in sys.path:
+    sys.path.insert(0, COMMON_PY_DIR)
 
-        return {
-            "unit": unit,
-            "active": active_state == "active",
-            "state": active_state,
-            "enabled": is_enabled,
-            "installed": is_installed and active_state != "unknown",
-        }
+from cockpit_common.services import get_service_status
 
 
 def run_cmd(cmd: List[str], check: bool = False, input_data: Optional[str] = None) -> Tuple[int, str, str]:

@@ -4,11 +4,17 @@ Calculates effective access matrices:
 1. Samba User -> Shares Permission Matrix (Read/Write, Read Only, Denied, Guest)
 2. NFS Client IP/Subnet -> Exports Access Map
 """
+from enum import Enum
 import shlex
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 
-def parse_acl_tokens(acl_str: str) -> List[Tuple[str, str]]:
+class AclTokenType(str, Enum):
+    USER = "user"
+    GROUP = "group"
+
+
+def parse_acl_tokens(acl_str: str) -> List[Tuple[AclTokenType, str]]:
     """Parses space- or comma-separated tokens into (token_type, name), supporting quotes."""
     if not acl_str:
         return []
@@ -26,24 +32,24 @@ def parse_acl_tokens(acl_str: str) -> List[Tuple[str, str]]:
         if token.startswith(("@", "+", "&")):
             group_name = token.lstrip("@+&").strip().lower()
             if group_name:
-                tokens.append(("group", group_name))
+                tokens.append((AclTokenType.GROUP, group_name))
         else:
-            tokens.append(("user", token.lower()))
+            tokens.append((AclTokenType.USER, token.lower()))
 
     return tokens
 
 
 
-def evaluate_acl(username: str, user_groups: Set[str], tokens: List[Tuple[str, str]]) -> Tuple[bool, str]:
+def evaluate_acl(username: str, user_groups: Set[str], tokens: List[Tuple[AclTokenType, str]]) -> Tuple[bool, str]:
     """Evaluates if a user or user's group matches any token in the ACL."""
     if not tokens:
         return False, ""
 
     user_lower = username.lower()
     for token_type, name in tokens:
-        if token_type == "user" and name == user_lower:
+        if token_type == AclTokenType.USER and name == user_lower:
             return True, "user"
-        if token_type == "group" and name in user_groups:
+        if token_type == AclTokenType.GROUP and name in user_groups:
             return True, f"@{name}"
 
     return False, ""
