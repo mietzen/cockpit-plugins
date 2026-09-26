@@ -303,7 +303,7 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     const frame = await getFrame();
 
     // Switch to Maintenance tab
-    await frame.locator("button[role=\"tab\"]:has-text(\"Maintenance\"), button:has-text(\"Maintenance\")").first().click();
+    await frame.locator("button[role='tab']:has-text('Maintenance'), .pf-v5-c-tabs__link:has-text('Maintenance')").first().click();
 
     // Start scrub
     const scrubBtn = frame.locator("button:visible:has-text(\"Start scrub\")").first();

@@ -358,7 +358,7 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
     await frame.locator("button[role='tab']:has-text('Samba Users'), button:has-text('Samba Users')").first().click();
 
     // Click Add user
-    const addUserBtn = frame.getByRole("button", { name: /Add user/ }).first();
+    const addUserBtn = frame.locator("button:visible:has-text('Add SMB user'), button:visible:has-text('Add user')").or(frame.getByRole("button", { name: /Add (SMB )?user/i })).first();
     await addUserBtn.click();
     await expect(frame.locator("[role='dialog'], .pf-v6-c-modal-box, .pf-v5-c-modal-box")).toBeVisible({ timeout: 5000 });
 
@@ -373,7 +373,7 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
     const confirmPass = frame.locator("input#add-confirm-password").first();
     await confirmPass.fill("password123");
 
-    const saveUserBtn = frame.locator("[role='dialog'] button:has-text('Add user'), .pf-v6-c-modal-box button:has-text('Add user')").first();
+    const saveUserBtn = frame.locator("[role='dialog'] button:has-text('Add SMB User'), [role='dialog'] button:has-text('Add SMB user'), [role='dialog'] button:has-text('Add user'), .pf-v6-c-modal-box button:has-text('Add user')").first();
     await saveUserBtn.click();
     await expect(frame.locator("[role='dialog'], .pf-v6-c-modal-box, .pf-v5-c-modal-box")).toHaveCount(0, { timeout: 10000 });
 
@@ -646,13 +646,13 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
       (window as any).__setActiveView?.("users");
     });
     await page.waitForTimeout(300);
-    const addUserBtn = frame.locator("button:visible:has-text('Add Samba user'), button:visible:has-text('Add user')").first();
+    const addUserBtn = frame.locator("button:visible:has-text('Add SMB user'), button:visible:has-text('Add Samba user'), button:visible:has-text('Add user')").first();
     if (await addUserBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
       await addUserBtn.click({ timeout: 2000 }).catch(() => {});
       await page.waitForTimeout(300);
 
       // Trigger empty validation
-      await frame.locator("[role='dialog'] button:has-text('Add user'), .pf-v6-c-modal-box button:has-text('Add user')").first().click({ timeout: 1000 }).catch(() => {});
+      await frame.locator("[role='dialog'] button:has-text('Add SMB user'), [role='dialog'] button:has-text('Add user'), .pf-v6-c-modal-box button:has-text('Add user')").first().click({ timeout: 1000 }).catch(() => {});
       await page.waitForTimeout(100);
 
       const usernameInput = frame.locator("input#add-username, select#add-username, input#user-name").first();
@@ -672,7 +672,7 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
         await confPassInput.fill("SecretPassword123!");
       }
 
-      const submitUserModal = frame.locator("[role='dialog'] button:has-text('Add user'), .pf-v6-c-modal-box button:has-text('Add user')").first();
+      const submitUserModal = frame.locator("[role='dialog'] button:has-text('Add SMB user'), [role='dialog'] button:has-text('Add user'), .pf-v6-c-modal-box button:has-text('Add user')").first();
       if (await submitUserModal.isVisible({ timeout: 1000 }).catch(() => false)) {
         await submitUserModal.click({ timeout: 1000 }).catch(() => {});
         await page.waitForTimeout(300);
@@ -838,7 +838,7 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
     }
 
     // Click Add User button on Dashboard
-    const addUserBtn = frame.locator("button:visible:has-text('Add user')").first();
+    const addUserBtn = frame.locator("button:visible:has-text('Add SMB user'), button:visible:has-text('Add user')").first();
     if (await addUserBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
       await addUserBtn.click({ timeout: 2000 }).catch(() => {});
       await page.waitForTimeout(200);
@@ -1222,7 +1222,7 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
     await page.waitForTimeout(300);
 
     // 2. Add user modal flow
-    const addUserBtn = frame.locator("button:has-text('Add user')").first();
+    const addUserBtn = frame.locator("button:has-text('Add SMB user'), button:has-text('Add user')").first();
     if (await addUserBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
       await addUserBtn.click({ timeout: 1000 }).catch(() => {});
       await page.waitForTimeout(200);
@@ -1242,7 +1242,7 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
       if (await confInp.isVisible({ timeout: 1000 }).catch(() => false)) {
         await confInp.fill("Password123!", { timeout: 1000 }).catch(() => {});
       }
-      const submitAdd = frame.locator("[role='dialog'] button:has-text('Add user'), .pf-v6-c-modal-box button:has-text('Add user')").first();
+      const submitAdd = frame.locator("[role='dialog'] button:has-text('Add SMB user'), [role='dialog'] button:has-text('Add user'), .pf-v6-c-modal-box button:has-text('Add user')").first();
       if (await submitAdd.isVisible({ timeout: 1000 }).catch(() => false)) {
         await submitAdd.click({ timeout: 1000 }).catch(() => {});
         await page.waitForTimeout(200);
