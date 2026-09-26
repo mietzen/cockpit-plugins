@@ -199,16 +199,17 @@ export const CreatePoolWizard: React.FC<CreatePoolWizardProps> = ({
     }
   });
 
-  const toggleDiskInVDev = (vdevId: string, diskPath: string) => {
+  const toggleDiskInVDev = (vdevId: string, diskPath: string, shouldAdd?: boolean) => {
     setVdevs(
       vdevs.map((v) => {
         if (v.id === vdevId) {
           const exists = v.devices.includes(diskPath);
+          const add = shouldAdd !== undefined ? shouldAdd : !exists;
           return {
             ...v,
-            devices: exists
-              ? v.devices.filter((d) => d !== diskPath)
-              : [...v.devices, diskPath],
+            devices: add
+              ? (exists ? v.devices : [...v.devices, diskPath])
+              : v.devices.filter((d) => d !== diskPath),
           };
         }
         return {
@@ -233,17 +234,17 @@ export const CreatePoolWizard: React.FC<CreatePoolWizardProps> = ({
         title="Create ZFS Storage Pool"
         onClose={onClose}
         style={{ height: "100%", minHeight: "560px", border: "none" }}
-        footer={(activeStep, onNext, onBack) => {
+        footer={(activeStep, onNext, onBack, onClose) => {
           const isLastStep =
-            activeStep.id === "step-5" ||
-            activeStep.index === 5 ||
-            (typeof activeStep.id === "string" && activeStep.id.includes("5")) ||
-            (typeof activeStep.name === "string" && activeStep.name.includes("Review"));
+            activeStep?.id === "step-5" ||
+            activeStep?.index === 5 ||
+            (typeof activeStep?.id === "string" && activeStep.id.includes("5")) ||
+            (typeof activeStep?.name === "string" && activeStep.name.includes("Review"));
 
           const isFirstStep =
-            activeStep.id === "step-1" ||
-            activeStep.index === 1 ||
-            (typeof activeStep.id === "string" && activeStep.id.includes("1"));
+            activeStep?.id === "step-1" ||
+            activeStep?.index === 1 ||
+            (typeof activeStep?.id === "string" && activeStep.id.includes("1"));
 
           const handleNextClick = () => {
             if (isFirstStep && !name.trim()) {
@@ -254,7 +255,7 @@ export const CreatePoolWizard: React.FC<CreatePoolWizardProps> = ({
             if (isLastStep) {
               handleFinish();
             } else {
-              onNext();
+              onNext(null as any);
             }
           };
 
@@ -280,6 +281,7 @@ export const CreatePoolWizard: React.FC<CreatePoolWizardProps> = ({
                 Back
               </Button>
               <Button
+                id="wizard-create-pool-btn"
                 variant="primary"
                 onClick={handleNextClick}
                 isDisabled={loading}
@@ -442,7 +444,7 @@ export const CreatePoolWizard: React.FC<CreatePoolWizardProps> = ({
                                 id={`check-${vdev.id}-${disk.name}`}
                                 isChecked={isChecked}
                                 isDisabled={isUsedElsewhere}
-                                onChange={() => toggleDiskInVDev(vdev.id, disk.path)}
+                                onChange={(_event, checked) => toggleDiskInVDev(vdev.id, disk.path, checked)}
                               />
                             </Td>
                             <Td>
@@ -469,36 +471,36 @@ export const CreatePoolWizard: React.FC<CreatePoolWizardProps> = ({
               Step 3: Pool Properties &amp; Behavior
             </Title>
 
-            <FormGroup fieldId="create-autoexpand">
+            <FormGroup fieldId="wizard-autoexpand">
               <Checkbox
-                id="create-autoexpand"
+                id="wizard-autoexpand"
                 label="Autoexpand pool capacity when disks are replaced with larger ones"
                 isChecked={autoexpand}
                 onChange={(_event, checked) => setAutoexpand(checked)}
               />
             </FormGroup>
 
-            <FormGroup fieldId="create-autoreplace">
+            <FormGroup fieldId="wizard-autoreplace">
               <Checkbox
-                id="create-autoreplace"
+                id="wizard-autoreplace"
                 label="Autoreplace failed devices automatically with hot spares"
                 isChecked={autoreplace}
                 onChange={(_event, checked) => setAutoreplace(checked)}
               />
             </FormGroup>
 
-            <FormGroup fieldId="create-autotrim">
+            <FormGroup fieldId="wizard-autotrim">
               <Checkbox
-                id="create-autotrim"
+                id="wizard-autotrim"
                 label="Autotrim SSD / NVMe devices in the background"
                 isChecked={autotrim}
                 onChange={(_event, checked) => setAutotrim(checked)}
               />
             </FormGroup>
 
-            <FormGroup label="Failure Action (failmode)" fieldId="create-failmode">
+            <FormGroup label="Failure Action (failmode)" fieldId="wizard-failmode">
               <FormSelect
-                id="create-failmode"
+                id="wizard-failmode"
                 value={failmode}
                 onChange={(_event, val) => setFailmode(val)}
               >
@@ -517,9 +519,9 @@ export const CreatePoolWizard: React.FC<CreatePoolWizardProps> = ({
               Step 4: Root Filesystem Defaults
             </Title>
 
-            <FormGroup label="Compression" fieldId="create-comp">
+            <FormGroup label="Compression" fieldId="wizard-compression">
               <FormSelect
-                id="create-comp"
+                id="wizard-compression"
                 value={compression}
                 onChange={(_event, val) => setCompression(val)}
               >
@@ -530,9 +532,9 @@ export const CreatePoolWizard: React.FC<CreatePoolWizardProps> = ({
               </FormSelect>
             </FormGroup>
 
-            <FormGroup label="Deduplication" fieldId="create-dedup">
+            <FormGroup label="Deduplication" fieldId="wizard-dedup">
               <FormSelect
-                id="create-dedup"
+                id="wizard-dedup"
                 value={dedup}
                 onChange={(_event, val) => setDedup(val)}
               >
@@ -542,9 +544,9 @@ export const CreatePoolWizard: React.FC<CreatePoolWizardProps> = ({
               </FormSelect>
             </FormGroup>
 
-            <FormGroup label="Recordsize (Block Size)" fieldId="create-recsize">
+            <FormGroup label="Recordsize (Block Size)" fieldId="wizard-recordsize">
               <FormSelect
-                id="create-recsize"
+                id="wizard-recordsize"
                 value={recordsize}
                 onChange={(_event, val) => setRecordsize(val)}
               >
@@ -556,9 +558,9 @@ export const CreatePoolWizard: React.FC<CreatePoolWizardProps> = ({
               </FormSelect>
             </FormGroup>
 
-            <FormGroup label="Synchronous I/O (sync)" fieldId="create-sync">
+            <FormGroup label="Synchronous I/O (sync)" fieldId="wizard-sync">
               <FormSelect
-                id="create-sync"
+                id="wizard-sync"
                 value={sync}
                 onChange={(_event, val) => setSync(val)}
               >
@@ -568,9 +570,9 @@ export const CreatePoolWizard: React.FC<CreatePoolWizardProps> = ({
               </FormSelect>
             </FormGroup>
 
-            <FormGroup fieldId="create-atime">
+            <FormGroup fieldId="wizard-atime">
               <Checkbox
-                id="create-atime"
+                id="wizard-atime"
                 label="Update access times on file reads (atime)"
                 isChecked={atime}
                 onChange={(_event, checked) => setAtime(checked)}
