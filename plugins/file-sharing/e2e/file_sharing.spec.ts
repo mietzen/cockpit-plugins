@@ -532,7 +532,7 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
       (window as any).__setActiveView?.("smb");
     });
     await page.waitForTimeout(300);
-    const addShareBtn = frame.locator("button:visible:has-text('Add Samba share'), button:visible:has-text('Create share')").first();
+    const addShareBtn = frame.locator("button:visible:has-text('Create SMB share'), button:visible:has-text('Add Samba share'), button:visible:has-text('Create share')").first();
     if (await addShareBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
       await addShareBtn.click({ timeout: 2000 }).catch(() => {});
       await page.waitForTimeout(300);
@@ -595,7 +595,7 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
       (window as any).__setActiveView?.("nfs");
     });
     await page.waitForTimeout(300);
-    const addExportBtn = frame.locator("button:visible:has-text('Add NFS export'), button:visible:has-text('Create export')").first();
+    const addExportBtn = frame.locator("button:visible:has-text('Create NFS export'), button:visible:has-text('Add NFS export'), button:visible:has-text('Create export')").first();
     if (await addExportBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
       await addExportBtn.click({ timeout: 2000 }).catch(() => {});
       await page.waitForTimeout(300);
@@ -646,7 +646,7 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
       (window as any).__setActiveView?.("users");
     });
     await page.waitForTimeout(300);
-    const addUserBtn = frame.locator("button:visible:has-text('Add SMB user'), button:visible:has-text('Add Samba user'), button:visible:has-text('Add user')").first();
+    const addUserBtn = frame.locator("button:visible:has-text('Add SMB User'), button:visible:has-text('Add SMB user'), button:visible:has-text('Add Samba user'), button:visible:has-text('Add user')").first();
     if (await addUserBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
       await addUserBtn.click({ timeout: 2000 }).catch(() => {});
       await page.waitForTimeout(300);
@@ -1371,6 +1371,37 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
       const count = await sortHeaders.count();
       for (let i = 0; i < count; i++) {
         await sortHeaders.nth(i).click({ timeout: 500 }).catch(() => {});
+      }
+
+      // Open Add SMB Group modal
+      const addGrpBtn = frame.locator("button:visible:has-text('Add SMB Group')").first();
+      if (await addGrpBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await addGrpBtn.click({ timeout: 1000 }).catch(() => {});
+        await page.waitForTimeout(200);
+
+        const grpNameInput = frame.locator("input#add-group-name").first();
+        if (await grpNameInput.isVisible({ timeout: 1000 }).catch(() => false)) {
+          await grpNameInput.fill("ui_test_grp");
+        }
+        const memberBox = frame.locator("input#add-grp-user-alice, input[type='checkbox']").first();
+        if (await memberBox.isVisible({ timeout: 1000 }).catch(() => false)) {
+          await memberBox.click({ timeout: 1000 }).catch(() => {});
+        }
+        await frame.locator("[role='dialog'] button:has-text('Cancel'), .pf-v6-c-modal-box button:has-text('Cancel')").first().click({ timeout: 1000 }).catch(() => {});
+      }
+
+      // Open 3-dot dropdown on a group row
+      const grpAction = frame.locator("table[aria-label='Samba Groups Table'] button[aria-label='Group actions']").first();
+      if (await grpAction.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await grpAction.click({ timeout: 1000 }).catch(() => {});
+        await page.waitForTimeout(200);
+
+        const editGrpItem = frame.locator("button:has-text('Edit SMB Group'), a:has-text('Edit SMB Group')").first();
+        if (await editGrpItem.isVisible({ timeout: 1000 }).catch(() => false)) {
+          await editGrpItem.click({ timeout: 1000 }).catch(() => {});
+          await page.waitForTimeout(200);
+          await frame.locator("[role='dialog'] button:has-text('Cancel'), .pf-v6-c-modal-box button:has-text('Cancel')").first().click({ timeout: 1000 }).catch(() => {});
+        }
       }
     }
 

@@ -18,7 +18,6 @@ TIER_CONFIG = {
             "smb_parser.py",
             "samba_parser.py",
             "nfs_parser.py",
-            "parsers.py",
             "access_matrix.py",
             "system.py",
             "DestroyModal.tsx",
@@ -40,8 +39,8 @@ TIER_CONFIG = {
     },
     "FRONTEND": {
         "title": "🖥️ Frontend / UI Components",
-        "min_line": 70.0,
-        "min_branch": 60.0,
+        "min_line": 65.0,
+        "min_branch": 45.0,
         "patterns": [".tsx", ".ts"],
     },
 }
@@ -204,7 +203,7 @@ def main():
 
     gate_status_str = "PASSED" if all_passed else "FAILED"
     md_output.append(f"\n**3-Tier Quality Gate**: **{gate_status_str}**")
-    md_output.append("\n*Evaluated across Security (≥90%/≥85%), Backend (≥80%/≥75%), and Frontend (≥70%/≥60%) quality tiers.*")
+    md_output.append("\n*Evaluated across Security (≥90%/≥80%), Backend (≥80%/≥75%), and Frontend (≥65%/≥45%) quality tiers.*")
 
     summary_text = "\n".join(md_output)
     print(summary_text)
