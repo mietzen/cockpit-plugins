@@ -17,6 +17,7 @@ import {
   Title,
   Card,
   CardBody,
+  useWizardContext,
 } from "@patternfly/react-core";
 import { Table, Thead, Tr, Th, Tbody, Td } from "@patternfly/react-table";
 import { PlusCircleIcon, TrashIcon } from "@patternfly/react-icons";
@@ -219,6 +220,81 @@ export const CreatePoolWizard: React.FC<CreatePoolWizardProps> = ({
     );
   };
 
+const CreatePoolWizardFooter: React.FC<{
+  name: string;
+  loading: boolean;
+  onFinish: () => void;
+  onClose: () => void;
+  onError: (msg: string | null) => void;
+}> = ({ name, loading, onFinish, onClose, onError }) => {
+  const { activeStep, goToNextStep, goToPrevStep } = useWizardContext();
+
+  const isLastStep =
+    activeStep?.id === "step-5" ||
+    activeStep?.index === 5 ||
+    (typeof activeStep?.id === "string" && activeStep.id.includes("5")) ||
+    (typeof activeStep?.name === "string" && activeStep.name.includes("Review"));
+
+  const isFirstStep =
+    activeStep?.id === "step-1" ||
+    activeStep?.index === 1 ||
+    (typeof activeStep?.id === "string" && activeStep.id.includes("1"));
+
+  const handleNextClick = () => {
+    if (isFirstStep && !name.trim()) {
+      onError("Pool name is required");
+      return;
+    }
+    onError(null);
+    if (isLastStep) {
+      onFinish();
+    } else {
+      goToNextStep();
+    }
+  };
+
+  return (
+    <div
+      className="pf-v5-c-wizard__footer"
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "0.75rem",
+        padding: "1rem 1.5rem",
+        borderTop: "1px solid var(--zfs-card-border)",
+        backgroundColor: "var(--zfs-card-bg)",
+        boxShadow: "none",
+      }}
+    >
+      <Button
+        variant="secondary"
+        onClick={goToPrevStep}
+        isDisabled={isFirstStep || loading}
+        style={{ width: "90px" }}
+      >
+        Back
+      </Button>
+      <Button
+        variant="primary"
+        onClick={handleNextClick}
+        isDisabled={loading}
+        isLoading={loading}
+        style={{ width: "90px" }}
+      >
+        {isLastStep ? (loading ? "Creating..." : "Create") : "Next"}
+      </Button>
+      <Button
+        variant="secondary"
+        onClick={onClose}
+        isDisabled={loading}
+        style={{ width: "90px" }}
+      >
+        Cancel
+      </Button>
+    </div>
+  );
+};
+
   return (
     <Modal
       variant={ModalVariant.large}
@@ -233,72 +309,15 @@ export const CreatePoolWizard: React.FC<CreatePoolWizardProps> = ({
         title="Create ZFS Storage Pool"
         onClose={onClose}
         style={{ height: "100%", minHeight: "560px", border: "none" }}
-        footer={(activeStep, onNext, onBack) => {
-          const isLastStep =
-            activeStep.id === "step-5" ||
-            activeStep.index === 5 ||
-            (typeof activeStep.id === "string" && activeStep.id.includes("5")) ||
-            (typeof activeStep.name === "string" && activeStep.name.includes("Review"));
-
-          const isFirstStep =
-            activeStep.id === "step-1" ||
-            activeStep.index === 1 ||
-            (typeof activeStep.id === "string" && activeStep.id.includes("1"));
-
-          const handleNextClick = () => {
-            if (isFirstStep && !name.trim()) {
-              setError("Pool name is required");
-              return;
-            }
-            setError(null);
-            if (isLastStep) {
-              handleFinish();
-            } else {
-              onNext();
-            }
-          };
-
-          return (
-            <div
-              className="pf-v5-c-wizard__footer"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "0.75rem",
-                padding: "1rem 1.5rem",
-                borderTop: "1px solid var(--zfs-card-border)",
-                backgroundColor: "var(--zfs-card-bg)",
-                boxShadow: "none",
-              }}
-            >
-              <Button
-                variant="secondary"
-                onClick={onBack}
-                isDisabled={isFirstStep || loading}
-                style={{ width: "90px" }}
-              >
-                Back
-              </Button>
-              <Button
-                variant="primary"
-                onClick={handleNextClick}
-                isDisabled={loading}
-                isLoading={loading}
-                style={{ width: "90px" }}
-              >
-                {isLastStep ? (loading ? "Creating..." : "Create") : "Next"}
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={onClose}
-                isDisabled={loading}
-                style={{ width: "90px" }}
-              >
-                Cancel
-              </Button>
-            </div>
-          );
-        }}
+        footer={
+          <CreatePoolWizardFooter
+            name={name}
+            loading={loading}
+            onFinish={handleFinish}
+            onClose={onClose}
+            onError={setError}
+          />
+        }
       >
         {/* Step 1: Identity & Sector Size */}
         <WizardStep name="Name &amp; Ashift" id="step-1">
