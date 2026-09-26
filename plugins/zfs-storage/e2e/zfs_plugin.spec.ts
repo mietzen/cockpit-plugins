@@ -163,30 +163,30 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     if (await ashiftSelect.isVisible({ timeout: 1000 }).catch(() => false)) {
       await ashiftSelect.selectOption("12");
     }
-    await frame.locator("footer button:has-text('Next'), [class*='wizard'] footer button:has-text('Next'), button:has-text('Next')").first().click();
+    await frame.locator("[role='dialog'] button:has-text('Next')").first().click();
 
     // Step 2: VDEV Configuration (Select available disks)
     const diskCheckbox = frame.locator("table tbody input[type=\"checkbox\"]").first();
     await diskCheckbox.waitFor({ state: "visible", timeout: 15000 });
     await diskCheckbox.setChecked(true);
-    await frame.locator("footer button:has-text('Next'), [class*='wizard'] footer button:has-text('Next'), button:has-text('Next')").first().click();
+    await frame.locator("[role='dialog'] button:has-text('Next')").first().click();
 
     // Step 3: Properties (leave defaults or toggle options)
     const autoexpandCheckbox = frame.locator("input#wizard-autoexpand, input#autoexpand").first();
     if (await autoexpandCheckbox.isVisible({ timeout: 1000 }).catch(() => false)) {
       await autoexpandCheckbox.setChecked(true);
     }
-    await frame.locator("footer button:has-text('Next'), [class*='wizard'] footer button:has-text('Next'), button:has-text('Next')").first().click();
+    await frame.locator("[role='dialog'] button:has-text('Next')").first().click();
 
     // Step 4: Filesystem Defaults
     const compSelect = frame.locator("select#wizard-compression, select#compression").first();
     if (await compSelect.isVisible({ timeout: 1000 }).catch(() => false)) {
       await compSelect.selectOption("lz4");
     }
-    await frame.locator("footer button:has-text('Next'), [class*='wizard'] footer button:has-text('Next'), button:has-text('Next')").first().click();
+    await frame.locator("[role='dialog'] button:has-text('Next')").first().click();
 
     // Step 5: Review & Create
-    await frame.locator("footer button:has-text('Create'), [class*='wizard'] footer button:has-text('Create'), button:has-text('Create')").first().click();
+    await frame.locator("[role='dialog'] button:has-text('Create')").first().click();
 
     // Verify on Host Filesystem using zpool CLI
     await expect.poll(() => runHostCmd(`sudo zpool list -H -o name,health ${TEST_POOL}`), { timeout: 10000 }).toContain("ONLINE");
@@ -752,7 +752,7 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
         await mountInput.fill("/wizard_test_pool").catch(() => {});
       }
 
-      const nextBtn = frame.locator("footer button:has-text('Next'), [class*='wizard'] footer button:has-text('Next'), button:has-text('Next')").first();
+      const nextBtn = frame.locator("[role='dialog'] button:has-text('Next')").first();
       if (await nextBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
         await nextBtn.click({ timeout: 1000 }).catch(() => {});
         await page.waitForTimeout(300);
@@ -845,7 +845,7 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
       }
 
       // Step 5: Review - Click Back across steps
-      const backBtn = frame.locator("footer button:has-text('Back'), [class*='wizard'] footer button:has-text('Back'), button:has-text('Back')").first();
+      const backBtn = frame.locator("[role='dialog'] button:has-text('Back')").first();
       for (let i = 0; i < 4; i++) {
         if (await backBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
           await backBtn.click({ timeout: 1000 }).catch(() => {});
@@ -854,7 +854,7 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
       }
 
       // Cancel wizard cleanly
-      const cancelBtn = frame.locator("footer button:has-text('Cancel'), [class*='wizard'] footer button:has-text('Cancel'), button:has-text('Cancel')").first();
+      const cancelBtn = frame.locator("[role='dialog'] button:has-text('Cancel')").first();
       if (await cancelBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
         await cancelBtn.click({ timeout: 2000 }).catch(() => {});
       }

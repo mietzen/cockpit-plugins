@@ -133,7 +133,7 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
     // Create a new SMB share
     const createBtn = frame.getByRole("button", { name: /Create SMB share/ }).first();
     await createBtn.click();
-    await expect(frame.locator("[class*='title'], [role='dialog'] h1, [role='dialog'] h2, [role='dialog'] header")).toBeVisible({ timeout: 5000 });
+    await expect(frame.locator("[role='dialog'], .pf-v6-c-modal-box, .pf-v5-c-modal-box")).toBeVisible({ timeout: 5000 });
 
     const shareNameInput = frame.locator("input#share-name, input[aria-label*='Share Name'], input[placeholder*='data']").first();
     await shareNameInput.fill("e2e_crud_share");
@@ -223,7 +223,7 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
     const createBtn = frame.getByRole("button", { name: /Create SMB share/ }).first();
     await createBtn.click();
 
-    const modalTitle = frame.locator("[class*='title'], [role='dialog'] h1, [role='dialog'] h2, [role='dialog'] header");
+    const modalTitle = frame.locator("[role='dialog'], .pf-v6-c-modal-box, .pf-v5-c-modal-box");
     await expect(modalTitle).toBeVisible({ timeout: 5000 });
     await saveScreenshot(page, "media_test_modal_dimming.png");
 
@@ -280,7 +280,7 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
     await expect(editBtn).toBeVisible({ timeout: 5000 });
     await editBtn.click();
 
-    await expect(frame.locator("[class*='title'], [role='dialog'] h1, [role='dialog'] h2, [role='dialog'] header")).toBeVisible({ timeout: 5000 });
+    await expect(frame.locator("[role='dialog'], .pf-v6-c-modal-box, .pf-v5-c-modal-box")).toBeVisible({ timeout: 5000 });
     const commentInput = frame.locator("input#share-comment, input[placeholder*='Comment']").first();
     if (await commentInput.isVisible({ timeout: 2000 }).catch(() => false)) {
       await commentInput.fill("Updated Test Share Comment");
@@ -322,7 +322,7 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
 
     const createNfsBtn = frame.getByRole("button", { name: /Create NFS export/ }).first();
     await createNfsBtn.click();
-    await expect(frame.locator("[class*='title'], [role='dialog'] h1, [role='dialog'] h2, [role='dialog'] header")).toBeVisible({ timeout: 5000 });
+    await expect(frame.locator("[role='dialog'], .pf-v6-c-modal-box, .pf-v5-c-modal-box")).toBeVisible({ timeout: 5000 });
 
     const pathInput = frame.locator("input#nfs-path, input[placeholder*='/srv']").first();
     await pathInput.fill("/srv/nfs/test_crud");
@@ -360,7 +360,7 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
     // Click Add user
     const addUserBtn = frame.getByRole("button", { name: /Add user/ }).first();
     await addUserBtn.click();
-    await expect(frame.locator("[class*='title'], [role='dialog'] h1, [role='dialog'] h2, [role='dialog'] header")).toBeVisible({ timeout: 5000 });
+    await expect(frame.locator("[role='dialog'], .pf-v6-c-modal-box, .pf-v5-c-modal-box")).toBeVisible({ timeout: 5000 });
 
     const userInput = frame.locator("input#add-username, select#add-username").first();
     if (await userInput.isVisible({ timeout: 2000 }).catch(() => false)) {
@@ -468,7 +468,7 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
       await actionToggle.click();
       const editBtn = frame.getByRole("menuitem", { name: /Edit export/ }).or(frame.getByText("Edit export")).first();
       await editBtn.click();
-      await expect(frame.locator("[class*='title'], [role='dialog'] h1, [role='dialog'] h2, [role='dialog'] header")).toBeVisible({ timeout: 5000 });
+      await expect(frame.locator("[role='dialog'], .pf-v6-c-modal-box, .pf-v5-c-modal-box")).toBeVisible({ timeout: 5000 });
 
       const saveChangesBtn = frame.getByRole("button", { name: /Save changes/ }).first();
       await saveChangesBtn.click();
