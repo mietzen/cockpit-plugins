@@ -196,7 +196,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         </Label>
                       )}
                     </Td>
-                    <Td data-label="Path">{share.path || "—"}</Td>
+                    <Td data-label="Path">{share.name === "homes" && share.path?.includes("%S") ? share.path.replace("%S", "$USER") : (share.path || "—")}</Td>
                     <Td data-label="Access">
                       <Label color={share.read_only ? "blue" : "green"}>
                         {share.read_only ? "Read-Only" : "Read/Write"}

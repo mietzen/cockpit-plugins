@@ -73,9 +73,19 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [isCertModalOpen, setIsCertModalOpen] = useState(false);
   const [certBundle, setCertBundle] = useState<ClientCertBundle | null>(null);
   const [certTab, setCertTab] = useState<number>(0);
-  const [loadingCerts, setLoadingCerts] = useState(false);
+  const [currentUser, setCurrentUser] = useState<string>('');
 
   const hostIp = (window.location.hostname ? window.location.hostname.split('.')[0] : '') || 'localhost';
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.cockpit && typeof window.cockpit.user === 'function') {
+      window.cockpit.user().then((u: any) => {
+        if (u && u.name) {
+          setCurrentUser(u.name);
+        }
+      }).catch(() => {});
+    }
+  }, []);
 
   const loadStatus = async () => {
     setError(null);
@@ -288,64 +298,66 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         )}
 
         <Grid hasGutter>
-          {/* Engine Selection Card */}
-          <GridItem span={12} md={6}>
-            <Card style={{ height: '100%' }}>
-              <CardTitle>Container Engine Selection</CardTitle>
-              <CardBody>
-                <p style={{ fontSize: '0.9rem', color: '#8b949e', marginBottom: '1rem' }}>
-                  Choose which container daemon or CLI backend to use for managing containers and resources.
-                </p>
+          {/* Engine Selection Card (only shown when multiple engines are installed) */}
+          {installedEnginesCount > 1 && (
+            <GridItem span={12} md={6}>
+              <Card style={{ height: '100%' }}>
+                <CardTitle>Container Engine Selection</CardTitle>
+                <CardBody>
+                  <p style={{ fontSize: '0.9rem', color: '#8b949e', marginBottom: '1rem' }}>
+                    Choose which container daemon or CLI backend to use for managing containers and resources.
+                  </p>
 
-                <Flex direction={{ default: 'column' }} spaceItems={{ default: 'spaceItemsMd' }}>
-                  <Flex justifyContent={{ default: 'justifyContentSpaceBetween' }} alignItems={{ default: 'alignItemsCenter' }}>
-                    <Flex spaceItems={{ default: 'spaceItemsSm' }} alignItems={{ default: 'alignItemsCenter' }}>
-                      <strong>Docker Engine</strong>
-                      <StatusBadge variant={engines.docker.installed ? (engines.docker.active ? 'green' : 'grey') : 'grey'}>
-                        {engines.docker.installed ? (engines.docker.active ? 'Active' : 'Installed') : 'Not Installed'}
-                      </StatusBadge>
+                  <Flex direction={{ default: 'column' }} spaceItems={{ default: 'spaceItemsMd' }}>
+                    <Flex justifyContent={{ default: 'justifyContentSpaceBetween' }} alignItems={{ default: 'alignItemsCenter' }}>
+                      <Flex spaceItems={{ default: 'spaceItemsSm' }} alignItems={{ default: 'alignItemsCenter' }}>
+                        <strong>Docker Engine</strong>
+                        <StatusBadge variant={engines.docker.installed ? (engines.docker.active ? 'green' : 'grey') : 'grey'}>
+                          {engines.docker.installed ? (engines.docker.active ? 'Active' : 'Installed') : 'Not Installed'}
+                        </StatusBadge>
+                      </Flex>
+                      {engines.docker.installed && (
+                        <Button
+                          variant={activeEngine === 'docker' ? 'primary' : 'secondary'}
+                          size="sm"
+                          onClick={() => {
+                            onSelectEngine('docker');
+                            onNotify?.('success', 'Backend Switched', 'Active container backend switched to Docker Engine.');
+                          }}
+                        >
+                          {activeEngine === 'docker' ? 'Active Backend' : 'Activate Docker'}
+                        </Button>
+                      )}
                     </Flex>
-                    {engines.docker.installed && installedEnginesCount > 1 && (
-                      <Button
-                        variant={activeEngine === 'docker' ? 'primary' : 'secondary'}
-                        size="sm"
-                        onClick={() => {
-                          onSelectEngine('docker');
-                          onNotify?.('success', 'Backend Switched', 'Active container backend switched to Docker Engine.');
-                        }}
-                      >
-                        {activeEngine === 'docker' ? 'Active Backend' : 'Activate Docker'}
-                      </Button>
-                    )}
-                  </Flex>
 
-                  <Flex justifyContent={{ default: 'justifyContentSpaceBetween' }} alignItems={{ default: 'alignItemsCenter' }}>
-                    <Flex spaceItems={{ default: 'spaceItemsSm' }} alignItems={{ default: 'alignItemsCenter' }}>
-                      <strong>Podman</strong>
-                      <StatusBadge variant={engines.podman.installed ? (engines.podman.active ? 'green' : 'grey') : 'grey'}>
-                        {engines.podman.installed ? (engines.podman.active ? 'Active' : 'Installed') : 'Not Installed'}
-                      </StatusBadge>
+                    <Flex justifyContent={{ default: 'justifyContentSpaceBetween' }} alignItems={{ default: 'alignItemsCenter' }}>
+                      <Flex spaceItems={{ default: 'spaceItemsSm' }} alignItems={{ default: 'alignItemsCenter' }}>
+                        <strong>Podman</strong>
+                        <StatusBadge variant={engines.podman.installed ? (engines.podman.active ? 'green' : 'grey') : 'grey'}>
+                          {engines.podman.installed ? (engines.podman.active ? 'Active' : 'Installed') : 'Not Installed'}
+                        </StatusBadge>
+                      </Flex>
+                      {engines.podman.installed && (
+                        <Button
+                          variant={activeEngine === 'podman' ? 'primary' : 'secondary'}
+                          size="sm"
+                          onClick={() => {
+                            onSelectEngine('podman');
+                            onNotify?.('success', 'Backend Switched', 'Active container backend switched to Podman.');
+                          }}
+                        >
+                          {activeEngine === 'podman' ? 'Active Backend' : 'Activate Podman'}
+                        </Button>
+                      )}
                     </Flex>
-                    {engines.podman.installed && installedEnginesCount > 1 && (
-                      <Button
-                        variant={activeEngine === 'podman' ? 'primary' : 'secondary'}
-                        size="sm"
-                        onClick={() => {
-                          onSelectEngine('podman');
-                          onNotify?.('success', 'Backend Switched', 'Active container backend switched to Podman.');
-                        }}
-                      >
-                        {activeEngine === 'podman' ? 'Active Backend' : 'Activate Podman'}
-                      </Button>
-                    )}
                   </Flex>
-                </Flex>
-              </CardBody>
-            </Card>
-          </GridItem>
+                </CardBody>
+              </Card>
+            </GridItem>
+          )}
 
           {/* Maintenance / System Prune Card */}
-          <GridItem span={12} md={6}>
+          <GridItem span={12} md={installedEnginesCount > 1 ? 6 : 12}>
             <Card style={{ height: '100%' }}>
               <CardTitle>Maintenance &amp; Clean Up</CardTitle>
               <CardBody>

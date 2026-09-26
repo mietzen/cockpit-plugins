@@ -339,7 +339,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({
                   <Tr>
                     <Th>Samba user</Th>
                     {allShareNames.map((sName) => (
-                      <Th key={sName}>[{sName}]</Th>
+                      <Th key={sName}>[{sName === "homes" ? "homes: /home/$USER" : sName}]</Th>
                     ))}
                   </Tr>
                 </Thead>

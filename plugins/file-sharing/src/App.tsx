@@ -61,12 +61,10 @@ export const App: React.FC = () => {
     lastNavigatedPathRef.current = view;
 
     const segments = view === "dashboard" ? [] : [view];
-    if (typeof cockpit !== "undefined" && cockpit.location && typeof cockpit.location.go === "function") {
-      cockpit.location.go(segments);
-    } else if (typeof window !== "undefined") {
+    if (typeof window !== "undefined") {
       const targetHash = segments.length > 0 ? `#/${segments.join("/")}` : "#/";
       if (window.location.hash !== targetHash) {
-        window.history.pushState(null, "", targetHash);
+        window.history.replaceState(null, "", targetHash);
       }
     }
   }, []);

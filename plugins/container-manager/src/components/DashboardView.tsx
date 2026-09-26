@@ -82,6 +82,45 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const currentEngineKey = activeEngine === 'podman' ? 'podman' : 'docker';
   const currentEngine = engines ? engines[currentEngineKey] : undefined;
 
+  const [activeSortIndex, setActiveSortIndex] = React.useState<number | null>(null);
+  const [activeSortDirection, setActiveSortDirection] = React.useState<'asc' | 'desc'>('asc');
+
+  const getSortParams = (columnIndex: number) => ({
+    sortBy: {
+      index: activeSortIndex ?? undefined,
+      direction: activeSortDirection,
+    },
+    onSort: (_event: any, index: number, direction: 'asc' | 'desc') => {
+      setActiveSortIndex(index);
+      setActiveSortDirection(direction);
+    },
+    columnIndex,
+  });
+
+  const sortedRunningContainers = React.useMemo(() => {
+    if (activeSortIndex === null) {
+      return runningContainers;
+    }
+    return [...runningContainers].sort((a, b) => {
+      let aVal = '';
+      let bVal = '';
+      if (activeSortIndex === 0) {
+        aVal = a.name;
+        bVal = b.name;
+      } else if (activeSortIndex === 1) {
+        aVal = a.image;
+        bVal = b.image;
+      } else if (activeSortIndex === 2) {
+        aVal = a.status;
+        bVal = b.status;
+      } else if (activeSortIndex === 3) {
+        aVal = a.ports;
+        bVal = b.ports;
+      }
+      return activeSortDirection === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+    });
+  }, [runningContainers, activeSortIndex, activeSortDirection]);
+
   return (
     <>
       {/* Top Header Section */}
@@ -243,15 +282,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <Table variant="compact" aria-label="Active Containers Table">
                   <Thead>
                     <Tr>
-                      <Th>Name</Th>
-                      <Th>Image</Th>
-                      <Th>Status</Th>
-                      <Th>Ports</Th>
+                      <Th sort={getSortParams(0)}>Name</Th>
+                      <Th sort={getSortParams(1)}>Image</Th>
+                      <Th sort={getSortParams(2)}>Status</Th>
+                      <Th sort={getSortParams(3)}>Ports</Th>
                       <Th style={{ textAlign: 'right' }}>Actions</Th>
                     </Tr>
                   </Thead>
                   <Tbody>
-                    {runningContainers.slice(0, 5).map((c) => (
+                    {sortedRunningContainers.slice(0, 5).map((c) => (
                       <Tr key={c.id}>
                         <Td dataLabel="Name">
                           <strong>{c.name}</strong>
