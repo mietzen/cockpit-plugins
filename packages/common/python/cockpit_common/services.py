@@ -9,16 +9,18 @@ def get_service_status(unit: str) -> Dict[str, Any]:
     rc, out, _ = run_cmd(["systemctl", "is-active", unit])
     active_state = out.strip() if rc == 0 else "inactive"
     rc_enabled, out_enabled, _ = run_cmd(["systemctl", "is-enabled", unit])
-    enabled_state = out_enabled.strip() if rc_enabled == 0 else "disabled"
-    is_installed = shutil.which("systemctl") is not None and rc in (0, 3)
+    enabled_state = out_enabled.strip()
+    is_enabled = rc_enabled == 0 and enabled_state in ("enabled", "alias", "static", "indirect")
+    is_installed = shutil.which("systemctl") is not None and (rc in (0, 3) or rc_enabled == 0)
 
     return {
         "unit": unit,
         "active": active_state == "active",
         "state": active_state,
-        "enabled": enabled_state == "enabled",
-        "installed": active_state != "unknown",
+        "enabled": is_enabled,
+        "installed": is_installed and active_state != "unknown",
     }
+
 
 
 def is_service_active(unit: str) -> bool:

@@ -16,13 +16,28 @@ from typing import Any, Dict, List, Optional, Tuple
 # Ensure local backend imports resolve
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from access_matrix import (
-    calculate_nfs_client_matrix,
-    calculate_smb_user_matrix,
-    get_user_system_groups,
-)
+from access_matrix import calculate_nfs_client_matrix, calculate_smb_user_matrix
 from nfs_parser import NfsParser
 from smb_parser import SmbParser
+
+try:
+    from cockpit_common.services import get_service_status
+except ImportError:
+    def get_service_status(unit: str) -> Dict[str, Any]:
+        rc, out, _ = run_cmd(["systemctl", "is-active", unit])
+        active_state = out.strip() if rc == 0 else "inactive"
+        rc_enabled, out_enabled, _ = run_cmd(["systemctl", "is-enabled", unit])
+        enabled_state = out_enabled.strip()
+        is_enabled = rc_enabled == 0 and enabled_state in ("enabled", "alias", "static", "indirect")
+        is_installed = shutil.which("systemctl") is not None and (rc in (0, 3) or rc_enabled == 0)
+
+        return {
+            "unit": unit,
+            "active": active_state == "active",
+            "state": active_state,
+            "enabled": is_enabled,
+            "installed": is_installed and active_state != "unknown",
+        }
 
 
 def run_cmd(cmd: List[str], check: bool = False, input_data: Optional[str] = None) -> Tuple[int, str, str]:
@@ -39,35 +54,37 @@ def run_cmd(cmd: List[str], check: bool = False, input_data: Optional[str] = Non
         return -1, "", str(e)
 
 
-def get_service_status(unit: str) -> Dict[str, Any]:
-    rc, out, _ = run_cmd(["systemctl", "is-active", unit])
-    active_state = out.strip() if rc == 0 else "inactive"
-    rc_enabled, out_enabled, _ = run_cmd(["systemctl", "is-enabled", unit])
-    enabled_state = out_enabled.strip()
-    is_enabled = rc_enabled == 0 and enabled_state in ("enabled", "alias", "static", "indirect")
-    is_installed = shutil.which("systemctl") is not None and (rc in (0, 3) or rc_enabled == 0)
-
-    return {
-        "unit": unit,
-        "active": active_state == "active",
-        "state": active_state,
-        "enabled": is_enabled,
-        "installed": is_installed and active_state != "unknown",
-    }
+def get_user_system_groups(username: str) -> List[str]:
+    """Retrieves all Unix groups associated with a username via libc/NSS."""
+    groups = set()
+    try:
+        import grp
+        entry = pwd.getpwnam(username)
+        try:
+            gids = os.getgrouplist(username, entry.pw_gid)
+            for gid in gids:
+                try:
+                    groups.add(grp.getgrgid(gid).gr_name.lower())
+                except Exception:
+                    pass
+        except Exception:
+            groups.add(grp.getgrgid(entry.pw_gid).gr_name.lower())
+    except Exception:
+        pass
+    return sorted(list(groups))
 
 
 def get_all_services_status() -> Dict[str, Any]:
     nfs_status = get_service_status("nfs-server")
-    if not nfs_status["active"] and not nfs_status["enabled"]:
-        alt_status = get_service_status("nfs-kernel-server")
-        if alt_status["active"] or alt_status["enabled"] or alt_status["installed"]:
-            nfs_status = alt_status
+    if not nfs_status["installed"]:
+        nfs_status = get_service_status("nfs-kernel-server")
 
     return {
         "smbd": get_service_status("smbd"),
         "nmbd": get_service_status("nmbd"),
         "nfs": nfs_status,
     }
+
 
 
 def get_smb_users() -> List[Dict[str, Any]]:
@@ -417,12 +434,13 @@ def main():
         elif args.action == "service_action":
             svc_name = args.service
             if svc_name == "nfs":
-                svc_name = "nfs-kernel-server" if os.path.exists("/lib/systemd/system/nfs-kernel-server.service") else "nfs-server"
+                svc_name = "nfs-server" if get_service_status("nfs-server")["installed"] else "nfs-kernel-server"
             rc, out, err = run_cmd(["systemctl", args.verb, svc_name])
             if rc != 0:
                 print(json.dumps({"status": "error", "message": f"Failed to {args.verb} {svc_name}: {err or out}"}))
                 sys.exit(1)
             print(json.dumps({"status": "success", "message": f"Service {svc_name} {args.verb}ed successfully"}))
+
 
         elif args.action == "get_zfs_mounts":
             mounts = get_zfs_mountpoints()

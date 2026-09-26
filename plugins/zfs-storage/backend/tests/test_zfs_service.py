@@ -569,7 +569,8 @@ class TestZfsServiceActions(unittest.TestCase):
         sda = next(d for d in disks if d["name"] == "sda")
         self.assertIn("tank (sda1)", sda["pool"])
         sdc = next(d for d in disks if d["name"] == "sdc")
-        self.assertEqual(sdc["pool"], "System (/)")
+        self.assertIsNone(sdc["pool"])
+
 
     @patch("os.path.realpath")
     @patch("os.path.exists", return_value=True)

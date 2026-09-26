@@ -39,6 +39,22 @@ class TestCockpitCommon(unittest.TestCase):
         self.assertTrue(res["active"])
         self.assertTrue(res["enabled"])
 
+        mock_cmd.side_effect = [
+            (0, "active", ""),
+            (0, "alias", ""),
+        ]
+        res_alias = get_service_status("nfs-kernel-server")
+        self.assertTrue(res_alias["enabled"])
+
+        mock_cmd.side_effect = [
+            (3, "inactive", ""),
+            (1, "disabled", ""),
+        ]
+        res_disabled = get_service_status("nfs-kernel-server")
+        self.assertFalse(res_disabled["active"])
+        self.assertFalse(res_disabled["enabled"])
+
+
     @patch("cockpit_common.services.run_cmd")
     def test_is_service_active(self, mock_cmd):
         mock_cmd.return_value = (0, "active", "")

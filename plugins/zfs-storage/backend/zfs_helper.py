@@ -224,14 +224,14 @@ class ZfsService:
             map_vdevs(pool.get("special", []))
             map_vdevs(pool.get("dedup", []))
 
-        def get_sys_mount(d: Dict[str, Any]) -> Optional[str]:
-            mp = d.get("mountpoint")
-            if mp and (mp in ("/", "/boot", "/boot/efi", "/usr", "/var", "/home", "/etc") or mp.startswith("/snap") or mp == "[SWAP]"):
-                return mp
-            for c in d.get("children", []):
-                s = get_sys_mount(c)
-                if s:
-                    return s
+        def get_system_mount(device_info: Dict[str, Any]) -> Optional[str]:
+            mountpoint = device_info.get("mountpoint")
+            if mountpoint and (mountpoint in ("/", "/boot", "/boot/efi", "/usr", "/var", "/home", "/etc") or mountpoint.startswith("/snap") or mountpoint == "[SWAP]"):
+                return mountpoint
+            for child in device_info.get("children", []):
+                child_mount = get_system_mount(child)
+                if child_mount:
+                    return child_mount
             return None
 
         for dev in raw_devices:
@@ -255,20 +255,16 @@ class ZfsService:
                 if not pool_name and dev.get("children"):
                     matched_pools = []
                     for child in dev["children"]:
-                        cpath = child.get("path") or f"/dev/{child.get('name')}"
-                        cname = child.get("name", "")
-                        cp = pool_device_map.get(cpath) or pool_device_map.get(cname)
-                        if cp:
-                            entry = f"{cp} ({cname})"
+                        child_path = child.get("path") or f"/dev/{child.get('name')}"
+                        child_name = child.get("name", "")
+                        matched_pool = pool_device_map.get(child_path) or pool_device_map.get(child_name)
+                        if matched_pool:
+                            entry = f"{matched_pool} ({child_name})"
                             if entry not in matched_pools:
                                 matched_pools.append(entry)
                     if matched_pools:
                         pool_name = ", ".join(matched_pools)
 
-                if not pool_name:
-                    sys_mount = get_sys_mount(dev)
-                    if sys_mount:
-                        pool_name = f"System ({sys_mount})"
 
 
                 disks.append({
