@@ -26,7 +26,6 @@ TIER_CONFIG = {
             "ConfirmModal.tsx",
             "SystemPruneModal.tsx",
             "RemoteApiModal.tsx",
-            "SettingsView.tsx",
             "containerClient.ts",
             "fileSharingClient.ts",
             "zfsClient.ts",
