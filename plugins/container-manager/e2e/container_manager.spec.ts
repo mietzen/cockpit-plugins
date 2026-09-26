@@ -411,14 +411,14 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
 
     // Click logs button on first container
     const logsBtn = frame.locator('table[aria-label="Containers Table"] button[aria-label="Logs"]').first();
-    if (await logsBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await logsBtn.click({ force: true });
-      await frame.waitForSelector('.pf-v5-c-modal-box:has-text("Logs:")', { timeout: 8000 });
+    if (await logsBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
+      await logsBtn.click();
+      await frame.waitForSelector('.pf-v5-c-modal-box:has-text("Logs:")', { timeout: 10000 });
 
       // Toggle Show Timestamps checkbox
       const timestampsCheckbox = frame.locator('input#timestamps-toggle, label:has-text("Show Timestamps")').first();
-      if (await timestampsCheckbox.count() > 0) {
-        await timestampsCheckbox.click({ force: true }).catch(() => {});
+      if (await timestampsCheckbox.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await timestampsCheckbox.click().catch(() => {});
       }
 
       // Close logs modal
