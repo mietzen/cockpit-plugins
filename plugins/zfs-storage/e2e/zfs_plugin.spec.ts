@@ -1547,7 +1547,7 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
       }
     }
 
-    const expandDiskBtn = frame.locator("table[aria-label*='Disks'] button[aria-label*="Details"], button.pf-v6-c-table__toggle, button.pf-v5-c-table__toggle, table button[aria-label*='Details']").first();
+    const expandDiskBtn = frame.locator("table[aria-label*='Disks'] button[aria-label*='Details'], button.pf-v6-c-table__toggle, button.pf-v5-c-table__toggle, table button[aria-label*='Details']").first();
     if (await expandDiskBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
       await expandDiskBtn.click({ timeout: 1000 }).catch(() => {});
       await page.waitForTimeout(200);
