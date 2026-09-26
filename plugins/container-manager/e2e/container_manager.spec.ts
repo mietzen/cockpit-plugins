@@ -150,6 +150,15 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     await frame.locator('.cockpit-top-nav-bar button:has-text("Overview")').click();
     await frame.waitForSelector('.pf-v5-c-card', { timeout: 10000 });
 
+    // Exercise active containers table column sorts if present
+    for (const colName of ['Name', 'Image', 'Status', 'Ports']) {
+      const activeTh = frame.locator(`table[aria-label="Active Containers Table"] th button:has-text("${colName}"), table[aria-label="Active Containers Table"] th:has-text("${colName}")`).first();
+      if (await activeTh.isVisible({ timeout: 1500 }).catch(() => false)) {
+        await activeTh.click();
+        await frame.waitForTimeout(200);
+      }
+    }
+
     await saveScreenshot(page, '02_overview_metrics.png');
   });
 
@@ -160,32 +169,76 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     await frame.locator('button.pf-v5-c-tabs__link:has-text("Containers"), [role="tab"]:has-text("Containers")').first().click();
     await frame.waitForSelector('table[aria-label="Containers Table"], div:has-text("No Containers Found")', { timeout: 10000 });
 
-    const nameTh = frame.locator('table[aria-label="Containers Table"] th button, table[aria-label="Containers Table"] th:has-text("Name")').first();
-    if (await nameTh.isVisible({ timeout: 2000 }).catch(() => false)) {
-      await nameTh.click();
-      await frame.waitForTimeout(300);
+    // Exercise container column sorts
+    for (const colName of ['Name', 'Image', 'State', 'Ports']) {
+      const thBtn = frame.locator(`table[aria-label="Containers Table"] th button:has-text("${colName}"), table[aria-label="Containers Table"] th:has-text("${colName}")`).first();
+      if (await thBtn.isVisible({ timeout: 1500 }).catch(() => false)) {
+        await thBtn.click();
+        await frame.waitForTimeout(200);
+      }
     }
+
+    // Exercise Stack View switcher
+    const stackViewBtn = frame.locator('button:has-text("Stack View"), [aria-label="Container View Mode Switcher"] button:has-text("Stack")').first();
+    if (await stackViewBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await stackViewBtn.click();
+      await frame.waitForTimeout(300);
+
+      // Exercise collapsible stack accordion
+      const stackHeader = frame.locator('.pf-v5-c-card__header button, [class*="-c-card"] button').first();
+      if (await stackHeader.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await stackHeader.click();
+        await frame.waitForTimeout(200);
+        await stackHeader.click();
+      }
+
+      // Switch back to List View
+      const listViewBtn = frame.locator('button:has-text("List View"), [aria-label="Container View Mode Switcher"] button:has-text("List")').first();
+      if (await listViewBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await listViewBtn.click();
+        await frame.waitForTimeout(300);
+      }
+    }
+
     await saveScreenshot(page, '03_containers_tab.png');
 
     // Click Images tab
     await frame.locator('button.pf-v5-c-tabs__link:has-text("Images"), [role="tab"]:has-text("Images")').first().click();
     await frame.waitForSelector('table[aria-label="Images Table"], div:has-text("No Images Found")', { timeout: 10000 });
 
-    const imgTh = frame.locator('table[aria-label="Images Table"] th button, table[aria-label="Images Table"] th:has-text("Repository")').first();
-    if (await imgTh.isVisible({ timeout: 2000 }).catch(() => false)) {
-      await imgTh.click();
-      await frame.waitForTimeout(300);
+    for (const colName of ['Repository', 'Tag', 'Size']) {
+      const imgTh = frame.locator(`table[aria-label="Images Table"] th button:has-text("${colName}"), table[aria-label="Images Table"] th:has-text("${colName}")`).first();
+      if (await imgTh.isVisible({ timeout: 1500 }).catch(() => false)) {
+        await imgTh.click();
+        await frame.waitForTimeout(200);
+      }
     }
     await saveScreenshot(page, '03_images_tab.png');
 
     // Click Volumes tab
     await frame.locator('button.pf-v5-c-tabs__link:has-text("Volumes"), [role="tab"]:has-text("Volumes")').first().click();
     await frame.waitForSelector('table[aria-label="Volumes Table"], div:has-text("No Volumes Found")', { timeout: 10000 });
+
+    for (const colName of ['Name', 'Driver', 'Mountpoint']) {
+      const volTh = frame.locator(`table[aria-label="Volumes Table"] th button:has-text("${colName}"), table[aria-label="Volumes Table"] th:has-text("${colName}")`).first();
+      if (await volTh.isVisible({ timeout: 1500 }).catch(() => false)) {
+        await volTh.click();
+        await frame.waitForTimeout(200);
+      }
+    }
     await saveScreenshot(page, '03_volumes_tab.png');
 
     // Click Networks tab
     await frame.locator('button.pf-v5-c-tabs__link:has-text("Networks"), [role="tab"]:has-text("Networks")').first().click();
     await frame.waitForSelector('table[aria-label="Networks Table"], div:has-text("No Networks Found")', { timeout: 10000 });
+
+    for (const colName of ['Name', 'Driver', 'Subnet']) {
+      const netTh = frame.locator(`table[aria-label="Networks Table"] th button:has-text("${colName}"), table[aria-label="Networks Table"] th:has-text("${colName}")`).first();
+      if (await netTh.isVisible({ timeout: 1500 }).catch(() => false)) {
+        await netTh.click();
+        await frame.waitForTimeout(200);
+      }
+    }
     await saveScreenshot(page, '03_networks_tab.png');
 
     // Click Settings tab
@@ -540,6 +593,12 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
           downloadCaBtn.click(),
         ]);
         expect(download.suggestedFilename()).toBe('ca.pem');
+      }
+
+      // Click Copy button in cert modal
+      const copyCertBtn = frame.locator('.pf-v5-c-modal-box button[aria-label*="Copy"]').first();
+      if (await copyCertBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await copyCertBtn.click();
       }
 
       // Close modal
