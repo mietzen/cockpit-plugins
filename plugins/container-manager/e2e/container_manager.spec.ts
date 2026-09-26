@@ -200,6 +200,17 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
       }
     }
 
+    // Click Prune Stopped if visible
+    const pruneStoppedBtn = frame.locator('button:has-text("Prune Stopped")').first();
+    if (await pruneStoppedBtn.isVisible({ timeout: 1500 }).catch(() => false)) {
+      await pruneStoppedBtn.click();
+      const cancelModalBtn = frame.locator('.pf-v5-c-modal-box button:has-text("Cancel")').first();
+      if (await cancelModalBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await cancelModalBtn.click();
+        await frame.waitForSelector('.pf-v5-c-modal-box', { state: 'detached', timeout: 5000 }).catch(() => {});
+      }
+    }
+
     await saveScreenshot(page, '03_containers_tab.png');
 
     // Click Images tab
