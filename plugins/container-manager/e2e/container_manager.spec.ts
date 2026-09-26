@@ -448,7 +448,64 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
       await frame.waitForSelector('.pf-v5-c-modal-box', { state: 'detached', timeout: 5000 });
     }
   });
+
+  test('15. Configure Remote TLS and Toggle TCP Socket in Settings', async () => {
+    const frame = await getFrame();
+
+    // Navigate to Settings
+    await frame.locator('.cockpit-top-nav-bar button:has-text("Settings")').click();
+    await frame.waitForSelector('h1:has-text("Container Settings")', { timeout: 10000 });
+
+    // Test Generate Certificates & Enable Remote TCP button if TCP not yet enabled
+    const setupBtn = frame.locator('button:has-text("Generate Certificates & Enable Remote TCP")').first();
+    if (await setupBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      const sansInput = frame.locator('input#sans-input').first();
+      if (await sansInput.count() > 0) {
+        await sansInput.fill('127.0.0.1, localhost');
+      }
+      await setupBtn.click();
+      await frame.waitForSelector('span:has-text("TCP Enabled"), button:has-text("Disable Remote TCP")', { timeout: 15000 });
+    }
+
+    // Test Disable Remote TCP button
+    const disableBtn = frame.locator('button:has-text("Disable Remote TCP")').first();
+    if (await disableBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await disableBtn.click();
+      await frame.waitForSelector('span:has-text("TCP Disabled"), button:has-text("Generate Certificates")', { timeout: 15000 });
+    }
+  });
+
+  test('16. Dashboard Active Containers Actions', async () => {
+    const frame = await getFrame();
+
+    // Navigate to Overview
+    await frame.locator('.cockpit-top-nav-bar button:has-text("Overview")').click();
+    await frame.waitForSelector('table[aria-label="Active Containers Table"], h1:has-text("Containers")', { timeout: 10000 });
+
+    // Test Inspect button on Dashboard active containers card
+    const inspectBtn = frame.locator('table[aria-label="Active Containers Table"] button[aria-label="Inspect"]').first();
+    if (await inspectBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await inspectBtn.click({ force: true });
+      await frame.waitForSelector('.pf-v5-c-modal-box:has-text("Inspect:")', { timeout: 8000 });
+
+      const closeBtn = frame.locator('.pf-v5-c-modal-box button:has-text("Close")').first();
+      await closeBtn.click();
+      await frame.waitForSelector('.pf-v5-c-modal-box', { state: 'detached', timeout: 5000 });
+    }
+
+    // Test Logs button on Dashboard active containers card
+    const logsBtn = frame.locator('table[aria-label="Active Containers Table"] button[aria-label="Logs"]').first();
+    if (await logsBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await logsBtn.click({ force: true });
+      await frame.waitForSelector('.pf-v5-c-modal-box:has-text("Logs:")', { timeout: 8000 });
+
+      const closeBtn = frame.locator('.pf-v5-c-modal-box button:has-text("Close")').first();
+      await closeBtn.click();
+      await frame.waitForSelector('.pf-v5-c-modal-box', { state: 'detached', timeout: 5000 });
+    }
+  });
 });
+
 
 
 
