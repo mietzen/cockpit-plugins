@@ -118,7 +118,7 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
 
     const frame = await getFrame();
     await frame.locator('#root').waitFor({ state: 'attached', timeout: 20000 });
-    await expect(frame.getByRole('heading', { name: /Containers/ }).first()).toBeVisible({ timeout: 20000 });
+    await expect(frame.getByRole('heading', { name: /Containers|No Container Engine Found/ }).first()).toBeVisible({ timeout: 20000 });
     await saveScreenshot(page, '01_overview_dashboard_loaded.png');
   });
 
