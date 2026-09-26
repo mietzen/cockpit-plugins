@@ -156,11 +156,23 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     // Click Containers tab
     await frame.locator('button.pf-v5-c-tabs__link:has-text("Containers"), [role="tab"]:has-text("Containers")').first().click();
     await frame.waitForSelector('table[aria-label="Containers Table"], div:has-text("No Containers Found")', { timeout: 10000 });
+
+    const nameTh = frame.locator('table[aria-label="Containers Table"] th button, table[aria-label="Containers Table"] th:has-text("Name")').first();
+    if (await nameTh.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await nameTh.click();
+      await frame.waitForTimeout(300);
+    }
     await saveScreenshot(page, '03_containers_tab.png');
 
     // Click Images tab
     await frame.locator('button.pf-v5-c-tabs__link:has-text("Images"), [role="tab"]:has-text("Images")').first().click();
     await frame.waitForSelector('table[aria-label="Images Table"], div:has-text("No Images Found")', { timeout: 10000 });
+
+    const imgTh = frame.locator('table[aria-label="Images Table"] th button, table[aria-label="Images Table"] th:has-text("Repository")').first();
+    if (await imgTh.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await imgTh.click();
+      await frame.waitForTimeout(300);
+    }
     await saveScreenshot(page, '03_images_tab.png');
 
     // Click Volumes tab
@@ -176,6 +188,12 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     // Click Settings tab
     await frame.locator('button.pf-v5-c-tabs__link:has-text("Settings"), [role="tab"]:has-text("Settings")').first().click();
     await frame.waitForSelector('h1:has-text("Container Settings"), h2:has-text("Container Engine Selection")', { timeout: 10000 });
+
+    const refreshBtn = frame.locator('button[aria-label="Refresh"], .cockpit-top-nav-bar button:has-text("Refresh")').first();
+    if (await refreshBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await refreshBtn.click();
+      await frame.waitForTimeout(500);
+    }
     await saveScreenshot(page, '03_settings_view.png');
   });
 
