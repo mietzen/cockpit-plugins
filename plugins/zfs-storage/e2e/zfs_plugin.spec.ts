@@ -1850,7 +1850,140 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     });
     await page.waitForTimeout(100);
   });
+
+  test("31. ARC Details Modal, Sanoid Policies, and Column Sorting", async () => {
+    const frame = await getFrame();
+
+    // 1. Dashboard View with ARC and Sanoid stats
+    await frame.evaluate(() => {
+      const win = window as any;
+      win.__setSystemInfo?.({
+        kernel_module_loaded: true,
+        version: "2.3.9",
+        arc: {
+          size: 8589934592,
+          target_size: 17179869184,
+          max_size: 17179869184,
+          min_size: 2147483648,
+          hits: 950000,
+          misses: 50000,
+          hit_ratio: 0.95,
+          data_hits: 800000,
+          data_misses: 40000,
+          metadata_hits: 150000,
+          metadata_misses: 10000,
+          mru_size: 4294967296,
+          mru_hits: 500000,
+          mru_ghost_hits: 10000,
+          mfu_size: 4294967296,
+          mfu_hits: 450000,
+          mfu_ghost_hits: 5000,
+          p_size: 4294967296,
+          data_size: 6442450944,
+          metadata_size: 2147483648,
+          hdr_size: 1048576,
+          other_size: 2097152,
+          dbuf_size: 5242880,
+          dnode_size: 10485760,
+          bonus_size: 1048576,
+          compressed_size: 4294967296,
+          uncompressed_size: 8589934592,
+          compression_ratio: 2.0,
+          prefetch_data_hits: 100000,
+          prefetch_data_misses: 5000,
+          prefetch_metadata_hits: 50000,
+          prefetch_metadata_misses: 1000,
+          l2_size: 68719476736,
+          l2_asize: 34359738368,
+          l2_hits: 200000,
+          l2_misses: 10000,
+          l2_feeds: 500,
+          l2_rw_clash: 0,
+          l2_cksum_bad: 0,
+          l2_io_error: 0,
+          memory_throttle_count: 0,
+        },
+        sanoid: {
+          installed: true,
+          sanoid_installed: true,
+          syncoid_installed: true,
+          sanoid_timer_active: true,
+          sanoid_service_active: false,
+          syncoid_timer_active: true,
+          syncoid_service_active: false,
+          policies: [
+            {
+              dataset: "tank/data",
+              template: "production",
+              hourly: 24,
+              daily: 30,
+              monthly: 12,
+              yearly: 1,
+              autosnap: true,
+              autoprune: true,
+              recursive: true,
+            },
+          ],
+        },
+      });
+      win.__setActiveView?.("overview");
+    });
+    await page.waitForTimeout(300);
+
+    // Open ARC Details Modal
+    const arcCard = frame.locator(".pf-v5-c-card:has-text('ARC Cache'), .pf-v6-c-card:has-text('ARC Cache')").first();
+    if (await arcCard.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await arcCard.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(300);
+
+      const closeBtn = frame.locator("[role='dialog'] button:has-text('Close'), .pf-v6-c-modal-box button:has-text('Close')").first();
+      if (await closeBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await closeBtn.click({ timeout: 1000 }).catch(() => {});
+      }
+    }
+
+    // Sort Host Disks Table on Dashboard
+    const hostDiskSorts = frame.locator("table[aria-label='Dashboard Disks Table'] button.pf-v5-c-table__button, table[aria-label='Dashboard Disks Table'] button.pf-v6-c-table__button");
+    const hdCount = await hostDiskSorts.count();
+    for (let i = 0; i < hdCount; i++) {
+      await hostDiskSorts.nth(i).click({ timeout: 500 }).catch(() => {});
+    }
+
+    // 2. DisksView sorting
+    await frame.evaluate(() => {
+      (window as any).__setActiveView?.("disks");
+    });
+    await page.waitForTimeout(200);
+    const diskSorts = frame.locator("table[aria-label='Disks Table'] button.pf-v5-c-table__button, table[aria-label='Disks Table'] button.pf-v6-c-table__button");
+    const dCount = await diskSorts.count();
+    for (let i = 0; i < dCount; i++) {
+      await diskSorts.nth(i).click({ timeout: 500 }).catch(() => {});
+    }
+
+    // 3. PoolsView sorting
+    await frame.evaluate(() => {
+      (window as any).__setActiveView?.("pools");
+    });
+    await page.waitForTimeout(200);
+    const poolSorts = frame.locator("table[aria-label='ZFS Pools Table'] button.pf-v5-c-table__button, table[aria-label='ZFS Pools Table'] button.pf-v6-c-table__button");
+    const pCount = await poolSorts.count();
+    for (let i = 0; i < pCount; i++) {
+      await poolSorts.nth(i).click({ timeout: 500 }).catch(() => {});
+    }
+
+    // 4. SnapshotsTab sorting
+    await frame.evaluate(() => {
+      (window as any).__setActiveView?.("snapshots");
+    });
+    await page.waitForTimeout(200);
+    const snapSorts = frame.locator("table button.pf-v5-c-table__button, table button.pf-v6-c-table__button");
+    const sCount = await snapSorts.count();
+    for (let i = 0; i < sCount; i++) {
+      await snapSorts.nth(i).click({ timeout: 500 }).catch(() => {});
+    }
+  });
 });
+
 
 
 

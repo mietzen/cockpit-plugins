@@ -1301,8 +1301,180 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
       try { await s.savePasswd?.(); } catch {}
       s.openDelete?.("testuser");
       try { await s.deleteUser?.(); } catch {}
+      s.openAddGroup?.();
+      try { await s.saveAddGroup?.(); } catch {}
+      s.openEditGroup?.({ name: "smbusers", gid: 1001, members: ["alice"] });
+      try { await s.saveEditGroup?.(); } catch {}
+      s.openDeleteGroup?.({ name: "smbusers", gid: 1001, members: ["alice"] });
+      try { await s.deleteGroup?.(); } catch {}
+      s.setSubTab?.("groups");
       s.setSubTab?.("matrix");
       s.setSubTab?.("users");
     });
   });
+
+  test("33. SMB Groups Tab, Modals, and Column Sorting", async () => {
+    const frame = await getFrame();
+
+    await frame.evaluate(() => {
+      const win = window as any;
+      win.__setOverviewData?.({
+        services: {
+          smbd: { unit: 'smbd', active: true, state: 'running', enabled: true, installed: true },
+          nmbd: { unit: 'nmbd', active: true, state: 'running', enabled: true, installed: true },
+          nfs: { unit: 'nfs-kernel-server', active: true, state: 'running', enabled: true, installed: true },
+        },
+        smb: {
+          global: { workgroup: 'WORKGROUP', 'server string': 'Cockpit File Server' },
+          shares: [
+            { name: 'public', path: '/srv/public', comment: 'Public share', read_only: false, guest_ok: true, is_managed: false, vfs_objects: 'fruit', fruit_time_machine: true },
+            { name: 'backups', path: '/srv/backups', comment: 'Backup share', read_only: true, guest_ok: false, is_managed: false },
+          ],
+        },
+        nfs: {
+          exports: [
+            { path: '/srv/nfs/data', clients: [{ host: '192.168.1.0/24', read_only: false, options: ['rw', 'sync'] }], file: '/etc/exports', is_managed: false },
+          ],
+          client_map: [],
+          global: { threads: 8, vers3: true, vers4: true, vers4_1: true, vers4_2: true, grace_time: 90, lease_time: 90, port: 2049 },
+        },
+        users: {
+          smb_users: [
+            { username: 'alice', is_enabled: true },
+            { username: 'bob', is_enabled: false },
+          ],
+          smb_groups: [
+            { name: 'smbusers', gid: 1001, members: ['alice', 'bob'] },
+            { name: 'smbadmin', gid: 1002, members: ['alice'] },
+          ],
+          unix_users: ['alice', 'bob', 'root'],
+          access_matrix: [],
+        },
+        sessions: [
+          { service: 'public', username: 'alice', client: '192.168.1.50', pid: '1234', machine: 'ALICE-PC', protocol: 'SMB3_11' },
+          { service: 'backups', username: 'bob', client: '192.168.1.51', pid: '1235', machine: 'BOB-PC', protocol: 'SMB3_02' },
+        ],
+        zfs_mounts: [],
+      });
+      win.__setActiveView?.("users");
+    });
+    await page.waitForTimeout(300);
+
+    // Switch to groups subtab
+    const groupsTab = frame.locator("button:has-text('Samba Groups'), button:has-text('SMB Groups')").first();
+    if (await groupsTab.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await groupsTab.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
+
+      // Click group sort headers
+      const sortHeaders = frame.locator("table[aria-label='Samba Groups Table'] button.pf-v5-c-table__button, table[aria-label='Samba Groups Table'] button.pf-v6-c-table__button, table[aria-label='Samba Groups Table'] th button");
+      const count = await sortHeaders.count();
+      for (let i = 0; i < count; i++) {
+        await sortHeaders.nth(i).click({ timeout: 500 }).catch(() => {});
+      }
+    }
+
+    // Exercise App level group handlers
+    await frame.evaluate(async () => {
+      const win = window as any;
+      try { await win.__handleCreateGroup?.("testgroup", ["alice"]); } catch {}
+      try { await win.__handleModifyGroup?.("testgroup", "testgroup2", ["alice", "bob"]); } catch {}
+      try { await win.__handleDeleteGroup?.("testgroup2"); } catch {}
+    });
+  });
+
+  test("34. Global NFS Settings and Form Controls", async () => {
+    const frame = await getFrame();
+
+    await frame.evaluate(() => {
+      const win = window as any;
+      win.__setActiveView?.("settings");
+    });
+    await page.waitForTimeout(300);
+
+    // Exercise Settings form inputs and handlers
+    await frame.evaluate(async () => {
+      const s = (window as any).__settingsViewHandlers;
+      if (!s) return;
+      s.setWorkgroup?.("MYCORP");
+      s.setServerString?.("Primary File Server");
+      s.setNetbiosName?.("FILESRV01");
+      s.setNfsThreads?.(16);
+      s.setNfsPort?.(2049);
+      s.setNfsGrace?.(60);
+      s.setNfsLease?.(60);
+      s.setNfsVers3?.(true);
+      s.setNfsVers4?.(true);
+      s.setNfsVers41?.(true);
+      s.setNfsVers42?.(true);
+      try { await s.saveSmb?.(); } catch {}
+      try { await s.saveNfs?.(); } catch {}
+    });
+
+    // Also trigger saveNfsGlobal handler on App
+    await frame.evaluate(async () => {
+      const win = window as any;
+      try {
+        await win.__handleSaveNfsGlobal?.({
+          threads: 16,
+          vers3: true,
+          vers4: true,
+          vers4_1: true,
+          vers4_2: true,
+          grace_time: 60,
+          lease_time: 60,
+          port: 2049,
+        });
+      } catch {}
+    });
+  });
+
+  test("35. Table Column Sorting on All Views", async () => {
+    const frame = await getFrame();
+
+    // 1. Dashboard View sorting
+    await frame.evaluate(() => {
+      (window as any).__setActiveView?.("overview");
+    });
+    await page.waitForTimeout(200);
+    const overviewSorts = frame.locator(".pf-v5-c-table__button, .pf-v6-c-table__button");
+    const ovCount = await overviewSorts.count();
+    for (let i = 0; i < ovCount; i++) {
+      await overviewSorts.nth(i).click({ timeout: 500 }).catch(() => {});
+    }
+
+    // 2. SMB Shares View sorting
+    await frame.evaluate(() => {
+      (window as any).__setActiveView?.("smb");
+    });
+    await page.waitForTimeout(200);
+    const smbSorts = frame.locator(".pf-v5-c-table__button, .pf-v6-c-table__button");
+    const smbCount = await smbSorts.count();
+    for (let i = 0; i < smbCount; i++) {
+      await smbSorts.nth(i).click({ timeout: 500 }).catch(() => {});
+    }
+
+    // 3. NFS Exports View sorting
+    await frame.evaluate(() => {
+      (window as any).__setActiveView?.("nfs");
+    });
+    await page.waitForTimeout(200);
+    const nfsSorts = frame.locator(".pf-v5-c-table__button, .pf-v6-c-table__button");
+    const nfsCount = await nfsSorts.count();
+    for (let i = 0; i < nfsCount; i++) {
+      await nfsSorts.nth(i).click({ timeout: 500 }).catch(() => {});
+    }
+
+    // 4. Sessions View sorting
+    await frame.evaluate(() => {
+      (window as any).__setActiveView?.("sessions");
+    });
+    await page.waitForTimeout(200);
+    const sessSorts = frame.locator(".pf-v5-c-table__button, .pf-v6-c-table__button");
+    const sessCount = await sessSorts.count();
+    for (let i = 0; i < sessCount; i++) {
+      await sessSorts.nth(i).click({ timeout: 500 }).catch(() => {});
+    }
+  });
 });
+
