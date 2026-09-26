@@ -387,10 +387,10 @@ def parse_arcstats(raw: str) -> Dict[str, Any]:
 
 
 def parse_sanoid_conf(raw: str) -> List[Dict[str, Any]]:
-    policies = []
     if not raw or not raw.strip():
-        return policies
+        return []
 
+    sections: Dict[str, Dict[str, Any]] = {}
     current_section = None
     current_props: Dict[str, Any] = {}
 
@@ -400,11 +400,8 @@ def parse_sanoid_conf(raw: str) -> List[Dict[str, Any]]:
             continue
 
         if line.startswith("[") and line.endswith("]"):
-            if current_section and not current_section.startswith("template_"):
-                policies.append({
-                    "dataset": current_section,
-                    **current_props,
-                })
+            if current_section:
+                sections[current_section] = current_props
             current_section = line[1:-1].strip()
             current_props = {}
             continue
@@ -412,22 +409,43 @@ def parse_sanoid_conf(raw: str) -> List[Dict[str, Any]]:
         if "=" in line and current_section:
             parts = line.split("=", 1)
             key = parts[0].strip().lower()
-            val = parts[1].strip().lower()
+            val = parts[1].strip()
 
-            if val in ("yes", "true", "1", "on"):
+            val_lower = val.lower()
+            if val_lower in ("yes", "true", "1", "on"):
                 current_props[key] = True
-            elif val in ("no", "false", "0", "off"):
+            elif val_lower in ("no", "false", "0", "off"):
                 current_props[key] = False
-            elif val.isdigit():
-                current_props[key] = int(val)
+            elif val_lower.isdigit():
+                current_props[key] = int(val_lower)
             else:
                 current_props[key] = val
 
-    if current_section and not current_section.startswith("template_"):
+    if current_section:
+        sections[current_section] = current_props
+
+    templates: Dict[str, Dict[str, Any]] = {}
+    for sec_name, props in sections.items():
+        if sec_name.startswith("template_"):
+            tpl_name = sec_name.replace("template_", "", 1)
+            templates[tpl_name] = props
+
+    policies = []
+    for sec_name, props in sections.items():
+        if sec_name.startswith("template_"):
+            continue
+
+        resolved: Dict[str, Any] = {}
+        tpl_name = props.get("use_template")
+        if tpl_name and tpl_name in templates:
+            resolved.update(templates[tpl_name])
+
+        resolved.update(props)
         policies.append({
-            "dataset": current_section,
-            **current_props,
+            "dataset": sec_name,
+            **resolved,
         })
 
     return policies
+
 

@@ -84,7 +84,10 @@ class ZfsService:
         sanoid_bin = run_cmd(["which", "sanoid"]).returncode == 0
         syncoid_bin = run_cmd(["which", "syncoid"]).returncode == 0
         conf_exists = os.path.exists("/etc/sanoid/sanoid.conf")
-        if not sanoid_bin and not syncoid_bin and not conf_exists:
+        p_syncoid_units = run_cmd(["systemctl", "list-unit-files", "*syncoid*", "--no-legend", "--no-pager"])
+        has_syncoid_units = p_syncoid_units.returncode == 0 and bool(p_syncoid_units.stdout.strip())
+
+        if not sanoid_bin and not syncoid_bin and not conf_exists and not has_syncoid_units:
             return {"installed": False, "sanoid_installed": False, "syncoid_installed": False, "policies": []}
 
         policies = []
@@ -98,19 +101,25 @@ class ZfsService:
 
         sanoid_timer = run_cmd(["systemctl", "is-active", "sanoid.timer"]).stdout.strip() == "active"
         sanoid_svc = run_cmd(["systemctl", "is-active", "sanoid.service"]).stdout.strip() == "active"
-        syncoid_timer = run_cmd(["systemctl", "is-active", "syncoid.timer"]).stdout.strip() == "active"
+
+        p_syncoid_timers = run_cmd(["systemctl", "list-timers", "*syncoid*", "--no-legend", "--no-pager"])
+        syncoid_timer_active = p_syncoid_timers.returncode == 0 and bool(p_syncoid_timers.stdout.strip())
+        if not syncoid_timer_active:
+            syncoid_timer_active = run_cmd(["systemctl", "is-active", "syncoid.timer"]).stdout.strip() == "active"
+
         syncoid_svc = run_cmd(["systemctl", "is-active", "syncoid.service"]).stdout.strip() == "active"
 
         return {
             "installed": True,
             "sanoid_installed": sanoid_bin or conf_exists,
-            "syncoid_installed": syncoid_bin,
+            "syncoid_installed": syncoid_bin or has_syncoid_units,
             "sanoid_timer_active": sanoid_timer,
             "sanoid_service_active": sanoid_svc,
-            "syncoid_timer_active": syncoid_timer,
+            "syncoid_timer_active": syncoid_timer_active,
             "syncoid_service_active": syncoid_svc,
             "policies": policies,
         }
+
 
 
     def get_system_info(self) -> Dict[str, Any]:
