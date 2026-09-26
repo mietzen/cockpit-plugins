@@ -237,15 +237,73 @@ errors: No known data errors
   scan: none requested
 config:
 
-	NAME        STATE     READ WRITE CKSUM
-	tank        ONLINE       0     0     0
-	  sda       ONLINE       0     0     0
+\tNAME        STATE     READ WRITE CKSUM
+\ttank        ONLINE       0     0     0
+\t  sda       ONLINE       0     0     0
 
 errors: No known data errors
 """
         parsed = parse_zpool_status(raw)
         self.assertEqual(parsed["scan"]["function"], "none")
         self.assertEqual(parsed["scan"]["state"], "none")
+
+    def test_parse_arcstats_extended(self):
+        raw = """c                               4    4194304000
+c_min                           4    1048576000
+c_max                           4    8388608000
+size                            4    3145728000
+hits                            4    10000
+misses                          4    1000
+demand_data_hits                4    7000
+demand_data_misses              4    800
+mru_size                        4    1572864000
+mfu_size                        4    1572864000
+compressed_size                 4    1000000
+uncompressed_size               4    2500000
+l2_size                         4    50000000000
+l2_hits                         4    25000
+"""
+        stats = parse_arcstats(raw)
+        self.assertEqual(stats["mru_size"], 1572864000)
+        self.assertEqual(stats["mfu_size"], 1572864000)
+        self.assertEqual(stats["compressed_size"], 1000000)
+        self.assertEqual(stats["uncompressed_size"], 2500000)
+        self.assertEqual(stats["compression_ratio"], 2.5)
+        self.assertEqual(stats["l2_size"], 50000000000)
+        self.assertEqual(stats["l2_hits"], 25000)
+
+
+    def test_parse_sanoid_conf(self):
+        raw = """[template_production]
+frequently = 0
+hourly = 36
+daily = 30
+monthly = 3
+yearly = 0
+autosnap = yes
+autoprune = yes
+
+[tank/vm_data]
+use_template = production
+hourly = 48
+recursive = yes
+
+[tank/backups]
+hourly = 12
+daily = 7
+autosnap = true
+autoprune = false
+"""
+        from backend.parsers import parse_sanoid_conf
+        policies = parse_sanoid_conf(raw)
+        self.assertEqual(len(policies), 2)
+        self.assertEqual(policies[0]["dataset"], "tank/vm_data")
+        self.assertEqual(policies[0]["hourly"], 48)
+        self.assertEqual(policies[0]["recursive"], True)
+        self.assertEqual(policies[1]["dataset"], "tank/backups")
+        self.assertEqual(policies[1]["daily"], 7)
+        self.assertEqual(policies[1]["autosnap"], True)
+        self.assertEqual(policies[1]["autoprune"], False)
 
 
 if __name__ == "__main__":

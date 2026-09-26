@@ -1,4 +1,4 @@
-import { FileSharingOverview, SmbShare, NfsExport, SmbGlobal } from '../types';
+import { FileSharingOverview, SmbShare, NfsExport, SmbGlobal, NfsGlobal } from '../types';
 
 declare global {
   interface Window {
@@ -116,6 +116,53 @@ export const fileSharingApi = {
 
   async deleteSmbUser(username: string): Promise<void> {
     const res = await execHelper(['delete_smb_user', '--username', username]);
+    if (res.status === 'error') {
+      throw new Error(res.message);
+    }
+  },
+
+  async createSmbGroup(name: string, members?: string[]): Promise<void> {
+    const args = ['create_smb_group', '--name', name];
+    if (members && members.length > 0) {
+      args.push('--members', members.join(','));
+    }
+    const res = await execHelper(args);
+    if (res.status === 'error') {
+      throw new Error(res.message);
+    }
+  },
+
+  async modifySmbGroup(name: string, newName?: string, members?: string[]): Promise<void> {
+    const args = ['modify_smb_group', '--name', name];
+    if (newName && newName.trim()) {
+      args.push('--new-name', newName.trim());
+    }
+    if (members !== undefined) {
+      args.push('--members', members.join(','));
+    }
+    const res = await execHelper(args);
+    if (res.status === 'error') {
+      throw new Error(res.message);
+    }
+  },
+
+  async deleteSmbGroup(name: string): Promise<void> {
+    const res = await execHelper(['delete_smb_group', '--name', name]);
+    if (res.status === 'error') {
+      throw new Error(res.message);
+    }
+  },
+
+  async getNfsGlobal(): Promise<NfsGlobal> {
+    const res = await execHelper(['get_nfs_global']);
+    if (res.status === 'error') {
+      throw new Error(res.message);
+    }
+    return res.global;
+  },
+
+  async saveNfsGlobal(settings: Partial<NfsGlobal>): Promise<void> {
+    const res = await execHelper(['save_nfs_global', '--data', JSON.stringify(settings)]);
     if (res.status === 'error') {
       throw new Error(res.message);
     }

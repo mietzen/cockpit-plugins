@@ -4,6 +4,7 @@ Privileged backend helper for Cockpit File Sharing plugin.
 Handles SMB/NFS management, Samba user passdb operations, service management, and ZFS discovery.
 """
 import argparse
+import grp
 import json
 import os
 import pwd
@@ -17,7 +18,7 @@ from typing import Any, Dict, List, Optional, Tuple
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from access_matrix import calculate_nfs_client_matrix, calculate_smb_user_matrix
-from nfs_parser import NfsParser
+from nfs_parser import NfsParser, get_nfs_global, save_nfs_global
 from smb_parser import SmbParser
 
 COMMON_PY_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../packages/common/python"))
@@ -127,6 +128,102 @@ def get_system_unix_users() -> List[str]:
         if entry.pw_uid >= 1000 and not entry.pw_shell.endswith(("nologin", "false")):
             users.append(entry.pw_name)
     return sorted(users)
+
+
+def get_smb_groups() -> List[Dict[str, Any]]:
+    """Retrieves all non-system or sharing-related Unix groups with GID and member list."""
+    groups: List[Dict[str, Any]] = []
+    sharing_group_names = {"sambashare", "smb_users", "smb_admin", "smbusers", "smbadmin", "users"}
+
+    smb_users = {u.get("username", "").lower() for u in get_smb_users() if u.get("username")}
+
+    primary_group_users: Dict[int, List[str]] = {}
+    for p in pwd.getpwall():
+        if p.pw_uid >= 1000 or p.pw_name in smb_users:
+            primary_group_users.setdefault(p.pw_gid, []).append(p.pw_name)
+
+    for g in grp.getgrall():
+        members_set = set(g.gr_mem) | set(primary_group_users.get(g.gr_gid, []))
+        is_sharing = (
+            g.gr_gid >= 1000
+            or g.gr_name.lower() in sharing_group_names
+            or any(m.lower() in smb_users for m in members_set)
+        )
+        if is_sharing:
+            groups.append({
+                "name": g.gr_name,
+                "gid": g.gr_gid,
+                "members": sorted(list(members_set)),
+            })
+    return sorted(groups, key=lambda x: x["name"])
+
+
+def create_smb_group(name: str, members: Optional[List[str]] = None) -> Tuple[bool, str]:
+    """Creates a new Unix group for SMB and optionally adds members."""
+    if not name or not re.match(r"^[a-zA-Z0-9_\-\.]+$", name):
+        return False, f"Invalid group name '{name}'"
+
+    if not shutil.which("groupadd"):
+        return False, "groupadd utility not found"
+
+    rc, out, err = run_cmd(["groupadd", name])
+    if rc != 0:
+        return False, f"Failed to create group: {err or out}"
+
+    if members and shutil.which("gpasswd"):
+        for m in members:
+            if m.strip():
+                run_cmd(["gpasswd", "-a", m.strip(), name])
+
+    return True, f"Group '{name}' created successfully"
+
+
+def modify_smb_group(name: str, new_name: Optional[str] = None, members: Optional[List[str]] = None) -> Tuple[bool, str]:
+    """Modifies a Unix group name and synchronizes member list."""
+    if not name:
+        return False, "Group name is required"
+
+    target_name = name
+    if new_name and new_name.strip() and new_name.strip() != name:
+        clean_new = new_name.strip()
+        if not re.match(r"^[a-zA-Z0-9_\-\.]+$", clean_new):
+            return False, f"Invalid new group name '{clean_new}'"
+        rc, out, err = run_cmd(["groupmod", "-n", clean_new, name])
+        if rc != 0:
+            return False, f"Failed to rename group: {err or out}"
+        target_name = clean_new
+
+    if members is not None and shutil.which("gpasswd"):
+        try:
+            current_entry = grp.getgrnam(target_name)
+            current_members = set(current_entry.gr_mem)
+        except KeyError:
+            current_members = set()
+
+        desired_members = {m.strip() for m in members if m.strip()}
+
+        for m in desired_members - current_members:
+            run_cmd(["gpasswd", "-a", m, target_name])
+
+        for m in current_members - desired_members:
+            run_cmd(["gpasswd", "-d", m, target_name])
+
+    return True, f"Group '{target_name}' updated successfully"
+
+
+def delete_smb_group(name: str) -> Tuple[bool, str]:
+    """Deletes a Unix group."""
+    if not name:
+        return False, "Group name is required"
+
+    if not shutil.which("groupdel"):
+        return False, "groupdel utility not found"
+
+    rc, out, err = run_cmd(["groupdel", name])
+    if rc != 0:
+        return False, f"Failed to delete group: {err or out}"
+
+    return True, f"Group '{name}' deleted successfully"
 
 
 def get_smb_sessions() -> List[Dict[str, Any]]:
@@ -245,8 +342,10 @@ def handle_get_overview(args: argparse.Namespace) -> Dict[str, Any]:
 
     nfs = NfsParser(begin_pattern=begin_p, end_pattern=end_p)
     nfs_exports = nfs.parse_all()
+    nfs_global = get_nfs_global()
 
     smb_users = get_smb_users()
+    smb_groups = get_smb_groups()
     unix_users = get_system_unix_users()
     services = get_all_services_status()
     sessions = get_smb_sessions()
@@ -264,10 +363,12 @@ def handle_get_overview(args: argparse.Namespace) -> Dict[str, Any]:
         },
         "nfs": {
             "exports": nfs_exports,
+            "global": nfs_global,
             "client_map": nfs_client_map,
         },
         "users": {
             "smb_users": smb_users,
+            "smb_groups": smb_groups,
             "unix_users": unix_users,
             "access_matrix": user_matrix,
         },
@@ -303,6 +404,11 @@ def main():
     p_del_nfs = subparsers.add_parser("delete_nfs_export")
     p_del_nfs.add_argument("--path", required=True)
 
+    p_get_nfs_global = subparsers.add_parser("get_nfs_global")
+
+    p_save_nfs_global = subparsers.add_parser("save_nfs_global")
+    p_save_nfs_global.add_argument("--data", required=True, help="JSON global NFS configuration")
+
     # User Actions
     p_create_user = subparsers.add_parser("create_smb_user")
     p_create_user.add_argument("--username", required=True)
@@ -318,6 +424,19 @@ def main():
 
     p_del_user = subparsers.add_parser("delete_smb_user")
     p_del_user.add_argument("--username", required=True)
+
+    # Group Actions
+    p_create_grp = subparsers.add_parser("create_smb_group")
+    p_create_grp.add_argument("--name", required=True)
+    p_create_grp.add_argument("--members", default="", help="Comma-separated member list")
+
+    p_mod_grp = subparsers.add_parser("modify_smb_group")
+    p_mod_grp.add_argument("--name", required=True)
+    p_mod_grp.add_argument("--new-name", default=None)
+    p_mod_grp.add_argument("--members", default=None, help="Comma-separated member list")
+
+    p_del_grp = subparsers.add_parser("delete_smb_group")
+    p_del_grp.add_argument("--name", required=True)
 
     # Service Action
     p_svc = subparsers.add_parser("service_action")
@@ -371,6 +490,21 @@ def main():
             reload_smb()
             print(json.dumps({"status": "success", "message": msg}))
 
+        elif args.action == "get_nfs_global":
+            res = get_nfs_global()
+            print(json.dumps({"status": "success", "global": res}))
+
+        elif args.action == "save_nfs_global":
+            settings = json.loads(args.data)
+            ok, msg = save_nfs_global(settings)
+            if not ok:
+                print(json.dumps({"status": "error", "message": msg}))
+                sys.exit(1)
+            # Restart or reload NFS server
+            svc_name = "nfs-server" if get_service_status("nfs-server")["installed"] else "nfs-kernel-server"
+            run_cmd(["systemctl", "restart", svc_name])
+            print(json.dumps({"status": "success", "message": msg}))
+
         elif args.action == "save_nfs_export":
             export_data = json.loads(args.data)
             nfs = NfsParser()
@@ -418,6 +552,29 @@ def main():
                 sys.exit(1)
             print(json.dumps({"status": "success", "message": f"User '{args.username}' deleted from Samba"}))
 
+        elif args.action == "create_smb_group":
+            members_list = [m.strip() for m in args.members.split(",") if m.strip()] if args.members else []
+            ok, msg = create_smb_group(args.name, members_list)
+            if not ok:
+                print(json.dumps({"status": "error", "message": msg}))
+                sys.exit(1)
+            print(json.dumps({"status": "success", "message": msg}))
+
+        elif args.action == "modify_smb_group":
+            members_list = [m.strip() for m in args.members.split(",") if m.strip()] if args.members is not None else None
+            ok, msg = modify_smb_group(args.name, new_name=args.new_name, members=members_list)
+            if not ok:
+                print(json.dumps({"status": "error", "message": msg}))
+                sys.exit(1)
+            print(json.dumps({"status": "success", "message": msg}))
+
+        elif args.action == "delete_smb_group":
+            ok, msg = delete_smb_group(args.name)
+            if not ok:
+                print(json.dumps({"status": "error", "message": msg}))
+                sys.exit(1)
+            print(json.dumps({"status": "success", "message": msg}))
+
         elif args.action == "service_action":
             svc_name = args.service
             if svc_name == "nfs":
@@ -427,7 +584,6 @@ def main():
                 print(json.dumps({"status": "error", "message": f"Failed to {args.verb} {svc_name}: {err or out}"}))
                 sys.exit(1)
             print(json.dumps({"status": "success", "message": f"Service {svc_name} {args.verb}ed successfully"}))
-
 
         elif args.action == "get_zfs_mounts":
             mounts = get_zfs_mountpoints()

@@ -645,6 +645,40 @@ class TestZfsServiceActions(unittest.TestCase):
         mock_run.return_value = MagicMock(returncode=1, stdout="", stderr="zpool not available")
         self.assertEqual(self.svc.get_pools(), [])
 
+    @patch("os.path.exists", return_value=False)
+    @patch("backend.zfs_helper.run_cmd")
+    def test_get_sanoid_info_not_installed(self, mock_run, mock_exists):
+        mock_run.return_value = MagicMock(returncode=1, stdout="", stderr="")
+        res = self.svc.get_sanoid_info()
+        self.assertFalse(res["installed"])
+        self.assertFalse(res["sanoid_installed"])
+        self.assertFalse(res["syncoid_installed"])
+        self.assertEqual(res["policies"], [])
+
+    @patch("os.path.exists")
+    @patch("builtins.open", new_callable=mock_open, read_data="[tank/data]\nuse_template = default\n[template_default]\nhourly = 24\n")
+    @patch("backend.zfs_helper.run_cmd")
+    def test_get_sanoid_info_installed(self, mock_run, mock_open_file, mock_exists):
+        mock_exists.return_value = True
+        mock_run.side_effect = [
+            MagicMock(returncode=0, stdout="/usr/bin/sanoid\n", stderr=""),  # which sanoid
+            MagicMock(returncode=0, stdout="/usr/bin/syncoid\n", stderr=""),  # which syncoid
+            MagicMock(returncode=0, stdout="syncoid-tank.timer enabled\n", stderr=""),  # list-unit-files
+            MagicMock(returncode=0, stdout="active\n", stderr=""),  # is-active sanoid.timer
+            MagicMock(returncode=0, stdout="inactive\n", stderr=""),  # is-active sanoid.service
+            MagicMock(returncode=0, stdout="NEXT LEFT LAST PASSED UNIT ACTIVATES\n...", stderr=""),  # list-timers syncoid
+            MagicMock(returncode=0, stdout="inactive\n", stderr=""),  # is-active syncoid.service
+        ]
+        res = self.svc.get_sanoid_info()
+        self.assertTrue(res["installed"])
+        self.assertTrue(res["sanoid_installed"])
+        self.assertTrue(res["syncoid_installed"])
+        self.assertTrue(res["sanoid_timer_active"])
+        self.assertTrue(res["syncoid_timer_active"])
+        self.assertEqual(len(res["policies"]), 1)
+        self.assertEqual(res["policies"][0]["dataset"], "tank/data")
+        self.assertEqual(res["policies"][0]["hourly"], 24)
+
 
 if __name__ == "__main__":
     unittest.main()

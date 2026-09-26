@@ -337,6 +337,10 @@ def parse_arcstats(raw: str) -> Dict[str, Any]:
     total = hits + misses
     hit_ratio = (hits / total) if total > 0 else 0.0
 
+    c_size = stats.get("compressed_size", 0)
+    u_size = stats.get("uncompressed_size", 0)
+    comp_ratio = (u_size / c_size) if c_size > 0 else 1.0
+
     return {
         "size": stats.get("size", 0),
         "target_size": stats.get("c", 0),
@@ -349,4 +353,99 @@ def parse_arcstats(raw: str) -> Dict[str, Any]:
         "data_misses": stats.get("demand_data_misses", 0),
         "metadata_hits": stats.get("demand_metadata_hits", 0),
         "metadata_misses": stats.get("demand_metadata_misses", 0),
+        "mru_size": stats.get("mru_size", 0),
+        "mru_hits": stats.get("mru_hits", 0),
+        "mru_ghost_hits": stats.get("mru_ghost_hits", 0),
+        "mfu_size": stats.get("mfu_size", 0),
+        "mfu_hits": stats.get("mfu_hits", 0),
+        "mfu_ghost_hits": stats.get("mfu_ghost_hits", 0),
+        "p_size": stats.get("p", 0),
+        "data_size": stats.get("data_size", 0),
+        "metadata_size": stats.get("metadata_size", 0),
+        "hdr_size": stats.get("hdr_size", 0),
+        "other_size": stats.get("other_size", 0),
+        "dbuf_size": stats.get("dbuf_size", 0),
+        "dnode_size": stats.get("dnode_size", 0),
+        "bonus_size": stats.get("bonus_size", 0),
+        "compressed_size": c_size,
+        "uncompressed_size": u_size,
+        "compression_ratio": round(comp_ratio, 2),
+        "prefetch_data_hits": stats.get("prefetch_data_hits", 0),
+        "prefetch_data_misses": stats.get("prefetch_data_misses", 0),
+        "prefetch_metadata_hits": stats.get("prefetch_metadata_hits", 0),
+        "prefetch_metadata_misses": stats.get("prefetch_metadata_misses", 0),
+        "l2_size": stats.get("l2_size", 0),
+        "l2_asize": stats.get("l2_asize", 0),
+        "l2_hits": stats.get("l2_hits", 0),
+        "l2_misses": stats.get("l2_misses", 0),
+        "l2_feeds": stats.get("l2_feeds", 0),
+        "l2_rw_clash": stats.get("l2_rw_clash", 0),
+        "l2_cksum_bad": stats.get("l2_cksum_bad", 0),
+        "l2_io_error": stats.get("l2_io_error", 0),
+        "memory_throttle_count": stats.get("memory_throttle_count", 0),
     }
+
+
+def parse_sanoid_conf(raw: str) -> List[Dict[str, Any]]:
+    if not raw or not raw.strip():
+        return []
+
+    sections: Dict[str, Dict[str, Any]] = {}
+    current_section = None
+    current_props: Dict[str, Any] = {}
+
+    for line in raw.splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or line.startswith(";"):
+            continue
+
+        if line.startswith("[") and line.endswith("]"):
+            if current_section:
+                sections[current_section] = current_props
+            current_section = line[1:-1].strip()
+            current_props = {}
+            continue
+
+        if "=" in line and current_section:
+            parts = line.split("=", 1)
+            key = parts[0].strip().lower()
+            val = parts[1].strip()
+
+            val_lower = val.lower()
+            if val_lower in ("yes", "true", "1", "on"):
+                current_props[key] = True
+            elif val_lower in ("no", "false", "0", "off"):
+                current_props[key] = False
+            elif val_lower.isdigit():
+                current_props[key] = int(val_lower)
+            else:
+                current_props[key] = val
+
+    if current_section:
+        sections[current_section] = current_props
+
+    templates: Dict[str, Dict[str, Any]] = {}
+    for sec_name, props in sections.items():
+        if sec_name.startswith("template_"):
+            tpl_name = sec_name.replace("template_", "", 1)
+            templates[tpl_name] = props
+
+    policies = []
+    for sec_name, props in sections.items():
+        if sec_name.startswith("template_"):
+            continue
+
+        resolved: Dict[str, Any] = {}
+        tpl_name = props.get("use_template")
+        if tpl_name and tpl_name in templates:
+            resolved.update(templates[tpl_name])
+
+        resolved.update(props)
+        policies.append({
+            "dataset": sec_name,
+            **resolved,
+        })
+
+    return policies
+
+

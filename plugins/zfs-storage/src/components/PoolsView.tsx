@@ -21,7 +21,7 @@ import {
   EmptyStateFooter,
   EmptyStateActions,
 } from "@patternfly/react-core";
-import { Table, Thead, Tr, Th, Tbody, Td } from "@patternfly/react-table";
+import { Table, Thead, Tr, Th, Tbody, Td, ThProps } from "@patternfly/react-table";
 import {
   PlusCircleIcon,
   DownloadIcon,
@@ -59,9 +59,25 @@ export const PoolsView: React.FC<PoolsViewProps> = ({
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [searchValue, setSearchValue] = useState("");
 
+  const [sortIndex, setSortIndex] = useState<number | null>(0);
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+
   const toggleDropdown = (poolName: string) => {
     setOpenDropdown(openDropdown === poolName ? null : poolName);
   };
+
+  const getSortParams = (columnIndex: number): ThProps['sort'] => ({
+    sortBy: {
+      index: sortIndex ?? undefined,
+      direction: sortDirection,
+      defaultDirection: 'asc',
+    },
+    onSort: (_event, index, direction) => {
+      setSortIndex(index);
+      setSortDirection(direction);
+    },
+    columnIndex,
+  });
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -74,6 +90,37 @@ export const PoolsView: React.FC<PoolsViewProps> = ({
   const filteredPools = pools.filter((p) =>
     p.name.toLowerCase().includes(searchValue.toLowerCase())
   );
+
+  const sortedPools = React.useMemo(() => {
+    if (sortIndex === null) {
+      return filteredPools;
+    }
+    return [...filteredPools].sort((a, b) => {
+      let aVal: any = '';
+      let bVal: any = '';
+      if (sortIndex === 0) {
+        aVal = a.name;
+        bVal = b.name;
+      } else if (sortIndex === 1) {
+        aVal = a.health;
+        bVal = b.health;
+      } else if (sortIndex === 2) {
+        const aUsage = a.size > 0 ? a.alloc / a.size : 0;
+        const bUsage = b.size > 0 ? b.alloc / b.size : 0;
+        return sortDirection === 'asc' ? aUsage - bUsage : bUsage - aUsage;
+      } else if (sortIndex === 3) {
+        return sortDirection === 'asc' ? a.free - b.free : b.free - a.free;
+      } else if (sortIndex === 4) {
+        return sortDirection === 'asc' ? a.frag - b.frag : b.frag - a.frag;
+      } else if (sortIndex === 5) {
+        return sortDirection === 'asc' ? a.dedup - b.dedup : b.dedup - a.dedup;
+      } else if (sortIndex === 6) {
+        aVal = a.scan?.function || '';
+        bVal = b.scan?.function || '';
+      }
+      return sortDirection === 'asc' ? String(aVal).localeCompare(String(bVal)) : String(bVal).localeCompare(String(aVal));
+    });
+  }, [filteredPools, sortIndex, sortDirection]);
 
   return (
     <>
@@ -140,18 +187,18 @@ export const PoolsView: React.FC<PoolsViewProps> = ({
               <Table aria-label="ZFS Pools Table" variant="compact" style={{ border: "none", marginBottom: 0 }}>
                 <Thead>
                   <Tr>
-                    <Th width={20}>Name</Th>
-                    <Th width={15}>Health</Th>
-                    <Th width={25}>Capacity usage</Th>
-                    <Th width={15}>Free</Th>
-                    <Th width={10}>Fragmentation</Th>
-                    <Th width={10}>Deduplication</Th>
-                    <Th width={15}>Maintenance</Th>
+                    <Th width={20} sort={getSortParams(0)}>Name</Th>
+                    <Th width={15} sort={getSortParams(1)}>Health</Th>
+                    <Th width={25} sort={getSortParams(2)}>Capacity usage</Th>
+                    <Th width={15} sort={getSortParams(3)}>Free</Th>
+                    <Th width={10} sort={getSortParams(4)}>Fragmentation</Th>
+                    <Th width={10} sort={getSortParams(5)}>Deduplication</Th>
+                    <Th width={15} sort={getSortParams(6)}>Maintenance</Th>
                     <Th width={5} screenReaderText="Actions" />
                   </Tr>
                 </Thead>
                 <Tbody>
-                  {filteredPools.map((pool) => {
+                  {sortedPools.map((pool) => {
                     const usagePct = pool.size > 0 ? (pool.alloc / pool.size) * 100 : 0;
                     const isScrubbing = pool.scan?.function === "scrub" && pool.scan?.state === "in_progress";
                     const isOnline = pool.health === "ONLINE";
@@ -197,6 +244,7 @@ export const PoolsView: React.FC<PoolsViewProps> = ({
                           )}
                         </Td>
                         <Td isActionCell>
+
                           <Dropdown
                             popperProps={{ position: "right", preventOverflow: true, appendTo: () => document.body }}
                             isOpen={openDropdown === pool.name}

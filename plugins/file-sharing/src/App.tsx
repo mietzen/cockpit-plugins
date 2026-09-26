@@ -195,6 +195,30 @@ export const App: React.FC = () => {
     await loadData(true);
   };
 
+  const handleCreateGroup = async (name: string, members: string[]) => {
+    await fileSharingApi.createSmbGroup(name, members);
+    addAlert(`SMB group [${name}] created`);
+    await loadData(true);
+  };
+
+  const handleModifyGroup = async (name: string, newName?: string, members?: string[]) => {
+    await fileSharingApi.modifySmbGroup(name, newName, members);
+    addAlert(`SMB group [${name}] updated`);
+    await loadData(true);
+  };
+
+  const handleDeleteGroup = async (name: string) => {
+    await fileSharingApi.deleteSmbGroup(name);
+    addAlert(`SMB group [${name}] deleted`);
+    await loadData(true);
+  };
+
+  const handleSaveNfsGlobal = async (nfs: any) => {
+    await fileSharingApi.saveNfsGlobal(nfs);
+    addAlert("Global NFS settings updated");
+    await loadData(true);
+  };
+
   const handleServiceAction = async (service: string, verb: "restart" | "reload") => {
     await fileSharingApi.serviceAction(service, verb);
     addAlert(`Service [${service}] ${verb}ed`);
@@ -204,7 +228,7 @@ export const App: React.FC = () => {
   const handleSaveAnsibleMarkers = (begin: string, end: string) => {
     setAnsibleBegin(begin);
     setAnsibleEnd(end);
-    addAlert("Ansible marker patterns updated");
+    addAlert("Configuration marker patterns updated");
   };
 
   useEffect(() => {
@@ -222,6 +246,10 @@ export const App: React.FC = () => {
       (window as any).__handleSetUserPassword = handleSetUserPassword;
       (window as any).__handleSetUserState = handleSetUserState;
       (window as any).__handleDeleteUser = handleDeleteUser;
+      (window as any).__handleCreateGroup = handleCreateGroup;
+      (window as any).__handleModifyGroup = handleModifyGroup;
+      (window as any).__handleDeleteGroup = handleDeleteGroup;
+      (window as any).__handleSaveNfsGlobal = handleSaveNfsGlobal;
       (window as any).__handleServiceAction = handleServiceAction;
       (window as any).__handleSaveAnsibleMarkers = handleSaveAnsibleMarkers;
     }
@@ -255,8 +283,8 @@ export const App: React.FC = () => {
       shares: [],
       ansible_markers: { begin: ansibleBegin, end: ansibleEnd },
     },
-    nfs: { exports: [], client_map: [] },
-    users: { smb_users: [], unixUsers: [], access_matrix: [] },
+    nfs: { exports: [], client_map: [], global: {} },
+    users: { smb_users: [], smb_groups: [], unix_users: [], access_matrix: [] },
     sessions: [],
     zfs_mounts: [],
   };
@@ -314,14 +342,19 @@ export const App: React.FC = () => {
       {activeView === "users" && (
         <UsersTab
           users={overview.users.smb_users}
+          groups={overview.users.smb_groups}
           unixUsers={overview.users.unix_users}
           accessMatrix={overview.users.access_matrix}
           onCreateUser={handleCreateUser}
           onSetPassword={handleSetUserPassword}
           onSetState={handleSetUserState}
           onDeleteUser={handleDeleteUser}
+          onCreateGroup={handleCreateGroup}
+          onModifyGroup={handleModifyGroup}
+          onDeleteGroup={handleDeleteGroup}
         />
       )}
+
 
       {activeView === "sessions" && (
         <SessionsTab
@@ -335,13 +368,16 @@ export const App: React.FC = () => {
       {activeView === "settings" && (
         <SettingsView
           globalSettings={overview.smb.global}
+          nfsGlobal={overview.nfs.global}
           ansibleBegin={ansibleBegin}
           ansibleEnd={ansibleEnd}
           versions={overview.versions}
           onSaveGlobal={handleSaveSmbGlobal}
+          onSaveNfsGlobal={handleSaveNfsGlobal}
           onSaveAnsibleMarkers={handleSaveAnsibleMarkers}
         />
       )}
     </Page>
   );
 };
+

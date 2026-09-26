@@ -107,13 +107,69 @@ export interface ArcStats {
   data_misses: number;
   metadata_hits: number;
   metadata_misses: number;
+  mru_size?: number;
+  mru_hits?: number;
+  mru_ghost_hits?: number;
+  mfu_size?: number;
+  mfu_hits?: number;
+  mfu_ghost_hits?: number;
+  p_size?: number;
+  data_size?: number;
+  metadata_size?: number;
+  hdr_size?: number;
+  other_size?: number;
+  dbuf_size?: number;
+  dnode_size?: number;
+  bonus_size?: number;
+  compressed_size?: number;
+  uncompressed_size?: number;
+  compression_ratio?: number;
+  prefetch_data_hits?: number;
+  prefetch_data_misses?: number;
+  prefetch_metadata_hits?: number;
+  prefetch_metadata_misses?: number;
+  l2_size?: number;
+  l2_asize?: number;
+  l2_hits?: number;
+  l2_misses?: number;
+  l2_feeds?: number;
+  l2_rw_clash?: number;
+  l2_cksum_bad?: number;
+  l2_io_error?: number;
+  memory_throttle_count?: number;
+}
+
+export interface SanoidDatasetPolicy {
+  dataset: string;
+  template?: string;
+  hourly?: number;
+  daily?: number;
+  monthly?: number;
+  yearly?: number;
+  autosnap?: boolean;
+  autoprune?: boolean;
+  recursive?: boolean;
+  process_children_only?: boolean;
+}
+
+export interface SanoidSyncoidInfo {
+  installed: boolean;
+  sanoid_installed: boolean;
+  syncoid_installed: boolean;
+  sanoid_timer_active?: boolean;
+  sanoid_service_active?: boolean;
+  syncoid_timer_active?: boolean;
+  syncoid_service_active?: boolean;
+  policies: SanoidDatasetPolicy[];
 }
 
 export interface SystemInfo {
   kernel_module_loaded: boolean;
   version: string;
   arc?: ArcStats;
+  sanoid?: SanoidSyncoidInfo;
 }
+
 
 export interface CommandResult {
   success: boolean;

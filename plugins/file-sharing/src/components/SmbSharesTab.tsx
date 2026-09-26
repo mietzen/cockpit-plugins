@@ -31,7 +31,7 @@ import {
   Tooltip,
   Alert,
 } from "@patternfly/react-core";
-import { Table, Thead, Tbody, Tr, Th, Td } from "@patternfly/react-table";
+import { Table, Thead, Tbody, Tr, Th, Td, ThProps } from "@patternfly/react-table";
 import {
   PlusCircleIcon,
   FolderOpenIcon,
@@ -156,11 +156,54 @@ export const SmbSharesTab: React.FC<SmbSharesTabProps> = ({
     }
   };
 
+  const [sortIndex, setSortIndex] = useState<number | null>(0);
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+
+  const getSortParams = (columnIndex: number): ThProps['sort'] => ({
+    sortBy: {
+      index: sortIndex ?? undefined,
+      direction: sortDirection,
+      defaultDirection: 'asc',
+    },
+    onSort: (_event, index, direction) => {
+      setSortIndex(index);
+      setSortDirection(direction);
+    },
+    columnIndex,
+  });
+
   const filteredShares = shares.filter((s) =>
     s.name.toLowerCase().includes(searchValue.toLowerCase()) ||
     s.path.toLowerCase().includes(searchValue.toLowerCase()) ||
     (s.comment && s.comment.toLowerCase().includes(searchValue.toLowerCase()))
   );
+
+  const sortedShares = React.useMemo(() => {
+    if (sortIndex === null) {
+      return filteredShares;
+    }
+    return [...filteredShares].sort((a, b) => {
+      let aVal = '';
+      let bVal = '';
+      if (sortIndex === 0) {
+        aVal = a.name;
+        bVal = b.name;
+      } else if (sortIndex === 1) {
+        aVal = a.path || '';
+        bVal = b.path || '';
+      } else if (sortIndex === 2) {
+        aVal = a.guest_ok ? 'Guest Allowed' : 'Restricted';
+        bVal = b.guest_ok ? 'Guest Allowed' : 'Restricted';
+      } else if (sortIndex === 3) {
+        aVal = a.read_only ? 'Read-Only' : 'Read/Write';
+        bVal = b.read_only ? 'Read-Only' : 'Read/Write';
+      } else if (sortIndex === 4) {
+        aVal = a.comment || '';
+        bVal = b.comment || '';
+      }
+      return sortDirection === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+    });
+  }, [filteredShares, sortIndex, sortDirection]);
 
   return (
     <>
@@ -217,16 +260,24 @@ export const SmbSharesTab: React.FC<SmbSharesTabProps> = ({
               <Table aria-label="SMB Shares Table">
                 <Thead>
                   <Tr>
-                    <Th>Share name</Th>
-                    <Th>Path</Th>
-                    <Th>Access</Th>
-                    <Th>Permissions</Th>
-                    <Th>Description</Th>
+                    <Th sort={getSortParams(0)}>Share name</Th>
+                    <Th sort={getSortParams(1)}>Path</Th>
+                    <Th sort={getSortParams(2)}>Access</Th>
+                    <Th sort={getSortParams(3)}>Permissions</Th>
+                    <Th sort={getSortParams(4)}>Description</Th>
                     <Th screenReaderText="Actions" style={{ textAlign: "right", width: "80px" }} />
                   </Tr>
                 </Thead>
                 <Tbody>
-                  {filteredShares.map((s) => (
+                  {sortedShares.map((s) => {
+                    const isFruit = Boolean(
+                      s.fruit_time_machine ||
+                      (s.vfs_objects || "").includes("fruit") ||
+                      s.name.toLowerCase().includes("time-machine") ||
+                      s.name.toLowerCase().includes("timemachine") ||
+                      Object.keys(s.raw_params || {}).some((k) => k.toLowerCase().includes("fruit"))
+                    );
+                    return (
                     <Tr key={s.name}>
                       <Td data-label="Share name">
                         <Flex alignItems={{ default: "alignItemsCenter" }} gap={{ default: "gapSm" }}>
@@ -242,7 +293,7 @@ export const SmbSharesTab: React.FC<SmbSharesTabProps> = ({
                               </Tooltip>
                             </FlexItem>
                           )}
-                          {(s.vfs_objects || "").includes("fruit") && (
+                          {isFruit && (
                             <FlexItem>
                               <Tooltip content="Apple Time Machine & macOS Fruit Extensions Enabled">
                                 <Label color="grey" icon={<AppleIcon />}>Time Machine</Label>
@@ -332,12 +383,14 @@ export const SmbSharesTab: React.FC<SmbSharesTabProps> = ({
                         )}
                       </Td>
                     </Tr>
-                  ))}
-                </Tbody>
-              </Table>
-            </CardBody>
-          </Card>
-        )}
+                  );
+                })}
+              </Tbody>
+            </Table>
+          </CardBody>
+        </Card>
+      )}
+
       </PageSection>
 
       {/* Create / Edit Modal */}

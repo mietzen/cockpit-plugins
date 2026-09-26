@@ -113,6 +113,37 @@ class TestNfsParser(unittest.TestCase):
         self.assertIsNotNone(res)
         self.assertEqual(res["clients"][0]["host"], "*")
 
+    def test_nfs_global_config(self):
+        from backend.nfs_parser import get_nfs_global, save_nfs_global
+        nfs_conf = os.path.join(self.tmp_dir, "nfs.conf")
+
+        # Initial read on empty/non-existent
+        cfg = get_nfs_global(nfs_conf)
+        self.assertEqual(cfg["threads"], 8)
+        self.assertTrue(cfg["vers3"])
+
+        # Save new configuration
+        new_settings = {
+            "threads": 16,
+            "vers3": True,
+            "vers4": True,
+            "vers4_1": True,
+            "vers4_2": False,
+            "grace_time": 60,
+            "lease_time": 60,
+            "port": 2049,
+        }
+        ok, msg = save_nfs_global(new_settings, nfs_conf)
+        self.assertTrue(ok)
+
+        # Read back
+        loaded = get_nfs_global(nfs_conf)
+        self.assertEqual(loaded["threads"], 16)
+        self.assertTrue(loaded["vers3"])
+        self.assertTrue(loaded["vers4_1"])
+        self.assertFalse(loaded["vers4_2"])
+        self.assertEqual(loaded["grace_time"], 60)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -514,7 +514,7 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     await frame.waitForSelector('table[aria-label="Images Table"], div:has-text("No Images Found")', { timeout: 10000 });
 
     const pruneImagesBtn = frame.locator('button:has-text("Prune Unused Images"), button:has-text("Prune Images")').first();
-    if (await pruneImagesBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+    if (await pruneImagesBtn.isVisible({ timeout: 3000 }).catch(() => false) && await pruneImagesBtn.isEnabled().catch(() => false)) {
       await pruneImagesBtn.click();
       await frame.waitForSelector('[role="dialog"], .pf-v6-c-modal-box, .pf-v5-c-modal-box', { timeout: 5000 });
 
@@ -532,7 +532,7 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     await frame.waitForSelector('table[aria-label="Volumes Table"], div:has-text("No Volumes Found")', { timeout: 10000 });
 
     const pruneVolumesBtn = frame.locator('button:has-text("Prune Unused Volumes"), button:has-text("Prune Volumes")').first();
-    if (await pruneVolumesBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+    if (await pruneVolumesBtn.isVisible({ timeout: 3000 }).catch(() => false) && await pruneVolumesBtn.isEnabled().catch(() => false)) {
       await pruneVolumesBtn.click();
       await frame.waitForSelector('[role="dialog"], .pf-v6-c-modal-box, .pf-v5-c-modal-box', { timeout: 5000 });
 
@@ -550,7 +550,7 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     await frame.waitForSelector('table[aria-label="Networks Table"], div:has-text("No Networks Found")', { timeout: 10000 });
 
     const pruneNetsBtn = frame.locator('button:has-text("Prune Unused Networks"), button:has-text("Prune Networks")').first();
-    if (await pruneNetsBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+    if (await pruneNetsBtn.isVisible({ timeout: 3000 }).catch(() => false) && await pruneNetsBtn.isEnabled().catch(() => false)) {
       await pruneNetsBtn.click();
       await frame.waitForSelector('[role="dialog"], .pf-v6-c-modal-box, .pf-v5-c-modal-box', { timeout: 5000 });
 
