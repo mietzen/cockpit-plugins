@@ -78,7 +78,8 @@ def fetch_release_tags(limit: int = DEFAULT_RELEASE_LIMIT) -> List[str]:
             for item in data
             if not item.get("isDraft", False) and not item.get("isPrerelease", False)
         ]
-    except Exception:
+    except Exception as e:
+        print(f"Warning: Failed to parse GitHub release list: {e}")
         return []
 
 
@@ -96,7 +97,8 @@ def fetch_release_assets(tag: str) -> Dict[str, str]:
             for asset in data.get("assets", [])
             if "name" in asset
         }
-    except Exception:
+    except Exception as e:
+        print(f"Warning: Failed to parse assets for release {tag}: {e}")
         return {}
 
 
@@ -120,27 +122,31 @@ def _parse_semver_key(tag_version: str) -> Tuple[int, ...]:
 def find_latest_tag(plugin: str, tags: List[str]) -> Optional[str]:
     """Find the latest published release tag for a given plugin using semver sorting."""
     prefix = f"{plugin}-v"
-    matched = [t for t in tags if t.startswith(prefix)]
+    matched = [t for t in tags if t.startswith(prefix) or re.match(r"^v[0-9]", t)]
     if not matched:
         return None
 
     # Sort descending by semver tuple
-    matched.sort(key=lambda t: _parse_semver_key(t[len(prefix):]), reverse=True)
+    matched.sort(key=lambda t: _parse_semver_key(t), reverse=True)
     return matched[0]
 
 
-def clean_mismatched(plugin: str, directory: str, ext: str) -> None:
-    """Remove existing files for the plugin that do not match the official release."""
+def prune_mismatched(plugin: str, directory: str, ext: str, valid_files: Set[str]) -> None:
+    """Remove existing files for the plugin that are not valid official release assets."""
     if not directory or not os.path.exists(directory):
         return
 
     for fname in os.listdir(directory):
-        if fname.endswith(ext) and f"cockpit-{plugin}" in fname:
+        if not fname.endswith(ext):
+            continue
+        name, _ = parse_pkg_info(fname)
+        if name == plugin and fname not in valid_files:
             fpath = os.path.join(directory, fname)
             try:
                 os.remove(fpath)
-            except OSError:
-                pass
+                print(f"  🗑 Removed unreleased/stale package: {fname}")
+            except OSError as e:
+                print(f"Warning: Could not remove {fname}: {e}")
 
 
 def _sync_single_asset(
@@ -156,6 +162,7 @@ def _sync_single_asset(
         if expected_digest and local_digest == expected_digest:
             print(f"  ✓ {asset_name}: Matches release {tag} digest ({local_digest[:16]}...)")
             return True
+        print(f"  ⚡ Digest mismatch for local {asset_name}. Re-downloading from {tag}...")
 
     print(f"  ↓ Downloading official release asset {asset_name} from {tag}...")
     if not download_asset(tag, asset_name, dest_file):
@@ -183,8 +190,25 @@ def sync_plugin_assets(
         print(f"  ✗ ERROR: No assets found in release tag {tag}")
         return False
 
+    # Filter assets belonging to this plugin
+    plugin_assets = {
+        name: digest
+        for name, digest in assets.items()
+        if parse_pkg_info(name)[0] == plugin
+    }
+
+    if not plugin_assets:
+        print(f"  ℹ No assets matching '{plugin}' in release tag {tag}")
+        return False
+
+    # Prune unreleased or stale local packages that aren't in official assets
+    valid_debs = {name for name in plugin_assets if name.endswith(".deb")}
+    valid_rpms = {name for name in plugin_assets if name.endswith(".rpm")}
+    prune_mismatched(plugin, deb_dir, ".deb", valid_debs)
+    prune_mismatched(plugin, rpm_dir, ".rpm", valid_rpms)
+
     success = True
-    for asset_name, expected_digest in assets.items():
+    for asset_name, expected_digest in plugin_assets.items():
         if asset_name.endswith(".deb"):
             if not _sync_single_asset(asset_name, expected_digest, deb_dir, tag):
                 success = False
@@ -238,8 +262,8 @@ def sync_packages(
         latest_tag = find_latest_tag(plugin, published_tags)
         if not latest_tag:
             print(f"  ℹ Plugin '{plugin}': No published GitHub Release found. Discarding unreleased packages.")
-            clean_mismatched(plugin, deb_dir, ".deb")
-            clean_mismatched(plugin, rpm_dir, ".rpm")
+            prune_mismatched(plugin, deb_dir, ".deb", set())
+            prune_mismatched(plugin, rpm_dir, ".rpm", set())
             continue
 
         print(f"==> Processing plugin '{plugin}' against official release '{latest_tag}'...")
