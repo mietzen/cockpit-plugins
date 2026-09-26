@@ -71,6 +71,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   const [isCertModalOpen, setIsCertModalOpen] = useState(false);
+  const [loadingCerts, setLoadingCerts] = useState<boolean>(false);
   const [certBundle, setCertBundle] = useState<ClientCertBundle | null>(null);
   const [certTab, setCertTab] = useState<number>(0);
   const [currentUser, setCurrentUser] = useState<string>('');
@@ -265,7 +266,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const isPodman = activeEngine === 'podman';
 
   const effectiveHost = tlsStatus?.hostname || hostIp;
-  const effectiveUser = tlsStatus?.user || 'user';
+  const effectiveUser = tlsStatus?.user || currentUser || 'user';
 
   const sshContextCode = isPodman
     ? `podman system connection add remote-${effectiveHost} ssh://${effectiveUser}@${effectiveHost}/run/podman/podman.sock\npodman system connection default remote-${effectiveHost}\npodman ps`
