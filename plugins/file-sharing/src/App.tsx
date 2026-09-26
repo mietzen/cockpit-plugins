@@ -28,12 +28,24 @@ declare global {
   }
 }
 
-const parseView = (segments: string[]): string => {
-  let clean = segments ? [...segments] : [];
-  if (clean.length > 0 && (clean[0] === "file-sharing" || clean[0] === "cockpit-file-sharing")) {
-    clean = clean.slice(1);
+const getSegmentsFromEnv = (): string[] => {
+  if (typeof window === "undefined") return [];
+  const hash = window.location.hash.replace(/^#\/?/, "");
+  if (hash) {
+    return hash.split("/").filter(Boolean);
   }
-  const cleanStr = clean.map((s) => s.trim().toLowerCase()).filter(Boolean);
+  if (typeof cockpit !== "undefined" && cockpit.location && Array.isArray(cockpit.location.path)) {
+    const raw = cockpit.location.path;
+    if (raw.length > 0 && ["file-sharing", "cockpit-file-sharing", "sharing", "index"].includes(raw[0].toLowerCase())) {
+      return raw.slice(1);
+    }
+    return raw;
+  }
+  return [];
+};
+
+const parseView = (segments: string[]): string => {
+  const cleanStr = segments.map((s) => s.trim().toLowerCase()).filter(Boolean);
   if (cleanStr.length === 0 || cleanStr[0] === "dashboard" || cleanStr[0] === "overview") return "dashboard";
   const v = cleanStr[0];
   if (["dashboard", "smb", "nfs", "users", "sessions", "settings"].includes(v)) {
@@ -46,16 +58,7 @@ export const App: React.FC = () => {
   useCockpitTheme();
 
   const [activeView, setActiveView] = useState<string>(() => {
-    let initialSegments: string[] = [];
-    if (typeof cockpit !== "undefined" && cockpit.location && Array.isArray(cockpit.location.path) && cockpit.location.path.length > 0) {
-      initialSegments = cockpit.location.path;
-    } else if (typeof window !== "undefined") {
-      const hash = window.location.hash.replace(/^#\/?/, "");
-      if (hash) {
-        initialSegments = hash.split("/").filter(Boolean);
-      }
-    }
-    return parseView(initialSegments);
+    return parseView(getSegmentsFromEnv());
   });
 
   const lastNavigatedPathRef = useRef<string>("");
@@ -74,15 +77,7 @@ export const App: React.FC = () => {
   }, []);
 
   const syncFromUrl = useCallback(() => {
-    let segments: string[] = [];
-    if (typeof cockpit !== "undefined" && cockpit.location && Array.isArray(cockpit.location.path) && cockpit.location.path.length > 0) {
-      segments = cockpit.location.path;
-    } else if (typeof window !== "undefined") {
-      const hash = window.location.hash.replace(/^#\/?/, "");
-      if (hash) {
-        segments = hash.split("/").filter(Boolean);
-      }
-    }
+    const segments = getSegmentsFromEnv();
     const currentPathStr = segments.length > 0 ? segments[0].toLowerCase() : "dashboard";
     if (currentPathStr === lastNavigatedPathRef.current) {
       return;
