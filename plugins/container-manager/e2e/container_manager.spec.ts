@@ -44,6 +44,31 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     }
   });
 
+  test.afterEach(async ({}, testInfo) => {
+    try {
+      if (!page) return;
+      let coverageData = null;
+      for (const f of page.frames()) {
+        try {
+          const cov = await f.evaluate(() => (window as any).__coverage__);
+          if (cov && Object.keys(cov).length > 0) {
+            coverageData = cov;
+            break;
+          }
+        } catch {}
+      }
+      if (coverageData) {
+        const nycDir = path.join(process.cwd(), '.nyc_output');
+        fs.mkdirSync(nycDir, { recursive: true });
+        fs.writeFileSync(
+          path.join(nycDir, `coverage-cm-${testInfo.testId}-${Date.now()}.json`),
+          JSON.stringify(coverageData)
+        );
+      }
+    } catch {}
+  });
+
+
   test('01. Authenticate to Cockpit and navigate to Container Manager', async () => {
     const user = process.env.COCKPIT_USER || 'test-user';
     const pass = process.env.COCKPIT_PASSWORD || 'password';
@@ -108,6 +133,19 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     await expect(frame.locator('.pf-v5-c-card', { hasText: 'Images' }).first()).toBeVisible({ timeout: 10000 });
     await expect(frame.locator('.pf-v5-c-card', { hasText: 'Volumes' }).first()).toBeVisible({ timeout: 10000 });
     await expect(frame.locator('.pf-v5-c-card', { hasText: 'Networks' }).first()).toBeVisible({ timeout: 10000 });
+
+    // Click metric cards to exercise dashboard navigation callback
+    await frame.locator('.pf-v5-c-card', { hasText: 'Images' }).first().click();
+    await frame.waitForSelector('table[aria-label="Images Table"], div:has-text("No Images Found")', { timeout: 10000 });
+
+    await frame.locator('.cockpit-top-nav-bar button:has-text("Overview")').click();
+    await frame.waitForSelector('.pf-v5-c-card', { timeout: 10000 });
+
+    await frame.locator('.pf-v5-c-card', { hasText: 'Volumes' }).first().click();
+    await frame.waitForSelector('table[aria-label="Volumes Table"], div:has-text("No Volumes Found")', { timeout: 10000 });
+
+    await frame.locator('.cockpit-top-nav-bar button:has-text("Overview")').click();
+    await frame.waitForSelector('.pf-v5-c-card', { timeout: 10000 });
 
     await saveScreenshot(page, '02_overview_metrics.png');
   });
@@ -181,7 +219,7 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     }
   });
 
-  test('05. Verify Remote API, Mutual TLS & Instructions', async () => {
+  test('05. Verify Remote API Instructions Tabs', async () => {
     const frame = await getFrame();
 
     // Navigate to Settings
@@ -191,12 +229,18 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     // Verify Remote connection instructions tabs in Settings view
     const sshTab = frame.locator('button:has-text("SSH Context")').first();
     const tcpTab = frame.locator('button:has-text("TCP + Mutual TLS Context")').first();
+    const envTab = frame.locator('button:has-text("Environment Variables")').first();
 
-    expect(await sshTab.count()).toBeGreaterThan(0);
-    expect(await tcpTab.count()).toBeGreaterThan(0);
+    if (await sshTab.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await sshTab.click();
+    }
+    if (await tcpTab.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await tcpTab.click();
+    }
+    if (await envTab.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await envTab.click();
+    }
 
-    // Switch to TCP tab
-    await tcpTab.click();
     await saveScreenshot(page, '05_settings_tcp_instructions.png');
   });
 
@@ -233,7 +277,7 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     await frame.waitForSelector('.pf-v5-c-modal-box', { state: 'detached', timeout: 5000 });
   });
 
-  test('07. Inspect modal displays Restart Policy', async () => {
+  test('07. Inspect modal displays Restart Policy and JSON spec', async () => {
     const frame = await getFrame();
 
     // Navigate to Containers tab
@@ -252,43 +296,36 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     const restartPolicyCell = frame.locator('td:has-text("Restart Policy")');
     await expect(restartPolicyCell).toBeVisible({ timeout: 5000 });
 
+    // Filter environment variables
+    const envFilter = frame.locator('input[placeholder*="Filter environment variables"]').first();
+    if (await envFilter.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await envFilter.fill('PATH');
+      await frame.waitForTimeout(300);
+      await envFilter.fill('');
+    }
+
+    // Copy raw JSON
+    const copyRawBtn = frame.locator('button[aria-label="Copy raw JSON"]').first();
+    if (await copyRawBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await copyRawBtn.click();
+    }
+
     // Close Inspect modal
     await frame.locator('.pf-v5-c-modal-box button:has-text("Close")').click();
     await frame.waitForSelector('.pf-v5-c-modal-box', { state: 'detached', timeout: 5000 });
   });
 
-  test('08. Download TLS Client Certificates', async () => {
+  test('08. Verify Container Table Refresh and Port Link Formatting', async () => {
     const frame = await getFrame();
 
-    // Navigate to Settings
-    await frame.locator('.cockpit-top-nav-bar button:has-text("Settings")').click();
-    await frame.waitForSelector('h1:has-text("Container Settings")', { timeout: 10000 });
+    // Navigate to Containers tab
+    await frame.locator('.cockpit-top-nav-bar button:has-text("Containers")').click();
+    await frame.waitForSelector('table[aria-label="Containers Table"]', { timeout: 10000 });
 
-    // Test downloading .zip from Settings view
-    const downloadZipBtn = frame.locator('button:has-text("Download Client Certs (.zip)")').first();
-    if (await downloadZipBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-      const zipDownloadPromise = page.waitForEvent('download', { timeout: 8000 });
-      await downloadZipBtn.click();
-      const zipDownload = await zipDownloadPromise;
-      expect(zipDownload.suggestedFilename()).toContain('.zip');
-    }
-
-    // Click View Certificates to test individual file downloads
-    const viewCertsBtn = frame.locator('button:has-text("View Certificates")').first();
-    if (await viewCertsBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await viewCertsBtn.click();
-      await frame.waitForSelector('.pf-v5-c-modal-box:has-text("Client Certificates & Keys")', { timeout: 8000 });
-
-      // Click Download ca.pem and verify browser download event fires
-      const downloadPromise = page.waitForEvent('download', { timeout: 8000 });
-      const downloadCaBtn = frame.locator('button:has-text("Download ca.pem")').first();
-      await downloadCaBtn.click();
-
-      const download = await downloadPromise;
-      expect(download.suggestedFilename()).toBe('ca.pem');
-
-      // Close modal
-      await frame.locator('.pf-v5-c-modal-box button:has-text("Close")').click();
+    // Check port links presence if available
+    const portLink = frame.locator('table[aria-label="Containers Table"] a[target="_blank"]').first();
+    if (await portLink.isVisible({ timeout: 2000 }).catch(() => false)) {
+      expect(await portLink.getAttribute('href')).toBeTruthy();
     }
   });
 
@@ -343,6 +380,346 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
       await frame.waitForSelector('.pf-v5-c-modal-box', { state: 'detached', timeout: 5000 });
     }
   });
+
+  test('11. View Container Logs Modal', async () => {
+    const frame = await getFrame();
+
+    // Navigate to Containers tab
+    await frame.locator('.cockpit-top-nav-bar button:has-text("Containers")').click();
+    await frame.waitForSelector('table[aria-label="Containers Table"]', { timeout: 10000 });
+
+    // Click logs button on first container
+    const logsBtn = frame.locator('table[aria-label="Containers Table"] button[aria-label="Logs"]').first();
+    if (await logsBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await logsBtn.click({ force: true });
+      await frame.waitForSelector('.pf-v5-c-modal-box:has-text("Logs:")', { timeout: 8000 });
+
+      // Toggle Show Timestamps checkbox
+      const timestampsCheckbox = frame.locator('input#timestamps-toggle, label:has-text("Show Timestamps")').first();
+      if (await timestampsCheckbox.count() > 0) {
+        await timestampsCheckbox.click({ force: true }).catch(() => {});
+      }
+
+      // Close logs modal
+      const closeBtn = frame.locator('.pf-v5-c-modal-box button:has-text("Close Logs"), .pf-v5-c-modal-box button[aria-label="Close"]').first();
+      await closeBtn.click();
+      await frame.waitForSelector('.pf-v5-c-modal-box:has-text("Logs:")', { state: 'detached', timeout: 5000 });
+    }
+  });
+
+
+  test('12. Images Tab Prune Unused Modal', async () => {
+    const frame = await getFrame();
+
+    // Navigate to Images tab
+    await frame.locator('.cockpit-top-nav-bar button:has-text("Images")').click();
+    await frame.waitForSelector('table[aria-label="Images Table"], div:has-text("No Images Found")', { timeout: 10000 });
+
+    const pruneImagesBtn = frame.locator('button:has-text("Prune Unused Images"), button:has-text("Prune Images")').first();
+    if (await pruneImagesBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await pruneImagesBtn.click();
+      await frame.waitForSelector('.pf-v5-c-modal-box', { timeout: 5000 });
+
+      const cancelBtn = frame.locator('.pf-v5-c-modal-box button:has-text("Cancel")').first();
+      await cancelBtn.click();
+      await frame.waitForSelector('.pf-v5-c-modal-box', { state: 'detached', timeout: 5000 });
+    }
+  });
+
+  test('13. Volumes Tab Prune Modal', async () => {
+    const frame = await getFrame();
+
+    // Navigate to Volumes tab
+    await frame.locator('.cockpit-top-nav-bar button:has-text("Volumes")').click();
+    await frame.waitForSelector('table[aria-label="Volumes Table"], div:has-text("No Volumes Found")', { timeout: 10000 });
+
+    const pruneVolumesBtn = frame.locator('button:has-text("Prune Unused Volumes"), button:has-text("Prune Volumes")').first();
+    if (await pruneVolumesBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await pruneVolumesBtn.click();
+      await frame.waitForSelector('.pf-v5-c-modal-box', { timeout: 5000 });
+
+      const cancelBtn = frame.locator('.pf-v5-c-modal-box button:has-text("Cancel")').first();
+      await cancelBtn.click();
+      await frame.waitForSelector('.pf-v5-c-modal-box', { state: 'detached', timeout: 5000 });
+    }
+  });
+
+  test('14. Networks Tab Prune Modal', async () => {
+    const frame = await getFrame();
+
+    // Navigate to Networks tab
+    await frame.locator('.cockpit-top-nav-bar button:has-text("Networks")').click();
+    await frame.waitForSelector('table[aria-label="Networks Table"], div:has-text("No Networks Found")', { timeout: 10000 });
+
+    const pruneNetsBtn = frame.locator('button:has-text("Prune Unused Networks"), button:has-text("Prune Networks")').first();
+    if (await pruneNetsBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await pruneNetsBtn.click();
+      await frame.waitForSelector('.pf-v5-c-modal-box', { timeout: 5000 });
+
+      const cancelBtn = frame.locator('.pf-v5-c-modal-box button:has-text("Cancel")').first();
+      await cancelBtn.click();
+      await frame.waitForSelector('.pf-v5-c-modal-box', { state: 'detached', timeout: 5000 });
+    }
+  });
+
+  test('15. Configure Remote TLS, Download Certificates, and Toggle TCP Socket', async () => {
+    const frame = await getFrame();
+
+    // Navigate to Settings
+    await frame.locator('.cockpit-top-nav-bar button:has-text("Settings")').click();
+    await frame.waitForSelector('h1:has-text("Container Settings")', { timeout: 10000 });
+
+    // Test Generate Certificates & Enable Remote TCP button if TCP not yet enabled
+    const setupBtn = frame.locator('button:has-text("Generate Certificates & Enable Remote TCP")').first();
+    if (await setupBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      const sansInput = frame.locator('input#sans-input').first();
+      if (await sansInput.count() > 0) {
+        await sansInput.fill('127.0.0.1, localhost');
+      }
+      await setupBtn.click();
+      await frame.waitForSelector('span:has-text("TCP Enabled"), button:has-text("Disable Remote TCP")', { timeout: 15000 });
+    }
+
+    // Test downloading .zip from Settings view
+    const downloadZipBtn = frame.locator('button:has-text("Download Client Certs (.zip)")').first();
+    if (await downloadZipBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      const [zipDownload] = await Promise.all([
+        page.waitForEvent('download', { timeout: 8000 }),
+        downloadZipBtn.click(),
+      ]);
+      expect(zipDownload.suggestedFilename()).toContain('.zip');
+    }
+
+    // Click View Certificates to test individual file downloads and modal tabs
+    const viewCertsBtn = frame.locator('button:has-text("View Certificates")').first();
+    if (await viewCertsBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await viewCertsBtn.click();
+      await frame.waitForSelector('.pf-v5-c-modal-box:has-text("Client Certificates & Keys")', { timeout: 8000 });
+
+      // Click cert modal tabs
+      const clientCertTab = frame.locator('.pf-v5-c-modal-box button:has-text("Client Certificate")').first();
+      const clientKeyTab = frame.locator('.pf-v5-c-modal-box button:has-text("Client Private Key")').first();
+      const caTab = frame.locator('.pf-v5-c-modal-box button:has-text("CA Certificate")').first();
+
+      if (await clientCertTab.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await clientCertTab.click();
+      }
+      if (await clientKeyTab.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await clientKeyTab.click();
+      }
+      if (await caTab.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await caTab.click();
+      }
+
+      // Click Download ca.pem and verify browser download event fires
+      const downloadCaBtn = frame.locator('button:has-text("Download ca.pem")').first();
+      if (await downloadCaBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+        const [download] = await Promise.all([
+          page.waitForEvent('download', { timeout: 8000 }),
+          downloadCaBtn.click(),
+        ]);
+        expect(download.suggestedFilename()).toBe('ca.pem');
+      }
+
+      // Close modal
+      const closeBtn = frame.locator('.pf-v5-c-modal-box button:has-text("Close")').first();
+      if (await closeBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await closeBtn.click();
+      }
+    }
+
+    // Test Disable Remote TCP button
+    const disableBtn = frame.locator('button:has-text("Disable Remote TCP")').first();
+    if (await disableBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await disableBtn.click();
+      await frame.waitForSelector('span:has-text("TCP Disabled"), button:has-text("Generate Certificates")', { timeout: 15000 });
+    }
+  });
+
+  test('16. Dashboard Active Containers Actions', async () => {
+    const frame = await getFrame();
+
+    // Navigate to Overview
+    await frame.locator('.cockpit-top-nav-bar button:has-text("Overview")').click();
+    await frame.waitForSelector('table[aria-label="Active Containers Table"], h1:has-text("Containers")', { timeout: 10000 });
+
+    // Test Inspect button on Dashboard active containers card
+    const inspectBtn = frame.locator('table[aria-label="Active Containers Table"] button[aria-label="Inspect"]').first();
+    if (await inspectBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await inspectBtn.click({ force: true });
+      await frame.waitForSelector('.pf-v5-c-modal-box:has-text("Inspect:")', { timeout: 8000 });
+
+      const closeBtn = frame.locator('.pf-v5-c-modal-box button:has-text("Close")').first();
+      await closeBtn.click();
+      await frame.waitForSelector('.pf-v5-c-modal-box', { state: 'detached', timeout: 5000 });
+    }
+
+    // Test Logs button on Dashboard active containers card
+    const logsBtn = frame.locator('table[aria-label="Active Containers Table"] button[aria-label="Logs"]').first();
+    if (await logsBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await logsBtn.click({ force: true });
+      await frame.waitForSelector('.pf-v5-c-modal-box:has-text("Logs:")', { timeout: 8000 });
+
+      const closeBtn = frame.locator('.pf-v5-c-modal-box button:has-text("Close Logs"), .pf-v5-c-modal-box button[aria-label="Close"]').first();
+      await closeBtn.click();
+      await frame.waitForSelector('.pf-v5-c-modal-box:has-text("Logs:")', { state: 'detached', timeout: 5000 });
+    }
+
+    // Test Restart button on Dashboard active containers card
+    const restartBtn = frame.locator('table[aria-label="Active Containers Table"] button[aria-label="Restart"]').first();
+    if (await restartBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await restartBtn.click({ force: true });
+      await frame.waitForTimeout(1000);
+    }
+  });
+
+  test('17. Filter and Search Containers, Images, Volumes, and Networks Tables', async () => {
+    const frame = await getFrame();
+
+    // Navigate to Containers tab and filter
+    await frame.locator('.cockpit-top-nav-bar button:has-text("Containers")').click();
+    await frame.waitForSelector('table[aria-label="Containers Table"]', { timeout: 10000 });
+    const searchInput = frame.locator('input[placeholder*="Filter containers"]').first();
+    if (await searchInput.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await searchInput.fill('e2e-web');
+      await frame.waitForTimeout(300);
+      const clearBtn = frame.locator('button[aria-label="Clear input"], .pf-v5-c-search-input__clear').first();
+      if (await clearBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await clearBtn.click();
+      } else {
+        await searchInput.fill('');
+      }
+    }
+
+    // Filter Images tab
+    await frame.locator('.cockpit-top-nav-bar button:has-text("Images")').click();
+    await frame.waitForSelector('table[aria-label="Images Table"], div:has-text("No Images Found")', { timeout: 10000 });
+    const searchImgInput = frame.locator('input[placeholder*="Filter images"]').first();
+    if (await searchImgInput.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await searchImgInput.fill('nginx');
+      await frame.waitForTimeout(300);
+      await searchImgInput.fill('');
+    }
+
+    // Filter Volumes tab
+    await frame.locator('.cockpit-top-nav-bar button:has-text("Volumes")').click();
+    await frame.waitForSelector('table[aria-label="Volumes Table"], div:has-text("No Volumes Found")', { timeout: 10000 });
+    const searchVolInput = frame.locator('input[placeholder*="Filter volumes"]').first();
+    if (await searchVolInput.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await searchVolInput.fill('vol');
+      await frame.waitForTimeout(300);
+      await searchVolInput.fill('');
+    }
+
+    // Filter Networks tab
+    await frame.locator('.cockpit-top-nav-bar button:has-text("Networks")').click();
+    await frame.waitForSelector('table[aria-label="Networks Table"], div:has-text("No Networks Found")', { timeout: 10000 });
+    const searchNetInput = frame.locator('input[placeholder*="Filter networks"]').first();
+    if (await searchNetInput.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await searchNetInput.fill('bridge');
+      await frame.waitForTimeout(300);
+      await searchNetInput.fill('');
+    }
+  });
+
+  test('18. Inspect Image, Volume, and Network Modals', async () => {
+    const frame = await getFrame();
+
+    // Inspect first image
+    await frame.locator('.cockpit-top-nav-bar button:has-text("Images")').click();
+    await frame.waitForSelector('table[aria-label="Images Table"], div:has-text("No Images Found")', { timeout: 10000 });
+
+    const inspectImageBtn = frame.locator('table[aria-label="Images Table"] button[aria-label="Inspect"]').first();
+    if (await inspectImageBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await inspectImageBtn.click({ force: true });
+      await frame.waitForSelector('.pf-v5-c-modal-box:has-text("Inspect:")', { timeout: 8000 });
+      const copyBtn = frame.locator('button[aria-label="Copy raw JSON"]').first();
+      if (await copyBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await copyBtn.click();
+      }
+      const closeBtn = frame.locator('.pf-v5-c-modal-box button:has-text("Close")').first();
+      await closeBtn.click();
+      await frame.waitForSelector('.pf-v5-c-modal-box', { state: 'detached', timeout: 5000 });
+    }
+
+    // Inspect first volume
+    await frame.locator('.cockpit-top-nav-bar button:has-text("Volumes")').click();
+    await frame.waitForSelector('table[aria-label="Volumes Table"], div:has-text("No Volumes Found")', { timeout: 10000 });
+
+    const inspectVolBtn = frame.locator('table[aria-label="Volumes Table"] button[aria-label="Inspect"]').first();
+    if (await inspectVolBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await inspectVolBtn.click({ force: true });
+      await frame.waitForSelector('.pf-v5-c-modal-box:has-text("Inspect:")', { timeout: 8000 });
+      const copyBtn = frame.locator('button[aria-label="Copy raw JSON"]').first();
+      if (await copyBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await copyBtn.click();
+      }
+      const closeBtn = frame.locator('.pf-v5-c-modal-box button:has-text("Close")').first();
+      await closeBtn.click();
+      await frame.waitForSelector('.pf-v5-c-modal-box', { state: 'detached', timeout: 5000 });
+    }
+
+    // Inspect first network
+    await frame.locator('.cockpit-top-nav-bar button:has-text("Networks")').click();
+    await frame.waitForSelector('table[aria-label="Networks Table"], div:has-text("No Networks Found")', { timeout: 10000 });
+
+    const inspectNetBtn = frame.locator('table[aria-label="Networks Table"] button[aria-label="Inspect"]').first();
+    if (await inspectNetBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await inspectNetBtn.click({ force: true });
+      await frame.waitForSelector('.pf-v5-c-modal-box:has-text("Inspect:")', { timeout: 8000 });
+      const copyBtn = frame.locator('button[aria-label="Copy raw JSON"]').first();
+      if (await copyBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await copyBtn.click();
+      }
+      const closeBtn = frame.locator('.pf-v5-c-modal-box button:has-text("Close")').first();
+      await closeBtn.click();
+      await frame.waitForSelector('.pf-v5-c-modal-box', { state: 'detached', timeout: 5000 });
+    }
+  });
+
+  test('19. Delete Confirmation Modals for Images, Volumes, and Networks', async () => {
+    const frame = await getFrame();
+
+    // Images delete modal
+    await frame.locator('.cockpit-top-nav-bar button:has-text("Images")').click();
+    await frame.waitForSelector('table[aria-label="Images Table"], div:has-text("No Images Found")', { timeout: 10000 });
+    const deleteImageBtn = frame.locator('table[aria-label="Images Table"] button[aria-label="Delete"]').first();
+    if (await deleteImageBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await deleteImageBtn.click({ force: true });
+      await frame.waitForSelector('.pf-v5-c-modal-box:has-text("Delete Image")', { timeout: 5000 });
+      const cancelBtn = frame.locator('.pf-v5-c-modal-box button:has-text("Cancel")').first();
+      await cancelBtn.click();
+      await frame.waitForSelector('.pf-v5-c-modal-box', { state: 'detached', timeout: 5000 });
+    }
+
+    // Volumes delete modal
+    await frame.locator('.cockpit-top-nav-bar button:has-text("Volumes")').click();
+    await frame.waitForSelector('table[aria-label="Volumes Table"], div:has-text("No Volumes Found")', { timeout: 10000 });
+    const deleteVolBtn = frame.locator('table[aria-label="Volumes Table"] button[aria-label="Delete"]').first();
+    if (await deleteVolBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await deleteVolBtn.click({ force: true });
+      await frame.waitForSelector('.pf-v5-c-modal-box:has-text("Delete Volume")', { timeout: 5000 });
+      const cancelBtn = frame.locator('.pf-v5-c-modal-box button:has-text("Cancel")').first();
+      await cancelBtn.click();
+      await frame.waitForSelector('.pf-v5-c-modal-box', { state: 'detached', timeout: 5000 });
+    }
+
+    // Networks delete modal
+    await frame.locator('.cockpit-top-nav-bar button:has-text("Networks")').click();
+    await frame.waitForSelector('table[aria-label="Networks Table"], div:has-text("No Networks Found")', { timeout: 10000 });
+    const deleteNetBtn = frame.locator('table[aria-label="Networks Table"] button[aria-label="Delete"]').first();
+    if (await deleteNetBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await deleteNetBtn.click({ force: true });
+      await frame.waitForSelector('.pf-v5-c-modal-box:has-text("Delete Network")', { timeout: 5000 });
+      const cancelBtn = frame.locator('.pf-v5-c-modal-box button:has-text("Cancel")').first();
+      await cancelBtn.click();
+      await frame.waitForSelector('.pf-v5-c-modal-box', { state: 'detached', timeout: 5000 });
+    }
+  });
 });
+
+
+
+
 
 

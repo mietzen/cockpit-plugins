@@ -4,53 +4,107 @@ Calculates effective access matrices:
 1. Samba User -> Shares Permission Matrix (Read/Write, Read Only, Denied, Guest)
 2. NFS Client IP/Subnet -> Exports Access Map
 """
-from typing import Any, Dict, List
+from enum import Enum
+import shlex
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 
-def parse_user_list(list_str: str) -> List[str]:
-    if not list_str:
+class AclTokenType(str, Enum):
+    USER = "user"
+    GROUP = "group"
+
+
+def parse_acl_tokens(acl_str: str) -> List[Tuple[AclTokenType, str]]:
+    """Parses space- or comma-separated tokens into (token_type, name), supporting quotes."""
+    if not acl_str:
         return []
-    return [u.strip().lstrip("@+&").lower() for u in list_str.replace(",", " ").split() if u.strip()]
+
+    tokens = []
+    try:
+        raw_items = shlex.split(acl_str.replace(",", " "))
+    except ValueError:
+        raw_items = acl_str.replace(",", " ").split()
+
+    for raw in raw_items:
+        token = raw.strip()
+        if not token:
+            continue
+        if token.startswith(("@", "+", "&")):
+            group_name = token.lstrip("@+&").strip().lower()
+            if group_name:
+                tokens.append((AclTokenType.GROUP, group_name))
+        else:
+            tokens.append((AclTokenType.USER, token.lower()))
+
+    return tokens
+
+
+
+def evaluate_acl(username: str, user_groups: Set[str], tokens: List[Tuple[AclTokenType, str]]) -> Tuple[bool, str]:
+    """Evaluates if a user or user's group matches any token in the ACL."""
+    if not tokens:
+        return False, ""
+
+    user_lower = username.lower()
+    for token_type, name in tokens:
+        if token_type == AclTokenType.USER and name == user_lower:
+            return True, "user"
+        if token_type == AclTokenType.GROUP and name in user_groups:
+            return True, f"@{name}"
+
+    return False, ""
+
+
+def format_acl_reason(list_name: str, match_source: str) -> str:
+    """Formats human-readable reason for an ACL match."""
+    if match_source == "user":
+        return f"Explicitly in {list_name} list"
+    return f"Member of group '{match_source}' in {list_name} list"
 
 
 def calculate_smb_user_matrix(shares: List[Dict[str, Any]], users: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     matrix: List[Dict[str, Any]] = []
 
-    for u in users:
-        username = u.get("username", "").strip().lower()
+    for user in users:
+        username = user.get("username", "").strip().lower()
+        user_groups = {group.strip().lower() for group in user.get("groups", [])}
         user_shares = []
 
-        for s in shares:
-            s_name = s.get("name", "")
-            s_path = s.get("path", "")
-            read_only = s.get("read_only", True)
-            guest_ok = s.get("guest_ok", False)
+        for share in shares:
+            share_name = share.get("name", "")
+            share_path = share.get("path", "")
+            read_only = share.get("read_only", True)
+            guest_ok = share.get("guest_ok", False)
 
-            valid_users = parse_user_list(s.get("valid_users", ""))
-            invalid_users = parse_user_list(s.get("invalid_users", ""))
-            write_list = parse_user_list(s.get("write_list", ""))
-            read_list = parse_user_list(s.get("read_list", ""))
+            inv_tokens = parse_acl_tokens(share.get("invalid_users", ""))
+            val_tokens = parse_acl_tokens(share.get("valid_users", ""))
+            wr_tokens = parse_acl_tokens(share.get("write_list", ""))
+            rd_tokens = parse_acl_tokens(share.get("read_list", ""))
 
-            # Evaluate effective permission
+            inv_match, inv_src = evaluate_acl(username, user_groups, inv_tokens)
+            val_match, _ = evaluate_acl(username, user_groups, val_tokens)
+            wr_match, wr_src = evaluate_acl(username, user_groups, wr_tokens)
+            rd_match, rd_src = evaluate_acl(username, user_groups, rd_tokens)
+
             status = "read_only"
             reason = "Default share permissions"
 
-            if username in invalid_users:
+            if inv_match:
                 status = "denied"
-                reason = "Explicitly in invalid users list"
-            elif valid_users and username not in valid_users:
+                reason = format_acl_reason("invalid users", inv_src)
+            elif val_tokens and not val_match:
                 if guest_ok:
                     status = "guest_only"
                     reason = "Not in valid users, but guest access allowed"
                 else:
                     status = "denied"
-                    reason = "Not included in valid users list"
-            elif username in write_list:
+                    reason = "Not included in valid users or group list"
+            elif wr_match:
                 status = "read_write"
-                reason = "Explicitly in write list"
-            elif username in read_list:
+                reason = format_acl_reason("write", wr_src)
+            elif rd_match:
                 status = "read_only"
-                reason = "Explicitly in read list"
+                reason = format_acl_reason("read", rd_src)
             elif not read_only:
                 status = "read_write"
                 reason = "Share configured as read only = no"
@@ -59,22 +113,24 @@ def calculate_smb_user_matrix(shares: List[Dict[str, Any]], users: List[Dict[str
                 reason = "Share configured as read only = yes"
 
             user_shares.append({
-                "share_name": s_name,
-                "share_path": s_path,
-                "access": status,  # "read_write" | "read_only" | "denied" | "guest_only"
+                "share_name": share_name,
+                "share_path": share_path,
+                "access": status,
                 "reason": reason,
-                "is_managed": s.get("is_managed", False),
+                "is_managed": share.get("is_managed", False),
                 "guest_ok": guest_ok,
             })
 
         matrix.append({
-            "username": u.get("username", ""),
-            "full_name": u.get("full_name", ""),
-            "is_enabled": u.get("is_enabled", True),
+            "username": user.get("username", ""),
+            "full_name": user.get("full_name", ""),
+            "is_enabled": user.get("is_enabled", True),
             "shares": user_shares,
         })
 
     return matrix
+
+
 
 
 def calculate_nfs_client_matrix(exports: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
