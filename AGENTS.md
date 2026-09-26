@@ -3,9 +3,9 @@
 ## 1. Monorepo Structure
 - `packages/common/`: Foundation package (`@cockpit-plugins/common`) containing canonical theme CSS, `useCockpitTheme()` hook, UI helpers, and `cockpit_common` Python utilities.
 - `plugins/`: Cockpit plugin packages:
-  - `plugins/zfs-storage/`: OpenZFS storage manager (`cockpit-zfs-storage`, v0.6.0).
-  - `plugins/file-sharing/`: SMB & NFS manager (`cockpit-file-sharing`, v0.2.0).
-  - `plugins/container-manager/`: Docker & Podman manager (`cockpit-container-manager`, v0.2.0).
+  - `plugins/zfs-storage/`: OpenZFS storage manager (`cockpit-zfs-storage`, v0.6.1).
+  - `plugins/file-sharing/`: SMB & NFS manager (`cockpit-file-sharing`, v0.2.1).
+  - `plugins/container-manager/`: Docker & Podman manager (`cockpit-container-manager`, v0.2.1).
 - `tools/`: Packaging and repository automation (`build_deb.sh`, `build_rpm.sh`, `generate_apt_repo.py`, `generate_rpm_repo.py`).
 - `.agents/skills/`: Discovered agent skill definitions.
 
