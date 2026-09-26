@@ -195,10 +195,47 @@ export const NfsExportsTab: React.FC<NfsExportsTabProps> = ({
     });
   }, [filteredExports, sortIndex, sortDirection]);
 
+  const [clientSortIndex, setClientSortIndex] = useState<number | null>(0);
+  const [clientSortDirection, setClientSortDirection] = useState<'asc' | 'desc'>('asc');
+
+  const getClientSortParams = (columnIndex: number): ThProps['sort'] => ({
+    sortBy: {
+      index: clientSortIndex ?? undefined,
+      direction: clientSortDirection,
+      defaultDirection: 'asc',
+    },
+    onSort: (_event, index, direction) => {
+      setClientSortIndex(index);
+      setClientSortDirection(direction);
+    },
+    columnIndex,
+  });
+
   const filteredClientMap = clientMap.filter((c) =>
     c.client.toLowerCase().includes(searchValue.toLowerCase()) ||
     c.exports.some((e) => e.path.toLowerCase().includes(searchValue.toLowerCase()))
   );
+
+  const sortedClientMap = React.useMemo(() => {
+    if (clientSortIndex === null) {
+      return filteredClientMap;
+    }
+    return [...filteredClientMap].sort((a, b) => {
+      let aVal = '';
+      let bVal = '';
+      if (clientSortIndex === 0) {
+        aVal = a.client;
+        bVal = b.client;
+      } else if (clientSortIndex === 1) {
+        aVal = a.exports.map((e) => e.path).join(', ');
+        bVal = b.exports.map((e) => e.path).join(', ');
+      } else if (clientSortIndex === 2) {
+        aVal = a.exports.map((e) => (e.options || []).join(', ')).join('; ');
+        bVal = b.exports.map((e) => (e.options || []).join(', ')).join('; ');
+      }
+      return clientSortDirection === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+    });
+  }, [filteredClientMap, clientSortIndex, clientSortDirection]);
 
   return (
     <>
@@ -373,13 +410,13 @@ export const NfsExportsTab: React.FC<NfsExportsTabProps> = ({
               <Table aria-label="Client IP Access Map Table">
                 <Thead>
                   <Tr>
-                    <Th>Client Host / Network Subnet</Th>
-                    <Th>Accessible Exports</Th>
-                    <Th>Mount Options</Th>
+                    <Th sort={getClientSortParams(0)}>Client Host / Network Subnet</Th>
+                    <Th sort={getClientSortParams(1)}>Accessible Exports</Th>
+                    <Th sort={getClientSortParams(2)}>Mount Options</Th>
                   </Tr>
                 </Thead>
                 <Tbody>
-                  {filteredClientMap.map((cm) => (
+                  {sortedClientMap.map((cm) => (
                     <Tr key={cm.client}>
                       <Td data-label="Client Host / Subnet">
                         <strong><NetworkIcon style={{ marginRight: 8, color: "var(--zfs-tab-active-color)" }} />{cm.client}</strong>
@@ -403,7 +440,7 @@ export const NfsExportsTab: React.FC<NfsExportsTabProps> = ({
                       </Td>
                     </Tr>
                   ))}
-                  {filteredClientMap.length === 0 && (
+                  {sortedClientMap.length === 0 && (
                     <Tr>
                       <Td colSpan={3} style={{ textAlign: "center", padding: "2rem", color: "var(--zfs-text-secondary)" }}>
                         No client networks matching search criteria.

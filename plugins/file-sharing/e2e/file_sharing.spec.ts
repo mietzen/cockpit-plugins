@@ -1496,6 +1496,18 @@ test.describe.serial("Cockpit File Sharing Plugin Comprehensive E2E Suite", () =
       await nfsSorts.nth(i).click({ timeout: 500 }).catch(() => {});
     }
 
+    // Switch to Client Map subtab in NFS
+    const clientMapTab = frame.locator("button:has-text('Client IP Access Map')").first();
+    if (await clientMapTab.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await clientMapTab.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
+      const clientSorts = frame.locator("table[aria-label='Client IP Access Map Table'] .pf-v5-c-table__button, table[aria-label='Client IP Access Map Table'] .pf-v6-c-table__button");
+      const cCount = await clientSorts.count();
+      for (let i = 0; i < cCount; i++) {
+        await clientSorts.nth(i).click({ timeout: 500 }).catch(() => {});
+      }
+    }
+
     // 4. Sessions View sorting
     await frame.evaluate(() => {
       (window as any).__setActiveView?.("sessions");
