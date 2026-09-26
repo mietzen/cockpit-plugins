@@ -456,9 +456,10 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     // Test downloading .zip from Settings view
     const downloadZipBtn = frame.locator('button:has-text("Download Client Certs (.zip)")').first();
     if (await downloadZipBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-      const zipDownloadPromise = page.waitForEvent('download', { timeout: 8000 });
-      await downloadZipBtn.click();
-      const zipDownload = await zipDownloadPromise;
+      const [zipDownload] = await Promise.all([
+        page.waitForEvent('download', { timeout: 8000 }),
+        downloadZipBtn.click(),
+      ]);
       expect(zipDownload.suggestedFilename()).toContain('.zip');
     }
 
@@ -484,11 +485,12 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
       }
 
       // Click Download ca.pem and verify browser download event fires
-      const downloadPromise = page.waitForEvent('download', { timeout: 8000 });
       const downloadCaBtn = frame.locator('button:has-text("Download ca.pem")').first();
       if (await downloadCaBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
-        await downloadCaBtn.click();
-        const download = await downloadPromise;
+        const [download] = await Promise.all([
+          page.waitForEvent('download', { timeout: 8000 }),
+          downloadCaBtn.click(),
+        ]);
         expect(download.suggestedFilename()).toBe('ca.pem');
       }
 
