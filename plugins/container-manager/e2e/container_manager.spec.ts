@@ -472,6 +472,10 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     if (await sizeTh.count() > 0) {
       await expect(sizeTh).toBeVisible();
     }
+    const volHashBtn = frame.locator('table[aria-label="Volumes Table"] button[aria-label*="Copy ID"]').first();
+    if (await volHashBtn.count() > 0) {
+      await expect(volHashBtn).toBeVisible();
+    }
   });
 
   test('10. Verify Delete Confirmation Modal Disappears On Confirm', async () => {
@@ -559,6 +563,11 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     await frame.locator('.cockpit-top-nav-bar button:has-text("Volumes")').click();
     await frame.waitForSelector('table[aria-label="Volumes Table"], div:has-text("No Volumes Found")', { timeout: 10000 });
 
+    const usageTh = frame.locator('table[aria-label="Volumes Table"] th:has-text("Usage")').first();
+    if (await usageTh.count() > 0) {
+      await expect(usageTh).toBeVisible();
+    }
+
     const pruneVolumesBtn = frame.locator('button:has-text("Prune Unused Volumes"), button:has-text("Prune Volumes")').first();
     if (await pruneVolumesBtn.isVisible({ timeout: 3000 }).catch(() => false) && await pruneVolumesBtn.isEnabled().catch(() => false)) {
       await pruneVolumesBtn.click();
@@ -576,6 +585,12 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     // Navigate to Networks tab
     await frame.locator('.cockpit-top-nav-bar button:has-text("Networks")').click();
     await frame.waitForSelector('table[aria-label="Networks Table"], div:has-text("No Networks Found")', { timeout: 10000 });
+
+    const usageTh = frame.locator('table[aria-label="Networks Table"] th:has-text("Usage")').first();
+    if (await usageTh.count() > 0) {
+      await expect(usageTh).toBeVisible();
+      await usageTh.click().catch(() => {});
+    }
 
     const pruneNetsBtn = frame.locator('button:has-text("Prune Unused Networks"), button:has-text("Prune Networks")').first();
     if (await pruneNetsBtn.isVisible({ timeout: 3000 }).catch(() => false) && await pruneNetsBtn.isEnabled().catch(() => false)) {

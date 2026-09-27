@@ -10,6 +10,15 @@ export interface HashIdProps {
 }
 
 const SHA256_PREFIX = 'sha256:';
+const MIN_HASH_HEX_LENGTH = 24;
+
+export const isHashId = (id: string): boolean => {
+  if (!id) {
+    return false;
+  }
+  const clean = id.startsWith(SHA256_PREFIX) ? id.slice(SHA256_PREFIX.length) : id;
+  return clean.length >= MIN_HASH_HEX_LENGTH && /^[0-9a-fA-F]+$/.test(clean);
+};
 
 export const HashId: React.FC<HashIdProps> = ({
   id,
