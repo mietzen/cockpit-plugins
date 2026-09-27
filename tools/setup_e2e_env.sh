@@ -7,10 +7,9 @@ echo "========================================="
 
 # 1. Install packages if on Debian/Ubuntu
 if command -v apt-get &>/dev/null; then
-    echo "==> Installing system packages (cockpit-ws, cockpit-bridge, cockpit-system, zfs, samba, nfs)..."
     export DEBIAN_FRONTEND=noninteractive
     sudo apt-get update -qq
-    sudo apt-get install -y -qq --no-install-recommends cockpit-ws cockpit-bridge cockpit-system libpam-systemd zfsutils-linux smartmontools python3 util-linux curl samba nfs-kernel-server
+    sudo apt-get install -y -qq --no-install-recommends cockpit-ws cockpit-bridge cockpit-system libpam-systemd zfsutils-linux smartmontools python3 util-linux curl samba nfs-kernel-server podman
 fi
 
 # 2. Setup virtual loop disks for ZFS testing
@@ -119,9 +118,11 @@ if ! grep -q "ansible_locked_share" /etc/samba/smb.conf 2>/dev/null; then
 EOF'
 fi
 sudo mkdir -p /etc/exports.d
+sudo chmod -R 777 /srv/samba /srv/nfs /tank 2>/dev/null || true
 echo "/srv/nfs/test 192.168.40.0/24(rw,sync,no_subtree_check,root_squash)" | sudo tee /etc/exports.d/cockpit.exports
 echo -e "password\npassword" | sudo smbpasswd -a -s test-user 2>/dev/null || true
-sudo systemctl restart smbd nmbd 2>/dev/null || true
+sudo systemctl restart smbd nmbd || sudo systemctl restart samba || true
+sudo systemctl restart nfs-kernel-server || sudo systemctl restart nfs-server || true
 
 # Pre-configure Container Manager fixtures if docker/podman is installed
 if command -v docker &>/dev/null; then
