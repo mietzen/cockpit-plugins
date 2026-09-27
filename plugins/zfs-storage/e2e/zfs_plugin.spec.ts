@@ -1939,6 +1939,29 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
       }
     }
 
+    // Interact with Sanoid Schedule Modal
+    const addScheduleBtn = frame.locator("button:has-text('Add Schedule')").first();
+    if (await addScheduleBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await addScheduleBtn.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
+
+      const cancelScheduleBtn = frame.locator("[role='dialog'] button:has-text('Cancel'), body > [role='dialog'] button:has-text('Cancel')").first();
+      if (await cancelScheduleBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await cancelScheduleBtn.click({ timeout: 1000 }).catch(() => {});
+      }
+    }
+
+    const editScheduleBtn = frame.locator("button[aria-label*='Edit schedule']").first();
+    if (await editScheduleBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await editScheduleBtn.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
+
+      const cancelScheduleBtn = frame.locator("[role='dialog'] button:has-text('Cancel'), body > [role='dialog'] button:has-text('Cancel')").first();
+      if (await cancelScheduleBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await cancelScheduleBtn.click({ timeout: 1000 }).catch(() => {});
+      }
+    }
+
     // Sort Host Disks Table on Dashboard
     const hostDiskSorts = frame.locator("table[aria-label='Dashboard Disks Table'] button.pf-v5-c-table__button, table[aria-label='Dashboard Disks Table'] button.pf-v6-c-table__button");
     const hdCount = await hostDiskSorts.count();

@@ -9,6 +9,8 @@ import {
   DatasetCreateSpec,
   SnapshotCreateSpec,
   SnapshotCloneSpec,
+  SanoidDatasetPolicy,
+  SanoidInfo,
 } from "../types";
 
 const HELPER_PATHS = [
@@ -158,6 +160,18 @@ export class ZfsApiClient {
     } catch {
       return { smb: false, nfs: false };
     }
+  }
+
+  public async getSanoidInfo(): Promise<SanoidInfo> {
+    return this.runHelper("sanoid-info");
+  }
+
+  public async saveSanoidSchedule(payload: SanoidDatasetPolicy): Promise<{ success: boolean; message: string }> {
+    return this.runHelper("sanoid-save-schedule", JSON.stringify(payload));
+  }
+
+  public async deleteSanoidSchedule(dataset: string): Promise<{ success: boolean; message: string }> {
+    return this.runHelper("sanoid-delete-schedule", dataset);
   }
 
   public async shareDataset(params: { path: string; smb: boolean; nfs: boolean }): Promise<void> {

@@ -27,33 +27,44 @@ import {
   HddIcon,
   InfoCircleIcon,
   SyncAltIcon,
+  PencilAltIcon,
+  TrashIcon,
 } from "@patternfly/react-icons";
-import { ZPool, SystemInfo, DiskDevice } from "../types";
+import { ZPool, SystemInfo, DiskDevice, SanoidDatasetPolicy } from "../types";
 import { formatBytes, formatPercentage } from "../utils/formatters";
+import { SanoidScheduleModal } from "./Modals/SanoidScheduleModal";
 
 interface DashboardViewProps {
   systemInfo: SystemInfo | null;
   pools: ZPool[];
   disks: DiskDevice[];
+  datasetOptions?: string[];
   onSelectPool: (poolName: string) => void;
   onCreatePool: () => void;
   onImportPool: () => void;
   onViewArcDetails: () => void;
   onViewSmartDetails: (disk: DiskDevice) => void;
+  onSaveSanoidSchedule?: (policy: SanoidDatasetPolicy) => Promise<void>;
+  onDeleteSanoidSchedule?: (dataset: string) => Promise<void>;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
   systemInfo,
   pools,
   disks,
+  datasetOptions = [],
   onSelectPool,
   onCreatePool,
   onImportPool,
   onViewArcDetails,
   onViewSmartDetails,
+  onSaveSanoidSchedule,
+  onDeleteSanoidSchedule,
 }) => {
   const [diskSortIndex, setDiskSortIndex] = useState<number | null>(0);
   const [diskSortDirection, setDiskSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  const [selectedPolicy, setSelectedPolicy] = useState<SanoidDatasetPolicy | null>(null);
 
   const getDiskSortParams = (columnIndex: number): ThProps['sort'] => ({
     sortBy: {
@@ -351,9 +362,32 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         {/* Sanoid Snapshot Automations (Shown only if installed) */}
         {sanoidInfo?.installed && (
           <div style={{ marginBottom: "2rem" }}>
-            <Title headingLevel="h2" size="xl" style={{ marginBottom: "1rem", fontWeight: 600 }}>
-              Sanoid Snapshot Automations
-            </Title>
+            <Flex
+              justifyContent={{ default: "justifyContentSpaceBetween" }}
+              alignItems={{ default: "alignItemsCenter" }}
+              style={{ marginBottom: "1rem" }}
+            >
+              <FlexItem>
+                <Title headingLevel="h2" size="xl" style={{ fontWeight: 600 }}>
+                  Sanoid Snapshot Automations
+                </Title>
+              </FlexItem>
+              {onSaveSanoidSchedule && (
+                <FlexItem>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    icon={<PlusCircleIcon />}
+                    onClick={() => {
+                      setSelectedPolicy(null);
+                      setIsScheduleModalOpen(true);
+                    }}
+                  >
+                    Add Schedule
+                  </Button>
+                </FlexItem>
+              )}
+            </Flex>
             <Card isPlain style={{ border: "1px solid var(--zfs-card-border)" }}>
               <CardBody>
                 <Flex gap={{ default: "gapMd" }} style={{ marginBottom: "1rem" }}>
@@ -377,6 +411,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                           <Th>Yearly</Th>
                           <Th>Autosnap / Autoprune</Th>
                           <Th>Recursive</Th>
+                          {(onSaveSanoidSchedule || onDeleteSanoidSchedule) && (
+                            <Th style={{ textAlign: "right" }}>Actions</Th>
+                          )}
                         </Tr>
                       </Thead>
                       <Tbody>
@@ -395,6 +432,37 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                               </Flex>
                             </Td>
                             <Td dataLabel="Recursive">{p.recursive ? "Yes" : "No"}</Td>
+                            {(onSaveSanoidSchedule || onDeleteSanoidSchedule) && (
+                              <Td dataLabel="Actions" style={{ textAlign: "right" }}>
+                                <Flex justifyContent={{ default: "justifyContentFlexEnd" }} gap={{ default: "gapXs" }}>
+                                  {onSaveSanoidSchedule && (
+                                    <Button
+                                      variant="plain"
+                                      aria-label={`Edit schedule for ${p.dataset}`}
+                                      onClick={() => {
+                                        setSelectedPolicy(p);
+                                        setIsScheduleModalOpen(true);
+                                      }}
+                                    >
+                                      <PencilAltIcon />
+                                    </Button>
+                                  )}
+                                  {onDeleteSanoidSchedule && (
+                                    <Button
+                                      variant="plain"
+                                      aria-label={`Delete schedule for ${p.dataset}`}
+                                      onClick={() => {
+                                        if (window.confirm(`Are you sure you want to remove the snapshot schedule for ${p.dataset}?`)) {
+                                          onDeleteSanoidSchedule(p.dataset);
+                                        }
+                                      }}
+                                    >
+                                      <TrashIcon style={{ color: "var(--pf-v5-global--danger-color--100)" }} />
+                                    </Button>
+                                  )}
+                                </Flex>
+                              </Td>
+                            )}
                           </Tr>
                         ))}
                       </Tbody>
@@ -492,6 +560,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </Table>
           </CardBody>
         </Card>
+
+        {isScheduleModalOpen && onSaveSanoidSchedule && (
+          <SanoidScheduleModal
+            isOpen={isScheduleModalOpen}
+            policy={selectedPolicy}
+            datasetOptions={datasetOptions}
+            templates={sanoidInfo?.templates || {}}
+            onClose={() => {
+              setIsScheduleModalOpen(false);
+              setSelectedPolicy(null);
+            }}
+            onSubmit={async (policy) => {
+              await onSaveSanoidSchedule(policy);
+            }}
+          />
+        )}
       </PageSection>
     </>
   );

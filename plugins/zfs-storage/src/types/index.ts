@@ -141,14 +141,16 @@ export interface ArcStats {
 
 export interface SanoidDatasetPolicy {
   dataset: string;
+  use_template?: string;
   template?: string;
+  frequently?: number;
   hourly?: number;
   daily?: number;
   monthly?: number;
   yearly?: number;
   autosnap?: boolean;
   autoprune?: boolean;
-  recursive?: boolean;
+  recursive?: boolean | string;
   process_children_only?: boolean;
 }
 
@@ -157,6 +159,7 @@ export interface SanoidInfo {
   sanoid_installed: boolean;
   sanoid_timer_active?: boolean;
   sanoid_service_active?: boolean;
+  templates?: Record<string, Record<string, any>>;
   policies: SanoidDatasetPolicy[];
 }
 

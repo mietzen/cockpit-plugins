@@ -14,6 +14,7 @@ import {
   ZSnapshot,
   DiskDevice,
   CommandResult,
+  SanoidDatasetPolicy,
 } from "./types";
 import { zfsApi } from "./api/zfsClient";
 import { Navigation } from "./components/Navigation";
@@ -370,6 +371,16 @@ export const App: React.FC = () => {
     }
   };
 
+  const handleSaveSanoidSchedule = async (policy: SanoidDatasetPolicy) => {
+    await runAction(zfsApi.saveSanoidSchedule(policy), `Saved snapshot policy for ${policy.dataset}`);
+    await loadData();
+  };
+
+  const handleDeleteSanoidSchedule = async (dataset: string) => {
+    await runAction(zfsApi.deleteSanoidSchedule(dataset), `Removed snapshot policy for ${dataset}`);
+    await loadData();
+  };
+
   const selectedPool = pools.find((p) => p.name === route.poolName) || pools[0] || null;
 
   useEffect(() => {
@@ -390,6 +401,8 @@ export const App: React.FC = () => {
       (window as any).__handleSelectPool = handleSelectPool;
       (window as any).__handleExportPool = handleExportPool;
       (window as any).__handleMountToggle = handleMountToggle;
+      (window as any).__handleSaveSanoidSchedule = handleSaveSanoidSchedule;
+      (window as any).__handleDeleteSanoidSchedule = handleDeleteSanoidSchedule;
       (window as any).__formatters = { formatBytes, formatPercentage, formatDate, getHealthBadgeColor };
     }
   });
@@ -446,6 +459,7 @@ export const App: React.FC = () => {
           systemInfo={systemInfo}
           pools={pools}
           disks={disks}
+          datasetOptions={datasets.map((d) => d.name)}
           onSelectPool={handleSelectPool}
           onCreatePool={() => setActiveModal({ type: "create-pool" })}
           onImportPool={() => {
@@ -460,6 +474,8 @@ export const App: React.FC = () => {
           }}
           onViewArcDetails={() => setActiveModal({ type: "arc-details" })}
           onViewSmartDetails={handleViewSmartDetails}
+          onSaveSanoidSchedule={handleSaveSanoidSchedule}
+          onDeleteSanoidSchedule={handleDeleteSanoidSchedule}
         />
       </div>
 
