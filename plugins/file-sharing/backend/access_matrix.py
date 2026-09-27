@@ -5,8 +5,9 @@ Calculates effective access matrices:
 2. NFS Client IP/Subnet -> Exports Access Map
 """
 from enum import Enum
+import os
 import shlex
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
 
 class AclTokenType(str, Enum):
@@ -71,8 +72,13 @@ def expand_macros(text: str, username: str) -> str:
     return expanded.replace("%H", f"/home/{username}")
 
 
-def calculate_smb_user_matrix(shares: List[Dict[str, Any]], users: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def calculate_smb_user_matrix(
+    shares: List[Dict[str, Any]],
+    users: List[Dict[str, Any]],
+    path_exists_fn: Optional[Callable[[str], bool]] = None,
+) -> List[Dict[str, Any]]:
     matrix: List[Dict[str, Any]] = []
+    path_checker = path_exists_fn if path_exists_fn is not None else os.path.isdir
 
     for user in users:
         username = user.get("username", "").strip().lower()
@@ -81,7 +87,10 @@ def calculate_smb_user_matrix(shares: List[Dict[str, Any]], users: List[Dict[str
 
         for share in shares:
             share_name = share.get("name", "")
-            share_path = expand_macros(share.get("path", ""), username)
+            raw_path = share.get("path", "")
+            if not raw_path and share_name.lower() == "homes":
+                raw_path = "/home/%S"
+            share_path = expand_macros(raw_path, username)
             read_only = share.get("read_only", True)
             guest_ok = share.get("guest_ok", False)
 
@@ -98,7 +107,18 @@ def calculate_smb_user_matrix(shares: List[Dict[str, Any]], users: List[Dict[str
             status = "read_only"
             reason = "Default share permissions"
 
-            if inv_match:
+            is_homes = (
+                share_name.lower() == "homes"
+                or "%s" in raw_path.lower()
+                or "%u" in raw_path.lower()
+                or "%h" in raw_path.lower()
+                or raw_path.startswith("/home/")
+            )
+
+            if is_homes and not path_checker(share_path):
+                status = "denied"
+                reason = f"Home directory '{share_path}' does not exist"
+            elif inv_match:
                 status = "denied"
                 reason = format_acl_reason("invalid users", inv_src)
             elif val_tokens and not val_match:

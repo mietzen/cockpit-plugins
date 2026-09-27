@@ -32,6 +32,7 @@ import {
   FormSelectOption,
   Checkbox,
   Alert,
+  Tooltip,
 } from "@patternfly/react-core";
 import { Table, Thead, Tbody, Tr, Th, Td, ThProps } from "@patternfly/react-table";
 import {
@@ -506,15 +507,39 @@ export const UsersTab: React.FC<UsersTabProps> = ({
                         const perm = item.shares.find((s) => s.share_name === sName);
                         if (!perm) return <Td key={sName}>—</Td>;
                         if (perm.access === "read_write") {
-                          return <Td key={sName}><Label color="green">Read / Write</Label></Td>;
+                          return (
+                            <Td key={sName}>
+                              <Tooltip content={perm.reason}>
+                                <Label color="green">Read / Write</Label>
+                              </Tooltip>
+                            </Td>
+                          );
                         }
                         if (perm.access === "read_only") {
-                          return <Td key={sName}><Label color="blue">Read-Only</Label></Td>;
+                          return (
+                            <Td key={sName}>
+                              <Tooltip content={perm.reason}>
+                                <Label color="blue">Read-Only</Label>
+                              </Tooltip>
+                            </Td>
+                          );
                         }
                         if (perm.access === "guest_only") {
-                          return <Td key={sName}><Label color="purple">Guest Only</Label></Td>;
+                          return (
+                            <Td key={sName}>
+                              <Tooltip content={perm.reason}>
+                                <Label color="purple">Guest Only</Label>
+                              </Tooltip>
+                            </Td>
+                          );
                         }
-                        return <Td key={sName}><Label color="grey">Denied</Label></Td>;
+                        return (
+                          <Td key={sName}>
+                            <Tooltip content={perm.reason}>
+                              <Label color="grey">Denied</Label>
+                            </Tooltip>
+                          </Td>
+                        );
                       })}
                     </Tr>
                   ))}
