@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import "@patternfly/react-core/dist/styles/base.css";
 import "@cockpit-plugins/common/src/styles/cockpit-theme.css";
-import { useCockpitTheme, useCockpitRoute, NavMode } from "@cockpit-plugins/common";
+import { useCockpitTheme, useCockpitRoute, NavMode, CockpitLocationState } from "@cockpit-plugins/common";
 import {
   Alert,
   AlertActionCloseButton,
@@ -30,29 +30,25 @@ declare global {
 
 const IGNORED_PREFIXES = ["file-sharing", "cockpit-file-sharing", "index"];
 
-const parseView = (segments: string[]): string => {
-  const cleanStr = segments.map((s) => s.trim().toLowerCase()).filter(Boolean);
-  if (cleanStr.length === 0 || cleanStr[0] === "dashboard" || cleanStr[0] === "overview") {
-    return "dashboard";
-  }
-  const viewKey = cleanStr[0];
-  if (["dashboard", "smb", "nfs", "users", "sessions", "settings"].includes(viewKey)) {
-    return viewKey;
+const parseView = (loc: CockpitLocationState): string => {
+  const tab = (loc.options.tab || (loc.path.length > 0 ? loc.path[0] : "")).trim().toLowerCase();
+  if (["dashboard", "smb", "nfs", "users", "sessions", "settings"].includes(tab)) {
+    return tab;
   }
   return "dashboard";
 };
 
-const formatSegments = (view: string): string[] => {
+const formatLocation = (view: string) => {
   if (view === "dashboard") {
-    return [];
+    return { options: {} };
   }
-  return [view];
+  return { options: { tab: view } };
 };
 
 export const App: React.FC = () => {
   useCockpitTheme();
 
-  const [activeView, setActiveView] = useCockpitRoute(parseView, formatSegments, IGNORED_PREFIXES);
+  const [activeView, setActiveView] = useCockpitRoute(parseView, formatLocation, IGNORED_PREFIXES);
 
   const navigateToView = useCallback((view: string) => {
     setActiveView(view, NavMode.Push);

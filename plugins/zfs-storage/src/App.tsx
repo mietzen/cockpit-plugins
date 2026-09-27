@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import "@patternfly/react-core/dist/styles/base.css";
 import "@cockpit-plugins/common/src/styles/cockpit-theme.css";
-import { useCockpitTheme, useCockpitRoute, NavMode } from "@cockpit-plugins/common";
+import { useCockpitTheme, useCockpitRoute, NavMode, CockpitLocationState } from "@cockpit-plugins/common";
 import {
   Alert,
   AlertGroup,
@@ -91,12 +91,33 @@ type ActiveModal =
 
 const IGNORED_PREFIXES = ["zfs-storage", "cockpit-zfs", "index"];
 
-const parseRoute = (segments: string[]): AppRoute => {
+const parseRoute = (loc: CockpitLocationState): AppRoute => {
+  const tab = (loc.options.tab || (loc.path.length > 0 ? loc.path[0] : "")).trim().toLowerCase();
+  if (tab === "pools") {
+    const poolName = loc.options.pool || (loc.path.length >= 2 ? loc.path[1] : null);
+    const subTab = loc.options.subtab || (loc.path.length >= 3 ? loc.path[2] : "topology");
+    if (poolName) {
+      return { view: "pool-details", poolName, subTab };
+    }
+    return { view: "pools", poolName: null, subTab: "topology" };
+  }
+  if (tab === "disks") {
+    return { view: "disks", poolName: null, subTab: "topology" };
+  }
+  if (tab === "automations" || tab === "sanoid") {
+    return { view: "automations", poolName: null, subTab: "automations" };
+  }
+  if (tab === "settings") {
+    return { view: "settings", poolName: null, subTab: "topology" };
+  }
+  return { view: "dashboard", poolName: null, subTab: "topology" };
+};
+
+const parseSegmentsToRoute = (segments: string[]): AppRoute => {
   const clean = segments.map((s) => s.trim().toLowerCase()).filter(Boolean);
   if (clean.length === 0 || clean[0] === "dashboard" || clean[0] === "overview") {
     return { view: "dashboard", poolName: null, subTab: "topology" };
   }
-
   const root = clean[0];
   if (root === "pools") {
     if (clean.length >= 2 && clean[1]) {
@@ -117,23 +138,23 @@ const parseRoute = (segments: string[]): AppRoute => {
   return { view: "dashboard", poolName: null, subTab: "topology" };
 };
 
-const formatSegments = (r: AppRoute): string[] => {
+const formatLocation = (r: AppRoute) => {
   if (r.view === "dashboard") {
-    return [];
+    return { options: {} };
   }
   if (r.view === "pool-details" && r.poolName) {
-    return ["pools", r.poolName, r.subTab || "topology"];
+    return { options: { tab: "pools", pool: r.poolName, subtab: r.subTab || "topology" } };
   }
-  return [r.view];
+  return { options: { tab: r.view } };
 };
 
 export const App: React.FC = () => {
   useCockpitTheme();
 
-  const [route, setRoute] = useCockpitRoute(parseRoute, formatSegments, IGNORED_PREFIXES);
+  const [route, setRoute] = useCockpitRoute(parseRoute, formatLocation, IGNORED_PREFIXES);
 
   const navigateTo = useCallback((segments: string[]) => {
-    const nextRoute = parseRoute(segments);
+    const nextRoute = parseSegmentsToRoute(segments);
     setRoute(nextRoute, NavMode.Push);
   }, [setRoute]);
 

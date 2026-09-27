@@ -17,112 +17,146 @@ export enum NavMode {
   Push = "push",
 }
 
-/**
- * Extracts current route segments from cockpit.location or window.location.hash.
- *
- * Example:
- *   URL '#/pools/tank/snapshots' -> ['pools', 'tank', 'snapshots']
- */
-export function getCockpitSegments(ignoredPrefixes: string[] = []): string[] {
-  if (typeof window === "undefined") {
-    return [];
-  }
-
-  // Prefer cockpit shell path when embedded
-  if (
-    typeof cockpit !== "undefined" &&
-    cockpit.location &&
-    Array.isArray(cockpit.location.path) &&
-    cockpit.location.path.length > 0
-  ) {
-    const raw = cockpit.location.path;
-    const lowerPrefixes = ignoredPrefixes.map((p) => {
-      return p.toLowerCase();
-    });
-
-    if (raw.length > 0 && lowerPrefixes.includes(raw[0].toLowerCase())) {
-      return raw.slice(1);
-    }
-
-    return raw;
-  }
-
-  // Fallback to window hash for direct or standalone execution
-  const hash = window.location.hash.replace(/^#\/?/, "");
-  if (hash) {
-    return hash.split("/").filter(Boolean);
-  }
-
-  return [];
+export interface CockpitLocationState {
+  path: string[];
+  options: Record<string, string>;
 }
 
 /**
- * Synchronizes route with Cockpit host shell or standalone window history.
+ * Extracts current route options and path from cockpit.location or window.location.hash.
+ *
+ * Examples:
+ *   URL '#/?tab=smb' -> { path: [], options: { tab: 'smb' } }
+ *   URL '#/pools'    -> { path: ['pools'], options: {} }
  */
-export function syncCockpitLocation(segments: string[], mode: NavMode = NavMode.Replace): void {
-  const targetHash = segments.length > 0 ? `#/${segments.join("/")}` : "#/";
+export function getCockpitLocation(ignoredPrefixes: string[] = []): CockpitLocationState {
+  if (typeof window === "undefined") {
+    return { path: [], options: {} };
+  }
 
-  // Update Cockpit host shell location if available (pass segment array for component-relative path)
+  // 1. Prefer cockpit.location when embedded in Cockpit shell
+  if (typeof cockpit !== "undefined" && cockpit.location) {
+    const options: Record<string, string> = { ...(cockpit.location.options || {}) };
+    let pathSegments: string[] = [];
+
+    if (Array.isArray(cockpit.location.path)) {
+      const raw = cockpit.location.path;
+      const lowerPrefixes = ignoredPrefixes.map((p) => p.toLowerCase());
+
+      if (raw.length > 0 && lowerPrefixes.includes(raw[0].toLowerCase())) {
+        pathSegments = raw.slice(1);
+      } else {
+        pathSegments = raw;
+      }
+    }
+
+    return { path: pathSegments, options };
+  }
+
+  // 2. Fallback to window.location.hash for standalone execution
+  const rawHash = window.location.hash.replace(/^#\/?/, "");
+  if (!rawHash) {
+    return { path: [], options: {} };
+  }
+
+  const [pathPart, queryPart] = rawHash.split("?");
+  const path = pathPart ? pathPart.split("/").filter(Boolean) : [];
+  const options: Record<string, string> = {};
+
+  if (queryPart) {
+    const params = new URLSearchParams(queryPart);
+    params.forEach((val, key) => {
+      options[key] = val;
+    });
+  }
+
+  return { path, options };
+}
+
+/**
+ * Synchronizes route options with Cockpit host shell or standalone window hash.
+ */
+export function syncCockpitLocation(
+  options: Record<string, string> = {},
+  path: string[] = [],
+  mode: NavMode = NavMode.Replace
+): void {
+  // Update Cockpit host shell location via options query params
   if (typeof cockpit !== "undefined" && cockpit.location) {
     if (mode === NavMode.Replace && typeof cockpit.location.replace === "function") {
-      cockpit.location.replace(segments);
+      cockpit.location.replace("", options);
       return;
     }
 
     if (typeof cockpit.location.go === "function") {
-      cockpit.location.go(segments);
+      cockpit.location.go("", options);
       return;
     }
   }
 
-  // Fallback to standalone iframe window history when not running inside Cockpit
-  if (typeof window !== "undefined" && window.location.hash !== targetHash) {
-    if (mode === NavMode.Replace) {
-      window.history.replaceState(null, "", targetHash);
-    } else {
-      window.history.pushState(null, "", targetHash);
+  // Fallback to standalone window history
+  if (typeof window !== "undefined") {
+    const searchParams = new URLSearchParams();
+    Object.entries(options).forEach(([k, v]) => {
+      if (v) {
+        searchParams.set(k, v);
+      }
+    });
+
+    const queryString = searchParams.toString();
+    const pathStr = path.length > 0 ? path.join("/") : "";
+    const targetHash = queryString ? `#/${pathStr}?${queryString}` : pathStr ? `#/${pathStr}` : "#/";
+
+    if (window.location.hash !== targetHash) {
+      if (mode === NavMode.Replace) {
+        window.history.replaceState(null, "", targetHash);
+      } else {
+        window.history.pushState(null, "", targetHash);
+      }
     }
   }
 }
 
 /**
- * Hook for bidirectional zero-flicker routing in Cockpit plugins.
+ * Hook for zero-flicker SPA routing matching Cockpit services.html pattern.
  */
 export function useCockpitRoute<T>(
-  parseRoute: (segments: string[]) => T,
-  formatSegments: (route: T) => string[],
+  parseLocation: (state: CockpitLocationState) => T,
+  formatLocation: (route: T) => { options: Record<string, string>; path?: string[] },
   ignoredPrefixes: string[] = []
 ): [T, (nextRoute: T, mode?: NavMode) => void] {
   const [route, setRoute] = useState<T>(() => {
-    return parseRoute(getCockpitSegments(ignoredPrefixes));
+    return parseLocation(getCockpitLocation(ignoredPrefixes));
   });
 
-  const lastPathRef = useRef<string>("");
+  const lastKeyRef = useRef<string>("");
 
   const navigateTo = useCallback(
     (nextRoute: T, mode: NavMode = NavMode.Replace) => {
       setRoute(nextRoute);
 
-      const segments = formatSegments(nextRoute);
-      const pathStr = segments.join("/");
-      lastPathRef.current = pathStr;
+      const formatted = formatLocation(nextRoute);
+      const options = formatted.options || {};
+      const path = formatted.path || [];
+      const keyStr = JSON.stringify({ path, options });
+      lastKeyRef.current = keyStr;
 
-      syncCockpitLocation(segments, mode);
+      syncCockpitLocation(options, path, mode);
     },
-    [formatSegments]
+    [formatLocation]
   );
 
   const syncFromEnv = useCallback(() => {
-    const segments = getCockpitSegments(ignoredPrefixes);
-    const pathStr = segments.join("/");
+    const loc = getCockpitLocation(ignoredPrefixes);
+    const keyStr = JSON.stringify(loc);
 
-    if (pathStr === lastPathRef.current) {
+    if (keyStr === lastKeyRef.current) {
       return;
     }
 
-    lastPathRef.current = pathStr;
-    setRoute(parseRoute(segments));
-  }, [parseRoute, ignoredPrefixes]);
+    lastKeyRef.current = keyStr;
+    setRoute(parseLocation(loc));
+  }, [parseLocation, ignoredPrefixes]);
 
   useEffect(() => {
     if (typeof cockpit !== "undefined" && cockpit.addEventListener) {

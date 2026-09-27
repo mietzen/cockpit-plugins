@@ -11,7 +11,7 @@ import {
   Button,
   Page,
 } from '@patternfly/react-core';
-import { useCockpitTheme, ConfirmModal, useCockpitRoute, NavMode } from '@cockpit-plugins/common';
+import { useCockpitTheme, ConfirmModal, useCockpitRoute, NavMode, CockpitLocationState } from '@cockpit-plugins/common';
 
 import {
   ContainerOverview,
@@ -41,29 +41,25 @@ import { SystemPruneModal } from './components/SystemPruneModal';
 
 const IGNORED_PREFIXES = ['container-manager', 'cockpit-container-manager', 'index'];
 
-const parseView = (segments: string[]): string => {
-  const cleanStr = segments.map((s) => s.trim().toLowerCase()).filter(Boolean);
-  if (cleanStr.length === 0 || cleanStr[0] === 'dashboard' || cleanStr[0] === 'overview') {
-    return 'dashboard';
-  }
-  const viewKey = cleanStr[0];
-  if (['dashboard', 'containers', 'images', 'volumes', 'networks', 'settings'].includes(viewKey)) {
-    return viewKey;
+const parseView = (loc: CockpitLocationState): string => {
+  const tab = (loc.options.tab || (loc.path.length > 0 ? loc.path[0] : '')).trim().toLowerCase();
+  if (['dashboard', 'containers', 'images', 'volumes', 'networks', 'settings'].includes(tab)) {
+    return tab;
   }
   return 'dashboard';
 };
 
-const formatSegments = (view: string): string[] => {
+const formatLocation = (view: string) => {
   if (view === 'dashboard') {
-    return [];
+    return { options: {} };
   }
-  return [view];
+  return { options: { tab: view } };
 };
 
 export const App: React.FC = () => {
   const isDark = useCockpitTheme();
 
-  const [activeView, setActiveView] = useCockpitRoute(parseView, formatSegments, IGNORED_PREFIXES);
+  const [activeView, setActiveView] = useCockpitRoute(parseView, formatLocation, IGNORED_PREFIXES);
 
   const navigateToView = useCallback((view: string) => {
     setActiveView(view, NavMode.Push);
