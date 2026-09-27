@@ -20,13 +20,15 @@ jobs:
 
       - name: Fetch Latest Upstream Version
         id: upstream
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          LATEST_TAG=$(curl -fsSL https://api.github.com/repos/coder/code-server/releases/latest | grep '"tag_name":' | sed -E 's/.*"v([^"]+)".*/\1/')
+          LATEST_TAG=$(gh api repos/coder/code-server/releases/latest --jq .tag_name | sed -E 's/^v//')
           CURRENT_VERSION=$(grep -oE 'CODE_SERVER_UPSTREAM_VERSION = "[^"]+"' plugins/code-server/backend/service_manager.py | cut -d'"' -f2)
           echo "latest_version=$LATEST_TAG" >> $GITHUB_OUTPUT
           echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
           echo "==> Latest upstream release: $LATEST_TAG (Current: $CURRENT_VERSION)"
-          if [ "$LATEST_TAG" != "$CURRENT_VERSION" ]; then
+          if [ -n "$LATEST_TAG" ] && [ "$LATEST_TAG" != "$CURRENT_VERSION" ]; then
             echo "has_update=true" >> $GITHUB_OUTPUT
           else
             echo "has_update=false" >> $GITHUB_OUTPUT
