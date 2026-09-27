@@ -42,12 +42,11 @@ export function getCockpitLocation(ignoredPrefixes: string[] = []): CockpitLocat
     if (Array.isArray(cockpit.location.path)) {
       const raw = cockpit.location.path;
       const lowerPrefixes = ignoredPrefixes.map((p) => p.toLowerCase());
-
-      if (raw.length > 0 && lowerPrefixes.includes(raw[0].toLowerCase())) {
-        pathSegments = raw.slice(1);
-      } else {
-        pathSegments = raw;
+      let startIndex = 0;
+      while (startIndex < raw.length && lowerPrefixes.includes(raw[startIndex].toLowerCase())) {
+        startIndex++;
       }
+      pathSegments = raw.slice(startIndex);
     }
 
     return { path: pathSegments, options };
@@ -70,7 +69,14 @@ export function getCockpitLocation(ignoredPrefixes: string[] = []): CockpitLocat
     });
   }
 
-  return { path, options };
+  let startIndex = 0;
+  const lowerPrefixes = ignoredPrefixes.map((p) => p.toLowerCase());
+  while (startIndex < path.length && lowerPrefixes.includes(path[startIndex].toLowerCase())) {
+    startIndex++;
+  }
+  const filteredPath = path.slice(startIndex);
+
+  return { path: filteredPath, options };
 }
 
 /**

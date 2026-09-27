@@ -168,6 +168,20 @@ export const App: React.FC = () => {
 
   useEffect(() => {
     loadData();
+
+    const handleRefresh = () => {
+      loadData(true);
+    };
+
+    window.addEventListener("hashchange", handleRefresh);
+    window.addEventListener("focus", handleRefresh);
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        handleRefresh();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+
     if (typeof window !== "undefined") {
       (window as any).__setActiveView = setActiveView;
       (window as any).__setFileSharingData = setData;
@@ -185,6 +199,12 @@ export const App: React.FC = () => {
       (window as any).__handleServiceAction = handleServiceAction;
       (window as any).__handleSaveAnsibleMarkers = handleSaveAnsibleMarkers;
     }
+
+    return () => {
+      window.removeEventListener("hashchange", handleRefresh);
+      window.removeEventListener("focus", handleRefresh);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
   }, [loadData]);
 
   if (loading && !data) {
