@@ -6,9 +6,9 @@ A collection of plugins and extensions for Cockpit server administration.
 
 | Plugin | Package Name | Version | Description | Status |
 | :--- | :--- | :--- | :--- | :--- |
-| [ZFS Storage](#zfs-storage) | `cockpit-zfs-storage` | `0.10.0` | Complete OpenZFS storage manager with pool creation wizards, dataset/zvol trees, snapshots, scrubs, trims, and SMART health monitoring. | Stable |
-| [File Sharing](#file-sharing) | `cockpit-file-sharing` | `0.6.0` | Comprehensive SMB (Samba) and NFS file sharing manager with user passdb management, effective permission matrix, and Ansible lock integration. | Stable |
-| [Container Manager](#container-manager) | `cockpit-container-manager` | `0.6.0` | Docker and Podman manager with Compose stack hierarchy, image pull/build, persistent volumes, networks, and live logs. | Stable |
+| [ZFS Storage](#zfs-storage) | `cockpit-zfs-storage` | `1.0.0` | Complete OpenZFS storage manager with pool creation wizards, dataset/zvol trees, snapshots, scrubs, trims, and SMART health monitoring. | Stable |
+| [File Sharing](#file-sharing) | `cockpit-file-sharing` | `1.0.0` | Comprehensive SMB (Samba) and NFS file sharing manager with user passdb management, effective permission matrix, and Ansible lock integration. | Stable |
+| [Container Manager](#container-manager) | `cockpit-container-manager` | `1.0.0` | Docker and Podman manager with Compose stack hierarchy, image pull/build, persistent volumes, networks, and live logs. | Stable |
 
 ## Installation
 
@@ -141,6 +141,11 @@ Advanced OpenZFS storage manager for Cockpit built with PatternFly v5.
 | Light Theme | Dark Theme |
 | :---: | :---: |
 | ![Create Pool Light](docs/screenshots/08-create-pool-modal-light.png) | ![Create Pool Dark](docs/screenshots/08-create-pool-modal-dark.png) |
+
+##### Snapshot Automations (Sanoid)
+| Light Theme | Dark Theme |
+| :---: | :---: |
+| ![Snapshot Automations Light](docs/screenshots/09-snapshot-automations-light.png) | ![Snapshot Automations Dark](docs/screenshots/09-snapshot-automations-dark.png) |
 
 ### File Sharing
 

@@ -207,6 +207,12 @@ async function run() {
         await page.waitForTimeout(300);
       },
     },
+    {
+      name: "09-snapshot-automations",
+      setup: async () => {
+        await clickTabByText("Snapshot Automations");
+      },
+    },
   ];
 
   for (const v of views) {
