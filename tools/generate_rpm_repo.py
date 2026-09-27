@@ -22,6 +22,15 @@ def parse_rpm_pkg_name(filename: str) -> str:
         return parts[0]
     return base
 
+def parse_rpm_arch(filename: str) -> str:
+    lower = filename.lower()
+    if "aarch64" in lower or "arm64" in lower:
+        return "aarch64"
+    if "x86_64" in lower or "amd64" in lower:
+        return "x86_64"
+    return "noarch"
+
+
 def generate_rpm_repo(rpm_dir: str, output_dir: str, owner: str = "mietzen", repo: str = "cockpit-plugins"):
     os.makedirs(output_dir, exist_ok=True)
     repodata_dir = os.path.join(output_dir, "repodata")
@@ -42,6 +51,7 @@ def generate_rpm_repo(rpm_dir: str, output_dir: str, owner: str = "mietzen", rep
         packages_summary.append({
             "name": parse_rpm_pkg_name(filename),
             "filename": filename,
+            "arch": parse_rpm_arch(filename),
             "size": f"{len(data) / (1024 * 1024):.1f} MiB",
             "sha256": hashes['sha256']
         })
@@ -58,7 +68,7 @@ def generate_rpm_repo(rpm_dir: str, output_dir: str, owner: str = "mietzen", rep
         for p in packages_summary:
             primary_xml += f"""  <package type="rpm">
     <name>{p['name']}</name>
-    <arch>noarch</arch>
+    <arch>{p['arch']}</arch>
     <version epoch="0" ver="1.0.0" rel="1.el10"/>
     <checksum type="sha256" pkgid="YES">{p['sha256']}</checksum>
     <summary>Cockpit Plugin</summary>

@@ -88,6 +88,10 @@ if command -v rpmbuild >/dev/null 2>&1; then
         RPM_SUMMARY="Docker and Podman container management plugin for Cockpit"
         RPM_REQUIRES="cockpit-bridge, python3, openssl"
         RPM_DESC="Docker and Podman container management plugin for Cockpit."
+    elif [ "$PLUGIN_NAME" = "code-server" ]; then
+        RPM_SUMMARY="VS Code Server plugin for Cockpit"
+        RPM_REQUIRES="cockpit-bridge, python3, code-server"
+        RPM_DESC="VS Code Server plugin for Cockpit."
     fi
 
     SPEC_FILE="$RPMBUILD_DIR/SPECS/${PKG_NAME}.spec"

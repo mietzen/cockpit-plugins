@@ -56,6 +56,12 @@ def build_deb(plugin_dir, output_dir, version="1.0.0"):
     elif plugin_name == "file-sharing":
         deb_depends = "cockpit-bridge | cockpit, python3, samba, nfs-kernel-server | nfs-common"
         description = "Advanced SMB (Samba) and NFS file sharing manager for Cockpit.\n Manage Samba shares, NFS exports, Samba users, permissions matrix,\n and live client connection monitoring with PatternFly v5 UI."
+    elif plugin_name == "container-manager":
+        deb_depends = "cockpit-bridge | cockpit, python3, openssl"
+        description = "Docker and Podman container manager for Cockpit."
+    elif plugin_name == "code-server":
+        deb_depends = "cockpit-bridge | cockpit, python3, code-server"
+        description = "VS Code Server plugin for Cockpit."
     else:
         deb_depends = "cockpit-bridge | cockpit, python3"
         description = f"Cockpit plugin {plugin_name}"

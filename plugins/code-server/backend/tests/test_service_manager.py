@@ -60,7 +60,7 @@ def test_get_system_arch():
 
 
 def test_install_code_server_deb_success():
-    from backend.service_manager import install_code_server
+    from backend.service_manager import install_code_server, CODE_SERVER_UPSTREAM_VERSION
     with patch("shutil.which", side_effect=lambda x: "/usr/bin/apt-get" if x == "apt-get" else None), \
          patch("urllib.request.urlretrieve") as mock_dl, \
          patch("subprocess.run") as mock_run, \
@@ -70,14 +70,14 @@ def test_install_code_server_deb_success():
         mock_proc.returncode = 0
         mock_run.return_value = mock_proc
 
-        res = install_code_server("4.139.1", "test-user")
+        res = install_code_server(CODE_SERVER_UPSTREAM_VERSION, "test-user")
         assert res["success"] is True
         mock_dl.assert_called_once()
-        assert "4.139.1" in res["output"]
+        assert CODE_SERVER_UPSTREAM_VERSION in res["output"]
 
 
 def test_install_code_server_rpm_success():
-    from backend.service_manager import install_code_server
+    from backend.service_manager import install_code_server, CODE_SERVER_UPSTREAM_VERSION
     with patch("shutil.which", side_effect=lambda x: "/usr/bin/dnf" if x == "dnf" else None), \
          patch("urllib.request.urlretrieve") as mock_dl, \
          patch("subprocess.run") as mock_run, \
@@ -87,7 +87,7 @@ def test_install_code_server_rpm_success():
         mock_proc.returncode = 0
         mock_run.return_value = mock_proc
 
-        res = install_code_server("4.139.1", "test-user")
+        res = install_code_server(CODE_SERVER_UPSTREAM_VERSION, "test-user")
         assert res["success"] is True
         mock_dl.assert_called_once()
-        assert "4.139.1" in res["output"]
+        assert CODE_SERVER_UPSTREAM_VERSION in res["output"]

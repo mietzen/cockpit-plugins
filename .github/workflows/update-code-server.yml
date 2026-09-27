@@ -44,12 +44,10 @@ jobs:
           git checkout -b "$BRANCH_NAME"
 
           sed -i -E "s/CODE_SERVER_UPSTREAM_VERSION = \"[^\"]+\"/CODE_SERVER_UPSTREAM_VERSION = \"$LATEST_VERSION\"/" plugins/code-server/backend/service_manager.py
-          sed -i -E "s/code-server_[0-9]+\.[0-9]+\.[0-9]+_/code-server_${LATEST_VERSION}_/g" plugins/code-server/src/components/InstallPrompt.tsx
-          sed -i -E "s/download\/v[0-9]+\.[0-9]+\.[0-9]+/download\/v${LATEST_VERSION}/g" plugins/code-server/src/components/InstallPrompt.tsx
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add plugins/code-server/backend/service_manager.py plugins/code-server/src/components/InstallPrompt.tsx
+          git add plugins/code-server/backend/service_manager.py
           git commit -m "Update code-server upstream to v${LATEST_VERSION}
 
 Automated upstream sync updating pinned code-server package to

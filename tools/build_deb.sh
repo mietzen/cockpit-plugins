@@ -91,6 +91,9 @@ if [ -n "$DPKG_DEB" ]; then
     elif [ "$PLUGIN_NAME" = "container-manager" ]; then
         DEB_DEPENDS="cockpit-bridge | cockpit, python3, openssl"
         DEB_DESC="Docker and Podman container management plugin for Cockpit"
+    elif [ "$PLUGIN_NAME" = "code-server" ]; then
+        DEB_DEPENDS="cockpit-bridge | cockpit, python3, code-server"
+        DEB_DESC="VS Code Server plugin for Cockpit"
     fi
 
     mkdir -p "$STAGE_DIR/usr/share/cockpit/${PLUGIN_NAME}"

@@ -39,11 +39,16 @@ export const InstallPrompt: React.FC<InstallPromptProps> = ({ isLoading, onInsta
               lineHeight: "1.5",
             }}
           >
-            # Debian / Ubuntu (.deb)
+            # Debian / Ubuntu
             <br />
-            curl -fOL https://github.com/coder/code-server/releases/download/v4.139.1/code-server_4.139.1_amd64.deb
+            sudo apt install cockpit-code-server
             <br />
-            sudo apt install ./code-server_4.139.1_amd64.deb
+            sudo systemctl enable --now code-server@$USER
+            <br />
+            <br />
+            # Fedora / RHEL
+            <br />
+            sudo dnf install cockpit-code-server
             <br />
             sudo systemctl enable --now code-server@$USER
           </div>
