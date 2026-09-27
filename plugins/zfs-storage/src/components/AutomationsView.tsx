@@ -39,8 +39,14 @@ export enum PolicySortColumn {
   Daily = 3,
   Monthly = 4,
   Yearly = 5,
-  Recursive = 7,
+  Recursive = 6,
 }
+
+const compareNumeric = (firstVal?: number, secondVal?: number, direction: "asc" | "desc" = "asc"): number => {
+  const first = firstVal ?? -1;
+  const second = secondVal ?? -1;
+  return direction === "asc" ? first - second : second - first;
+};
 
 interface AutomationsViewProps {
   sanoidInfo?: SanoidInfo | null;
@@ -112,33 +118,25 @@ export const AutomationsView: React.FC<AutomationsViewProps> = ({
       }
 
       if (sortIndex === PolicySortColumn.Hourly) {
-        const firstVal = firstPolicy.hourly ?? -1;
-        const secondVal = secondPolicy.hourly ?? -1;
-        return sortDirection === "asc" ? firstVal - secondVal : secondVal - firstVal;
+        return compareNumeric(firstPolicy.hourly, secondPolicy.hourly, sortDirection);
       }
 
       if (sortIndex === PolicySortColumn.Daily) {
-        const firstVal = firstPolicy.daily ?? -1;
-        const secondVal = secondPolicy.daily ?? -1;
-        return sortDirection === "asc" ? firstVal - secondVal : secondVal - firstVal;
+        return compareNumeric(firstPolicy.daily, secondPolicy.daily, sortDirection);
       }
 
       if (sortIndex === PolicySortColumn.Monthly) {
-        const firstVal = firstPolicy.monthly ?? -1;
-        const secondVal = secondPolicy.monthly ?? -1;
-        return sortDirection === "asc" ? firstVal - secondVal : secondVal - firstVal;
+        return compareNumeric(firstPolicy.monthly, secondPolicy.monthly, sortDirection);
       }
 
       if (sortIndex === PolicySortColumn.Yearly) {
-        const firstVal = firstPolicy.yearly ?? -1;
-        const secondVal = secondPolicy.yearly ?? -1;
-        return sortDirection === "asc" ? firstVal - secondVal : secondVal - firstVal;
+        return compareNumeric(firstPolicy.yearly, secondPolicy.yearly, sortDirection);
       }
 
       if (sortIndex === PolicySortColumn.Recursive) {
-        const firstVal = firstPolicy.recursive ? 1 : 0;
-        const secondVal = secondPolicy.recursive ? 1 : 0;
-        return sortDirection === "asc" ? firstVal - secondVal : secondVal - firstVal;
+        const first = firstPolicy.recursive ? 1 : 0;
+        const second = secondPolicy.recursive ? 1 : 0;
+        return sortDirection === "asc" ? first - second : second - first;
       }
 
       return 0;
@@ -362,13 +360,18 @@ export const AutomationsView: React.FC<AutomationsViewProps> = ({
             variant={ModalVariant.small}
             title="Delete Snapshot Schedule"
             isOpen={Boolean(deleteDatasetTarget)}
-            onClose={() => setDeleteDatasetTarget(null)}
+            onClose={() => {
+              if (!isDeleting) {
+                setDeleteDatasetTarget(null);
+              }
+            }}
             appendTo={() => document.body}
             actions={[
               <Button
                 key="confirm"
                 variant="danger"
                 isLoading={isDeleting}
+                isDisabled={isDeleting}
                 onClick={async () => {
                   const target = deleteDatasetTarget;
                   setIsDeleting(true);
@@ -382,7 +385,16 @@ export const AutomationsView: React.FC<AutomationsViewProps> = ({
               >
                 Delete Schedule
               </Button>,
-              <Button key="cancel" variant="link" onClick={() => setDeleteDatasetTarget(null)}>
+              <Button
+                key="cancel"
+                variant="link"
+                isDisabled={isDeleting}
+                onClick={() => {
+                  if (!isDeleting) {
+                    setDeleteDatasetTarget(null);
+                  }
+                }}
+              >
                 Cancel
               </Button>,
             ]}

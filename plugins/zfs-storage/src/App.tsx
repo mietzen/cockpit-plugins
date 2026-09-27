@@ -125,7 +125,7 @@ const parseRoute = (segments: string[]): AppRoute => {
     return { view: "disks", poolName: null, subTab: "topology" };
   }
   if (root === "automations" || root === "sanoid") {
-    return { view: "automations", poolName: null, subTab: "topology" };
+    return { view: "automations", poolName: null, subTab: "automations" };
   }
   if (root === "settings") {
     return { view: "settings", poolName: null, subTab: "topology" };
