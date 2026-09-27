@@ -338,12 +338,9 @@ jobs:
         run: |
           TAG_NAME="${{ github.ref_name }}"
           echo "Creating GitHub Release for $TAG_NAME..."
-          if [[ "$TAG_NAME" == zfs-storage-* ]]; then
-            RELEASE_FILES=(all-debs/cockpit-zfs-storage_*.deb all-rpms/cockpit-zfs-storage-*.rpm)
-          elif [[ "$TAG_NAME" == file-sharing-* ]]; then
-            RELEASE_FILES=(all-debs/cockpit-file-sharing_*.deb all-rpms/cockpit-file-sharing-*.rpm)
-          elif [[ "$TAG_NAME" == container-manager-* ]]; then
-            RELEASE_FILES=(all-debs/cockpit-container-manager_*.deb all-rpms/cockpit-container-manager-*.rpm)
+          PLUGIN_NAME="${TAG_NAME%%-v*}"
+          if [[ -n "$PLUGIN_NAME" && -d "plugins/$PLUGIN_NAME" ]]; then
+            RELEASE_FILES=(all-debs/cockpit-"${PLUGIN_NAME}"_*.deb all-rpms/cockpit-"${PLUGIN_NAME}"-*.rpm)
           else
             RELEASE_FILES=(all-debs/*.deb all-rpms/*.rpm)
           fi
@@ -355,7 +352,6 @@ jobs:
   deploy-pages:
     name: Assemble & Deploy Repositories to GitHub Pages
     if: |
-      always() &&
       !failure() && !cancelled() &&
       (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch') &&
       needs.check-run.result == 'success' &&
