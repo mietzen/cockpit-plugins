@@ -55,7 +55,7 @@ export const App: React.FC = () => {
   const [activeView, setActiveView] = useCockpitRoute(parseView, formatSegments, IGNORED_PREFIXES);
 
   const navigateToView = useCallback((view: string) => {
-    setActiveView(view, NavMode.Replace);
+    setActiveView(view, NavMode.Push);
   }, [setActiveView]);
 
   const [data, setData] = useState<FileSharingOverview | null>(null);

@@ -134,7 +134,7 @@ export const App: React.FC = () => {
 
   const navigateTo = useCallback((segments: string[]) => {
     const nextRoute = parseRoute(segments);
-    setRoute(nextRoute, NavMode.Replace);
+    setRoute(nextRoute, NavMode.Push);
   }, [setRoute]);
 
   const [systemInfo, setSystemInfo] = useState<SystemInfo | null>(null);

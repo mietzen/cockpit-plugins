@@ -29,7 +29,12 @@ export function getCockpitSegments(ignoredPrefixes: string[] = []): string[] {
   }
 
   // Prefer cockpit shell path when embedded
-  if (typeof cockpit !== "undefined" && cockpit.location && Array.isArray(cockpit.location.path) && cockpit.location.path.length > 0) {
+  if (
+    typeof cockpit !== "undefined" &&
+    cockpit.location &&
+    Array.isArray(cockpit.location.path) &&
+    cockpit.location.path.length > 0
+  ) {
     const raw = cockpit.location.path;
     const lowerPrefixes = ignoredPrefixes.map((p) => {
       return p.toLowerCase();
@@ -42,7 +47,7 @@ export function getCockpitSegments(ignoredPrefixes: string[] = []): string[] {
     return raw;
   }
 
-  // Fallback to window hash for direct or dev execution
+  // Fallback to window hash for direct or standalone execution
   const hash = window.location.hash.replace(/^#\/?/, "");
   if (hash) {
     return hash.split("/").filter(Boolean);
@@ -52,22 +57,26 @@ export function getCockpitSegments(ignoredPrefixes: string[] = []): string[] {
 }
 
 /**
- * Synchronizes route with Cockpit host shell and iframe history.
+ * Synchronizes route with Cockpit host shell or standalone window history.
  */
 export function syncCockpitLocation(segments: string[], mode: NavMode = NavMode.Replace): void {
-  const targetPath = segments.length > 0 ? segments.join("/") : "";
-  const targetHash = segments.length > 0 ? `#/${targetPath}` : "#/";
+  const targetPath = segments.length > 0 ? `/${segments.join("/")}` : "/";
+  const targetHash = segments.length > 0 ? `#/${segments.join("/")}` : "#/";
 
-  // Update Cockpit host shell location
+  // Update Cockpit host shell location if available
   if (typeof cockpit !== "undefined" && cockpit.location) {
     if (mode === NavMode.Replace && typeof cockpit.location.replace === "function") {
       cockpit.location.replace(targetPath);
-    } else if (typeof cockpit.location.go === "function") {
+      return;
+    }
+
+    if (typeof cockpit.location.go === "function") {
       cockpit.location.go(targetPath);
+      return;
     }
   }
 
-  // Update iframe window history
+  // Fallback to standalone iframe window history when not running inside Cockpit
   if (typeof window !== "undefined" && window.location.hash !== targetHash) {
     if (mode === NavMode.Replace) {
       window.history.replaceState(null, "", targetHash);
@@ -127,20 +136,12 @@ export function useCockpitRoute<T>(
   }, [syncFromEnv]);
 
   useEffect(() => {
-    const handleHashChange = () => {
-      syncFromEnv();
-    };
-
-    const handlePopState = () => {
-      syncFromEnv();
-    };
-
-    window.addEventListener("hashchange", handleHashChange);
-    window.addEventListener("popstate", handlePopState);
+    window.addEventListener("hashchange", syncFromEnv);
+    window.addEventListener("popstate", syncFromEnv);
 
     return () => {
-      window.removeEventListener("hashchange", handleHashChange);
-      window.removeEventListener("popstate", handlePopState);
+      window.removeEventListener("hashchange", syncFromEnv);
+      window.removeEventListener("popstate", syncFromEnv);
     };
   }, [syncFromEnv]);
 

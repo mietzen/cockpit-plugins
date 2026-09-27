@@ -66,7 +66,7 @@ export const App: React.FC = () => {
   const [activeView, setActiveView] = useCockpitRoute(parseView, formatSegments, IGNORED_PREFIXES);
 
   const navigateToView = useCallback((view: string) => {
-    setActiveView(view, NavMode.Replace);
+    setActiveView(view, NavMode.Push);
   }, [setActiveView]);
 
   const [overview, setOverview] = useState<ContainerOverview>(
