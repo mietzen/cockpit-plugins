@@ -28,12 +28,20 @@ declare global {
   }
 }
 
-const IGNORED_PREFIXES = ["file-sharing", "cockpit-file-sharing", "index"];
+const IGNORED_PREFIXES = ["file-sharing", "cockpit-file-sharing", "sharing", "index"];
 
 const parseView = (loc: CockpitLocationState): string => {
-  const tab = (loc.options.tab || (loc.path.length > 0 ? loc.path[0] : "")).trim().toLowerCase();
-  if (["dashboard", "smb", "nfs", "users", "sessions", "settings"].includes(tab)) {
-    return tab;
+  if (loc.options.tab) {
+    const tab = loc.options.tab.trim().toLowerCase();
+    if (["dashboard", "smb", "nfs", "users", "sessions", "settings"].includes(tab)) {
+      return tab;
+    }
+  }
+  if (loc.path.length > 0) {
+    const seg = loc.path[0].trim().toLowerCase();
+    if (["smb", "nfs", "users", "sessions", "settings"].includes(seg)) {
+      return seg;
+    }
   }
   return "dashboard";
 };

@@ -89,7 +89,7 @@ type ActiveModal =
     }
   | null;
 
-const IGNORED_PREFIXES = ["zfs-storage", "cockpit-zfs", "index"];
+const IGNORED_PREFIXES = ["zfs-storage", "cockpit-zfs", "zfs", "index"];
 
 const parseRoute = (loc: CockpitLocationState): AppRoute => {
   const tab = (loc.options.tab || (loc.path.length > 0 ? loc.path[0] : "")).trim().toLowerCase();

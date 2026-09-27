@@ -84,12 +84,12 @@ export function syncCockpitLocation(
   // Update Cockpit host shell location via options query params
   if (typeof cockpit !== "undefined" && cockpit.location) {
     if (mode === NavMode.Replace && typeof cockpit.location.replace === "function") {
-      cockpit.location.replace("", options);
+      cockpit.location.replace(path, options);
       return;
     }
 
     if (typeof cockpit.location.go === "function") {
-      cockpit.location.go("", options);
+      cockpit.location.go(path, options);
       return;
     }
   }
