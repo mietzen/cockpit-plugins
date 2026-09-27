@@ -348,13 +348,19 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     await frame.locator('.cockpit-top-nav-bar button:has-text("Containers")').click();
     await frame.waitForSelector('table[aria-label="Containers Table"]', { timeout: 10000 });
 
-    // Click terminal icon on first container in visible table
-    const actionToggle = frame.locator('table[aria-label="Containers Table"] button[aria-label="Container actions"]').first();
+    // Click terminal icon on running container in visible table
+    const runningRow = frame.locator('table[aria-label="Containers Table"] tbody tr').filter({ hasText: /running/i }).first();
+    const actionToggle = (await runningRow.count() > 0)
+      ? runningRow.locator('button[aria-label="Container actions"]').first()
+      : frame.locator('table[aria-label="Containers Table"] button[aria-label="Container actions"]').first();
+
     if (await actionToggle.isVisible({ timeout: 2000 }).catch(() => false)) {
       await actionToggle.click();
       await frame.locator('[role="menuitem"]:has-text("Terminal"), button:has-text("Terminal")').first().click();
     } else {
-      const termBtn = frame.locator('table[aria-label="Containers Table"] button[aria-label="Terminal"]').first();
+      const termBtn = (await runningRow.count() > 0)
+        ? runningRow.locator('button[aria-label="Terminal"]').first()
+        : frame.locator('table[aria-label="Containers Table"] button[aria-label="Terminal"]').first();
       await termBtn.click();
     }
 
@@ -475,9 +481,12 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     await frame.locator('.cockpit-top-nav-bar button:has-text("Containers")').click();
     await frame.waitForSelector('table[aria-label="Containers Table"]', { timeout: 10000 });
 
-    // Look for an enabled container delete button or action menu
+    // Look for an enabled container delete button or action menu on stopped container
+    const stoppedRow = frame.locator('table[aria-label="Containers Table"] tbody tr').filter({ hasText: /stopped|exited|created/i }).first();
+    const actionToggle = (await stoppedRow.count() > 0)
+      ? stoppedRow.locator('button[aria-label="Container actions"]').first()
+      : frame.locator('table[aria-label="Containers Table"] button[aria-label="Container actions"]').first();
     const deleteBtn = frame.locator('table[aria-label="Containers Table"] button[aria-label="Delete"]:not([disabled])').first();
-    const actionToggle = frame.locator('table[aria-label="Containers Table"] button[aria-label="Container actions"]').first();
 
     if (await actionToggle.isVisible({ timeout: 2000 }).catch(() => false)) {
       await actionToggle.click();
