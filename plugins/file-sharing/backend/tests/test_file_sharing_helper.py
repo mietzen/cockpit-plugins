@@ -123,7 +123,7 @@ Account Flags:        [UD         ]
 
 [share1]
     path = /srv/share1
-    valid users = @smbteam, +developers, alice
+    valid users = @smbteam, +developers, alice, @paperless, @shared_user
     force group = backup_group
 
 [share2]
@@ -134,6 +134,8 @@ Account Flags:        [UD         ]
         mock_pwall.return_value = [
             MagicMock(pw_name="alice", pw_uid=1000, pw_gid=2000),
             MagicMock(pw_name="bob", pw_uid=1001, pw_gid=2001),
+            MagicMock(pw_name="paperless", pw_uid=1002, pw_gid=2003),
+            MagicMock(pw_name="shared_user", pw_uid=1003, pw_gid=2004),
         ]
 
         def fake_getgrnam(name):
@@ -143,6 +145,10 @@ Account Flags:        [UD         ]
                 return MagicMock(gr_name="developers", gr_gid=2001, gr_mem=["bob"])
             if name == "backup_group":
                 return MagicMock(gr_name="backup_group", gr_gid=2002, gr_mem=[])
+            if name == "paperless":
+                return MagicMock(gr_name="paperless", gr_gid=2003, gr_mem=[])
+            if name == "shared_user":
+                return MagicMock(gr_name="shared_user", gr_gid=2004, gr_mem=["alice"])
             raise KeyError(name)
 
         mock_getgrnam.side_effect = fake_getgrnam
@@ -151,18 +157,16 @@ Account Flags:        [UD         ]
         group_names = [g["name"] for g in groups]
         self.assertIn("smbteam", group_names)
         self.assertIn("developers", group_names)
-        self.assertIn("backup_group", group_names)
-        self.assertIn("Domain Admins", group_names)
+        self.assertIn("shared_user", group_names) # Group named shared_user has 2 members: shared_user & alice
+        self.assertNotIn("backup_group", group_names) # Empty group excluded
+        self.assertNotIn("Domain Admins", group_names) # Missing group (0 members) excluded
+        self.assertNotIn("paperless", group_names) # User-private group with sole member matching name excluded
 
         # Check members and primary group resolution
         smbteam = next(g for g in groups if g["name"] == "smbteam")
         self.assertEqual(smbteam["gid"], 2000)
         self.assertIn("alice", smbteam["members"]) # primary gid 2000
         self.assertIn("charlie", smbteam["members"])
-
-        domain_admins = next(g for g in groups if g["name"] == "Domain Admins")
-        self.assertIsNone(domain_admins["gid"])
-        self.assertEqual(domain_admins["members"], [])
 
 
     @patch("shutil.which", return_value="/usr/bin/smbstatus")

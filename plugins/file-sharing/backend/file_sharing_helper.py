@@ -131,7 +131,7 @@ def get_system_unix_users() -> List[str]:
 
 
 def get_smb_groups() -> List[Dict[str, Any]]:
-    """Retrieves all Unix groups referenced in smb.conf with GID and member list."""
+    """Retrieves non-empty, non-private Unix groups referenced in smb.conf."""
     conf_group_names = SmbParser().extract_groups()
     smb_users = {u.get("username", "").lower() for u in get_smb_users() if u.get("username")}
 
@@ -145,17 +145,23 @@ def get_smb_groups() -> List[Dict[str, Any]]:
         try:
             g = grp.getgrnam(name)
             members_set = set(g.gr_mem) | set(primary_group_users.get(g.gr_gid, []))
+            members = sorted(list(members_set))
+
+            # Exclude groups without users
+            if not members:
+                continue
+
+            # Exclude user private groups where group name matches the sole user member
+            if len(members) == 1 and members[0].lower() == g.gr_name.lower():
+                continue
+
             groups.append({
                 "name": g.gr_name,
                 "gid": g.gr_gid,
-                "members": sorted(list(members_set)),
+                "members": members,
             })
         except KeyError:
-            groups.append({
-                "name": name,
-                "gid": None,
-                "members": [],
-            })
+            continue
 
     return sorted(groups, key=lambda x: x["name"])
 
