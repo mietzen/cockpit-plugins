@@ -356,11 +356,11 @@ jobs:
       always() &&
       !cancelled() &&
       !failure() &&
-      (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch') &&
+      (startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch') &&
       needs.check-run.result == 'success' &&
       (needs.github-release.result == 'success' || needs.github-release.result == 'skipped')
     runs-on: ubuntu-26.04
-    needs: [build, e2e, check-run, github-release]
+    needs: [check-run, github-release]
     concurrency:
       group: github-pages-deployment
       cancel-in-progress: false
