@@ -230,10 +230,13 @@ class SmbParser:
             params.append(f"   create mask = {share_data['create_mask']}")
         if share_data.get("directory_mask"):
             params.append(f"   directory mask = {share_data['directory_mask']}")
+        if share_data.get("vfs_objects"):
+            params.append(f"   vfs objects = {share_data['vfs_objects']}")
+        elif share_data.get("fruit_time_machine"):
+            params.append("   vfs objects = catia fruit streams_xattr")
+
         if share_data.get("fruit_time_machine"):
             params.append("   fruit:time machine = yes")
-            if not share_data.get("vfs_objects"):
-                params.append("   vfs objects = catia fruit streams_xattr")
 
         new_block = f"[{share_name}]\n" + "\n".join(params) + "\n"
 

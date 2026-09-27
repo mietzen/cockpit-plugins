@@ -460,7 +460,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({
                         <Td data-label="Group Name">
                           <strong><UsersIcon style={{ marginRight: 8, color: "var(--pf-v5-global--primary-color--100)" }} />{grp.name}</strong>
                         </Td>
-                        <Td data-label="GID">{grp.gid === -1 ? "—" : grp.gid}</Td>
+                        <Td data-label="GID">{grp.gid == null ? "—" : grp.gid}</Td>
                         <Td data-label="Members">
                           {grp.members.length > 0 ? (
                             <Flex gap={{ default: "gapXs" }}>
