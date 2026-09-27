@@ -121,6 +121,10 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
 
     const frame = await getFrame();
     await frame.locator('#root').waitFor({ state: 'attached', timeout: 20000 });
+    const recheckBtn1 = frame.locator("button:has-text('Re-check Installed Engines')").first();
+    if (await recheckBtn1.isVisible({ timeout: 1500 }).catch(() => false)) {
+      await recheckBtn1.click();
+    }
     await expect(frame.getByRole('heading', { name: /Containers|No Container Engine Found/ }).first()).toBeVisible({ timeout: 20000 });
     await saveScreenshot(page, '01_overview_dashboard_loaded.png');
   });
@@ -130,6 +134,11 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
 
     // Verify top sticky navigation pill bar
     await expect(frame.locator('.cockpit-top-nav-bar, .pf-v5-c-tabs').first()).toBeVisible({ timeout: 10000 });
+
+    const recheckBtn2 = frame.locator("button:has-text('Re-check Installed Engines')").first();
+    if (await recheckBtn2.isVisible({ timeout: 1500 }).catch(() => false)) {
+      await recheckBtn2.click();
+    }
 
     // Verify metric cards
     await expect(frame.locator('.pf-v5-c-card', { hasText: 'Containers' }).first()).toBeVisible({ timeout: 10000 });
