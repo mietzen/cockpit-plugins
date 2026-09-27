@@ -349,7 +349,7 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     await frame.waitForSelector('table[aria-label="Containers Table"]', { timeout: 10000 });
 
     // Click terminal icon on running container in visible table
-    const runningRow = frame.locator('table[aria-label="Containers Table"] tbody tr').filter({ hasText: /running/i }).first();
+    const runningRow = frame.locator('table[aria-label="Containers Table"] tbody tr').filter({ has: frame.locator('button[aria-label="Stop"]') }).first();
     const actionToggle = (await runningRow.count() > 0)
       ? runningRow.locator('button[aria-label="Container actions"]').first()
       : frame.locator('table[aria-label="Containers Table"] button[aria-label="Container actions"]').first();
@@ -482,7 +482,7 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     await frame.waitForSelector('table[aria-label="Containers Table"]', { timeout: 10000 });
 
     // Look for an enabled container delete button or action menu on stopped container
-    const stoppedRow = frame.locator('table[aria-label="Containers Table"] tbody tr').filter({ hasText: /stopped|exited|created/i }).first();
+    const stoppedRow = frame.locator('table[aria-label="Containers Table"] tbody tr').filter({ has: frame.locator('button[aria-label="Start"]') }).first();
     const actionToggle = (await stoppedRow.count() > 0)
       ? stoppedRow.locator('button[aria-label="Container actions"]').first()
       : frame.locator('table[aria-label="Containers Table"] button[aria-label="Container actions"]').first();
