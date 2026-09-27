@@ -10,6 +10,7 @@ import {
   Checkbox,
   Button,
   Alert,
+  Title,
   Grid,
   GridItem,
 } from "@patternfly/react-core";
@@ -25,6 +26,7 @@ interface SanoidScheduleModalProps {
 }
 
 const TEMPLATE_CUSTOM = "custom";
+const DEFAULT_RETENTION_FREQUENTLY = 0;
 const DEFAULT_RETENTION_HOURLY = 24;
 const DEFAULT_RETENTION_DAILY = 30;
 const DEFAULT_RETENTION_MONTHLY = 3;
@@ -41,6 +43,7 @@ export const SanoidScheduleModal: React.FC<SanoidScheduleModalProps> = ({
   const isEditing = policy !== null;
   const [dataset, setDataset] = useState("");
   const [selectedTemplate, setSelectedTemplate] = useState<string>(TEMPLATE_CUSTOM);
+  const [frequently, setFrequently] = useState<number | string>(DEFAULT_RETENTION_FREQUENTLY);
   const [hourly, setHourly] = useState<number | string>(DEFAULT_RETENTION_HOURLY);
   const [daily, setDaily] = useState<number | string>(DEFAULT_RETENTION_DAILY);
   const [monthly, setMonthly] = useState<number | string>(DEFAULT_RETENTION_MONTHLY);
@@ -59,6 +62,7 @@ export const SanoidScheduleModal: React.FC<SanoidScheduleModalProps> = ({
     if (policy) {
       setDataset(policy.dataset);
       setSelectedTemplate(policy.use_template || policy.template || TEMPLATE_CUSTOM);
+      setFrequently(policy.frequently !== undefined ? policy.frequently : "");
       setHourly(policy.hourly !== undefined ? policy.hourly : "");
       setDaily(policy.daily !== undefined ? policy.daily : "");
       setMonthly(policy.monthly !== undefined ? policy.monthly : "");
@@ -70,6 +74,7 @@ export const SanoidScheduleModal: React.FC<SanoidScheduleModalProps> = ({
       const initialDataset = datasetOptions.length > 0 ? datasetOptions[0] : "";
       setDataset(initialDataset);
       setSelectedTemplate(TEMPLATE_CUSTOM);
+      setFrequently(DEFAULT_RETENTION_FREQUENTLY);
       setHourly(DEFAULT_RETENTION_HOURLY);
       setDaily(DEFAULT_RETENTION_DAILY);
       setMonthly(DEFAULT_RETENTION_MONTHLY);
@@ -89,6 +94,9 @@ export const SanoidScheduleModal: React.FC<SanoidScheduleModalProps> = ({
 
     const tmpl = templates[tmplKey];
     if (tmpl) {
+      if (tmpl.frequently !== undefined) {
+        setFrequently(tmpl.frequently);
+      }
       if (tmpl.hourly !== undefined) {
         setHourly(tmpl.hourly);
       }
@@ -134,6 +142,7 @@ export const SanoidScheduleModal: React.FC<SanoidScheduleModalProps> = ({
     const newPolicy: SanoidDatasetPolicy = {
       dataset: trimmedDataset,
       use_template: selectedTemplate !== TEMPLATE_CUSTOM ? selectedTemplate : undefined,
+      frequently: parseRetention(frequently),
       hourly: parseRetention(hourly),
       daily: parseRetention(daily),
       monthly: parseRetention(monthly),
@@ -221,8 +230,20 @@ export const SanoidScheduleModal: React.FC<SanoidScheduleModalProps> = ({
         </Title>
 
         <Grid hasGutter>
-          <GridItem span={6}>
-            <FormGroup label="Hourly Snapshots" fieldId="sanoid-hourly">
+          <GridItem span={4}>
+            <FormGroup label="Frequently (15 min)" fieldId="sanoid-frequently">
+              <TextInput
+                id="sanoid-frequently"
+                type="number"
+                min={0}
+                value={frequently}
+                onChange={(_event, val) => setFrequently(val)}
+                placeholder="0"
+              />
+            </FormGroup>
+          </GridItem>
+          <GridItem span={4}>
+            <FormGroup label="Hourly" fieldId="sanoid-hourly">
               <TextInput
                 id="sanoid-hourly"
                 type="number"
@@ -233,8 +254,8 @@ export const SanoidScheduleModal: React.FC<SanoidScheduleModalProps> = ({
               />
             </FormGroup>
           </GridItem>
-          <GridItem span={6}>
-            <FormGroup label="Daily Snapshots" fieldId="sanoid-daily">
+          <GridItem span={4}>
+            <FormGroup label="Daily" fieldId="sanoid-daily">
               <TextInput
                 id="sanoid-daily"
                 type="number"
@@ -246,7 +267,7 @@ export const SanoidScheduleModal: React.FC<SanoidScheduleModalProps> = ({
             </FormGroup>
           </GridItem>
           <GridItem span={6}>
-            <FormGroup label="Monthly Snapshots" fieldId="sanoid-monthly">
+            <FormGroup label="Monthly" fieldId="sanoid-monthly">
               <TextInput
                 id="sanoid-monthly"
                 type="number"
@@ -258,7 +279,7 @@ export const SanoidScheduleModal: React.FC<SanoidScheduleModalProps> = ({
             </FormGroup>
           </GridItem>
           <GridItem span={6}>
-            <FormGroup label="Yearly Snapshots" fieldId="sanoid-yearly">
+            <FormGroup label="Yearly" fieldId="sanoid-yearly">
               <TextInput
                 id="sanoid-yearly"
                 type="number"

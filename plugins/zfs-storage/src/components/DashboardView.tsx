@@ -15,6 +15,8 @@ import {
   Title,
   Label,
   Divider,
+  Modal,
+  ModalVariant,
 } from "@patternfly/react-core";
 import { Table, Thead, Tr, Th, Tbody, Td, ThProps } from "@patternfly/react-table";
 import {
@@ -65,6 +67,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [diskSortDirection, setDiskSortDirection] = useState<'asc' | 'desc'>('asc');
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [selectedPolicy, setSelectedPolicy] = useState<SanoidDatasetPolicy | null>(null);
+  const [deleteScheduleDataset, setDeleteScheduleDataset] = useState<string | null>(null);
 
   const getDiskSortParams = (columnIndex: number): ThProps['sort'] => ({
     sortBy: {
@@ -420,7 +423,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         {sanoidInfo.policies.map((p) => (
                           <Tr key={p.dataset}>
                             <Td dataLabel="Dataset"><strong>{p.dataset}</strong></Td>
-                            <Td dataLabel="Template">{p.template || "default"}</Td>
+                            <Td dataLabel="Template">{p.use_template || p.template || "Custom"}</Td>
                             <Td dataLabel="Hourly">{p.hourly !== undefined ? p.hourly : "—"}</Td>
                             <Td dataLabel="Daily">{p.daily !== undefined ? p.daily : "—"}</Td>
                             <Td dataLabel="Monthly">{p.monthly !== undefined ? p.monthly : "—"}</Td>
@@ -451,11 +454,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                                     <Button
                                       variant="plain"
                                       aria-label={`Delete schedule for ${p.dataset}`}
-                                      onClick={() => {
-                                        if (window.confirm(`Are you sure you want to remove the snapshot schedule for ${p.dataset}?`)) {
-                                          onDeleteSanoidSchedule(p.dataset);
-                                        }
-                                      }}
+                                      onClick={() => setDeleteScheduleDataset(p.dataset)}
                                     >
                                       <TrashIcon style={{ color: "var(--pf-v5-global--danger-color--100)" }} />
                                     </Button>
@@ -575,6 +574,34 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               await onSaveSanoidSchedule(policy);
             }}
           />
+        )}
+
+        {deleteScheduleDataset && onDeleteSanoidSchedule && (
+          <Modal
+            variant={ModalVariant.small}
+            title="Delete Snapshot Schedule"
+            isOpen={Boolean(deleteScheduleDataset)}
+            onClose={() => setDeleteScheduleDataset(null)}
+            appendTo={() => document.body}
+            actions={[
+              <Button
+                key="confirm"
+                variant="danger"
+                onClick={async () => {
+                  const ds = deleteScheduleDataset;
+                  setDeleteScheduleDataset(null);
+                  await onDeleteSanoidSchedule(ds);
+                }}
+              >
+                Delete Schedule
+              </Button>,
+              <Button key="cancel" variant="secondary" onClick={() => setDeleteScheduleDataset(null)}>
+                Cancel
+              </Button>,
+            ]}
+          >
+            Are you sure you want to remove the snapshot schedule for <strong>{deleteScheduleDataset}</strong>?
+          </Modal>
         )}
       </PageSection>
     </>

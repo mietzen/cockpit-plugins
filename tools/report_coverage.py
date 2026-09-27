@@ -11,6 +11,7 @@ TIER_CONFIG = {
         "patterns": [
             "command_builder.py",
             "zfs_helper.py",
+            "sanoid_manager.py",
             "file_sharing_helper.py",
             "container_helper.py",
             "engine_adapter.py",
@@ -23,6 +24,7 @@ TIER_CONFIG = {
             "DestroyModal.tsx",
             "AttachDiskModal.tsx",
             "ReplaceDiskModal.tsx",
+            "SanoidScheduleModal.tsx",
             "ConfirmModal.tsx",
             "SystemPruneModal.tsx",
             "containerClient.ts",

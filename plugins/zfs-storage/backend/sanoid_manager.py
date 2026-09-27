@@ -140,11 +140,15 @@ def update_sanoid_policy(conf_content: str, policy: Dict[str, Any]) -> str:
     existing_props = sections.get(dataset, {})
     new_props: Dict[str, Any] = {}
 
+    for k, v in existing_props.items():
+        if k not in KNOWN_POLICY_KEYS:
+            new_props[k] = v
+
     for k in KNOWN_POLICY_KEYS:
-        if k in policy and policy[k] is not None:
-            new_props[k] = policy[k]
-        elif k in existing_props and k not in policy:
-            new_props[k] = existing_props[k]
+        if k in policy:
+            val = policy[k]
+            if val is not None and val != "":
+                new_props[k] = val
 
     sections[dataset] = new_props
     return serialize_sanoid_conf(sections)

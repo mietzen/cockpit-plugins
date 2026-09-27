@@ -13,61 +13,43 @@ if SCRIPT_DIR not in sys.path:
 if PARENT_DIR not in sys.path:
     sys.path.insert(0, PARENT_DIR)
 
-try:
-    from backend.enums import (
-        VDevType,
-        AshiftType,
-        ScrubAction,
-        TrimAction,
-        CompressionType,
-        DatasetType,
-    )
-    from backend.command_builder import CommandBuilder, VDevConfig
-    from backend.parsers import (
-        parse_zpool_list,
-        parse_zpool_status,
-        parse_zpool_properties,
-        parse_zfs_list,
-        parse_zfs_snapshots,
-        parse_lsblk,
-        parse_smartctl,
-        parse_arcstats,
-        parse_sanoid_conf,
-    )
-    from backend.sanoid_manager import (
-        parse_sanoid_conf_file,
-        update_sanoid_policy,
-        remove_sanoid_policy,
-    )
-except ImportError:
-    from enums import (
-        VDevType,
-        AshiftType,
-        ScrubAction,
-        TrimAction,
-        CompressionType,
-        DatasetType,
-    )
-    from command_builder import CommandBuilder, VDevConfig
-    from parsers import (
-        parse_zpool_list,
-        parse_zpool_status,
-        parse_zpool_properties,
-        parse_zfs_list,
-        parse_zfs_snapshots,
-        parse_lsblk,
-        parse_smartctl,
-        parse_arcstats,
-        parse_sanoid_conf,
-    )
-    from sanoid_manager import (
-        parse_sanoid_conf_file,
-        update_sanoid_policy,
-        remove_sanoid_policy,
-    )
+from enums import (
+    VDevType,
+    AshiftType,
+    ScrubAction,
+    TrimAction,
+    CompressionType,
+    DatasetType,
+)
+from command_builder import CommandBuilder, VDevConfig
+from parsers import (
+    parse_zpool_list,
+    parse_zpool_status,
+    parse_zpool_properties,
+    parse_zfs_list,
+    parse_zfs_snapshots,
+    parse_lsblk,
+    parse_smartctl,
+    parse_arcstats,
+)
+from sanoid_manager import (
+    parse_sanoid_conf_file,
+    update_sanoid_policy,
+    remove_sanoid_policy,
+)
 
 SANOID_CONF_PATH = "/etc/sanoid/sanoid.conf"
 SAFE_NAME_RE = re.compile(r"^[a-zA-Z0-9_\-\.\:\/\@\#\%\=\+]+$")
+
+
+def _atomic_write(target_path: str, content: str) -> None:
+    """Writes file atomically using a temporary file and replace."""
+    os.makedirs(os.path.dirname(target_path), exist_ok=True)
+    tmp_path = f"{target_path}.tmp"
+    with open(tmp_path, "w", encoding="utf-8") as f:
+        f.write(content)
+    os.replace(tmp_path, target_path)
+
 
 
 def validate_name(name: str, field_name: str = "Name") -> str:
@@ -138,12 +120,7 @@ class ZfsService:
                 content = f.read()
 
         updated_content = update_sanoid_policy(content, payload)
-
-        os.makedirs(os.path.dirname(SANOID_CONF_PATH), exist_ok=True)
-        tmp_path = f"{SANOID_CONF_PATH}.tmp"
-        with open(tmp_path, "w", encoding="utf-8") as f:
-            f.write(updated_content)
-        os.replace(tmp_path, SANOID_CONF_PATH)
+        _atomic_write(SANOID_CONF_PATH, updated_content)
 
         return {
             "success": True,
@@ -163,11 +140,7 @@ class ZfsService:
             content = f.read()
 
         updated_content = remove_sanoid_policy(content, clean_ds)
-
-        tmp_path = f"{SANOID_CONF_PATH}.tmp"
-        with open(tmp_path, "w", encoding="utf-8") as f:
-            f.write(updated_content)
-        os.replace(tmp_path, SANOID_CONF_PATH)
+        _atomic_write(SANOID_CONF_PATH, updated_content)
 
         return {
             "success": True,

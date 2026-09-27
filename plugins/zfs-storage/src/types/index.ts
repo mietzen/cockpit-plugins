@@ -150,7 +150,7 @@ export interface SanoidDatasetPolicy {
   yearly?: number;
   autosnap?: boolean;
   autoprune?: boolean;
-  recursive?: boolean | string;
+  recursive?: boolean;
   process_children_only?: boolean;
 }
 
