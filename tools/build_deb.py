@@ -85,8 +85,21 @@ set -e
 if [ -d /usr/libexec/{helper_dir_name} ]; then
     chmod -R 755 /usr/libexec/{helper_dir_name}
 fi
-exit 0
 """
+    if plugin_name == "code-server":
+        postinst_content += """TARGET_USERS=""
+if [ -n "${SUDO_USER:-}" ] && [ "${SUDO_USER}" != "root" ]; then
+    TARGET_USERS="${SUDO_USER}"
+else
+    TARGET_USERS=$(awk -F: '$3 >= 1000 && $3 < 65534 {print $1}' /etc/passwd 2>/dev/null || true)
+fi
+for u in ${TARGET_USERS}; do
+    if id "$u" >/dev/null 2>&1; then
+        systemctl enable --now "code-server@${u}.service" 2>/dev/null || true
+    fi
+done
+"""
+    postinst_content += "exit 0\n"
     prerm_content = """#!/bin/sh
 set -e
 exit 0

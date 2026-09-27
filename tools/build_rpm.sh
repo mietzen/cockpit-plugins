@@ -155,6 +155,24 @@ rm -rf %{buildroot}
 /usr/share/cockpit/${PLUGIN_NAME}
 /usr/libexec/${HELPER_DIR_NAME}
 
+%post
+if [ -d /usr/libexec/${HELPER_DIR_NAME} ]; then
+    chmod -R 755 /usr/libexec/${HELPER_DIR_NAME}
+fi
+if [ "${PLUGIN_NAME}" = "code-server" ]; then
+    TARGET_USERS=""
+    if [ -n "${SUDO_USER:-}" ] && [ "${SUDO_USER}" != "root" ]; then
+        TARGET_USERS="${SUDO_USER}"
+    else
+        TARGET_USERS=$(awk -F: '$3 >= 1000 && $3 < 65534 {print $1}' /etc/passwd 2>/dev/null || true)
+    fi
+    for u in ${TARGET_USERS}; do
+        if id "$u" >/dev/null 2>&1; then
+            systemctl enable --now "code-server@${u}.service" 2>/dev/null || true
+        fi
+    done
+fi
+
 %changelog
 * ${CHANGELOG_DATE} Nils Stein <github.nstein@mailbox.org> - ${VERSION}-1
 - Release ${VERSION}
