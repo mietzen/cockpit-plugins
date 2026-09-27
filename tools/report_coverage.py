@@ -24,7 +24,6 @@ TIER_CONFIG = {
             "DestroyModal.tsx",
             "AttachDiskModal.tsx",
             "ReplaceDiskModal.tsx",
-            "SanoidScheduleModal.tsx",
             "ConfirmModal.tsx",
             "SystemPruneModal.tsx",
             "containerClient.ts",
