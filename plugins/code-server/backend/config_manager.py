@@ -37,8 +37,30 @@ class CodeServerConfig:
         return data
 
 
+def resolve_username(username: Optional[str] = None) -> str:
+    if username and username != "root":
+        return username
+    sudo_user = os.environ.get("SUDO_USER")
+    if sudo_user and sudo_user != "root":
+        return sudo_user
+    logname = os.environ.get("LOGNAME") or os.environ.get("USER")
+    if logname and logname != "root":
+        return logname
+    try:
+        with open("/etc/passwd", "r") as f:
+            for line in f:
+                parts = line.strip().split(":")
+                if len(parts) >= 3 and parts[2].isdigit():
+                    uid = int(parts[2])
+                    if 1000 <= uid < 65534:
+                        return parts[0]
+    except Exception:
+        pass
+    return username or "root"
+
+
 def get_user_config_path(username: Optional[str] = None) -> str:
-    user = username or os.environ.get("SUDO_USER") or os.environ.get("LOGNAME") or os.environ.get("USER")
+    user = resolve_username(username)
     if user and user != "root":
         try:
             pw = pwd.getpwnam(user)
@@ -87,10 +109,36 @@ def sanitize_yaml_val(val: Optional[str]) -> str:
     return val.replace("\r", "").replace("\n", "").strip()
 
 
+def ensure_user_ownership(path: str, username: Optional[str] = None) -> None:
+    user = resolve_username(username)
+    if not user or user == "root":
+        return
+    try:
+        pw = pwd.getpwnam(user)
+        uid = pw.pw_uid
+        gid = pw.pw_gid
+        user_home = pw.pw_dir
+
+        curr = os.path.dirname(os.path.abspath(path))
+        while curr and curr != user_home and curr.startswith(user_home):
+            try:
+                os.chown(curr, uid, gid)
+                os.chmod(curr, 0o755)
+            except Exception:
+                pass
+            curr = os.path.dirname(curr)
+
+        if os.path.exists(path):
+            os.chown(path, uid, gid)
+            os.chmod(path, 0o600)
+    except Exception:
+        pass
+
+
 def write_code_server_config(path: str, config: CodeServerConfig, username: Optional[str] = None) -> bool:
     try:
         parent_dir = os.path.dirname(path)
-        os.makedirs(parent_dir, mode=0o700, exist_ok=True)
+        os.makedirs(parent_dir, mode=0o755, exist_ok=True)
 
         clean_bind = sanitize_yaml_val(config.bind_addr) or DEFAULT_BIND_ADDR
         clean_auth = "password" if sanitize_yaml_val(config.auth) != "none" else "none"
@@ -115,15 +163,16 @@ def write_code_server_config(path: str, config: CodeServerConfig, username: Opti
 
         os.chmod(temp_path, 0o600)
 
-        if username:
+        user = resolve_username(username)
+        if user and user != "root":
             try:
-                pw = pwd.getpwnam(username)
-                os.chown(parent_dir, pw.pw_uid, pw.pw_gid)
+                pw = pwd.getpwnam(user)
                 os.chown(temp_path, pw.pw_uid, pw.pw_gid)
             except Exception:
                 pass
 
         os.replace(temp_path, path)
+        ensure_user_ownership(path, username)
         return True
     except Exception:
         if "temp_path" in locals() and os.path.exists(temp_path):

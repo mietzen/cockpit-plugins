@@ -123,9 +123,48 @@ def get_service_status(username: Optional[str] = None) -> Dict[str, Any]:
     return status
 
 
+def ensure_user_dir_permissions(username: Optional[str] = None) -> None:
+    user = resolve_username(username)
+    if not user or user == "root":
+        return
+    try:
+        import pwd
+        pw = pwd.getpwnam(user)
+        uid = pw.pw_uid
+        gid = pw.pw_gid
+        user_home = pw.pw_dir
+        config_dir = os.path.join(user_home, ".config", "code-server")
+        if os.path.isdir(config_dir):
+            for root, dirs, files in os.walk(config_dir):
+                for d in dirs:
+                    dpath = os.path.join(root, d)
+                    try:
+                        os.chown(dpath, uid, gid)
+                        os.chmod(dpath, 0o755)
+                    except Exception:
+                        pass
+                for f in files:
+                    fpath = os.path.join(root, f)
+                    try:
+                        os.chown(fpath, uid, gid)
+                        os.chmod(fpath, 0o600)
+                    except Exception:
+                        pass
+            try:
+                os.chown(config_dir, uid, gid)
+                os.chmod(config_dir, 0o755)
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+
 def manage_service(action: str, username: Optional[str] = None) -> Dict[str, Any]:
     if action not in ALLOWED_ACTIONS:
         return {"success": False, "error": f"Invalid action: {action}. Allowed: {list(ALLOWED_ACTIONS)}"}
+
+    if action in ("start", "restart", "enable"):
+        ensure_user_dir_permissions(username)
 
     unit_name = get_service_unit_name(username)
     cmd = ["systemctl", action, unit_name]

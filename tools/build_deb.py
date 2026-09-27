@@ -95,6 +95,10 @@ else
 fi
 for u in ${TARGET_USERS}; do
     if id "$u" >/dev/null 2>&1; then
+        U_HOME=$(getent passwd "$u" | cut -d: -f6)
+        if [ -n "$U_HOME" ] && [ -d "$U_HOME/.config/code-server" ]; then
+            chown -R "$u:$u" "$U_HOME/.config/code-server" 2>/dev/null || true
+        fi
         systemctl enable --now "code-server@${u}.service" 2>/dev/null || true
     fi
 done
