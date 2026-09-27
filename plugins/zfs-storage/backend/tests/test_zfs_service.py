@@ -672,6 +672,58 @@ class TestZfsServiceActions(unittest.TestCase):
         self.assertEqual(len(res["policies"]), 1)
         self.assertEqual(res["policies"][0]["dataset"], "tank/data")
         self.assertEqual(res["policies"][0]["hourly"], 24)
+        self.assertIn("default", res["templates"])
+
+    @patch("os.replace")
+    @patch("os.makedirs")
+    @patch("os.path.exists", return_value=True)
+    @patch("builtins.open", new_callable=mock_open, read_data="[tank/old]\nhourly = 24\n")
+    def test_sanoid_save_and_delete_schedule(self, mock_file, mock_exists, mock_dirs, mock_replace):
+        # Save schedule
+        res = self.svc.sanoid_save_schedule({
+            "dataset": "tank/data",
+            "hourly": 48,
+            "daily": 7,
+            "autosnap": True,
+        })
+        self.assertTrue(res["success"])
+        self.assertIn("tank/data", res["message"])
+
+        # Delete schedule
+        res_del = self.svc.sanoid_delete_schedule("tank/data")
+        self.assertTrue(res_del["success"])
+        self.assertIn("tank/data", res_del["message"])
+
+        # Validation errors on empty dataset
+        with self.assertRaises(ValueError):
+            self.svc.sanoid_save_schedule({"dataset": ""})
+        with self.assertRaises(ValueError):
+            self.svc.sanoid_delete_schedule("")
+
+    @patch("backend.zfs_helper.ZfsService.get_sanoid_info", return_value={"sanoid_installed": True})
+    @patch("backend.zfs_helper.ZfsService.sanoid_save_schedule", return_value={"success": True})
+    @patch("backend.zfs_helper.ZfsService.sanoid_delete_schedule", return_value={"success": True})
+    def test_main_cli_sanoid(self, mock_del, mock_save, mock_info):
+        # CLI sanoid-info
+        with patch("sys.argv", ["zfs_helper.py", "sanoid-info"]), patch("builtins.print") as mock_print:
+            main()
+            mock_print.assert_called_once()
+            res = json.loads(mock_print.call_args[0][0])
+            self.assertTrue(res["sanoid_installed"])
+
+        # CLI sanoid-save-schedule
+        with patch("sys.argv", ["zfs_helper.py", "sanoid-save-schedule", json.dumps({"dataset": "tank/data", "hourly": 24})]), patch("builtins.print") as mock_print:
+            main()
+            mock_print.assert_called_once()
+            res = json.loads(mock_print.call_args[0][0])
+            self.assertTrue(res["success"])
+
+        # CLI sanoid-delete-schedule
+        with patch("sys.argv", ["zfs_helper.py", "sanoid-delete-schedule", "tank/data"]), patch("builtins.print") as mock_print:
+            main()
+            mock_print.assert_called_once()
+            res = json.loads(mock_print.call_args[0][0])
+            self.assertTrue(res["success"])
 
 
 if __name__ == "__main__":

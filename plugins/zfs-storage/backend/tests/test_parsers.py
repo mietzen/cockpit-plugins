@@ -273,39 +273,6 @@ l2_hits                         4    25000
         self.assertEqual(stats["l2_hits"], 25000)
 
 
-    def test_parse_sanoid_conf(self):
-        raw = """[template_production]
-frequently = 0
-hourly = 36
-daily = 30
-monthly = 3
-yearly = 0
-autosnap = yes
-autoprune = yes
-
-[tank/vm_data]
-use_template = production
-hourly = 48
-recursive = yes
-
-[tank/backups]
-hourly = 12
-daily = 7
-autosnap = true
-autoprune = false
-"""
-        from backend.parsers import parse_sanoid_conf
-        policies = parse_sanoid_conf(raw)
-        self.assertEqual(len(policies), 2)
-        self.assertEqual(policies[0]["dataset"], "tank/vm_data")
-        self.assertEqual(policies[0]["hourly"], 48)
-        self.assertEqual(policies[0]["recursive"], True)
-        self.assertEqual(policies[1]["dataset"], "tank/backups")
-        self.assertEqual(policies[1]["daily"], 7)
-        self.assertEqual(policies[1]["autosnap"], True)
-        self.assertEqual(policies[1]["autoprune"], False)
-
-
 if __name__ == "__main__":
     unittest.main()
 

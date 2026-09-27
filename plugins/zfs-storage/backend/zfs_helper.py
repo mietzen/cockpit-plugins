@@ -13,50 +13,43 @@ if SCRIPT_DIR not in sys.path:
 if PARENT_DIR not in sys.path:
     sys.path.insert(0, PARENT_DIR)
 
-try:
-    from backend.enums import (
-        VDevType,
-        AshiftType,
-        ScrubAction,
-        TrimAction,
-        CompressionType,
-        DatasetType,
-    )
-    from backend.command_builder import CommandBuilder, VDevConfig
-    from backend.parsers import (
-        parse_zpool_list,
-        parse_zpool_status,
-        parse_zpool_properties,
-        parse_zfs_list,
-        parse_zfs_snapshots,
-        parse_lsblk,
-        parse_smartctl,
-        parse_arcstats,
-        parse_sanoid_conf,
-    )
-except ImportError:
-    from enums import (
-        VDevType,
-        AshiftType,
-        ScrubAction,
-        TrimAction,
-        CompressionType,
-        DatasetType,
-    )
-    from command_builder import CommandBuilder, VDevConfig
-    from parsers import (
-        parse_zpool_list,
-        parse_zpool_status,
-        parse_zpool_properties,
-        parse_zfs_list,
-        parse_zfs_snapshots,
-        parse_lsblk,
-        parse_smartctl,
-        parse_arcstats,
-        parse_sanoid_conf,
-    )
+from enums import (
+    VDevType,
+    AshiftType,
+    ScrubAction,
+    TrimAction,
+    CompressionType,
+    DatasetType,
+)
+from command_builder import CommandBuilder, VDevConfig
+from parsers import (
+    parse_zpool_list,
+    parse_zpool_status,
+    parse_zpool_properties,
+    parse_zfs_list,
+    parse_zfs_snapshots,
+    parse_lsblk,
+    parse_smartctl,
+    parse_arcstats,
+)
+from sanoid_manager import (
+    parse_sanoid_conf_file,
+    update_sanoid_policy,
+    remove_sanoid_policy,
+)
 
+SANOID_CONF_PATH = "/etc/sanoid/sanoid.conf"
 SAFE_NAME_RE = re.compile(r"^[a-zA-Z0-9_\-\.\:\/\@\#\%\=\+]+$")
+
+
+def _atomic_write(target_path: str, content: str) -> None:
+    """Writes file atomically using a temporary file and replace."""
+    os.makedirs(os.path.dirname(target_path), exist_ok=True)
+    tmp_path = f"{target_path}.tmp"
+    with open(tmp_path, "w", encoding="utf-8") as f:
+        f.write(content)
+    os.replace(tmp_path, target_path)
+
 
 
 def validate_name(name: str, field_name: str = "Name") -> str:
@@ -82,17 +75,24 @@ class ZfsService:
 
     def get_sanoid_info(self) -> Dict[str, Any]:
         sanoid_bin = run_cmd(["which", "sanoid"]).returncode == 0
-        conf_exists = os.path.exists("/etc/sanoid/sanoid.conf")
+        conf_exists = os.path.exists(SANOID_CONF_PATH)
 
         if not sanoid_bin and not conf_exists:
-            return {"installed": False, "sanoid_installed": False, "policies": []}
+            return {
+                "installed": False,
+                "sanoid_installed": False,
+                "policies": [],
+                "templates": {},
+            }
 
         policies = []
-        conf_path = "/etc/sanoid/sanoid.conf"
+        templates = {}
         if conf_exists:
             try:
-                with open(conf_path, "r") as f:
-                    policies = parse_sanoid_conf(f.read())
+                with open(SANOID_CONF_PATH, "r", encoding="utf-8") as f:
+                    parsed = parse_sanoid_conf_file(f.read())
+                    policies = parsed.get("policies", [])
+                    templates = parsed.get("templates", {})
             except Exception:
                 pass
 
@@ -104,7 +104,47 @@ class ZfsService:
             "sanoid_installed": sanoid_bin or conf_exists,
             "sanoid_timer_active": sanoid_timer,
             "sanoid_service_active": sanoid_svc,
+            "templates": templates,
             "policies": policies,
+        }
+
+    def sanoid_save_schedule(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        dataset = payload.get("dataset", "").strip()
+        if not dataset:
+            raise ValueError("Dataset path is required to save Sanoid schedule")
+        validate_name(dataset, "dataset")
+
+        content = ""
+        if os.path.exists(SANOID_CONF_PATH):
+            with open(SANOID_CONF_PATH, "r", encoding="utf-8") as f:
+                content = f.read()
+
+        updated_content = update_sanoid_policy(content, payload)
+        _atomic_write(SANOID_CONF_PATH, updated_content)
+
+        return {
+            "success": True,
+            "message": f"Sanoid schedule for '{dataset}' saved successfully",
+        }
+
+    def sanoid_delete_schedule(self, dataset: str) -> Dict[str, Any]:
+        clean_ds = dataset.strip()
+        if not clean_ds:
+            raise ValueError("Dataset path is required to delete Sanoid schedule")
+        validate_name(clean_ds, "dataset")
+
+        if not os.path.exists(SANOID_CONF_PATH):
+            return {"success": True, "message": "No configuration file found"}
+
+        with open(SANOID_CONF_PATH, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        updated_content = remove_sanoid_policy(content, clean_ds)
+        _atomic_write(SANOID_CONF_PATH, updated_content)
+
+        return {
+            "success": True,
+            "message": f"Sanoid schedule for '{clean_ds}' deleted successfully",
         }
 
 
@@ -613,6 +653,14 @@ def main():
                 "smb": smb_rc == 0,
                 "nfs": nfs_rc == 0,
             }
+        elif action == "sanoid-info":
+            res = svc.get_sanoid_info()
+        elif action == "sanoid-save-schedule":
+            payload = json.loads(sys.argv[2])
+            res = svc.sanoid_save_schedule(payload)
+        elif action == "sanoid-delete-schedule":
+            dataset = sys.argv[2]
+            res = svc.sanoid_delete_schedule(dataset)
         else:
             res = {"error": f"Unknown action '{action}'"}
 
