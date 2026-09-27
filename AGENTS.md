@@ -9,9 +9,8 @@
 - `tools/`: Packaging and repository automation (`build_deb.sh`, `build_rpm.sh`, `generate_apt_repo.py`, `generate_rpm_repo.py`).
 - `.agents/skills/`: Discovered agent skill definitions.
 
-## 2. Cockpit Plugin Engineering Rules
 - **Shared Foundation**: All plugins must import theme CSS and hooks from `@cockpit-plugins/common`.
-- **Zero-Flicker Navigation**: Use in-memory state for tab switching; avoid modifying host shell location.
+- **Zero-Flicker Navigation**: Use `useCockpitRoute()` with in-memory routing. Never pass empty arrays (`[]`) to `cockpit.location.replace/go` (pass path segments directly or omit to keep iframe loaded; passing `[]` resets Cockpit shell to root and triggers iframe reloads). Never bind `loadData()` / API fetches to `hashchange`/`locationchanged` to avoid loading spinners during tab switching. Never include plugin tab names in `IGNORED_PREFIXES` (e.g., `'containers'`), which strips valid sub-routes and bounces navigation back to overview.
 - **Portaling Dropdowns**: Pass `popperProps={{ appendTo: () => document.body }}` (or use `ActionMenuPortal`) on all PatternFly v5 menus.
 - **Parent-Authoritative Theming**: Query parent Cockpit shell DOM classes (`pf-v6-theme-dark` / `pf-v5-theme-dark`); never use raw `@media (prefers-color-scheme: dark)` overrides.
 - **Privilege Separation**: Frontend calls backend helper via `cockpit.spawn(['/usr/libexec/<helper>/<helper>.py', ...], { superuser: 'require' })`.
