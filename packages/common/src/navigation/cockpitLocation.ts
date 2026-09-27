@@ -17,156 +17,102 @@ export enum NavMode {
   Push = "push",
 }
 
-export interface CockpitLocationState {
-  path: string[];
-  options: Record<string, string>;
-}
-
 /**
- * Extracts current route options and path from cockpit.location or window.location.hash.
+ * Extracts current route segments from cockpit.location or window.location.hash.
  *
- * Examples:
- *   URL '#/?tab=smb' -> { path: [], options: { tab: 'smb' } }
- *   URL '#/pools'    -> { path: ['pools'], options: {} }
+ * Example:
+ *   URL '#/pools/tank/snapshots' -> ['pools', 'tank', 'snapshots']
  */
-function stripLeadingPrefix(path: string[], ignoredPrefixes: string[]): string[] {
-  if (path.length === 0 || ignoredPrefixes.length === 0) {
-    return path;
-  }
-  const lowerPrefixes = ignoredPrefixes.map((p) => p.toLowerCase());
-  if (lowerPrefixes.includes(path[0].toLowerCase())) {
-    return path.slice(1);
-  }
-  return path;
-}
-
-/**
- * Extracts current route options and path from cockpit.location or window.location.hash.
- *
- * Examples:
- *   URL '#/?tab=smb' -> { path: [], options: { tab: 'smb' } }
- *   URL '#/pools'    -> { path: ['pools'], options: {} }
- */
-export function getCockpitLocation(ignoredPrefixes: string[] = []): CockpitLocationState {
+export function getCockpitSegments(ignoredPrefixes: string[] = []): string[] {
   if (typeof window === "undefined") {
-    return { path: [], options: {} };
+    return [];
   }
 
-  // 1. Prefer cockpit.location when embedded in Cockpit shell
-  if (typeof cockpit !== "undefined" && cockpit.location) {
-    const options: Record<string, string> = { ...(cockpit.location.options || {}) };
-    const raw = Array.isArray(cockpit.location.path) ? cockpit.location.path : [];
-    const pathSegments = stripLeadingPrefix(raw, ignoredPrefixes);
+  // Prefer cockpit shell path when embedded
+  if (typeof cockpit !== "undefined" && cockpit.location && Array.isArray(cockpit.location.path) && cockpit.location.path.length > 0) {
+    const raw = cockpit.location.path;
+    const lowerPrefixes = ignoredPrefixes.map((p) => p.toLowerCase());
 
-    return { path: pathSegments, options };
+    if (raw.length > 0 && lowerPrefixes.includes(raw[0].toLowerCase())) {
+      return raw.slice(1);
+    }
+
+    return raw;
   }
 
-  // 2. Fallback to window.location.hash for standalone execution
-  const rawHash = window.location.hash.replace(/^#\/?/, "");
-  if (!rawHash) {
-    return { path: [], options: {} };
+  // Fallback to window hash for direct or dev execution
+  const hash = window.location.hash.replace(/^#\/?/, "");
+  if (hash) {
+    return hash.split("/").filter(Boolean);
   }
 
-  const [pathPart, queryPart] = rawHash.split("?");
-  const path = pathPart ? pathPart.split("/").filter(Boolean) : [];
-  const options: Record<string, string> = {};
-
-  if (queryPart) {
-    const params = new URLSearchParams(queryPart);
-    params.forEach((val, key) => {
-      options[key] = val;
-    });
-  }
-
-  const filteredPath = stripLeadingPrefix(path, ignoredPrefixes);
-
-  return { path: filteredPath, options };
+  return [];
 }
 
 /**
- * Synchronizes route options with Cockpit host shell or standalone window hash.
+ * Synchronizes route with Cockpit host shell and iframe history.
  */
-export function syncCockpitLocation(
-  options: Record<string, string> = {},
-  path: string[] = [],
-  mode: NavMode = NavMode.Replace
-): void {
-  // Update Cockpit host shell location via options query params
+export function syncCockpitLocation(segments: string[], mode: NavMode = NavMode.Replace): void {
+  const targetPath = segments.length > 0 ? segments.join("/") : "";
+  const targetHash = segments.length > 0 ? `#/${targetPath}` : "#/";
+
+  // Update Cockpit host shell location
   if (typeof cockpit !== "undefined" && cockpit.location) {
     if (mode === NavMode.Replace && typeof cockpit.location.replace === "function") {
-      cockpit.location.replace(path, options);
-      return;
-    }
-
-    if (typeof cockpit.location.go === "function") {
-      cockpit.location.go(path, options);
-      return;
+      cockpit.location.replace(targetPath);
+    } else if (typeof cockpit.location.go === "function") {
+      cockpit.location.go(targetPath);
     }
   }
 
-  // Fallback to standalone window history
-  if (typeof window !== "undefined") {
-    const searchParams = new URLSearchParams();
-    Object.entries(options).forEach(([k, v]) => {
-      if (v) {
-        searchParams.set(k, v);
-      }
-    });
-
-    const queryString = searchParams.toString();
-    const pathStr = path.length > 0 ? path.join("/") : "";
-    const targetHash = queryString ? `#/${pathStr}?${queryString}` : pathStr ? `#/${pathStr}` : "#/";
-
-    if (window.location.hash !== targetHash) {
-      if (mode === NavMode.Replace) {
-        window.history.replaceState(null, "", targetHash);
-      } else {
-        window.history.pushState(null, "", targetHash);
-      }
+  // Update iframe window history
+  if (typeof window !== "undefined" && window.location.hash !== targetHash) {
+    if (mode === NavMode.Replace) {
+      window.history.replaceState(null, "", targetHash);
+    } else {
+      window.history.pushState(null, "", targetHash);
     }
   }
 }
 
 /**
- * Hook for zero-flicker SPA routing matching Cockpit services.html pattern.
+ * Hook for bidirectional zero-flicker routing in Cockpit plugins.
  */
 export function useCockpitRoute<T>(
-  parseLocation: (state: CockpitLocationState) => T,
-  formatLocation: (route: T) => { options: Record<string, string>; path?: string[] },
+  parseRoute: (segments: string[]) => T,
+  formatSegments: (route: T) => string[],
   ignoredPrefixes: string[] = []
 ): [T, (nextRoute: T, mode?: NavMode) => void] {
   const [route, setRoute] = useState<T>(() => {
-    return parseLocation(getCockpitLocation(ignoredPrefixes));
+    return parseRoute(getCockpitSegments(ignoredPrefixes));
   });
 
-  const lastKeyRef = useRef<string>("");
+  const lastPathRef = useRef<string>("");
 
   const navigateTo = useCallback(
     (nextRoute: T, mode: NavMode = NavMode.Replace) => {
       setRoute(nextRoute);
 
-      const formatted = formatLocation(nextRoute);
-      const options = formatted.options || {};
-      const path = formatted.path || [];
-      const keyStr = JSON.stringify({ path, options });
-      lastKeyRef.current = keyStr;
+      const segments = formatSegments(nextRoute);
+      const pathStr = segments.join("/");
+      lastPathRef.current = pathStr;
 
-      syncCockpitLocation(options, path, mode);
+      syncCockpitLocation(segments, mode);
     },
-    [formatLocation]
+    [formatSegments]
   );
 
   const syncFromEnv = useCallback(() => {
-    const loc = getCockpitLocation(ignoredPrefixes);
-    const keyStr = JSON.stringify(loc);
+    const segments = getCockpitSegments(ignoredPrefixes);
+    const pathStr = segments.join("/");
 
-    if (keyStr === lastKeyRef.current) {
+    if (pathStr === lastPathRef.current) {
       return;
     }
 
-    lastKeyRef.current = keyStr;
-    setRoute(parseLocation(loc));
-  }, [parseLocation, ignoredPrefixes]);
+    lastPathRef.current = pathStr;
+    setRoute(parseRoute(segments));
+  }, [parseRoute, ignoredPrefixes]);
 
   useEffect(() => {
     if (typeof cockpit !== "undefined" && cockpit.addEventListener) {
@@ -179,12 +125,20 @@ export function useCockpitRoute<T>(
   }, [syncFromEnv]);
 
   useEffect(() => {
-    window.addEventListener("hashchange", syncFromEnv);
-    window.addEventListener("popstate", syncFromEnv);
+    const handleHashChange = () => {
+      syncFromEnv();
+    };
+
+    const handlePopState = () => {
+      syncFromEnv();
+    };
+
+    window.addEventListener("hashchange", handleHashChange);
+    window.addEventListener("popstate", handlePopState);
 
     return () => {
-      window.removeEventListener("hashchange", syncFromEnv);
-      window.removeEventListener("popstate", syncFromEnv);
+      window.removeEventListener("hashchange", handleHashChange);
+      window.removeEventListener("popstate", handlePopState);
     };
   }, [syncFromEnv]);
 

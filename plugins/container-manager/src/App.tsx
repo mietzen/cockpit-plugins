@@ -39,38 +39,34 @@ import { ContainerTerminalModal } from './components/ContainerTerminalModal';
 import { ContainerLogsModal } from './components/ContainerLogsModal';
 import { SystemPruneModal } from './components/SystemPruneModal';
 
-const IGNORED_PREFIXES = ['container-manager', 'cockpit-container-manager', 'containers', 'index'];
+const IGNORED_PREFIXES = ['container-manager', 'cockpit-container-manager', 'index'];
 
-const parseView = (loc: CockpitLocationState): string => {
-  if (loc.options.tab) {
-    const tab = loc.options.tab.trim().toLowerCase();
-    if (['dashboard', 'containers', 'images', 'volumes', 'networks', 'settings'].includes(tab)) {
-      return tab;
-    }
+const parseView = (segments: string[]): string => {
+  const cleanStr = segments.map((s) => s.trim().toLowerCase()).filter(Boolean);
+  if (cleanStr.length === 0 || cleanStr[0] === 'dashboard' || cleanStr[0] === 'overview') {
+    return 'dashboard';
   }
-  if (loc.path.length > 0) {
-    const seg = loc.path[0].trim().toLowerCase();
-    if (['containers', 'images', 'volumes', 'networks', 'settings'].includes(seg)) {
-      return seg;
-    }
+  const viewKey = cleanStr[0];
+  if (['dashboard', 'containers', 'images', 'volumes', 'networks', 'settings'].includes(viewKey)) {
+    return viewKey;
   }
   return 'dashboard';
 };
 
-const formatLocation = (view: string) => {
+const formatSegments = (view: string): string[] => {
   if (view === 'dashboard') {
-    return { options: {} };
+    return [];
   }
-  return { options: { tab: view } };
+  return [view];
 };
 
 export const App: React.FC = () => {
   const isDark = useCockpitTheme();
 
-  const [activeView, setActiveView] = useCockpitRoute(parseView, formatLocation, IGNORED_PREFIXES);
+  const [activeView, setActiveView] = useCockpitRoute(parseView, formatSegments, IGNORED_PREFIXES);
 
   const navigateToView = useCallback((view: string) => {
-    setActiveView(view, NavMode.Push);
+    setActiveView(view, NavMode.Replace);
   }, [setActiveView]);
 
   const [overview, setOverview] = useState<ContainerOverview>(
