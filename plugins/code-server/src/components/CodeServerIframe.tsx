@@ -9,7 +9,7 @@ import {
   ClipboardCopy,
 } from "@patternfly/react-core";
 import { PlayIcon, ExclamationTriangleIcon } from "@patternfly/react-icons";
-import { CodeServerStatus } from "../types";
+import { CodeServerStatus, getCodeServerUrl } from "../types";
 
 export interface CodeServerIframeProps {
   status: CodeServerStatus;
@@ -24,12 +24,8 @@ export const CodeServerIframe: React.FC<CodeServerIframeProps> = ({
 }) => {
   const [iframeError, setIframeError] = useState<boolean>(false);
   const isRunning = status.service.active;
-  const port = status.config.port || 8080;
   const password = status.config.password;
-
-  const hostName = typeof window !== "undefined" ? window.location.hostname : "localhost";
-  const protocol = status.config.cert ? "https:" : "http:";
-  const targetUrl = `${protocol}//${hostName}:${port}/`;
+  const targetUrl = getCodeServerUrl(status.config);
 
   if (!isRunning) {
     return (
@@ -68,7 +64,7 @@ export const CodeServerIframe: React.FC<CodeServerIframeProps> = ({
           style={{
             padding: "0.5rem 1rem",
             backgroundColor: "var(--pf-v5-global--BackgroundColor--200, #161b22)",
-            borderBottom: "1px solid var(--zfs-card-border, #30363d)",
+            borderBottom: "1px solid var(--pf-v5-global--BorderColor--100, #30363d)",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
@@ -84,7 +80,7 @@ export const CodeServerIframe: React.FC<CodeServerIframeProps> = ({
             </div>
           </div>
           <div>
-            <span style={{ color: "var(--zfs-text-secondary, #8b949e)" }}>
+            <span style={{ color: "var(--pf-v5-global--Color--200, #8b949e)" }}>
               If your browser blocks the HTTP iframe on an HTTPS connection, click <strong>Open in New Tab</strong> above.
             </span>
           </div>

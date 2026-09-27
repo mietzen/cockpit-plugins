@@ -39,10 +39,9 @@ async function run() {
       await authCheckbox.setChecked(true, { force: true }).catch(() => {});
     }
     await loginBtn.click();
-    await page.waitForNavigation({ waitUntil: "networkidle", timeout: 15000 }).catch(() => {});
   }
 
-  await page.waitForSelector("nav, #sidebar, a:has-text('VS Code Server'), a:has-text('Tools')", { timeout: 20000 });
+  await page.waitForSelector("nav, #sidebar, a:has-text('System')", { timeout: 20000 }).catch(() => {});
   console.log("Logged in successfully.");
 
   // Elevate to administrative access

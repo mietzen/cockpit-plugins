@@ -1,6 +1,8 @@
 import os
+import platform
 import shutil
 import subprocess
+import urllib.request
 from typing import Dict, Any, Optional
 
 ALLOWED_ACTIONS = {"start", "stop", "restart", "enable", "disable", "reload"}
@@ -119,21 +121,78 @@ def manage_service(action: str, username: Optional[str] = None) -> Dict[str, Any
         return {"success": False, "error": str(e)}
 
 
-def install_code_server() -> Dict[str, Any]:
-    try:
-        cmd = ["curl", "-fsSL", "https://code-server.dev/install.sh"]
-        sh_cmd = ["sh", "-s", "--", "--method=standalone"]
-        p1 = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        p2 = subprocess.Popen(sh_cmd, stdin=p1.stdout, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        p1.stdout.close()
-        out, err = p2.communicate(timeout=300)
+CODE_SERVER_UPSTREAM_VERSION = "4.139.1"
 
-        if p2.returncode == 0:
-            return {"success": True, "error": None, "output": out.decode("utf-8", errors="replace")}
+
+def get_system_arch() -> str:
+    machine = platform.machine().lower()
+    if machine in ("x86_64", "amd64"):
+        return "amd64"
+    if machine in ("aarch64", "arm64"):
+        return "arm64"
+    return machine
+
+
+def install_code_server(
+    version: str = CODE_SERVER_UPSTREAM_VERSION,
+    username: Optional[str] = None,
+) -> Dict[str, Any]:
+    arch = get_system_arch()
+    temp_file = None
+
+    try:
+        if shutil.which("apt-get") or shutil.which("dpkg"):
+            url = f"https://github.com/coder/code-server/releases/download/v{version}/code-server_{version}_{arch}.deb"
+            temp_file = f"/tmp/code-server_{version}_{arch}.deb"
+            urllib.request.urlretrieve(url, temp_file)
+
+            if shutil.which("apt-get"):
+                cmd = ["apt-get", "install", "-y", temp_file]
+            else:
+                cmd = ["dpkg", "-i", temp_file]
+
+            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=180)
+            if proc.returncode != 0:
+                return {
+                    "success": False,
+                    "error": proc.stderr.strip() or f"Package installation failed (exit {proc.returncode})",
+                }
+
+        elif shutil.which("dnf") or shutil.which("rpm"):
+            url = f"https://github.com/coder/code-server/releases/download/v{version}/code-server-{version}-{arch}.rpm"
+            temp_file = f"/tmp/code-server-{version}-{arch}.rpm"
+            urllib.request.urlretrieve(url, temp_file)
+
+            if shutil.which("dnf"):
+                cmd = ["dnf", "install", "-y", temp_file]
+            else:
+                cmd = ["rpm", "-Uvh", temp_file]
+
+            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=180)
+            if proc.returncode != 0:
+                return {
+                    "success": False,
+                    "error": proc.stderr.strip() or f"Package installation failed (exit {proc.returncode})",
+                }
+
+        else:
+            return {"success": False, "error": "No supported package manager (apt/dpkg or dnf/rpm) found"}
+
+        # Enable and start service
+        manage_service("enable", username)
+        manage_service("start", username)
+
         return {
-            "success": False,
-            "error": err.decode("utf-8", errors="replace") or "Installer returned error",
-            "output": out.decode("utf-8", errors="replace"),
+            "success": True,
+            "error": None,
+            "output": f"code-server v{version} installed and service started successfully",
         }
+
     except Exception as e:
         return {"success": False, "error": str(e)}
+    finally:
+        if temp_file and os.path.exists(temp_file):
+            try:
+                os.remove(temp_file)
+            except Exception:
+                pass

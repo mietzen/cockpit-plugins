@@ -38,3 +38,10 @@ export interface CommandResult {
   error?: string;
   output?: string;
 }
+
+export const getCodeServerUrl = (config?: Partial<CodeServerConfigData>): string => {
+  const port = config?.port || 8080;
+  const protocol = config?.cert ? "https:" : "http:";
+  const hostName = typeof window !== "undefined" ? window.location.hostname : "localhost";
+  return `${protocol}//${hostName}:${port}/`;
+};

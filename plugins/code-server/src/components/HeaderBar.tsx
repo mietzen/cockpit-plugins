@@ -13,7 +13,7 @@ import {
   ExternalLinkAltIcon,
   CogIcon,
 } from "@patternfly/react-icons";
-import { CodeServerStatus } from "../types";
+import { CodeServerStatus, getCodeServerUrl } from "../types";
 
 export interface HeaderBarProps {
   status: CodeServerStatus;
@@ -33,11 +33,7 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
   const isInstalled = status.binary.installed;
   const isRunning = status.service.active;
   const port = status.config.port || 8080;
-  const protocol = status.config.cert ? "https:" : "http:";
-
-  // Construct target URL for standalone opening
-  const hostName = typeof window !== "undefined" ? window.location.hostname : "localhost";
-  const externalUrl = `${protocol}//${hostName}:${port}/`;
+  const externalUrl = getCodeServerUrl(status.config);
 
   const handleOpenNewTab = () => {
     window.open(externalUrl, "_blank", "noopener,noreferrer");
@@ -76,7 +72,7 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
             )}
 
             {isInstalled && status.binary.version && (
-              <span style={{ fontSize: "0.85rem", color: "var(--zfs-text-secondary, #8b949e)" }}>
+              <span style={{ fontSize: "0.85rem", color: "var(--pf-v5-global--Color--200, #8b949e)" }}>
                 v{status.binary.version}
               </span>
             )}

@@ -49,3 +49,23 @@ def test_write_and_update_config():
         assert parsed.port == 9000
         assert parsed.password == "my-new-password"
         assert parsed.disable_telemetry is True
+
+
+def test_write_config_sanitization():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        cfg_path = os.path.join(tmpdir, "config.yaml")
+        malicious_cfg = CodeServerConfig(
+            bind_addr="127.0.0.1:8080\nextra-key: injected",
+            auth="password\ninjected: true",
+            password="secret\nhacked: 1",
+            cert=False,
+            disable_telemetry=False,
+        )
+
+        success = write_code_server_config(cfg_path, malicious_cfg)
+        assert success is True
+
+        parsed = parse_code_server_config(cfg_path)
+        assert "\n" not in parsed.password
+        assert "\n" not in parsed.bind_addr
+        assert parsed.auth == "password"

@@ -36,14 +36,17 @@ export class CodeServerClient {
     return typeof cockpit !== "undefined" && typeof cockpit.spawn === "function";
   }
 
-  private async executeHelper(args: string[]): Promise<any> {
+  private async executeHelper(
+    args: string[],
+    superuser: "require" | "try" = "require"
+  ): Promise<any> {
     if (!this.isCockpitAvailable()) {
       return null;
     }
 
     try {
       const proc = cockpit.spawn([HELPER_PATH, ...args], {
-        superuser: "require",
+        superuser,
         err: "message",
       });
       const output = await proc;
@@ -70,7 +73,7 @@ export class CodeServerClient {
       args.push("--user", username);
     }
 
-    const res = await this.executeHelper(args);
+    const res = await this.executeHelper(args, "try");
     return res || DEFAULT_MOCK_STATUS;
   }
 

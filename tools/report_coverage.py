@@ -31,6 +31,8 @@ TIER_CONFIG = {
             "zfsClient.ts",
             "codeServerClient.ts",
             "code_server_helper.py",
+            "config_manager.py",
+            "service_manager.py",
             "Client.ts",
         ],
     },

@@ -1,21 +1,40 @@
 #!/usr/bin/env python3
-import json
-import sys
 import argparse
+import json
+import os
+import sys
 from typing import List, Dict, Any
 
-from backend.config_manager import (
-    CodeServerConfig,
-    get_user_config_path,
-    parse_code_server_config,
-    write_code_server_config,
-)
-from backend.service_manager import (
-    get_binary_info,
-    get_service_status,
-    manage_service,
-    install_code_server,
-)
+_CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+if _CURRENT_DIR not in sys.path:
+    sys.path.insert(0, _CURRENT_DIR)
+
+try:
+    from config_manager import (
+        CodeServerConfig,
+        get_user_config_path,
+        parse_code_server_config,
+        write_code_server_config,
+    )
+    from service_manager import (
+        get_binary_info,
+        get_service_status,
+        manage_service,
+        install_code_server,
+    )
+except ImportError:
+    from backend.config_manager import (
+        CodeServerConfig,
+        get_user_config_path,
+        parse_code_server_config,
+        write_code_server_config,
+    )
+    from backend.service_manager import (
+        get_binary_info,
+        get_service_status,
+        manage_service,
+        install_code_server,
+    )
 
 
 def handle_command(args: List[str]) -> Dict[str, Any]:

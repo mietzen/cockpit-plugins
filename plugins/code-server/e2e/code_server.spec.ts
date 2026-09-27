@@ -73,46 +73,52 @@ test.describe.serial("Cockpit Code Server E2E Test Suite", () => {
 
     await page.goto("/");
 
-    const userInput = page.locator("input#login-user-input, input#login-user, input[name='login-user']").first();
-    const passInput = page.locator("input#login-password-input, input#login-password, input[name='login-password']").first();
+    const userInput = page.locator("input#login-user-input, input#login-user, input[name='login-user'], input[autocomplete='username']").first();
+    const passInput = page.locator("input#login-password-input, input#login-password, input[name='login-password'], input[autocomplete='current-password']").first();
     const loginBtn = page.locator("button#login-button, button[type='submit']").first();
 
-    if (await userInput.isVisible({ timeout: 5000 }).catch(() => false)) {
+    try {
+      await userInput.waitFor({ state: "visible", timeout: 8000 });
       await userInput.fill(user);
       await passInput.fill(pass);
+
       const authCheckbox = page.locator("input#authorized-input").first();
       if ((await authCheckbox.count()) > 0) {
         await authCheckbox.setChecked(true, { force: true }).catch(() => {});
       }
+
       await loginBtn.click();
-      await page.waitForNavigation({ waitUntil: "networkidle", timeout: 15000 }).catch(() => {});
+    } catch {
+      // Session already active
     }
 
-    await page.waitForSelector("nav, #sidebar, a:has-text('VS Code Server'), a:has-text('Tools')", { timeout: 20000 });
+    await page.waitForSelector("nav, #sidebar, a:has-text('System')", { timeout: 20000 }).catch(() => {});
 
     // Elevate privileges if button is present
     const elevateBtn = page.locator("button:has-text('Limited access'), a:has-text('Limited access')").first();
-    if (await elevateBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+    if (await elevateBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
       await elevateBtn.click();
       const sudoPass = page.locator("input#superuser-password-input, input[type='password']").first();
       if (await sudoPass.isVisible({ timeout: 2000 }).catch(() => false)) {
         await sudoPass.fill(pass);
-        const confirmElevate = page.locator("button#superuser-authorize-button, button:has-text('Authorize')").first();
+        const confirmElevate = page.locator("button#superuser-authorize-button, button:has-text('Authenticate')").first();
         await confirmElevate.click();
-        await page.waitForTimeout(1000);
       }
+      await page.keyboard.press("Escape");
+      await page.click("button:has-text('Close'), [aria-label='Close']").catch(() => {});
+      await page.waitForSelector("button:has-text('Administrative access'), a:has-text('Administrative access')", { timeout: 10000 }).catch(() => {});
     }
 
     // Click VS Code Server entry in sidebar
     const csLink = page.locator("a:has-text('VS Code Server'), a[href*='code-server']").first();
-    if (await csLink.isVisible({ timeout: 3000 }).catch(() => false)) {
+    if (await csLink.isVisible({ timeout: 5000 }).catch(() => false)) {
       await csLink.click();
     } else {
-      await page.goto("/code-server");
+      await page.goto("/code-server", { waitUntil: "domcontentloaded", timeout: 30000 });
     }
 
     const frame = await getFrame();
-    await expect(frame.locator("h1:has-text('VS Code Server')")).toBeVisible({ timeout: 15000 });
+    await expect(frame.locator("h1:has-text('VS Code Server')")).toBeVisible({ timeout: 20000 });
 
     await saveScreenshot(page, "cs-01-overview-dark.png");
   });

@@ -34,11 +34,16 @@ export const InstallPrompt: React.FC<InstallPromptProps> = ({ isLoading, onInsta
               backgroundColor: "var(--pf-v5-global--BackgroundColor--200, #161b22)",
               borderRadius: "4px",
               fontFamily: "monospace",
-              fontSize: "0.9rem",
+              fontSize: "0.85rem",
               textAlign: "left",
+              lineHeight: "1.5",
             }}
           >
-            curl -fsSL https://code-server.dev/install.sh | sh
+            # Debian / Ubuntu (.deb)
+            <br />
+            curl -fOL https://github.com/coder/code-server/releases/download/v4.139.1/code-server_4.139.1_amd64.deb
+            <br />
+            sudo apt install ./code-server_4.139.1_amd64.deb
             <br />
             sudo systemctl enable --now code-server@$USER
           </div>
