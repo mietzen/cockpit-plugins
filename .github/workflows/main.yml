@@ -338,7 +338,8 @@ jobs:
         run: |
           TAG_NAME="${{ github.ref_name }}"
           echo "Creating GitHub Release for $TAG_NAME..."
-          PLUGIN_NAME="${TAG_NAME%%-v*}"
+          shopt -s nullglob
+          PLUGIN_NAME="${TAG_NAME%-v*}"
           if [[ -n "$PLUGIN_NAME" && -d "plugins/$PLUGIN_NAME" ]]; then
             RELEASE_FILES=(all-debs/cockpit-"${PLUGIN_NAME}"_*.deb all-rpms/cockpit-"${PLUGIN_NAME}"-*.rpm)
           else
@@ -352,7 +353,6 @@ jobs:
   deploy-pages:
     name: Assemble & Deploy Repositories to GitHub Pages
     if: |
-      !failure() && !cancelled() &&
       (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch') &&
       needs.check-run.result == 'success' &&
       (needs.github-release.result == 'success' || needs.github-release.result == 'skipped')
