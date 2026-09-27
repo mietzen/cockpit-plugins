@@ -349,8 +349,14 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     await frame.waitForSelector('table[aria-label="Containers Table"]', { timeout: 10000 });
 
     // Click terminal icon on first container in visible table
-    const termBtn = frame.locator('table[aria-label="Containers Table"] button[aria-label="Terminal"]').first();
-    await termBtn.click();
+    const actionToggle = frame.locator('table[aria-label="Containers Table"] button[aria-label="Container actions"]').first();
+    if (await actionToggle.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await actionToggle.click();
+      await page.locator('[role="menuitem"]:has-text("Terminal"), button:has-text("Terminal")').first().click();
+    } else {
+      const termBtn = frame.locator('table[aria-label="Containers Table"] button[aria-label="Terminal"]').first();
+      await termBtn.click();
+    }
 
     // Wait for terminal modal and connection prompt to appear
       await frame.waitForSelector('[role="dialog"]:has-text("Terminal:"), .pf-v6-c-modal-box:has-text("Terminal:"), .pf-v5-c-modal-box:has-text("Terminal:")', { timeout: 8000 });
@@ -382,9 +388,15 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     await frame.waitForSelector('table[aria-label="Containers Table"]', { timeout: 10000 });
 
     // Open Inspect on first container
-    const inspectBtn = frame.locator('table[aria-label="Containers Table"] button[aria-label="Inspect"]').first();
-    await inspectBtn.waitFor({ state: 'visible', timeout: 5000 });
-    await inspectBtn.click({ force: true });
+    const actionToggle = frame.locator('table[aria-label="Containers Table"] button[aria-label="Container actions"]').first();
+    if (await actionToggle.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await actionToggle.click();
+      await page.locator('[role="menuitem"]:has-text("Inspect"), button:has-text("Inspect")').first().click();
+    } else {
+      const inspectBtn = frame.locator('table[aria-label="Containers Table"] button[aria-label="Inspect"]').first();
+      await inspectBtn.waitFor({ state: 'visible', timeout: 5000 });
+      await inspectBtn.click({ force: true });
+    }
 
     // Verify Inspect modal is open
     await frame.waitForSelector('[role="dialog"]:has-text("Inspect:"), .pf-v6-c-modal-box:has-text("Inspect:"), .pf-v5-c-modal-box:has-text("Inspect:")', { timeout: 10000 });
@@ -433,10 +445,13 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     await frame.locator('.cockpit-top-nav-bar button:has-text("Containers")').click();
     await frame.waitForSelector('table[aria-label="Containers Table"]', { timeout: 10000 });
 
-    // Verify Kill button is present on running containers
+    // Verify Kill button or action toggle is present on running containers
     const killBtn = frame.locator('table[aria-label="Containers Table"] button[aria-label="Kill"]').first();
+    const actionToggle = frame.locator('table[aria-label="Containers Table"] button[aria-label="Container actions"]').first();
     if (await killBtn.count() > 0) {
       await expect(killBtn).toBeVisible();
+    } else if (await actionToggle.count() > 0) {
+      await expect(actionToggle).toBeVisible();
     }
 
     // Verify HashId copy button is present and clickable
@@ -460,21 +475,25 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     await frame.locator('.cockpit-top-nav-bar button:has-text("Containers")').click();
     await frame.waitForSelector('table[aria-label="Containers Table"]', { timeout: 10000 });
 
-    // Look for an enabled container delete button
-    const deleteBtn = frame.locator('table[aria-label="Containers Table"] button[aria-label="Delete"]:not([disabled])')
-      .first();
+    // Look for an enabled container delete button or action menu
+    const deleteBtn = frame.locator('table[aria-label="Containers Table"] button[aria-label="Delete"]:not([disabled])').first();
+    const actionToggle = frame.locator('table[aria-label="Containers Table"] button[aria-label="Container actions"]').first();
 
-    if (await deleteBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+    if (await actionToggle.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await actionToggle.click();
+      const menuDelete = page.locator('[role="menuitem"]:has-text("Delete"), button:has-text("Delete")').first();
+      if (await menuDelete.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await menuDelete.click();
+        await frame.waitForSelector('[role="dialog"]:has-text("Delete Container"), .pf-v6-c-modal-box:has-text("Delete Container"), .pf-v5-c-modal-box:has-text("Delete Container")', { timeout: 5000 });
+        const confirmBtn = frame.locator('[role="dialog"] button:has-text("Delete Container"), .pf-v6-c-modal-box button:has-text("Delete Container")').first();
+        await confirmBtn.click();
+        await frame.waitForSelector('[role="dialog"], .pf-v6-c-modal-box, .pf-v5-c-modal-box', { state: 'detached', timeout: 5000 });
+      }
+    } else if (await deleteBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
       await deleteBtn.click();
-
-      // Verify modal appears
       await frame.waitForSelector('[role="dialog"]:has-text("Delete Container"), .pf-v6-c-modal-box:has-text("Delete Container"), .pf-v5-c-modal-box:has-text("Delete Container")', { timeout: 5000 });
-
-      // Click the Delete Container confirm button
       const confirmBtn = frame.locator('[role="dialog"] button:has-text("Delete Container"), .pf-v6-c-modal-box button:has-text("Delete Container")').first();
       await confirmBtn.click();
-
-      // Verify modal is completely dismissed and detached
       await frame.waitForSelector('[role="dialog"], .pf-v6-c-modal-box, .pf-v5-c-modal-box', { state: 'detached', timeout: 5000 });
     }
   });
