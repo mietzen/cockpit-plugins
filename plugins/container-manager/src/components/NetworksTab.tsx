@@ -77,6 +77,10 @@ export const NetworksTab: React.FC<NetworksTabProps> = ({
         aVal = a.isBuiltIn ? '1' : '0';
         bVal = b.isBuiltIn ? '1' : '0';
         break;
+      case 5:
+        aVal = a.inUse ? '1' : '0';
+        bVal = b.inUse ? '1' : '0';
+        break;
       default:
         return 0;
     }
@@ -146,10 +150,11 @@ export const NetworksTab: React.FC<NetworksTabProps> = ({
             <Thead>
               <Tr>
                 <Th width={25} sort={getSortParams(0)}>Network Name</Th>
-                <Th width={15} sort={getSortParams(1)}>Driver</Th>
-                <Th width={15} sort={getSortParams(2)}>Scope</Th>
-                <Th width={20} sort={getSortParams(3)}>Subnet</Th>
+                <Th width={10} sort={getSortParams(1)}>Driver</Th>
+                <Th width={10} sort={getSortParams(2)}>Scope</Th>
+                <Th width={15} sort={getSortParams(3)}>Subnet</Th>
                 <Th width={10} sort={getSortParams(4)}>Type</Th>
+                <Th width={15} sort={getSortParams(5)}>Usage</Th>
                 <Th width={15} style={{ textAlign: 'right' }}>Actions</Th>
               </Tr>
             </Thead>
@@ -181,6 +186,11 @@ export const NetworksTab: React.FC<NetworksTabProps> = ({
                     <Td dataLabel="Type">
                       <StatusBadge variant={net.isBuiltIn ? 'grey' : 'blue'}>
                         {net.isBuiltIn ? 'System' : 'Custom'}
+                      </StatusBadge>
+                    </Td>
+                    <Td dataLabel="Usage">
+                      <StatusBadge variant={net.inUse ? 'blue' : 'grey'}>
+                        {net.inUse ? 'In Use' : 'Unused'}
                       </StatusBadge>
                     </Td>
                     <Td dataLabel="Actions" style={{ textAlign: 'right' }}>

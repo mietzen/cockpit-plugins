@@ -20,6 +20,12 @@ import {
 import { TrashIcon, InfoCircleIcon } from '@patternfly/react-icons';
 import { StatusBadge } from '@cockpit-plugins/common';
 import { VolumeItem } from '../types';
+import { HashId } from './HashId';
+
+const isHashVolume = (name: string): boolean => {
+  const clean = name.startsWith('sha256:') ? name.slice(7) : name;
+  return clean.length >= 24 && /^[0-9a-fA-F]+$/.test(clean);
+};
 
 export interface VolumesTabProps {
   volumes: VolumeItem[];
@@ -154,7 +160,11 @@ export const VolumesTab: React.FC<VolumesTabProps> = ({
               {sortedVolumes.map((vol) => (
                 <Tr key={vol.name}>
                   <Td dataLabel="Volume Name">
-                    <strong style={{ fontSize: '0.95rem' }}>{vol.name}</strong>
+                    {isHashVolume(vol.name) ? (
+                      <HashId id={vol.name} />
+                    ) : (
+                      <strong style={{ fontSize: '0.95rem' }}>{vol.name}</strong>
+                    )}
                   </Td>
                   <Td dataLabel="Driver">
                     <span style={{ fontSize: '0.85rem' }}>{vol.driver}</span>
