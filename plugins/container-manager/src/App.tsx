@@ -71,7 +71,8 @@ export const App: React.FC = () => {
 
   const navigateToView = useCallback((view: string) => {
     setActiveView(view, NavMode.Push);
-  }, [setActiveView]);
+    loadData(activeEngine);
+  }, [setActiveView, loadData, activeEngine]);
 
   const [overview, setOverview] = useState<ContainerOverview>(
     typeof window !== 'undefined' && window.cockpit ? DEFAULT_EMPTY_OVERVIEW : DEFAULT_MOCK_OVERVIEW
