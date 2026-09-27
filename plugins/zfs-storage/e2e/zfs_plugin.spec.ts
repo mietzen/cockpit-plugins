@@ -1906,11 +1906,8 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
         sanoid: {
           installed: true,
           sanoid_installed: true,
-          syncoid_installed: true,
           sanoid_timer_active: true,
           sanoid_service_active: false,
-          syncoid_timer_active: true,
-          syncoid_service_active: false,
           policies: [
             {
               dataset: "tank/data",

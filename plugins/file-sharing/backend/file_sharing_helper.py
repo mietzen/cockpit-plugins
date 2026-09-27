@@ -131,30 +131,32 @@ def get_system_unix_users() -> List[str]:
 
 
 def get_smb_groups() -> List[Dict[str, Any]]:
-    """Retrieves all non-system or sharing-related Unix groups with GID and member list."""
-    groups: List[Dict[str, Any]] = []
-    sharing_group_names = {"sambashare", "smb_users", "smb_admin", "smbusers", "smbadmin", "users"}
-
+    """Retrieves all Unix groups referenced in smb.conf with GID and member list."""
+    conf_group_names = SmbParser().extract_groups()
     smb_users = {u.get("username", "").lower() for u in get_smb_users() if u.get("username")}
 
     primary_group_users: Dict[int, List[str]] = {}
     for p in pwd.getpwall():
-        if p.pw_uid >= 1000 or p.pw_name in smb_users:
+        if p.pw_uid >= 1000 or p.pw_name.lower() in smb_users:
             primary_group_users.setdefault(p.pw_gid, []).append(p.pw_name)
 
-    for g in grp.getgrall():
-        members_set = set(g.gr_mem) | set(primary_group_users.get(g.gr_gid, []))
-        is_sharing = (
-            g.gr_gid >= 1000
-            or g.gr_name.lower() in sharing_group_names
-            or any(m.lower() in smb_users for m in members_set)
-        )
-        if is_sharing:
+    groups: List[Dict[str, Any]] = []
+    for name in conf_group_names:
+        try:
+            g = grp.getgrnam(name)
+            members_set = set(g.gr_mem) | set(primary_group_users.get(g.gr_gid, []))
             groups.append({
                 "name": g.gr_name,
                 "gid": g.gr_gid,
                 "members": sorted(list(members_set)),
             })
+        except KeyError:
+            groups.append({
+                "name": name,
+                "gid": None,
+                "members": [],
+            })
+
     return sorted(groups, key=lambda x: x["name"])
 
 

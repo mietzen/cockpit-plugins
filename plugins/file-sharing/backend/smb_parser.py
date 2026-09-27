@@ -144,15 +144,14 @@ class SmbParser:
             effective_vfs = share_vfs if share_vfs else global_vfs
             s["vfs_objects"] = effective_vfs
 
-            # Detect fruit / time machine
+            # Detect dedicated Time Machine backup target share
             is_time_machine = (
-                "fruit" in effective_vfs.lower()
-                or raw.get("fruit:time machine", "").lower() in ("yes", "true", "1")
-                or global_params.get("fruit:time machine", "").lower() in ("yes", "true", "1")
-                or raw.get("fruit:aapl", "").lower() in ("yes", "true", "1")
+                raw.get("fruit:time machine", "").lower() in ("yes", "true", "1")
+                or bool(raw.get("fruit:time machine max size"))
                 or "time machine" in s.get("comment", "").lower()
+                or "time-machine" in s.get("name", "").lower()
                 or "timemachine" in s.get("name", "").lower()
-                or any("fruit" in k.lower() for k in raw.keys())
+                or "time_machine" in s.get("name", "").lower()
             )
             s["fruit_time_machine"] = is_time_machine
 
@@ -161,6 +160,29 @@ class SmbParser:
             "shares": shares,
             "raw_lines": lines,
         }
+
+    def extract_groups(self, content: Optional[str] = None) -> List[str]:
+        """Extracts group names referenced in smb.conf directives."""
+        parsed = self.parse(content)
+        group_names = set()
+        list_keys = {"valid users", "invalid users", "read list", "write list", "admin users"}
+
+        all_sections = [parsed["global"]] + [s.get("raw_params", {}) for s in parsed.get("shares", [])]
+        for section in all_sections:
+            for k, val in section.items():
+                k_lower = k.lower().strip()
+                if k_lower == "force group":
+                    clean_grp = val.strip().strip("\"'").lstrip("@+&")
+                    if clean_grp:
+                        group_names.add(clean_grp)
+                elif k_lower in list_keys:
+                    matches = re.findall(r"[@+&](?:\"([^\"]+)\"|'([^']+)'|([a-zA-Z0-9_\-\.]+))", val)
+                    for m in matches:
+                        grp = (m[0] or m[1] or m[2] or "").strip()
+                        if grp:
+                            group_names.add(grp)
+
+        return sorted(list(group_names))
 
     def save_share(self, share_data: Dict[str, Any]) -> Tuple[bool, str]:
         """Adds or updates a Samba share in smb.conf, preserving existing comments and structure."""
@@ -210,6 +232,11 @@ class SmbParser:
             params.append(f"   directory mask = {share_data['directory_mask']}")
         if share_data.get("vfs_objects"):
             params.append(f"   vfs objects = {share_data['vfs_objects']}")
+        elif share_data.get("fruit_time_machine"):
+            params.append("   vfs objects = catia fruit streams_xattr")
+
+        if share_data.get("fruit_time_machine"):
+            params.append("   fruit:time machine = yes")
 
         new_block = f"[{share_name}]\n" + "\n".join(params) + "\n"
 

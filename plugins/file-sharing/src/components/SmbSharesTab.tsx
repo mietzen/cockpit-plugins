@@ -110,7 +110,7 @@ export const SmbSharesTab: React.FC<SmbSharesTabProps> = ({
     setValidUsers(share.valid_users || "");
     setWriteList(share.write_list || "");
     setForceUser(share.force_user || "");
-    setTimeMachine((share.vfs_objects || "").includes("fruit"));
+    setTimeMachine(Boolean(share.fruit_time_machine));
     setError(null);
     setIsModalOpen(true);
   };
@@ -133,7 +133,8 @@ export const SmbSharesTab: React.FC<SmbSharesTabProps> = ({
         valid_users: validUsers.trim() || undefined,
         write_list: writeList.trim() || undefined,
         force_user: forceUser.trim() || undefined,
-        vfs_objects: timeMachine ? "fruit streams_xattr" : undefined,
+        fruit_time_machine: timeMachine,
+        vfs_objects: timeMachine ? "catia fruit streams_xattr" : undefined,
       });
       setIsModalOpen(false);
     } catch (err: any) {
@@ -270,13 +271,7 @@ export const SmbSharesTab: React.FC<SmbSharesTabProps> = ({
                 </Thead>
                 <Tbody>
                   {sortedShares.map((s) => {
-                    const isFruit = Boolean(
-                      s.fruit_time_machine ||
-                      (s.vfs_objects || "").includes("fruit") ||
-                      s.name.toLowerCase().includes("time-machine") ||
-                      s.name.toLowerCase().includes("timemachine") ||
-                      Object.keys(s.raw_params || {}).some((k) => k.toLowerCase().includes("fruit"))
-                    );
+                    const isTimeMachine = Boolean(s.fruit_time_machine);
                     return (
                     <Tr key={s.name}>
                       <Td data-label="Share name">
@@ -293,7 +288,7 @@ export const SmbSharesTab: React.FC<SmbSharesTabProps> = ({
                               </Tooltip>
                             </FlexItem>
                           )}
-                          {isFruit && (
+                          {isTimeMachine && (
                             <FlexItem>
                               <Tooltip content="Apple Time Machine & macOS Fruit Extensions Enabled">
                                 <Label color="grey" icon={<AppleIcon />}>Time Machine</Label>

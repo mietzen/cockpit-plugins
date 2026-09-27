@@ -112,6 +112,59 @@ Account Flags:        [UD         ]
         users = file_sharing_helper.get_system_unix_users()
         self.assertEqual(users, ["alice", "bob"])
 
+    @patch("builtins.open")
+    @patch("os.path.exists", return_value=True)
+    @patch("grp.getgrnam")
+    @patch("pwd.getpwall")
+    def test_get_smb_groups_extract_from_conf(self, mock_pwall, mock_getgrnam, mock_exists, mock_open):
+        conf_content = """
+[global]
+    workgroup = WORKGROUP
+
+[share1]
+    path = /srv/share1
+    valid users = @smbteam, +developers, alice
+    force group = backup_group
+
+[share2]
+    path = /srv/share2
+    write list = @"Domain Admins"
+"""
+        mock_open.return_value.__enter__.return_value.read.return_value = conf_content
+        mock_pwall.return_value = [
+            MagicMock(pw_name="alice", pw_uid=1000, pw_gid=2000),
+            MagicMock(pw_name="bob", pw_uid=1001, pw_gid=2001),
+        ]
+
+        def fake_getgrnam(name):
+            if name == "smbteam":
+                return MagicMock(gr_name="smbteam", gr_gid=2000, gr_mem=["charlie"])
+            if name == "developers":
+                return MagicMock(gr_name="developers", gr_gid=2001, gr_mem=["bob"])
+            if name == "backup_group":
+                return MagicMock(gr_name="backup_group", gr_gid=2002, gr_mem=[])
+            raise KeyError(name)
+
+        mock_getgrnam.side_effect = fake_getgrnam
+
+        groups = file_sharing_helper.get_smb_groups()
+        group_names = [g["name"] for g in groups]
+        self.assertIn("smbteam", group_names)
+        self.assertIn("developers", group_names)
+        self.assertIn("backup_group", group_names)
+        self.assertIn("Domain Admins", group_names)
+
+        # Check members and primary group resolution
+        smbteam = next(g for g in groups if g["name"] == "smbteam")
+        self.assertEqual(smbteam["gid"], 2000)
+        self.assertIn("alice", smbteam["members"]) # primary gid 2000
+        self.assertIn("charlie", smbteam["members"])
+
+        domain_admins = next(g for g in groups if g["name"] == "Domain Admins")
+        self.assertIsNone(domain_admins["gid"])
+        self.assertEqual(domain_admins["members"], [])
+
+
     @patch("shutil.which", return_value="/usr/bin/smbstatus")
     @patch("file_sharing_helper.run_cmd")
     def test_get_smb_sessions(self, mock_cmd, mock_which):
@@ -412,16 +465,14 @@ Account Flags:        [UD         ]
         self.assertEqual(res["status"], "error")
 
     @patch("pwd.getpwall")
-    @patch("grp.getgrall")
-    @patch("file_sharing_helper.get_smb_users", return_value=[{"username": "alice"}])
-    def test_get_smb_groups(self, mock_users, mock_grall, mock_getpwall):
+    @patch("grp.getgrnam")
+    @patch("file_sharing_helper.SmbParser.extract_groups", return_value=["smbusers"])
+    def test_get_smb_groups(self, mock_extract, mock_getgrnam, mock_getpwall):
         mock_getpwall.return_value = [
             MagicMock(pw_name="alice", pw_uid=1001, pw_gid=1001),
             MagicMock(pw_name="root", pw_uid=0, pw_gid=0),
         ]
-        g1 = MagicMock(gr_name="smbusers", gr_gid=1001, gr_mem=["alice", "bob"])
-        g2 = MagicMock(gr_name="sysgrp", gr_gid=20, gr_mem=["root"])
-        mock_grall.return_value = [g1, g2]
+        mock_getgrnam.return_value = MagicMock(gr_name="smbusers", gr_gid=1001, gr_mem=["bob"])
 
         groups = file_sharing_helper.get_smb_groups()
         self.assertEqual(len(groups), 1)

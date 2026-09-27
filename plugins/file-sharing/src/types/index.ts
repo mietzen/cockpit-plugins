@@ -73,7 +73,7 @@ export interface SmbUser {
 
 export interface SmbGroup {
   name: string;
-  gid: number;
+  gid?: number | null;
   members: string[];
 }
 

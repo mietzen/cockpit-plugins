@@ -195,24 +195,6 @@ export const App: React.FC = () => {
     await loadData(true);
   };
 
-  const handleCreateGroup = async (name: string, members: string[]) => {
-    await fileSharingApi.createSmbGroup(name, members);
-    addAlert(`SMB group [${name}] created`);
-    await loadData(true);
-  };
-
-  const handleModifyGroup = async (name: string, newName?: string, members?: string[]) => {
-    await fileSharingApi.modifySmbGroup(name, newName, members);
-    addAlert(`SMB group [${name}] updated`);
-    await loadData(true);
-  };
-
-  const handleDeleteGroup = async (name: string) => {
-    await fileSharingApi.deleteSmbGroup(name);
-    addAlert(`SMB group [${name}] deleted`);
-    await loadData(true);
-  };
-
   const handleSaveNfsGlobal = async (nfs: any) => {
     await fileSharingApi.saveNfsGlobal(nfs);
     addAlert("Global NFS settings updated");
@@ -246,9 +228,6 @@ export const App: React.FC = () => {
       (window as any).__handleSetUserPassword = handleSetUserPassword;
       (window as any).__handleSetUserState = handleSetUserState;
       (window as any).__handleDeleteUser = handleDeleteUser;
-      (window as any).__handleCreateGroup = handleCreateGroup;
-      (window as any).__handleModifyGroup = handleModifyGroup;
-      (window as any).__handleDeleteGroup = handleDeleteGroup;
       (window as any).__handleSaveNfsGlobal = handleSaveNfsGlobal;
       (window as any).__handleServiceAction = handleServiceAction;
       (window as any).__handleSaveAnsibleMarkers = handleSaveAnsibleMarkers;
@@ -349,9 +328,6 @@ export const App: React.FC = () => {
           onSetPassword={handleSetUserPassword}
           onSetState={handleSetUserState}
           onDeleteUser={handleDeleteUser}
-          onCreateGroup={handleCreateGroup}
-          onModifyGroup={handleModifyGroup}
-          onDeleteGroup={handleDeleteGroup}
         />
       )}
 

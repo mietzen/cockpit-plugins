@@ -56,9 +56,6 @@ interface UsersTabProps {
   onSetPassword: (username: string, password: string) => Promise<void>;
   onSetState: (username: string, enable: boolean) => Promise<void>;
   onDeleteUser: (username: string) => Promise<void>;
-  onCreateGroup?: (name: string, members: string[]) => Promise<void>;
-  onModifyGroup?: (name: string, newName?: string, members?: string[]) => Promise<void>;
-  onDeleteGroup?: (name: string) => Promise<void>;
 }
 
 export const UsersTab: React.FC<UsersTabProps> = ({
@@ -70,9 +67,6 @@ export const UsersTab: React.FC<UsersTabProps> = ({
   onSetPassword,
   onSetState,
   onDeleteUser,
-  onCreateGroup,
-  onModifyGroup,
-  onDeleteGroup,
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<"users" | "groups" | "matrix">("users");
   const [searchValue, setSearchValue] = useState("");
@@ -87,14 +81,6 @@ export const UsersTab: React.FC<UsersTabProps> = ({
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-
-  // Group modal states
-  const [isAddGroupModalOpen, setIsAddGroupModalOpen] = useState(false);
-  const [isEditGroupModalOpen, setIsEditGroupModalOpen] = useState(false);
-  const [isDeleteGroupModalOpen, setIsDeleteGroupModalOpen] = useState(false);
-  const [groupName, setGroupName] = useState("");
-  const [selectedGroup, setSelectedGroup] = useState<SmbGroup | null>(null);
-  const [groupMembers, setGroupMembers] = useState<string[]>([]);
 
   // Sorting states
   const [userSortIndex, setUserSortIndex] = useState<number | null>(0);
@@ -150,27 +136,6 @@ export const UsersTab: React.FC<UsersTabProps> = ({
     setConfirmPassword("");
     setError(null);
     setIsPasswdModalOpen(true);
-  };
-
-  const handleOpenAddGroup = () => {
-    setGroupName("");
-    setGroupMembers([]);
-    setError(null);
-    setIsAddGroupModalOpen(true);
-  };
-
-  const handleOpenEditGroup = (grp: SmbGroup) => {
-    setSelectedGroup(grp);
-    setGroupName(grp.name);
-    setGroupMembers([...grp.members]);
-    setError(null);
-    setIsEditGroupModalOpen(true);
-  };
-
-  const handleOpenDeleteGroup = (grp: SmbGroup) => {
-    setSelectedGroup(grp);
-    setError(null);
-    setIsDeleteGroupModalOpen(true);
   };
 
   const handleSaveAdd = async () => {
@@ -229,62 +194,6 @@ export const UsersTab: React.FC<UsersTabProps> = ({
       setIsDeleteModalOpen(false);
     } catch (err: any) {
       setError(err.message || "Failed to delete user");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSaveAddGroup = async () => {
-    if (!groupName.trim()) {
-      setError("Group name is required");
-      return;
-    }
-    if (!onCreateGroup) {
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    try {
-      await onCreateGroup(groupName.trim(), groupMembers);
-      setIsAddGroupModalOpen(false);
-    } catch (err: any) {
-      setError(err.message || "Failed to create SMB group");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSaveEditGroup = async () => {
-    if (!groupName.trim() || !selectedGroup) {
-      setError("Group name is required");
-      return;
-    }
-    if (!onModifyGroup) {
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    try {
-      await onModifyGroup(selectedGroup.name, groupName.trim(), groupMembers);
-      setIsEditGroupModalOpen(false);
-    } catch (err: any) {
-      setError(err.message || "Failed to update SMB group");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDeleteGroupAction = async () => {
-    if (!selectedGroup || !onDeleteGroup) {
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    try {
-      await onDeleteGroup(selectedGroup.name);
-      setIsDeleteGroupModalOpen(false);
-    } catch (err: any) {
-      setError(err.message || "Failed to delete group");
     } finally {
       setLoading(false);
     }
@@ -393,15 +302,9 @@ export const UsersTab: React.FC<UsersTabProps> = ({
                 />
               </FlexItem>
               <FlexItem>
-                {activeSubTab === "groups" ? (
-                  <Button variant="primary" icon={<UsersIcon />} onClick={handleOpenAddGroup}>
-                    Add SMB Group
-                  </Button>
-                ) : (
-                  <Button variant="primary" icon={<UserPlusIcon />} onClick={handleOpenAdd}>
-                    Add SMB User
-                  </Button>
-                )}
+                <Button variant="primary" icon={<UserPlusIcon />} onClick={handleOpenAdd}>
+                  Add SMB User
+                </Button>
               </FlexItem>
             </Flex>
           </FlexItem>
@@ -532,20 +435,13 @@ export const UsersTab: React.FC<UsersTabProps> = ({
           {groups.length === 0 ? (
             <EmptyState>
               <EmptyStateHeader
-                titleText="No SMB groups configured"
+                titleText="No SMB groups referenced in smb.conf"
                 icon={<EmptyStateIcon icon={UsersIcon} />}
                 headingLevel="h4"
               />
               <EmptyStateBody>
-                Create SMB groups to manage group-based permissions across Samba shares.
+                No user groups are currently referenced in /etc/samba/smb.conf share or global permissions.
               </EmptyStateBody>
-              <EmptyStateFooter>
-                <EmptyStateActions>
-                  <Button variant="primary" icon={<UsersIcon />} onClick={handleOpenAddGroup}>
-                    Add SMB Group
-                  </Button>
-                </EmptyStateActions>
-              </EmptyStateFooter>
             </EmptyState>
           ) : (
             <Card>
@@ -556,7 +452,6 @@ export const UsersTab: React.FC<UsersTabProps> = ({
                       <Th sort={getGroupSortParams(0)}>Group Name</Th>
                       <Th sort={getGroupSortParams(1)}>GID</Th>
                       <Th sort={getGroupSortParams(2)}>Members</Th>
-                      <Th screenReaderText="Actions" style={{ textAlign: "right", width: "80px" }} />
                     </Tr>
                   </Thead>
                   <Tbody>
@@ -565,7 +460,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({
                         <Td data-label="Group Name">
                           <strong><UsersIcon style={{ marginRight: 8, color: "var(--pf-v5-global--primary-color--100)" }} />{grp.name}</strong>
                         </Td>
-                        <Td data-label="GID">{grp.gid}</Td>
+                        <Td data-label="GID">{grp.gid == null ? "—" : grp.gid}</Td>
                         <Td data-label="Members">
                           {grp.members.length > 0 ? (
                             <Flex gap={{ default: "gapXs" }}>
@@ -576,47 +471,6 @@ export const UsersTab: React.FC<UsersTabProps> = ({
                           ) : (
                             <span style={{ color: "var(--pf-v5-global--Color--200)" }}>No members</span>
                           )}
-                        </Td>
-                        <Td data-label="Actions" style={{ textAlign: "right" }}>
-                          <Dropdown
-                            popperProps={{
-                              position: "right",
-                              preventOverflow: true,
-                              appendTo: () => document.body,
-                            }}
-                            isOpen={openDropdown === `group-${grp.name}`}
-                            onSelect={() => setOpenDropdown(null)}
-                            onOpenChange={(isOpen) => setOpenDropdown(isOpen ? `group-${grp.name}` : null)}
-                            toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
-                              <MenuToggle
-                                ref={toggleRef}
-                                aria-label="Group actions"
-                                variant="plain"
-                                onClick={() => toggleDropdown(`group-${grp.name}`)}
-                                isExpanded={openDropdown === `group-${grp.name}`}
-                              >
-                                <EllipsisVIcon />
-                              </MenuToggle>
-                            )}
-                          >
-                            <DropdownList>
-                              <DropdownItem
-                                key="edit"
-                                icon={<PencilAltIcon />}
-                                onClick={() => handleOpenEditGroup(grp)}
-                              >
-                                Edit group
-                              </DropdownItem>
-                              <DropdownItem
-                                key="delete"
-                                icon={<TrashIcon />}
-                                onClick={() => handleOpenDeleteGroup(grp)}
-                                style={{ color: "var(--pf-v5-global--danger-color--100)" }}
-                              >
-                                Delete group
-                              </DropdownItem>
-                            </DropdownList>
-                          </Dropdown>
                         </Td>
                       </Tr>
                     ))}
@@ -813,147 +667,6 @@ export const UsersTab: React.FC<UsersTabProps> = ({
       >
         Are you sure you want to remove <strong>{selectedUser}</strong> from the Samba passdb?
         The system Unix account will remain untouched.
-      </Modal>
-
-      {/* Add SMB Group Modal */}
-      <Modal
-        variant={ModalVariant.medium}
-        title="Create SMB Group"
-        isOpen={isAddGroupModalOpen}
-        onClose={() => setIsAddGroupModalOpen(false)}
-        actions={[
-          <Button
-            key="save"
-            variant="primary"
-            onClick={handleSaveAddGroup}
-            isDisabled={loading || !groupName.trim()}
-            isLoading={loading}
-          >
-            Create Group
-          </Button>,
-          <Button key="cancel" variant="secondary" onClick={() => setIsAddGroupModalOpen(false)} isDisabled={loading}>
-            Cancel
-          </Button>,
-        ]}
-      >
-        <Form>
-          <FormGroup label="Group Name" isRequired fieldId="add-group-name">
-            <TextInput
-              id="add-group-name"
-              value={groupName}
-              onChange={(_event, val) => setGroupName(val)}
-              placeholder="e.g. smbusers"
-            />
-          </FormGroup>
-
-          <FormGroup label="Members" fieldId="add-group-members">
-            <div style={{ maxHeight: 200, overflowY: "auto", border: "1px solid var(--pf-v5-global--BorderColor--100)", padding: 8, borderRadius: 4 }}>
-              {allAvailableUsers.map((u) => (
-                <Checkbox
-                  key={u}
-                  id={`add-grp-user-${u}`}
-                  label={u}
-                  isChecked={groupMembers.includes(u)}
-                  onChange={(_event, checked) => {
-                    if (checked) {
-                      setGroupMembers([...groupMembers, u]);
-                    } else {
-                      setGroupMembers(groupMembers.filter((m) => m !== u));
-                    }
-                  }}
-                />
-              ))}
-              {allAvailableUsers.length === 0 && <div>No users available</div>}
-            </div>
-          </FormGroup>
-
-          {error && (
-            <Alert variant="danger" title="Error" style={{ marginTop: "1rem" }}>
-              {error}
-            </Alert>
-          )}
-        </Form>
-      </Modal>
-
-      {/* Edit SMB Group Modal */}
-      <Modal
-        variant={ModalVariant.medium}
-        title={`Edit SMB Group: ${selectedGroup?.name}`}
-        isOpen={isEditGroupModalOpen}
-        onClose={() => setIsEditGroupModalOpen(false)}
-        actions={[
-          <Button
-            key="save"
-            variant="primary"
-            onClick={handleSaveEditGroup}
-            isDisabled={loading || !groupName.trim()}
-            isLoading={loading}
-          >
-            Save Changes
-          </Button>,
-          <Button key="cancel" variant="secondary" onClick={() => setIsEditGroupModalOpen(false)} isDisabled={loading}>
-            Cancel
-          </Button>,
-        ]}
-      >
-        <Form>
-          <FormGroup label="Group Name" isRequired fieldId="edit-group-name">
-            <TextInput
-              id="edit-group-name"
-              value={groupName}
-              onChange={(_event, val) => setGroupName(val)}
-            />
-          </FormGroup>
-
-          <FormGroup label="Members" fieldId="edit-group-members">
-            <div style={{ maxHeight: 200, overflowY: "auto", border: "1px solid var(--pf-v5-global--BorderColor--100)", padding: 8, borderRadius: 4 }}>
-              {allAvailableUsers.map((u) => (
-                <Checkbox
-                  key={u}
-                  id={`edit-grp-user-${u}`}
-                  label={u}
-                  isChecked={groupMembers.includes(u)}
-                  onChange={(_event, checked) => {
-                    if (checked) {
-                      setGroupMembers([...groupMembers, u]);
-                    } else {
-                      setGroupMembers(groupMembers.filter((m) => m !== u));
-                    }
-                  }}
-                />
-              ))}
-            </div>
-          </FormGroup>
-
-          {error && (
-            <Alert variant="danger" title="Error" style={{ marginTop: "1rem" }}>
-              {error}
-            </Alert>
-          )}
-        </Form>
-      </Modal>
-
-      {/* Delete SMB Group Modal */}
-      <Modal
-        variant={ModalVariant.small}
-        title="Delete SMB Group"
-        isOpen={isDeleteGroupModalOpen}
-        onClose={() => setIsDeleteGroupModalOpen(false)}
-        actions={[
-          <Button key="delete" variant="danger" onClick={handleDeleteGroupAction} isLoading={loading}>
-            Delete Group
-          </Button>,
-          <Button key="cancel" variant="secondary" onClick={() => setIsDeleteGroupModalOpen(false)}>
-            Cancel
-          </Button>,
-        ]}
-      >
-        Are you sure you want to delete SMB group <strong>{selectedGroup?.name}</strong>?
-        {error && (
-          <Alert variant="danger" title="Error" style={{ marginTop: "1rem" }}>
-            {error}
-          </Alert>
-        )}
       </Modal>
     </>
   );
