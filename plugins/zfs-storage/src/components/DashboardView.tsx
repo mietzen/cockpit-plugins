@@ -25,6 +25,7 @@ import {
   DownloadIcon,
   ArrowRightIcon,
   HddIcon,
+  InfoCircleIcon,
 } from "@patternfly/react-icons";
 import { ZPool, SystemInfo, DiskDevice } from "../types";
 import { formatBytes, formatPercentage } from "../utils/formatters";
