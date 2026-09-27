@@ -60,18 +60,17 @@ export function getCockpitSegments(ignoredPrefixes: string[] = []): string[] {
  * Synchronizes route with Cockpit host shell or standalone window history.
  */
 export function syncCockpitLocation(segments: string[], mode: NavMode = NavMode.Replace): void {
-  const targetPath = segments.length > 0 ? `/${segments.join("/")}` : "/";
   const targetHash = segments.length > 0 ? `#/${segments.join("/")}` : "#/";
 
-  // Update Cockpit host shell location if available
+  // Update Cockpit host shell location if available (pass segment array for component-relative path)
   if (typeof cockpit !== "undefined" && cockpit.location) {
     if (mode === NavMode.Replace && typeof cockpit.location.replace === "function") {
-      cockpit.location.replace(targetPath);
+      cockpit.location.replace(segments);
       return;
     }
 
     if (typeof cockpit.location.go === "function") {
-      cockpit.location.go(targetPath);
+      cockpit.location.go(segments);
       return;
     }
   }
