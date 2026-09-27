@@ -79,9 +79,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const inUseImages = images.filter((i) => i.inUse).length;
   const inUseVolumes = volumes.filter((v) => v.inUse).length;
 
-  const currentEngineKey = activeEngine === 'podman' ? 'podman' : 'docker';
-  const currentEngine = engines ? engines[currentEngineKey] : undefined;
-
   const [activeSortIndex, setActiveSortIndex] = React.useState<number | null>(null);
   const [activeSortDirection, setActiveSortDirection] = React.useState<'asc' | 'desc'>('asc');
 
@@ -125,21 +122,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     <>
       {/* Top Header Section */}
       <PageSection style={{ paddingBottom: '0.5rem', backgroundColor: 'transparent' }}>
-        <Flex justifyContent={{ default: 'justifyContentSpaceBetween' }} alignItems={{ default: 'alignItemsCenter' }}>
-          <FlexItem>
-            <Title headingLevel="h1" size="2xl" style={{ fontWeight: 600, margin: 0 }}>
-              Containers
-            </Title>
-          </FlexItem>
-          {currentEngine && currentEngine.installed && (
-            <FlexItem>
-              <StatusBadge variant="blue">
-                {currentEngineKey === 'podman' ? 'Podman' : 'Docker'}
-                {currentEngine.version ? ` v${currentEngine.version}` : ''}
-              </StatusBadge>
-            </FlexItem>
-          )}
-        </Flex>
+        <Title headingLevel="h1" size="2xl" style={{ fontWeight: 600, margin: 0 }}>
+          Containers
+        </Title>
       </PageSection>
 
       {/* Metric Cards Grid */}

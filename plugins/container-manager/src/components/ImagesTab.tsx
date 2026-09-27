@@ -153,7 +153,7 @@ export const ImagesTab: React.FC<ImagesTabProps> = ({
             </Thead>
             <Tbody>
               {sortedImages.map((img) => (
-                <Tr key={img.id}>
+                <Tr key={`${img.id}-${img.repository}-${img.tag}`}>
                   <Td dataLabel="Repository">
                     <strong style={{ fontSize: '0.95rem' }}>{img.repository}</strong>
                   </Td>
