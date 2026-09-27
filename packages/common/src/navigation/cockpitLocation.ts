@@ -29,6 +29,24 @@ export interface CockpitLocationState {
  *   URL '#/?tab=smb' -> { path: [], options: { tab: 'smb' } }
  *   URL '#/pools'    -> { path: ['pools'], options: {} }
  */
+function stripLeadingPrefix(path: string[], ignoredPrefixes: string[]): string[] {
+  if (path.length === 0 || ignoredPrefixes.length === 0) {
+    return path;
+  }
+  const lowerPrefixes = ignoredPrefixes.map((p) => p.toLowerCase());
+  if (lowerPrefixes.includes(path[0].toLowerCase())) {
+    return path.slice(1);
+  }
+  return path;
+}
+
+/**
+ * Extracts current route options and path from cockpit.location or window.location.hash.
+ *
+ * Examples:
+ *   URL '#/?tab=smb' -> { path: [], options: { tab: 'smb' } }
+ *   URL '#/pools'    -> { path: ['pools'], options: {} }
+ */
 export function getCockpitLocation(ignoredPrefixes: string[] = []): CockpitLocationState {
   if (typeof window === "undefined") {
     return { path: [], options: {} };
@@ -37,17 +55,8 @@ export function getCockpitLocation(ignoredPrefixes: string[] = []): CockpitLocat
   // 1. Prefer cockpit.location when embedded in Cockpit shell
   if (typeof cockpit !== "undefined" && cockpit.location) {
     const options: Record<string, string> = { ...(cockpit.location.options || {}) };
-    let pathSegments: string[] = [];
-
-    if (Array.isArray(cockpit.location.path)) {
-      const raw = cockpit.location.path;
-      const lowerPrefixes = ignoredPrefixes.map((p) => p.toLowerCase());
-      let startIndex = 0;
-      while (startIndex < raw.length && lowerPrefixes.includes(raw[startIndex].toLowerCase())) {
-        startIndex++;
-      }
-      pathSegments = raw.slice(startIndex);
-    }
+    const raw = Array.isArray(cockpit.location.path) ? cockpit.location.path : [];
+    const pathSegments = stripLeadingPrefix(raw, ignoredPrefixes);
 
     return { path: pathSegments, options };
   }
@@ -69,12 +78,7 @@ export function getCockpitLocation(ignoredPrefixes: string[] = []): CockpitLocat
     });
   }
 
-  let startIndex = 0;
-  const lowerPrefixes = ignoredPrefixes.map((p) => p.toLowerCase());
-  while (startIndex < path.length && lowerPrefixes.includes(path[startIndex].toLowerCase())) {
-    startIndex++;
-  }
-  const filteredPath = path.slice(startIndex);
+  const filteredPath = stripLeadingPrefix(path, ignoredPrefixes);
 
   return { path: filteredPath, options };
 }

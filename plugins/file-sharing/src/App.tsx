@@ -173,7 +173,6 @@ export const App: React.FC = () => {
       loadData(true);
     };
 
-    window.addEventListener("hashchange", handleRefresh);
     window.addEventListener("focus", handleRefresh);
     const handleVisibility = () => {
       if (document.visibilityState === "visible") {
@@ -201,7 +200,6 @@ export const App: React.FC = () => {
     }
 
     return () => {
-      window.removeEventListener("hashchange", handleRefresh);
       window.removeEventListener("focus", handleRefresh);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
