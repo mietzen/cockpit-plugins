@@ -29,6 +29,8 @@ done
 echo "Attached loop devices:"
 sudo losetup -a
 sudo chmod 666 /dev/loop* /tmp/zfs-test-disks/*.img || true
+sudo udevadm trigger --subsystem-match=block 2>/dev/null || true
+sudo udevadm settle 2>/dev/null || true
 
 # 3. Create test user and configure Cockpit authentication
 echo "==> Configuring users and authentication..."
@@ -98,7 +100,9 @@ sudo chmod -R 755 /usr/share/cockpit/* || true
 sudo chmod -R 755 /usr/libexec/cockpit-* || true
 
 # Pre-configure test file sharing fixtures
-sudo mkdir -p /srv/samba/test /srv/nfs/test /srv/nfs/test_crud /tank/ansible /etc/samba
+sudo mkdir -p /srv/samba/test /srv/nfs/test /srv/nfs/test_crud /tank/ansible /etc/samba /etc/exports.d
+sudo chmod -R 777 /srv/samba /srv/nfs /tank /tmp/zfs-test-disks 2>/dev/null || true
+
 if [ ! -f /etc/samba/smb.conf ]; then
     sudo touch /etc/samba/smb.conf
 fi
@@ -117,17 +121,20 @@ if ! grep -q "ansible_locked_share" /etc/samba/smb.conf 2>/dev/null; then
 # <-- END ANSIBLE MANAGED storage_cluster CONFIG -->
 EOF'
 fi
-sudo mkdir -p /etc/exports.d
-sudo chmod -R 777 /srv/samba /srv/nfs /tank 2>/dev/null || true
+sudo chmod 666 /etc/samba/smb.conf 2>/dev/null || true
 echo "/srv/nfs/test 192.168.40.0/24(rw,sync,no_subtree_check,root_squash)" | sudo tee /etc/exports.d/cockpit.exports
 echo -e "password\npassword" | sudo smbpasswd -a -s test-user 2>/dev/null || true
-sudo systemctl restart smbd nmbd || sudo systemctl restart samba || true
-sudo systemctl restart nfs-kernel-server || sudo systemctl restart nfs-server || true
+sudo systemctl unmask smbd nmbd samba 2>/dev/null || true
+sudo systemctl restart smbd nmbd 2>/dev/null || sudo systemctl restart samba 2>/dev/null || sudo service smbd restart 2>/dev/null || true
+sudo systemctl unmask nfs-kernel-server nfs-server 2>/dev/null || true
+sudo systemctl restart nfs-kernel-server 2>/dev/null || sudo systemctl restart nfs-server 2>/dev/null || sudo service nfs-kernel-server restart 2>/dev/null || true
 
 # Pre-configure Container Manager fixtures if docker/podman is installed
 if command -v docker &>/dev/null; then
     echo "==> Setting up Docker test fixtures..."
-    sudo systemctl restart docker || true
+    sudo systemctl unmask docker.service docker.socket 2>/dev/null || true
+    sudo systemctl start docker.service docker.socket 2>/dev/null || sudo service docker start 2>/dev/null || true
+    sudo chmod 666 /var/run/docker.sock 2>/dev/null || true
     sudo docker pull alpine:latest 2>/dev/null || true
     sudo docker rm -f e2e-web e2e-stopped 2>/dev/null || true
     sudo docker run -d --name e2e-web -p 8081:80 alpine:latest sh -c "while true; do echo 'server live'; sleep 10; done" 2>/dev/null || true
@@ -142,6 +149,8 @@ if command -v podman &>/dev/null; then
     sudo podman rm -f e2e-web e2e-stopped 2>/dev/null || true
     sudo podman run -d --name e2e-web -p 8082:80 alpine:latest sh -c "while true; do echo 'server live'; sleep 10; done" 2>/dev/null || true
     sudo podman create --name e2e-stopped alpine:latest echo "finished" 2>/dev/null || true
+    sudo podman volume create e2e-data-volume 2>/dev/null || true
+    sudo podman network create e2e-custom-net 2>/dev/null || true
 fi
 
 # 5. Start Cockpit service
