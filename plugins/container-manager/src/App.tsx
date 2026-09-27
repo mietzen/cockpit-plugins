@@ -39,7 +39,7 @@ import { ContainerTerminalModal } from './components/ContainerTerminalModal';
 import { ContainerLogsModal } from './components/ContainerLogsModal';
 import { SystemPruneModal } from './components/SystemPruneModal';
 
-const IGNORED_PREFIXES = ['container-manager', 'cockpit-container-manager', 'index'];
+const IGNORED_PREFIXES = ['container-manager', 'cockpit-container-manager', 'containers', 'index'];
 
 const parseView = (loc: CockpitLocationState): string => {
   if (loc.options.tab) {
