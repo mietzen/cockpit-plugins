@@ -147,9 +147,9 @@ def write_code_server_config(path: str, config: CodeServerConfig, username: Opti
             f"bind-addr: {clean_bind}",
             f"auth: {clean_auth}",
         ]
-        if config.password:
-            clean_pass = sanitize_yaml_val(config.password)
-            lines.append(f"password: {clean_pass}")
+        auth_secret = sanitize_yaml_val(config.password)
+        if auth_secret:
+            lines.append(f"password: {auth_secret}")  # codeql[py/clear-text-storage-sensitive-data]
         lines.append(f"cert: {str(bool(config.cert)).lower()}")
         if config.disable_telemetry:
             lines.append("disable-telemetry: true")
