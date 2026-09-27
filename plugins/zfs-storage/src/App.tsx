@@ -206,6 +206,25 @@ export const App: React.FC = () => {
 
   useEffect(() => {
     loadData();
+
+    const handleRefresh = () => {
+      loadData();
+    };
+
+    window.addEventListener("hashchange", handleRefresh);
+    window.addEventListener("focus", handleRefresh);
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        handleRefresh();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      window.removeEventListener("hashchange", handleRefresh);
+      window.removeEventListener("focus", handleRefresh);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
   }, [loadData]);
 
   const runAction = async (actionPromise: Promise<CommandResult>, successMsg: string) => {
@@ -446,7 +465,10 @@ export const App: React.FC = () => {
           pools={pools}
           isLoading={isLoading}
           onSelectPool={handleSelectPool}
-          onCreatePool={() => setActiveModal({ type: "create-pool" })}
+          onCreatePool={() => {
+            loadData();
+            setActiveModal({ type: "create-pool" });
+          }}
           onImportPool={() => {
             const cmd = ["zpool", "import", "-d", "/dev/disk/by-id", "-f"];
             setActiveModal({

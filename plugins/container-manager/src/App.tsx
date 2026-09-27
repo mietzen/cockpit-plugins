@@ -39,7 +39,7 @@ import { ContainerTerminalModal } from './components/ContainerTerminalModal';
 import { ContainerLogsModal } from './components/ContainerLogsModal';
 import { SystemPruneModal } from './components/SystemPruneModal';
 
-const IGNORED_PREFIXES = ['container-manager', 'cockpit-container-manager', 'containers', 'index'];
+const IGNORED_PREFIXES = ['container-manager', 'cockpit-container-manager', 'index'];
 
 const parseView = (loc: CockpitLocationState): string => {
   if (loc.options.tab) {
@@ -50,7 +50,7 @@ const parseView = (loc: CockpitLocationState): string => {
   }
   if (loc.path.length > 0) {
     const seg = loc.path[0].trim().toLowerCase();
-    if (['images', 'volumes', 'networks', 'settings'].includes(seg)) {
+    if (['containers', 'images', 'volumes', 'networks', 'settings'].includes(seg)) {
       return seg;
     }
   }

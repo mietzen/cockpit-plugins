@@ -255,7 +255,7 @@ export const CreatePoolWizard: React.FC<CreatePoolWizardProps> = ({
             if (isLastStep) {
               handleFinish();
             } else {
-              onNext(null as any);
+              onNext();
             }
           };
 
