@@ -30,36 +30,32 @@ declare global {
 
 const IGNORED_PREFIXES = ["file-sharing", "cockpit-file-sharing", "sharing", "index"];
 
-const parseView = (loc: CockpitLocationState): string => {
-  if (loc.options.tab) {
-    const tab = loc.options.tab.trim().toLowerCase();
-    if (["dashboard", "smb", "nfs", "users", "sessions", "settings"].includes(tab)) {
-      return tab;
-    }
+const parseView = (segments: string[]): string => {
+  const cleanStr = segments.map((s) => s.trim().toLowerCase()).filter(Boolean);
+  if (cleanStr.length === 0 || cleanStr[0] === "dashboard" || cleanStr[0] === "overview") {
+    return "dashboard";
   }
-  if (loc.path.length > 0) {
-    const seg = loc.path[0].trim().toLowerCase();
-    if (["smb", "nfs", "users", "sessions", "settings"].includes(seg)) {
-      return seg;
-    }
+  const viewKey = cleanStr[0];
+  if (["dashboard", "smb", "nfs", "users", "sessions", "settings"].includes(viewKey)) {
+    return viewKey;
   }
   return "dashboard";
 };
 
-const formatLocation = (view: string) => {
+const formatSegments = (view: string): string[] => {
   if (view === "dashboard") {
-    return { options: {} };
+    return [];
   }
-  return { options: { tab: view } };
+  return [view];
 };
 
 export const App: React.FC = () => {
   useCockpitTheme();
 
-  const [activeView, setActiveView] = useCockpitRoute(parseView, formatLocation, IGNORED_PREFIXES);
+  const [activeView, setActiveView] = useCockpitRoute(parseView, formatSegments, IGNORED_PREFIXES);
 
   const navigateToView = useCallback((view: string) => {
-    setActiveView(view, NavMode.Push);
+    setActiveView(view, NavMode.Replace);
   }, [setActiveView]);
 
   const [data, setData] = useState<FileSharingOverview | null>(null);

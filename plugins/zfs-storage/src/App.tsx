@@ -91,33 +91,12 @@ type ActiveModal =
 
 const IGNORED_PREFIXES = ["zfs-storage", "cockpit-zfs", "zfs", "index"];
 
-const parseRoute = (loc: CockpitLocationState): AppRoute => {
-  const tab = (loc.options.tab || (loc.path.length > 0 ? loc.path[0] : "")).trim().toLowerCase();
-  if (tab === "pools") {
-    const poolName = loc.options.pool || (loc.path.length >= 2 ? loc.path[1] : null);
-    const subTab = loc.options.subtab || (loc.path.length >= 3 ? loc.path[2] : "topology");
-    if (poolName) {
-      return { view: "pool-details", poolName, subTab };
-    }
-    return { view: "pools", poolName: null, subTab: "topology" };
-  }
-  if (tab === "disks") {
-    return { view: "disks", poolName: null, subTab: "topology" };
-  }
-  if (tab === "automations" || tab === "sanoid") {
-    return { view: "automations", poolName: null, subTab: "automations" };
-  }
-  if (tab === "settings") {
-    return { view: "settings", poolName: null, subTab: "topology" };
-  }
-  return { view: "dashboard", poolName: null, subTab: "topology" };
-};
-
-const parseSegmentsToRoute = (segments: string[]): AppRoute => {
+const parseRoute = (segments: string[]): AppRoute => {
   const clean = segments.map((s) => s.trim().toLowerCase()).filter(Boolean);
   if (clean.length === 0 || clean[0] === "dashboard" || clean[0] === "overview") {
     return { view: "dashboard", poolName: null, subTab: "topology" };
   }
+
   const root = clean[0];
   if (root === "pools") {
     if (clean.length >= 2 && clean[1]) {
@@ -138,24 +117,24 @@ const parseSegmentsToRoute = (segments: string[]): AppRoute => {
   return { view: "dashboard", poolName: null, subTab: "topology" };
 };
 
-const formatLocation = (r: AppRoute) => {
+const formatSegments = (r: AppRoute): string[] => {
   if (r.view === "dashboard") {
-    return { options: {} };
+    return [];
   }
   if (r.view === "pool-details" && r.poolName) {
-    return { options: { tab: "pools", pool: r.poolName, subtab: r.subTab || "topology" } };
+    return ["pools", r.poolName, r.subTab || "topology"];
   }
-  return { options: { tab: r.view } };
+  return [r.view];
 };
 
 export const App: React.FC = () => {
   useCockpitTheme();
 
-  const [route, setRoute] = useCockpitRoute(parseRoute, formatLocation, IGNORED_PREFIXES);
+  const [route, setRoute] = useCockpitRoute(parseRoute, formatSegments, IGNORED_PREFIXES);
 
   const navigateTo = useCallback((segments: string[]) => {
-    const nextRoute = parseSegmentsToRoute(segments);
-    setRoute(nextRoute, NavMode.Push);
+    const nextRoute = parseRoute(segments);
+    setRoute(nextRoute, NavMode.Replace);
   }, [setRoute]);
 
   const [systemInfo, setSystemInfo] = useState<SystemInfo | null>(null);
