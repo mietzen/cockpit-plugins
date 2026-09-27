@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import "@patternfly/react-core/dist/styles/base.css";
 import "@cockpit-plugins/common/src/styles/cockpit-theme.css";
-import { useCockpitTheme } from "@cockpit-plugins/common";
+import { useCockpitTheme, useCockpitRoute, NavMode, CockpitLocationState } from "@cockpit-plugins/common";
 import {
   Alert,
   AlertGroup,
@@ -89,30 +89,35 @@ type ActiveModal =
     }
   | null;
 
-const getSegmentsFromEnv = (): string[] => {
-  if (typeof window === "undefined") {
-    return [];
-  }
-  const hash = window.location.hash.replace(/^#\/?/, "");
-  if (hash) {
-    return hash.split("/").filter(Boolean);
-  }
-  if (typeof cockpit !== "undefined" && cockpit.location && Array.isArray(cockpit.location.path)) {
-    const raw = cockpit.location.path;
-    if (raw.length > 0 && ["zfs-storage", "cockpit-zfs", "zfs", "index"].includes(raw[0].toLowerCase())) {
-      return raw.slice(1);
+const IGNORED_PREFIXES = ["zfs-storage", "cockpit-zfs", "zfs", "index"];
+
+const parseRoute = (loc: CockpitLocationState): AppRoute => {
+  const tab = (loc.options.tab || (loc.path.length > 0 ? loc.path[0] : "")).trim().toLowerCase();
+  if (tab === "pools") {
+    const poolName = loc.options.pool || (loc.path.length >= 2 ? loc.path[1] : null);
+    const subTab = loc.options.subtab || (loc.path.length >= 3 ? loc.path[2] : "topology");
+    if (poolName) {
+      return { view: "pool-details", poolName, subTab };
     }
-    return raw;
+    return { view: "pools", poolName: null, subTab: "topology" };
   }
-  return [];
+  if (tab === "disks") {
+    return { view: "disks", poolName: null, subTab: "topology" };
+  }
+  if (tab === "automations" || tab === "sanoid") {
+    return { view: "automations", poolName: null, subTab: "automations" };
+  }
+  if (tab === "settings") {
+    return { view: "settings", poolName: null, subTab: "topology" };
+  }
+  return { view: "dashboard", poolName: null, subTab: "topology" };
 };
 
-const parseRoute = (segments: string[]): AppRoute => {
+const parseSegmentsToRoute = (segments: string[]): AppRoute => {
   const clean = segments.map((s) => s.trim().toLowerCase()).filter(Boolean);
   if (clean.length === 0 || clean[0] === "dashboard" || clean[0] === "overview") {
     return { view: "dashboard", poolName: null, subTab: "topology" };
   }
-
   const root = clean[0];
   if (root === "pools") {
     if (clean.length >= 2 && clean[1]) {
@@ -133,14 +138,25 @@ const parseRoute = (segments: string[]): AppRoute => {
   return { view: "dashboard", poolName: null, subTab: "topology" };
 };
 
+const formatLocation = (r: AppRoute) => {
+  if (r.view === "dashboard") {
+    return { options: {} };
+  }
+  if (r.view === "pool-details" && r.poolName) {
+    return { options: { tab: "pools", pool: r.poolName, subtab: r.subTab || "topology" } };
+  }
+  return { options: { tab: r.view } };
+};
+
 export const App: React.FC = () => {
   useCockpitTheme();
 
-  const [route, setRoute] = useState<AppRoute>(() => {
-    return parseRoute(getSegmentsFromEnv());
-  });
+  const [route, setRoute] = useCockpitRoute(parseRoute, formatLocation, IGNORED_PREFIXES);
 
-  const lastNavigatedPathRef = useRef<string>("");
+  const navigateTo = useCallback((segments: string[]) => {
+    const nextRoute = parseSegmentsToRoute(segments);
+    setRoute(nextRoute, NavMode.Push);
+  }, [setRoute]);
 
   const [systemInfo, setSystemInfo] = useState<SystemInfo | null>(null);
   const [pools, setPools] = useState<ZPool[]>([]);
@@ -156,61 +172,6 @@ export const App: React.FC = () => {
 
   // Consolidated Modal State (resolves state bloat)
   const [activeModal, setActiveModal] = useState<ActiveModal>(null);
-
-  const navigateTo = useCallback((segments: string[]) => {
-    const nextRoute = parseRoute(segments);
-    setRoute(nextRoute);
-
-    const fullPathStr = segments.join("/");
-    lastNavigatedPathRef.current = fullPathStr;
-
-    if (typeof window !== "undefined") {
-      const targetHash = segments.length > 0 ? `#/${segments.join("/")}` : "#/";
-      if (window.location.hash !== targetHash) {
-        window.history.replaceState(null, "", targetHash);
-      }
-    }
-  }, []);
-
-  const syncFromUrl = useCallback(() => {
-    const segments = getSegmentsFromEnv();
-    const currentPathStr = segments.join("/");
-    if (currentPathStr === lastNavigatedPathRef.current) {
-      return;
-    }
-
-    lastNavigatedPathRef.current = currentPathStr;
-    setRoute(parseRoute(segments));
-  }, []);
-
-  useEffect(() => {
-    if (typeof cockpit !== "undefined" && cockpit.location) {
-      const handleLocationChanged = () => {
-        syncFromUrl();
-      };
-      cockpit.addEventListener("locationchanged", handleLocationChanged);
-      return () => {
-        cockpit.removeEventListener("locationchanged", handleLocationChanged);
-      };
-    }
-  }, [syncFromUrl]);
-
-  useEffect(() => {
-    const handleHashChange = () => {
-      syncFromUrl();
-    };
-    const handlePopState = () => {
-      syncFromUrl();
-    };
-
-    window.addEventListener("hashchange", handleHashChange);
-    window.addEventListener("popstate", handlePopState);
-
-    return () => {
-      window.removeEventListener("hashchange", handleHashChange);
-      window.removeEventListener("popstate", handlePopState);
-    };
-  }, [syncFromUrl]);
 
   const addAlert = (variant: "success" | "danger" | "warning" | "info", title: string, message?: string) => {
     const id = `alert-${Date.now()}-${Math.random()}`;
@@ -245,6 +206,23 @@ export const App: React.FC = () => {
 
   useEffect(() => {
     loadData();
+
+    const handleRefresh = () => {
+      loadData();
+    };
+
+    window.addEventListener("focus", handleRefresh);
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        handleRefresh();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      window.removeEventListener("focus", handleRefresh);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
   }, [loadData]);
 
   const runAction = async (actionPromise: Promise<CommandResult>, successMsg: string) => {
@@ -485,7 +463,10 @@ export const App: React.FC = () => {
           pools={pools}
           isLoading={isLoading}
           onSelectPool={handleSelectPool}
-          onCreatePool={() => setActiveModal({ type: "create-pool" })}
+          onCreatePool={() => {
+            loadData();
+            setActiveModal({ type: "create-pool" });
+          }}
           onImportPool={() => {
             const cmd = ["zpool", "import", "-d", "/dev/disk/by-id", "-f"];
             setActiveModal({

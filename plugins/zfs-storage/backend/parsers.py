@@ -3,17 +3,23 @@ import re
 from typing import List, Dict, Any, Optional
 
 
-def parse_int(val: str, default: int = 0) -> int:
+def parse_int(val: Any, default: int = 0) -> int:
+    if isinstance(val, int):
+        return val
+    if isinstance(val, float):
+        return int(val)
     try:
-        clean = val.strip().rstrip("%").rstrip("x")
+        clean = str(val).strip().rstrip("%").rstrip("x")
         return int(clean)
     except (ValueError, TypeError):
         return default
 
 
-def parse_float(val: str, default: float = 0.0) -> float:
+def parse_float(val: Any, default: float = 0.0) -> float:
+    if isinstance(val, (int, float)):
+        return float(val)
     try:
-        clean = val.strip().rstrip("%").rstrip("x")
+        clean = str(val).strip().rstrip("%").rstrip("x")
         return float(clean)
     except (ValueError, TypeError):
         return default

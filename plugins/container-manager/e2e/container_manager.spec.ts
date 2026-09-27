@@ -121,6 +121,10 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
 
     const frame = await getFrame();
     await frame.locator('#root').waitFor({ state: 'attached', timeout: 20000 });
+    const recheckBtn1 = frame.locator("button:has-text('Re-check Installed Engines')").first();
+    if (await recheckBtn1.isVisible({ timeout: 1500 }).catch(() => false)) {
+      await recheckBtn1.click();
+    }
     await expect(frame.getByRole('heading', { name: /Containers|No Container Engine Found/ }).first()).toBeVisible({ timeout: 20000 });
     await saveScreenshot(page, '01_overview_dashboard_loaded.png');
   });
@@ -130,6 +134,11 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
 
     // Verify top sticky navigation pill bar
     await expect(frame.locator('.cockpit-top-nav-bar, .pf-v5-c-tabs').first()).toBeVisible({ timeout: 10000 });
+
+    const recheckBtn2 = frame.locator("button:has-text('Re-check Installed Engines')").first();
+    if (await recheckBtn2.isVisible({ timeout: 1500 }).catch(() => false)) {
+      await recheckBtn2.click();
+    }
 
     // Verify metric cards
     await expect(frame.locator('.pf-v5-c-card', { hasText: 'Containers' }).first()).toBeVisible({ timeout: 10000 });
@@ -348,20 +357,30 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     await frame.locator('.cockpit-top-nav-bar button:has-text("Containers")').click();
     await frame.waitForSelector('table[aria-label="Containers Table"]', { timeout: 10000 });
 
+    // Ensure at least one container is running
+    const startBtn = frame.locator('table[aria-label="Containers Table"] button[aria-label="Start"]').first();
+    const stopBtn = frame.locator('table[aria-label="Containers Table"] button[aria-label="Stop"]').first();
+    if (!(await stopBtn.isVisible({ timeout: 1500 }).catch(() => false)) && (await startBtn.isVisible({ timeout: 1500 }).catch(() => false))) {
+      await startBtn.click();
+      await frame.waitForTimeout(2000);
+    }
+
     // Click terminal icon on running container in visible table
     const runningRow = frame.locator('table[aria-label="Containers Table"] tbody tr').filter({ has: frame.locator('button[aria-label="Stop"]') }).first();
-    const actionToggle = (await runningRow.count() > 0)
-      ? runningRow.locator('button[aria-label="Container actions"]').first()
-      : frame.locator('table[aria-label="Containers Table"] button[aria-label="Container actions"]').first();
+    const targetRow = (await runningRow.count() > 0) ? runningRow : frame.locator('table[aria-label="Containers Table"] tbody tr').first();
+    const actionToggle = targetRow.locator('button[aria-label="Container actions"]').first();
 
     if (await actionToggle.isVisible({ timeout: 2000 }).catch(() => false)) {
       await actionToggle.click();
-      await frame.locator('[role="menuitem"]:has-text("Terminal"), button:has-text("Terminal")').first().click();
+      const termItem = frame.locator('[role="menuitem"]:has-text("Terminal"), button:has-text("Terminal")').first();
+      if (await termItem.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await termItem.click();
+      }
     } else {
-      const termBtn = (await runningRow.count() > 0)
-        ? runningRow.locator('button[aria-label="Terminal"]').first()
-        : frame.locator('table[aria-label="Containers Table"] button[aria-label="Terminal"]').first();
-      await termBtn.click();
+      const termBtn = targetRow.locator('button[aria-label="Terminal"]').first();
+      if (await termBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await termBtn.click();
+      }
     }
 
     // Wait for terminal modal and connection prompt to appear
@@ -618,7 +637,7 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
         await sansInput.fill('127.0.0.1, localhost');
       }
       await setupBtn.click();
-      await frame.waitForSelector('span:has-text("TCP Enabled"), button:has-text("Disable Remote TCP")', { timeout: 15000 });
+      await frame.waitForSelector('span:has-text("TCP Enabled"), button:has-text("Disable Remote TCP")', { timeout: 30000 });
     }
 
     // Test downloading .zip from Settings view

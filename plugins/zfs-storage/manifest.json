@@ -6,5 +6,6 @@
       "label": "ZFS storage",
       "order": 33
     }
-  }
+  },
+  "preload": [ "index" ]
 }
