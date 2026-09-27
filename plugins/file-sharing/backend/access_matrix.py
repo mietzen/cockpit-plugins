@@ -113,7 +113,6 @@ def calculate_smb_user_matrix(
 
             is_homes = (
                 share_name.lower() == DEFAULT_HOMES_SHARE_NAME
-                or "%s" in raw_path.lower()
                 or "%u" in raw_path.lower()
                 or "%H" in raw_path
                 or share_path == f"/home/{username}"
