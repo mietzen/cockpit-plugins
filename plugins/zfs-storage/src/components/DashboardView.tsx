@@ -15,8 +15,6 @@ import {
   Title,
   Label,
   Divider,
-  Modal,
-  ModalVariant,
 } from "@patternfly/react-core";
 import { Table, Thead, Tr, Th, Tbody, Td, ThProps } from "@patternfly/react-table";
 import {
@@ -108,8 +106,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   const allHealthy = pools.length > 0 && pools.every((p) => p.health === "ONLINE");
   const faultedPools = pools.filter((p) => p.health !== "ONLINE");
-
-  const sanoidInfo = systemInfo?.sanoid;
 
   return (
     <>

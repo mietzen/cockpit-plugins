@@ -615,6 +615,7 @@ export const App: React.FC = () => {
         <AutomationsView
           sanoidInfo={systemInfo?.sanoid}
           datasetOptions={datasets.map((d) => d.name)}
+          isLoading={isLoading}
           onSaveSchedule={handleSaveSanoidSchedule}
           onDeleteSchedule={handleDeleteSanoidSchedule}
         />

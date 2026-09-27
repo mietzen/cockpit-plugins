@@ -9,12 +9,13 @@ import {
   Card,
   CardBody,
   SearchInput,
-  Modal,
-  ModalVariant,
   EmptyState,
   EmptyStateHeader,
   EmptyStateIcon,
   EmptyStateBody,
+  EmptyStateFooter,
+  EmptyStateActions,
+  Spinner,
 } from "@patternfly/react-core";
 import { Table, Thead, Tr, Th, Tbody, Td, ThProps } from "@patternfly/react-table";
 import {
@@ -24,13 +25,26 @@ import {
   TrashIcon,
   ClockIcon,
   InfoCircleIcon,
+  SearchIcon,
 } from "@patternfly/react-icons";
+import { ConfirmModal } from "@cockpit-plugins/common";
 import { SanoidInfo, SanoidDatasetPolicy } from "../types";
 import { SanoidScheduleModal } from "./Modals/SanoidScheduleModal";
+
+export enum PolicySortColumn {
+  Dataset = 0,
+  Template = 1,
+  Hourly = 2,
+  Daily = 3,
+  Monthly = 4,
+  Yearly = 5,
+  Recursive = 7,
+}
 
 interface AutomationsViewProps {
   sanoidInfo?: SanoidInfo | null;
   datasetOptions?: string[];
+  isLoading?: boolean;
   onSaveSchedule?: (policy: SanoidDatasetPolicy) => Promise<void>;
   onDeleteSchedule?: (dataset: string) => Promise<void>;
 }
@@ -38,15 +52,17 @@ interface AutomationsViewProps {
 export const AutomationsView: React.FC<AutomationsViewProps> = ({
   sanoidInfo,
   datasetOptions = [],
+  isLoading = false,
   onSaveSchedule,
   onDeleteSchedule,
 }) => {
   const [searchValue, setSearchValue] = useState("");
-  const [sortIndex, setSortIndex] = useState<number | null>(0);
+  const [sortIndex, setSortIndex] = useState<number | null>(PolicySortColumn.Dataset);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [selectedPolicy, setSelectedPolicy] = useState<SanoidDatasetPolicy | null>(null);
-  const [deleteScheduleDataset, setDeleteScheduleDataset] = useState<string | null>(null);
+  const [deleteDatasetTarget, setDeleteDatasetTarget] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const getSortParams = (columnIndex: number): ThProps["sort"] => ({
     sortBy: {
@@ -64,56 +80,67 @@ export const AutomationsView: React.FC<AutomationsViewProps> = ({
   const policies = sanoidInfo?.policies || [];
 
   const filteredPolicies = useMemo(() => {
-    if (!searchValue.trim()) {
+    const trimmedQuery = searchValue.trim().toLowerCase();
+    if (!trimmedQuery) {
       return policies;
     }
-    const q = searchValue.toLowerCase();
-    return policies.filter(
-      (p) =>
-        p.dataset.toLowerCase().includes(q) ||
-        (p.use_template && p.use_template.toLowerCase().includes(q)) ||
-        (p.template && p.template.toLowerCase().includes(q))
-    );
+
+    return policies.filter((policy) => {
+      const datasetMatch = policy.dataset.toLowerCase().includes(trimmedQuery);
+      const templateMatch = (policy.use_template || policy.template || "").toLowerCase().includes(trimmedQuery);
+      return datasetMatch || templateMatch;
+    });
   }, [policies, searchValue]);
 
   const sortedPolicies = useMemo(() => {
     if (sortIndex === null) {
       return filteredPolicies;
     }
-    return [...filteredPolicies].sort((a, b) => {
-      let aVal: any = "";
-      let bVal: any = "";
 
-      if (sortIndex === 0) {
-        aVal = a.dataset;
-        bVal = b.dataset;
-      } else if (sortIndex === 1) {
-        aVal = a.use_template || a.template || "";
-        bVal = b.use_template || b.template || "";
-      } else if (sortIndex === 2) {
-        aVal = a.hourly ?? -1;
-        bVal = b.hourly ?? -1;
-        return sortDirection === "asc" ? aVal - bVal : bVal - aVal;
-      } else if (sortIndex === 3) {
-        aVal = a.daily ?? -1;
-        bVal = b.daily ?? -1;
-        return sortDirection === "asc" ? aVal - bVal : bVal - aVal;
-      } else if (sortIndex === 4) {
-        aVal = a.monthly ?? -1;
-        bVal = b.monthly ?? -1;
-        return sortDirection === "asc" ? aVal - bVal : bVal - aVal;
-      } else if (sortIndex === 5) {
-        aVal = a.yearly ?? -1;
-        bVal = b.yearly ?? -1;
-        return sortDirection === "asc" ? aVal - bVal : bVal - aVal;
-      } else if (sortIndex === 6) {
-        aVal = a.recursive ? "yes" : "no";
-        bVal = b.recursive ? "yes" : "no";
+    return [...filteredPolicies].sort((firstPolicy, secondPolicy) => {
+      if (sortIndex === PolicySortColumn.Dataset) {
+        const result = firstPolicy.dataset.localeCompare(secondPolicy.dataset);
+        return sortDirection === "asc" ? result : -result;
       }
 
-      return sortDirection === "asc"
-        ? String(aVal).localeCompare(String(bVal))
-        : String(bVal).localeCompare(String(aVal));
+      if (sortIndex === PolicySortColumn.Template) {
+        const firstTemplate = firstPolicy.use_template || firstPolicy.template || "";
+        const secondTemplate = secondPolicy.use_template || secondPolicy.template || "";
+        const result = firstTemplate.localeCompare(secondTemplate);
+        return sortDirection === "asc" ? result : -result;
+      }
+
+      if (sortIndex === PolicySortColumn.Hourly) {
+        const firstVal = firstPolicy.hourly ?? -1;
+        const secondVal = secondPolicy.hourly ?? -1;
+        return sortDirection === "asc" ? firstVal - secondVal : secondVal - firstVal;
+      }
+
+      if (sortIndex === PolicySortColumn.Daily) {
+        const firstVal = firstPolicy.daily ?? -1;
+        const secondVal = secondPolicy.daily ?? -1;
+        return sortDirection === "asc" ? firstVal - secondVal : secondVal - firstVal;
+      }
+
+      if (sortIndex === PolicySortColumn.Monthly) {
+        const firstVal = firstPolicy.monthly ?? -1;
+        const secondVal = secondPolicy.monthly ?? -1;
+        return sortDirection === "asc" ? firstVal - secondVal : secondVal - firstVal;
+      }
+
+      if (sortIndex === PolicySortColumn.Yearly) {
+        const firstVal = firstPolicy.yearly ?? -1;
+        const secondVal = secondPolicy.yearly ?? -1;
+        return sortDirection === "asc" ? firstVal - secondVal : secondVal - firstVal;
+      }
+
+      if (sortIndex === PolicySortColumn.Recursive) {
+        const firstVal = firstPolicy.recursive ? 1 : 0;
+        const secondVal = secondPolicy.recursive ? 1 : 0;
+        return sortDirection === "asc" ? firstVal - secondVal : secondVal - firstVal;
+      }
+
+      return 0;
     });
   }, [filteredPolicies, sortIndex, sortDirection]);
 
@@ -168,7 +195,19 @@ export const AutomationsView: React.FC<AutomationsViewProps> = ({
       </PageSection>
 
       <PageSection>
-        {!isInstalled ? (
+        {isLoading && !sanoidInfo ? (
+          <Card isPlain style={{ border: "1px solid var(--zfs-card-border)", background: "var(--zfs-card-bg)" }}>
+            <CardBody>
+              <EmptyState variant="lg">
+                <EmptyStateHeader
+                  titleText="Loading automations..."
+                  headingLevel="h2"
+                  icon={<EmptyStateIcon icon={Spinner} />}
+                />
+              </EmptyState>
+            </CardBody>
+          </Card>
+        ) : !isInstalled ? (
           <Card isPlain style={{ border: "1px solid var(--zfs-card-border)", background: "var(--zfs-card-bg)" }}>
             <CardBody>
               <EmptyState variant="lg">
@@ -208,54 +247,72 @@ export const AutomationsView: React.FC<AutomationsViewProps> = ({
                     Click "Add Schedule" to configure automated snapshot retention policies.
                   </EmptyStateBody>
                 </EmptyState>
+              ) : filteredPolicies.length === 0 ? (
+                <EmptyState variant="sm">
+                  <EmptyStateHeader
+                    titleText="No matching snapshot schedules"
+                    headingLevel="h3"
+                    icon={<EmptyStateIcon icon={SearchIcon} />}
+                  />
+                  <EmptyStateBody>
+                    No configured policies matched your search <strong>"{searchValue}"</strong>.
+                  </EmptyStateBody>
+                  <EmptyStateFooter>
+                    <EmptyStateActions>
+                      <Button variant="link" onClick={() => setSearchValue("")}>
+                        Clear search
+                      </Button>
+                    </EmptyStateActions>
+                  </EmptyStateFooter>
+                </EmptyState>
               ) : (
                 <Table aria-label="Sanoid Policies Table" variant="compact">
                   <Thead>
                     <Tr>
-                      <Th sort={getSortParams(0)}>Dataset / Path</Th>
-                      <Th sort={getSortParams(1)}>Template</Th>
-                      <Th sort={getSortParams(2)}>Hourly</Th>
-                      <Th sort={getSortParams(3)}>Daily</Th>
-                      <Th sort={getSortParams(4)}>Monthly</Th>
-                      <Th sort={getSortParams(5)}>Yearly</Th>
+                      <Th sort={getSortParams(PolicySortColumn.Dataset)}>Dataset / Path</Th>
+                      <Th sort={getSortParams(PolicySortColumn.Template)}>Template</Th>
+                      <Th sort={getSortParams(PolicySortColumn.Hourly)}>Hourly</Th>
+                      <Th sort={getSortParams(PolicySortColumn.Daily)}>Daily</Th>
+                      <Th sort={getSortParams(PolicySortColumn.Monthly)}>Monthly</Th>
+                      <Th sort={getSortParams(PolicySortColumn.Yearly)}>Yearly</Th>
                       <Th>Autosnap / Autoprune</Th>
-                      <Th sort={getSortParams(6)}>Recursive</Th>
+                      <Th sort={getSortParams(PolicySortColumn.Recursive)}>Recursive</Th>
                       {(onSaveSchedule || onDeleteSchedule) && (
                         <Th style={{ textAlign: "right" }}>Actions</Th>
                       )}
                     </Tr>
                   </Thead>
                   <Tbody>
-                    {sortedPolicies.map((p) => (
-                      <Tr key={p.dataset}>
+                    {sortedPolicies.map((policy) => (
+                      <Tr key={policy.dataset}>
                         <Td dataLabel="Dataset">
-                          <strong>{p.dataset}</strong>
+                          <strong>{policy.dataset}</strong>
                         </Td>
-                        <Td dataLabel="Template">{p.use_template || p.template || "Custom"}</Td>
-                        <Td dataLabel="Hourly">{p.hourly !== undefined ? p.hourly : "—"}</Td>
-                        <Td dataLabel="Daily">{p.daily !== undefined ? p.daily : "—"}</Td>
-                        <Td dataLabel="Monthly">{p.monthly !== undefined ? p.monthly : "—"}</Td>
-                        <Td dataLabel="Yearly">{p.yearly !== undefined ? p.yearly : "—"}</Td>
+                        <Td dataLabel="Template">{policy.use_template || policy.template || "Custom"}</Td>
+                        <Td dataLabel="Hourly">{policy.hourly !== undefined ? policy.hourly : "—"}</Td>
+                        <Td dataLabel="Daily">{policy.daily !== undefined ? policy.daily : "—"}</Td>
+                        <Td dataLabel="Monthly">{policy.monthly !== undefined ? policy.monthly : "—"}</Td>
+                        <Td dataLabel="Yearly">{policy.yearly !== undefined ? policy.yearly : "—"}</Td>
                         <Td dataLabel="Autosnap / Autoprune">
                           <Flex gap={{ default: "gapXs" }}>
-                            <Label color={p.autosnap !== false ? "green" : "grey"}>
-                              Snap: {p.autosnap !== false ? "on" : "off"}
+                            <Label color={policy.autosnap !== false ? "green" : "grey"}>
+                              Snap: {policy.autosnap !== false ? "on" : "off"}
                             </Label>
-                            <Label color={p.autoprune !== false ? "blue" : "grey"}>
-                              Prune: {p.autoprune !== false ? "on" : "off"}
+                            <Label color={policy.autoprune !== false ? "blue" : "grey"}>
+                              Prune: {policy.autoprune !== false ? "on" : "off"}
                             </Label>
                           </Flex>
                         </Td>
-                        <Td dataLabel="Recursive">{p.recursive ? "Yes" : "No"}</Td>
+                        <Td dataLabel="Recursive">{policy.recursive ? "Yes" : "No"}</Td>
                         {(onSaveSchedule || onDeleteSchedule) && (
                           <Td dataLabel="Actions" style={{ textAlign: "right" }}>
                             <Flex justifyContent={{ default: "justifyContentFlexEnd" }} gap={{ default: "gapXs" }}>
                               {onSaveSchedule && (
                                 <Button
                                   variant="plain"
-                                  aria-label={`Edit schedule for ${p.dataset}`}
+                                  aria-label={`Edit schedule for ${policy.dataset}`}
                                   onClick={() => {
-                                    setSelectedPolicy(p);
+                                    setSelectedPolicy(policy);
                                     setIsScheduleModalOpen(true);
                                   }}
                                 >
@@ -265,8 +322,8 @@ export const AutomationsView: React.FC<AutomationsViewProps> = ({
                               {onDeleteSchedule && (
                                 <Button
                                   variant="plain"
-                                  aria-label={`Delete schedule for ${p.dataset}`}
-                                  onClick={() => setDeleteScheduleDataset(p.dataset)}
+                                  aria-label={`Delete schedule for ${policy.dataset}`}
+                                  onClick={() => setDeleteDatasetTarget(policy.dataset)}
                                 >
                                   <TrashIcon style={{ color: "var(--pf-v5-global--danger-color--100)" }} />
                                 </Button>
@@ -299,32 +356,30 @@ export const AutomationsView: React.FC<AutomationsViewProps> = ({
           />
         )}
 
-        {deleteScheduleDataset && onDeleteSchedule && (
-          <Modal
-            variant={ModalVariant.small}
+        {deleteDatasetTarget && onDeleteSchedule && (
+          <ConfirmModal
+            isOpen={Boolean(deleteDatasetTarget)}
             title="Delete Snapshot Schedule"
-            isOpen={Boolean(deleteScheduleDataset)}
-            onClose={() => setDeleteScheduleDataset(null)}
-            appendTo={() => document.body}
-            actions={[
-              <Button
-                key="confirm"
-                variant="danger"
-                onClick={async () => {
-                  const ds = deleteScheduleDataset;
-                  setDeleteScheduleDataset(null);
-                  await onDeleteSchedule(ds);
-                }}
-              >
-                Delete Schedule
-              </Button>,
-              <Button key="cancel" variant="secondary" onClick={() => setDeleteScheduleDataset(null)}>
-                Cancel
-              </Button>,
-            ]}
-          >
-            Are you sure you want to remove the snapshot schedule for <strong>{deleteScheduleDataset}</strong>?
-          </Modal>
+            message={
+              <span>
+                Are you sure you want to remove the snapshot schedule for <strong>{deleteDatasetTarget}</strong>?
+              </span>
+            }
+            confirmText="Delete Schedule"
+            confirmVariant="danger"
+            isLoading={isDeleting}
+            onConfirm={async () => {
+              const target = deleteDatasetTarget;
+              setIsDeleting(true);
+              try {
+                await onDeleteSchedule(target);
+                setDeleteDatasetTarget(null);
+              } finally {
+                setIsDeleting(false);
+              }
+            }}
+            onCancel={() => setDeleteDatasetTarget(null)}
+          />
         )}
       </PageSection>
     </>
