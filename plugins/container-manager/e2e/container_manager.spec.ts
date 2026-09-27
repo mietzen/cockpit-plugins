@@ -357,20 +357,30 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     await frame.locator('.cockpit-top-nav-bar button:has-text("Containers")').click();
     await frame.waitForSelector('table[aria-label="Containers Table"]', { timeout: 10000 });
 
+    // Ensure at least one container is running
+    const startBtn = frame.locator('table[aria-label="Containers Table"] button[aria-label="Start"]').first();
+    const stopBtn = frame.locator('table[aria-label="Containers Table"] button[aria-label="Stop"]').first();
+    if (!(await stopBtn.isVisible({ timeout: 1500 }).catch(() => false)) && (await startBtn.isVisible({ timeout: 1500 }).catch(() => false))) {
+      await startBtn.click();
+      await frame.waitForTimeout(2000);
+    }
+
     // Click terminal icon on running container in visible table
     const runningRow = frame.locator('table[aria-label="Containers Table"] tbody tr').filter({ has: frame.locator('button[aria-label="Stop"]') }).first();
-    const actionToggle = (await runningRow.count() > 0)
-      ? runningRow.locator('button[aria-label="Container actions"]').first()
-      : frame.locator('table[aria-label="Containers Table"] button[aria-label="Container actions"]').first();
+    const targetRow = (await runningRow.count() > 0) ? runningRow : frame.locator('table[aria-label="Containers Table"] tbody tr').first();
+    const actionToggle = targetRow.locator('button[aria-label="Container actions"]').first();
 
     if (await actionToggle.isVisible({ timeout: 2000 }).catch(() => false)) {
       await actionToggle.click();
-      await frame.locator('[role="menuitem"]:has-text("Terminal"), button:has-text("Terminal")').first().click();
+      const termItem = frame.locator('[role="menuitem"]:has-text("Terminal"), button:has-text("Terminal")').first();
+      if (await termItem.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await termItem.click();
+      }
     } else {
-      const termBtn = (await runningRow.count() > 0)
-        ? runningRow.locator('button[aria-label="Terminal"]').first()
-        : frame.locator('table[aria-label="Containers Table"] button[aria-label="Terminal"]').first();
-      await termBtn.click();
+      const termBtn = targetRow.locator('button[aria-label="Terminal"]').first();
+      if (await termBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await termBtn.click();
+      }
     }
 
     // Wait for terminal modal and connection prompt to appear
