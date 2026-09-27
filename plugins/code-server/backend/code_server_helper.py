@@ -68,7 +68,7 @@ def handle_command(args: List[str]) -> Dict[str, Any]:
         binary = get_binary_info()
         service = get_service_status(parsed.user)
         cfg_path = get_user_config_path(parsed.user)
-        config = parse_code_server_config(cfg_path)
+        config = parse_code_server_config(cfg_path, parsed.user)
 
         return {
             "status": "ok",

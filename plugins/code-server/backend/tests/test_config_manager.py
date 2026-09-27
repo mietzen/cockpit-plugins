@@ -18,7 +18,7 @@ def test_parse_default_config_when_file_not_found():
     assert cfg.bind_addr == "127.0.0.1:8080"
     assert cfg.host == "127.0.0.1"
     assert cfg.port == 8080
-    assert cfg.auth == "password"
+    assert cfg.auth == "none"
     assert cfg.cert is False
 
 

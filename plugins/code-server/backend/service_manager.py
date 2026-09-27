@@ -162,6 +162,19 @@ def ensure_user_dir_permissions(username: Optional[str] = None) -> None:
                     os.chmod(target, 0o755)
                 except Exception:
                     pass
+
+        cfg_file = os.path.join(user_home, ".config", "code-server", "config.yaml")
+        if os.path.isfile(cfg_file):
+            try:
+                try:
+                    from .config_manager import parse_code_server_config, write_code_server_config
+                except ImportError:
+                    from config_manager import parse_code_server_config, write_code_server_config
+                cfg = parse_code_server_config(cfg_file)
+                if cfg.auth == "password" and not cfg.password:
+                    write_code_server_config(cfg_file, cfg, user)
+            except Exception:
+                pass
     except Exception:
         pass
 

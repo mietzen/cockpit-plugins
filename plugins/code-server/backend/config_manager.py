@@ -4,7 +4,7 @@ from dataclasses import dataclass, asdict
 from typing import Optional, Dict, Any
 
 DEFAULT_BIND_ADDR = "127.0.0.1:8080"
-DEFAULT_AUTH = "password"
+DEFAULT_AUTH = "none"
 
 
 @dataclass
@@ -59,6 +59,22 @@ def resolve_username(username: Optional[str] = None) -> str:
     return username or "root"
 
 
+def get_default_port_for_user(username: Optional[str] = None) -> int:
+    user = resolve_username(username)
+    if user and user != "root":
+        try:
+            pw = pwd.getpwnam(user)
+            if pw.pw_uid >= 1000:
+                return 8080 + (pw.pw_uid - 1000)
+        except Exception:
+            pass
+    return 8080
+
+
+def get_default_bind_addr_for_user(username: Optional[str] = None) -> str:
+    return f"127.0.0.1:{get_default_port_for_user(username)}"
+
+
 def get_user_config_path(username: Optional[str] = None) -> str:
     user = resolve_username(username)
     if user and user != "root":
@@ -71,11 +87,12 @@ def get_user_config_path(username: Optional[str] = None) -> str:
     return os.path.join(home, ".config", "code-server", "config.yaml")
 
 
-def parse_code_server_config(path: str) -> CodeServerConfig:
+def parse_code_server_config(path: str, username: Optional[str] = None) -> CodeServerConfig:
+    default_bind = get_default_bind_addr_for_user(username)
     if not os.path.isfile(path):
-        return CodeServerConfig()
+        return CodeServerConfig(bind_addr=default_bind)
 
-    config = CodeServerConfig()
+    config = CodeServerConfig(bind_addr=default_bind)
     try:
         with open(path, "r", encoding="utf-8") as f:
             for line in f:
@@ -140,7 +157,8 @@ def write_code_server_config(path: str, config: CodeServerConfig, username: Opti
         parent_dir = os.path.dirname(path)
         os.makedirs(parent_dir, mode=0o755, exist_ok=True)
 
-        clean_bind = sanitize_yaml_val(config.bind_addr) or DEFAULT_BIND_ADDR
+        default_bind = get_default_bind_addr_for_user(username)
+        clean_bind = sanitize_yaml_val(config.bind_addr) or default_bind
         clean_auth = "password" if sanitize_yaml_val(config.auth) != "none" else "none"
 
         lines = [
@@ -148,7 +166,13 @@ def write_code_server_config(path: str, config: CodeServerConfig, username: Opti
             f"auth: {clean_auth}",
         ]
         auth_secret = sanitize_yaml_val(config.password)
-        if auth_secret:
+        if clean_auth == "password":
+            if not auth_secret and os.path.isfile(path):
+                existing = parse_code_server_config(path)
+                auth_secret = sanitize_yaml_val(existing.password)
+            if not auth_secret:
+                import secrets
+                auth_secret = secrets.token_hex(12)
             lines.append(f"password: {auth_secret}")  # codeql[py/clear-text-storage-sensitive-data]
         lines.append(f"cert: {str(bool(config.cert)).lower()}")
         if config.disable_telemetry:
