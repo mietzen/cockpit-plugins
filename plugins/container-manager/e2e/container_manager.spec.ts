@@ -472,6 +472,10 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     if (await sizeTh.count() > 0) {
       await expect(sizeTh).toBeVisible();
     }
+    const volHashBtn = frame.locator('table[aria-label="Volumes Table"] button[aria-label*="Copy ID"]').first();
+    if (await volHashBtn.count() > 0) {
+      await expect(volHashBtn).toBeVisible();
+    }
   });
 
   test('10. Verify Delete Confirmation Modal Disappears On Confirm', async () => {
