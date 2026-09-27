@@ -192,19 +192,25 @@ async function run() {
       setup: async () => {
         await clickTabByText("Pools");
         await page.waitForTimeout(300);
-        await frame.evaluate(() => {
-          const createBtn = Array.from(document.querySelectorAll("button")).find(b => b.textContent && b.textContent.includes("Create storage pool"));
-          if (createBtn) createBtn.click();
-        });
-        await page.waitForTimeout(400);
+        const createBtn = frame.locator("button:visible:has-text('Create pool'), button:visible:has-text('Create storage pool')").first();
+        if (await createBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+          await createBtn.click();
+        }
+        await page.waitForTimeout(500);
       },
       cleanup: async () => {
         await page.keyboard.press("Escape");
-        await frame.evaluate(() => {
-          const cancelBtn = Array.from(document.querySelectorAll("button")).find(b => b.textContent && b.textContent.includes("Cancel"));
-          if (cancelBtn) cancelBtn.click();
-        });
-        await page.waitForTimeout(300);
+        const cancelBtn = frame.locator("button:visible:has-text('Cancel'), button[aria-label='Close']").first();
+        if (await cancelBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+          await cancelBtn.click().catch(() => {});
+        }
+        await page.waitForTimeout(400);
+      },
+    },
+    {
+      name: "09-snapshot-automations",
+      setup: async () => {
+        await clickTabByText("Snapshot Automations");
       },
     },
   ];
