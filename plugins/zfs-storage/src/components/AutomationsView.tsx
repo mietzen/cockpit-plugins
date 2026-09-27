@@ -9,6 +9,8 @@ import {
   Card,
   CardBody,
   SearchInput,
+  Modal,
+  ModalVariant,
   EmptyState,
   EmptyStateHeader,
   EmptyStateIcon,
@@ -27,7 +29,6 @@ import {
   InfoCircleIcon,
   SearchIcon,
 } from "@patternfly/react-icons";
-import { ConfirmModal } from "@cockpit-plugins/common";
 import { SanoidInfo, SanoidDatasetPolicy } from "../types";
 import { SanoidScheduleModal } from "./Modals/SanoidScheduleModal";
 
@@ -357,29 +358,37 @@ export const AutomationsView: React.FC<AutomationsViewProps> = ({
         )}
 
         {deleteDatasetTarget && onDeleteSchedule && (
-          <ConfirmModal
-            isOpen={Boolean(deleteDatasetTarget)}
+          <Modal
+            variant={ModalVariant.small}
             title="Delete Snapshot Schedule"
-            message={
-              <span>
-                Are you sure you want to remove the snapshot schedule for <strong>{deleteDatasetTarget}</strong>?
-              </span>
-            }
-            confirmText="Delete Schedule"
-            confirmVariant="danger"
-            isLoading={isDeleting}
-            onConfirm={async () => {
-              const target = deleteDatasetTarget;
-              setIsDeleting(true);
-              try {
-                await onDeleteSchedule(target);
-                setDeleteDatasetTarget(null);
-              } finally {
-                setIsDeleting(false);
-              }
-            }}
-            onCancel={() => setDeleteDatasetTarget(null)}
-          />
+            isOpen={Boolean(deleteDatasetTarget)}
+            onClose={() => setDeleteDatasetTarget(null)}
+            appendTo={() => document.body}
+            actions={[
+              <Button
+                key="confirm"
+                variant="danger"
+                isLoading={isDeleting}
+                onClick={async () => {
+                  const target = deleteDatasetTarget;
+                  setIsDeleting(true);
+                  try {
+                    await onDeleteSchedule(target);
+                    setDeleteDatasetTarget(null);
+                  } finally {
+                    setIsDeleting(false);
+                  }
+                }}
+              >
+                Delete Schedule
+              </Button>,
+              <Button key="cancel" variant="link" onClick={() => setDeleteDatasetTarget(null)}>
+                Cancel
+              </Button>,
+            ]}
+          >
+            Are you sure you want to remove the snapshot schedule for <strong>{deleteDatasetTarget}</strong>?
+          </Modal>
         )}
       </PageSection>
     </>
