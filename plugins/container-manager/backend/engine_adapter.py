@@ -16,16 +16,8 @@ from cockpit_common.services import get_service_status, is_service_active
 
 def detect_engines() -> Dict[str, Any]:
     """Detects presence and status of Docker and Podman engines."""
-    docker_bin = shutil.which("docker") or (
-        "/usr/bin/docker"
-        if os.path.exists("/usr/bin/docker")
-        else ("/usr/local/bin/docker" if os.path.exists("/usr/local/bin/docker") else None)
-    )
-    podman_bin = shutil.which("podman") or (
-        "/usr/bin/podman"
-        if os.path.exists("/usr/bin/podman")
-        else ("/usr/local/bin/podman" if os.path.exists("/usr/local/bin/podman") else None)
-    )
+    docker_bin = shutil.which("docker")
+    podman_bin = shutil.which("podman")
 
     docker_version = ""
     docker_active = False
