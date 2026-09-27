@@ -352,7 +352,7 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     const actionToggle = frame.locator('table[aria-label="Containers Table"] button[aria-label="Container actions"]').first();
     if (await actionToggle.isVisible({ timeout: 2000 }).catch(() => false)) {
       await actionToggle.click();
-      await page.locator('[role="menuitem"]:has-text("Terminal"), button:has-text("Terminal")').first().click();
+      await frame.locator('[role="menuitem"]:has-text("Terminal"), button:has-text("Terminal")').first().click();
     } else {
       const termBtn = frame.locator('table[aria-label="Containers Table"] button[aria-label="Terminal"]').first();
       await termBtn.click();
@@ -391,7 +391,7 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     const actionToggle = frame.locator('table[aria-label="Containers Table"] button[aria-label="Container actions"]').first();
     if (await actionToggle.isVisible({ timeout: 2000 }).catch(() => false)) {
       await actionToggle.click();
-      await page.locator('[role="menuitem"]:has-text("Inspect"), button:has-text("Inspect")').first().click();
+      await frame.locator('[role="menuitem"]:has-text("Inspect"), button:has-text("Inspect")').first().click();
     } else {
       const inspectBtn = frame.locator('table[aria-label="Containers Table"] button[aria-label="Inspect"]').first();
       await inspectBtn.waitFor({ state: 'visible', timeout: 5000 });
@@ -481,7 +481,7 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
 
     if (await actionToggle.isVisible({ timeout: 2000 }).catch(() => false)) {
       await actionToggle.click();
-      const menuDelete = page.locator('[role="menuitem"]:has-text("Delete"), button:has-text("Delete")').first();
+      const menuDelete = frame.locator('[role="menuitem"]:has-text("Delete"), button:has-text("Delete")').first();
       if (await menuDelete.isVisible({ timeout: 2000 }).catch(() => false)) {
         await menuDelete.click();
         await frame.waitForSelector('[role="dialog"]:has-text("Delete Container"), .pf-v6-c-modal-box:has-text("Delete Container"), .pf-v5-c-modal-box:has-text("Delete Container")', { timeout: 5000 });
