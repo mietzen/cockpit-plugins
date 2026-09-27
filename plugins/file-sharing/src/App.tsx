@@ -349,9 +349,6 @@ export const App: React.FC = () => {
           onSetPassword={handleSetUserPassword}
           onSetState={handleSetUserState}
           onDeleteUser={handleDeleteUser}
-          onCreateGroup={handleCreateGroup}
-          onModifyGroup={handleModifyGroup}
-          onDeleteGroup={handleDeleteGroup}
         />
       )}
 

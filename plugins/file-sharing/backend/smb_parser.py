@@ -161,6 +161,29 @@ class SmbParser:
             "raw_lines": lines,
         }
 
+    def extract_groups(self, content: Optional[str] = None) -> List[str]:
+        """Extracts group names referenced in smb.conf directives."""
+        parsed = self.parse(content)
+        group_names = set()
+        list_keys = {"valid users", "invalid users", "read list", "write list", "admin users"}
+
+        all_sections = [parsed["global"]] + [s.get("raw_params", {}) for s in parsed.get("shares", [])]
+        for section in all_sections:
+            for k, val in section.items():
+                k_lower = k.lower().strip()
+                if k_lower == "force group":
+                    clean_grp = val.strip().strip("\"'").lstrip("@+&")
+                    if clean_grp:
+                        group_names.add(clean_grp)
+                elif k_lower in list_keys:
+                    matches = re.findall(r"[@+&](?:\"([^\"]+)\"|'([^']+)'|([a-zA-Z0-9_\-\.]+))", val)
+                    for m in matches:
+                        grp = (m[0] or m[1] or m[2] or "").strip()
+                        if grp:
+                            group_names.add(grp)
+
+        return sorted(list(group_names))
+
     def save_share(self, share_data: Dict[str, Any]) -> Tuple[bool, str]:
         """Adds or updates a Samba share in smb.conf, preserving existing comments and structure."""
         share_name = share_data.get("name", "").strip()
@@ -207,8 +230,10 @@ class SmbParser:
             params.append(f"   create mask = {share_data['create_mask']}")
         if share_data.get("directory_mask"):
             params.append(f"   directory mask = {share_data['directory_mask']}")
-        if share_data.get("vfs_objects"):
-            params.append(f"   vfs objects = {share_data['vfs_objects']}")
+        if share_data.get("fruit_time_machine"):
+            params.append("   fruit:time machine = yes")
+            if not share_data.get("vfs_objects"):
+                params.append("   vfs objects = catia fruit streams_xattr")
 
         new_block = f"[{share_name}]\n" + "\n".join(params) + "\n"
 

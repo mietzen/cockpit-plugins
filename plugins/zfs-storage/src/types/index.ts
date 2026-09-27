@@ -160,8 +160,6 @@ export interface SanoidInfo {
   policies: SanoidDatasetPolicy[];
 }
 
-export type SanoidSyncoidInfo = SanoidInfo;
-
 export interface SystemInfo {
   kernel_module_loaded: boolean;
   version: string;

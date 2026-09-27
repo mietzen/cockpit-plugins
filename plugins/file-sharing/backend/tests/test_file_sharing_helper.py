@@ -161,7 +161,7 @@ Account Flags:        [UD         ]
         self.assertIn("charlie", smbteam["members"])
 
         domain_admins = next(g for g in groups if g["name"] == "Domain Admins")
-        self.assertEqual(domain_admins["gid"], -1)
+        self.assertIsNone(domain_admins["gid"])
         self.assertEqual(domain_admins["members"], [])
 
 
@@ -466,7 +466,7 @@ Account Flags:        [UD         ]
 
     @patch("pwd.getpwall")
     @patch("grp.getgrnam")
-    @patch("file_sharing_helper.extract_smb_conf_groups", return_value=["smbusers"])
+    @patch("file_sharing_helper.SmbParser.extract_groups", return_value=["smbusers"])
     def test_get_smb_groups(self, mock_extract, mock_getgrnam, mock_getpwall):
         mock_getpwall.return_value = [
             MagicMock(pw_name="alice", pw_uid=1001, pw_gid=1001),

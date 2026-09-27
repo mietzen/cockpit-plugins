@@ -266,7 +266,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </Thead>
               <Tbody>
                 {sortedShares.slice(0, 5).map((share) => {
-                  const isFruit = Boolean(share.fruit_time_machine);
+                  const isTimeMachine = Boolean(share.fruit_time_machine);
                   return (
                     <Tr key={share.name}>
                       <Td data-label="Share name">
@@ -276,7 +276,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                             {share.managed_by || "managed"}
                           </Label>
                         )}
-                        {isFruit && (
+                        {isTimeMachine && (
                           <Label color="grey" icon={<AppleIcon />} style={{ marginLeft: "0.5rem" }}>
                             Time Machine
                           </Label>

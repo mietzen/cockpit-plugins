@@ -368,15 +368,15 @@ export const ContainersTab: React.FC<ContainersTabProps> = ({
         </EmptyState>
       ) : viewMode === 'list' ? (
         <div style={{ overflowX: 'auto' }}>
-          <Table aria-label="Containers Table" variant="compact">
+          <Table aria-label="Containers Table" variant="compact" gridBreakPoint="grid-md">
             <Thead>
               <Tr>
-                <Th width={15} sort={getSortParams(0)}>State</Th>
-                <Th width={20} sort={getSortParams(1)}>Name</Th>
-                <Th width={20} sort={getSortParams(2)}>Image</Th>
-                <Th width={15} sort={getSortParams(3)}>Ports</Th>
-                <Th width={10} sort={getSortParams(4)}>Created</Th>
-                <Th width={20} style={{ textAlign: 'right' }}>Actions</Th>
+                <Th sort={getSortParams(0)}>State</Th>
+                <Th sort={getSortParams(1)}>Name</Th>
+                <Th sort={getSortParams(2)}>Image</Th>
+                <Th sort={getSortParams(3)}>Ports</Th>
+                <Th sort={getSortParams(4)}>Created</Th>
+                <Th style={{ textAlign: 'right' }}>Actions</Th>
               </Tr>
             </Thead>
             <Tbody>
@@ -423,15 +423,15 @@ export const ContainersTab: React.FC<ContainersTabProps> = ({
                 {!isCollapsed && (
                   <CardBody style={{ padding: 0 }}>
                     <div style={{ overflowX: 'auto' }}>
-                      <Table aria-label={`Stack ${stackName} Table`} variant="compact">
+                      <Table aria-label={`Stack ${stackName} Table`} variant="compact" gridBreakPoint="grid-md">
                         <Thead>
                           <Tr>
-                            <Th width={15} sort={getSortParams(0)}>State</Th>
-                            <Th width={20} sort={getSortParams(1)}>Name</Th>
-                            <Th width={20} sort={getSortParams(2)}>Image</Th>
-                            <Th width={15} sort={getSortParams(3)}>Ports</Th>
-                            <Th width={10} sort={getSortParams(4)}>Created</Th>
-                            <Th width={20} style={{ textAlign: 'right' }}>Actions</Th>
+                            <Th sort={getSortParams(0)}>State</Th>
+                            <Th sort={getSortParams(1)}>Name</Th>
+                            <Th sort={getSortParams(2)}>Image</Th>
+                            <Th sort={getSortParams(3)}>Ports</Th>
+                            <Th sort={getSortParams(4)}>Created</Th>
+                            <Th style={{ textAlign: 'right' }}>Actions</Th>
                           </Tr>
                         </Thead>
                         <Tbody>
