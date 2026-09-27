@@ -144,15 +144,14 @@ class SmbParser:
             effective_vfs = share_vfs if share_vfs else global_vfs
             s["vfs_objects"] = effective_vfs
 
-            # Detect fruit / time machine
+            # Detect dedicated Time Machine backup target share
             is_time_machine = (
-                "fruit" in effective_vfs.lower()
-                or raw.get("fruit:time machine", "").lower() in ("yes", "true", "1")
-                or global_params.get("fruit:time machine", "").lower() in ("yes", "true", "1")
-                or raw.get("fruit:aapl", "").lower() in ("yes", "true", "1")
+                raw.get("fruit:time machine", "").lower() in ("yes", "true", "1")
+                or bool(raw.get("fruit:time machine max size"))
                 or "time machine" in s.get("comment", "").lower()
+                or "time-machine" in s.get("name", "").lower()
                 or "timemachine" in s.get("name", "").lower()
-                or any("fruit" in k.lower() for k in raw.keys())
+                or "time_machine" in s.get("name", "").lower()
             )
             s["fruit_time_machine"] = is_time_machine
 

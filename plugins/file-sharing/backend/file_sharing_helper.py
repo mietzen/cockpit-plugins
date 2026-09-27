@@ -130,31 +130,73 @@ def get_system_unix_users() -> List[str]:
     return sorted(users)
 
 
+def extract_smb_conf_groups(config_path: Optional[str] = None) -> List[str]:
+    """Scans smb.conf for groups referenced in parameters like valid users, write list, force group."""
+    paths = [config_path] if config_path else ["/etc/samba/smb.conf", "/etc/smb.conf"]
+    content = ""
+    for path in paths:
+        if path and os.path.exists(path):
+            try:
+                with open(path, "r", encoding="utf-8", errors="replace") as f:
+                    content += "\n" + f.read()
+            except OSError:
+                pass
+
+    if not content.strip():
+        return []
+
+    found_groups = set()
+    for line in content.splitlines():
+        line = line.strip()
+        if not line or line.startswith(("#", ";")):
+            continue
+        if "=" not in line:
+            continue
+        key, val = line.split("=", 1)
+        key = key.strip().lower()
+        val = val.strip()
+
+        if key == "force group":
+            clean_grp = val.strip().strip("\"'").lstrip("@+&")
+            if clean_grp:
+                found_groups.add(clean_grp)
+            continue
+
+        # Check for group syntax in user/group list parameters (@group, +group, &group)
+        # Matches @"group with spaces", +'group', @group
+        matches = re.findall(r"[@+&](?:\"([^\"]+)\"|'([^']+)'|([a-zA-Z0-9_\-\.]+))", val)
+        for m in matches:
+            grp_name = (m[0] or m[1] or m[2] or "").strip()
+            if grp_name:
+                found_groups.add(grp_name)
+
+    return sorted(list(found_groups))
+
+
 def get_smb_groups() -> List[Dict[str, Any]]:
-    """Retrieves all non-system or sharing-related Unix groups with GID and member list."""
-    groups: List[Dict[str, Any]] = []
-    sharing_group_names = {"sambashare", "smb_users", "smb_admin", "smbusers", "smbadmin", "users"}
-
-    smb_users = {u.get("username", "").lower() for u in get_smb_users() if u.get("username")}
-
+    """Retrieves all Unix groups referenced in smb.conf with GID and member list."""
+    conf_group_names = extract_smb_conf_groups()
     primary_group_users: Dict[int, List[str]] = {}
     for p in pwd.getpwall():
-        if p.pw_uid >= 1000 or p.pw_name in smb_users:
-            primary_group_users.setdefault(p.pw_gid, []).append(p.pw_name)
+        primary_group_users.setdefault(p.pw_gid, []).append(p.pw_name)
 
-    for g in grp.getgrall():
-        members_set = set(g.gr_mem) | set(primary_group_users.get(g.gr_gid, []))
-        is_sharing = (
-            g.gr_gid >= 1000
-            or g.gr_name.lower() in sharing_group_names
-            or any(m.lower() in smb_users for m in members_set)
-        )
-        if is_sharing:
+    groups: List[Dict[str, Any]] = []
+    for name in conf_group_names:
+        try:
+            g = grp.getgrnam(name)
+            members_set = set(g.gr_mem) | set(primary_group_users.get(g.gr_gid, []))
             groups.append({
                 "name": g.gr_name,
                 "gid": g.gr_gid,
                 "members": sorted(list(members_set)),
             })
+        except KeyError:
+            groups.append({
+                "name": name,
+                "gid": -1,
+                "members": [],
+            })
+
     return sorted(groups, key=lambda x: x["name"])
 
 

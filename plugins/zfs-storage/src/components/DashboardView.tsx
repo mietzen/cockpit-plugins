@@ -348,80 +348,63 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           })}
         </Grid>
 
-        {/* Sanoid & Syncoid Jobs (Shown only if installed) */}
+        {/* Sanoid Snapshot Automations (Shown only if installed) */}
         {sanoidInfo?.installed && (
           <div style={{ marginBottom: "2rem" }}>
             <Title headingLevel="h2" size="xl" style={{ marginBottom: "1rem", fontWeight: 600 }}>
-              Sanoid &amp; Syncoid Snapshot Automations
+              Sanoid Snapshot Automations
             </Title>
             <Card isPlain style={{ border: "1px solid var(--zfs-card-border)" }}>
               <CardBody>
                 <Flex gap={{ default: "gapMd" }} style={{ marginBottom: "1rem" }}>
-                  {sanoidInfo.sanoid_installed && (
-                    <FlexItem>
-                      <Label color={sanoidInfo.sanoid_timer_active ? "green" : "grey"} icon={<SyncAltIcon />}>
-                        Sanoid Timer: {sanoidInfo.sanoid_timer_active ? "Active" : "Inactive"}
-                      </Label>
-                    </FlexItem>
-                  )}
-                  {sanoidInfo.syncoid_installed && (
-                    <FlexItem>
-                      <Label color={sanoidInfo.syncoid_timer_active ? "green" : "grey"} icon={<SyncAltIcon />}>
-                        Syncoid Timer: {sanoidInfo.syncoid_timer_active ? "Active" : "Inactive"}
-                      </Label>
-                    </FlexItem>
-                  )}
+                  <FlexItem>
+                    <Label color={sanoidInfo.sanoid_timer_active ? "green" : "grey"} icon={<SyncAltIcon />}>
+                      Sanoid Timer: {sanoidInfo.sanoid_timer_active ? "Active" : "Inactive"}
+                    </Label>
+                  </FlexItem>
                 </Flex>
 
-                {sanoidInfo.sanoid_installed && (
-                  <div style={{ marginBottom: sanoidInfo.syncoid_installed ? "1rem" : 0 }}>
-                    {sanoidInfo.policies.length > 0 ? (
-                      <Table aria-label="Sanoid Policies Table" variant="compact">
-                        <Thead>
-                          <Tr>
-                            <Th>Dataset / Path</Th>
-                            <Th>Template</Th>
-                            <Th>Hourly</Th>
-                            <Th>Daily</Th>
-                            <Th>Monthly</Th>
-                            <Th>Yearly</Th>
-                            <Th>Autosnap / Autoprune</Th>
-                            <Th>Recursive</Th>
+                <div>
+                  {sanoidInfo.policies.length > 0 ? (
+                    <Table aria-label="Sanoid Policies Table" variant="compact">
+                      <Thead>
+                        <Tr>
+                          <Th>Dataset / Path</Th>
+                          <Th>Template</Th>
+                          <Th>Hourly</Th>
+                          <Th>Daily</Th>
+                          <Th>Monthly</Th>
+                          <Th>Yearly</Th>
+                          <Th>Autosnap / Autoprune</Th>
+                          <Th>Recursive</Th>
+                        </Tr>
+                      </Thead>
+                      <Tbody>
+                        {sanoidInfo.policies.map((p) => (
+                          <Tr key={p.dataset}>
+                            <Td dataLabel="Dataset"><strong>{p.dataset}</strong></Td>
+                            <Td dataLabel="Template">{p.template || "default"}</Td>
+                            <Td dataLabel="Hourly">{p.hourly !== undefined ? p.hourly : "—"}</Td>
+                            <Td dataLabel="Daily">{p.daily !== undefined ? p.daily : "—"}</Td>
+                            <Td dataLabel="Monthly">{p.monthly !== undefined ? p.monthly : "—"}</Td>
+                            <Td dataLabel="Yearly">{p.yearly !== undefined ? p.yearly : "—"}</Td>
+                            <Td dataLabel="Autosnap / Autoprune">
+                              <Flex gap={{ default: "gapXs" }}>
+                                <Label color={p.autosnap !== false ? "green" : "grey"}>Snap: {p.autosnap !== false ? "on" : "off"}</Label>
+                                <Label color={p.autoprune !== false ? "blue" : "grey"}>Prune: {p.autoprune !== false ? "on" : "off"}</Label>
+                              </Flex>
+                            </Td>
+                            <Td dataLabel="Recursive">{p.recursive ? "Yes" : "No"}</Td>
                           </Tr>
-                        </Thead>
-                        <Tbody>
-                          {sanoidInfo.policies.map((p) => (
-                            <Tr key={p.dataset}>
-                              <Td dataLabel="Dataset"><strong>{p.dataset}</strong></Td>
-                              <Td dataLabel="Template">{p.template || "default"}</Td>
-                              <Td dataLabel="Hourly">{p.hourly !== undefined ? p.hourly : "—"}</Td>
-                              <Td dataLabel="Daily">{p.daily !== undefined ? p.daily : "—"}</Td>
-                              <Td dataLabel="Monthly">{p.monthly !== undefined ? p.monthly : "—"}</Td>
-                              <Td dataLabel="Yearly">{p.yearly !== undefined ? p.yearly : "—"}</Td>
-                              <Td dataLabel="Autosnap / Autoprune">
-                                <Flex gap={{ default: "gapXs" }}>
-                                  <Label color={p.autosnap !== false ? "green" : "grey"}>Snap: {p.autosnap !== false ? "on" : "off"}</Label>
-                                  <Label color={p.autoprune !== false ? "blue" : "grey"}>Prune: {p.autoprune !== false ? "on" : "off"}</Label>
-                                </Flex>
-                              </Td>
-                              <Td dataLabel="Recursive">{p.recursive ? "Yes" : "No"}</Td>
-                            </Tr>
-                          ))}
-                        </Tbody>
-                      </Table>
-                    ) : (
-                      <div style={{ color: "var(--pf-v5-global--Color--200)", fontSize: "0.875rem" }}>
-                        Sanoid is installed, but no dataset policies are configured in /etc/sanoid/sanoid.conf.
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {sanoidInfo.syncoid_installed && (
-                  <div style={{ color: "var(--pf-v5-global--Color--200)", fontSize: "0.875rem", marginTop: sanoidInfo.sanoid_installed ? "0.75rem" : 0 }}>
-                    Syncoid ZFS replication tooling is installed and {sanoidInfo.syncoid_timer_active ? "active" : "standby"}.
-                  </div>
-                )}
+                        ))}
+                      </Tbody>
+                    </Table>
+                  ) : (
+                    <div style={{ color: "var(--pf-v5-global--Color--200)", fontSize: "0.875rem" }}>
+                      Sanoid is installed, but no dataset policies are configured in /etc/sanoid/sanoid.conf.
+                    </div>
+                  )}
+                </div>
               </CardBody>
             </Card>
           </div>

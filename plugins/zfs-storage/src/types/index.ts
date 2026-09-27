@@ -152,22 +152,21 @@ export interface SanoidDatasetPolicy {
   process_children_only?: boolean;
 }
 
-export interface SanoidSyncoidInfo {
+export interface SanoidInfo {
   installed: boolean;
   sanoid_installed: boolean;
-  syncoid_installed: boolean;
   sanoid_timer_active?: boolean;
   sanoid_service_active?: boolean;
-  syncoid_timer_active?: boolean;
-  syncoid_service_active?: boolean;
   policies: SanoidDatasetPolicy[];
 }
+
+export type SanoidSyncoidInfo = SanoidInfo;
 
 export interface SystemInfo {
   kernel_module_loaded: boolean;
   version: string;
   arc?: ArcStats;
-  sanoid?: SanoidSyncoidInfo;
+  sanoid?: SanoidInfo;
 }
 
 

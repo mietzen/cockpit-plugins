@@ -266,13 +266,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </Thead>
               <Tbody>
                 {sortedShares.slice(0, 5).map((share) => {
-                  const isFruit = Boolean(
-                    share.fruit_time_machine ||
-                    (share.vfs_objects || "").includes("fruit") ||
-                    share.name.toLowerCase().includes("time-machine") ||
-                    share.name.toLowerCase().includes("timemachine") ||
-                    Object.keys(share.raw_params || {}).some((k) => k.toLowerCase().includes("fruit"))
-                  );
+                  const isFruit = Boolean(share.fruit_time_machine);
                   return (
                     <Tr key={share.name}>
                       <Td data-label="Share name">

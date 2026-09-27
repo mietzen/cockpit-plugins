@@ -270,13 +270,7 @@ export const SmbSharesTab: React.FC<SmbSharesTabProps> = ({
                 </Thead>
                 <Tbody>
                   {sortedShares.map((s) => {
-                    const isFruit = Boolean(
-                      s.fruit_time_machine ||
-                      (s.vfs_objects || "").includes("fruit") ||
-                      s.name.toLowerCase().includes("time-machine") ||
-                      s.name.toLowerCase().includes("timemachine") ||
-                      Object.keys(s.raw_params || {}).some((k) => k.toLowerCase().includes("fruit"))
-                    );
+                    const isFruit = Boolean(s.fruit_time_machine);
                     return (
                     <Tr key={s.name}>
                       <Td data-label="Share name">

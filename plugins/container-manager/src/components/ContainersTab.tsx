@@ -21,6 +21,11 @@ import {
   Card,
   CardBody,
   Label,
+  Dropdown,
+  DropdownItem,
+  DropdownList,
+  MenuToggle,
+  MenuToggleElement,
 } from '@patternfly/react-core';
 import {
   PlayIcon,
@@ -35,6 +40,7 @@ import {
   FolderIcon,
   AngleDownIcon,
   AngleRightIcon,
+  EllipsisVIcon,
 } from '@patternfly/react-icons';
 import { StatusBadge, BadgeVariant } from '@cockpit-plugins/common';
 import { ContainerItem } from '../types';
@@ -67,6 +73,7 @@ export const ContainersTab: React.FC<ContainersTabProps> = ({
   const [activeSortIndex, setActiveSortIndex] = useState<number | null>(null);
   const [activeSortDirection, setActiveSortDirection] = useState<'asc' | 'desc'>('asc');
   const [collapsedStacks, setCollapsedStacks] = useState<Record<string, boolean>>({});
+  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
 
   const filteredContainers = containers.filter(
     (c) =>
@@ -164,16 +171,17 @@ export const ContainersTab: React.FC<ContainersTabProps> = ({
   const renderContainerRow = (c: ContainerItem) => {
     const isRunning = c.state === 'running';
     const canDelete = !isRunning && c.state !== 'paused';
+    const isMenuOpen = openDropdownId === c.id;
 
     return (
       <Tr key={c.id}>
-        <Td dataLabel="State">
+        <Td dataLabel="State" style={{ whiteSpace: 'nowrap' }}>
           <StatusBadge variant={getBadgeVariant(c.state)}>
             {c.status || c.state}
           </StatusBadge>
         </Td>
-        <Td dataLabel="Name">
-          <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }}>
+        <Td dataLabel="Name" style={{ minWidth: '140px', wordBreak: 'break-word' }}>
+          <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }} flexWrap={{ default: 'wrap' }}>
             <strong style={{ fontSize: '0.95rem' }}>{c.name}</strong>
             {c.service && (
               <Label color="blue" isCompact>
@@ -185,52 +193,26 @@ export const ContainersTab: React.FC<ContainersTabProps> = ({
             <HashId id={c.id} shortId={c.shortId} />
           </div>
         </Td>
-        <Td dataLabel="Image">
+        <Td dataLabel="Image" style={{ minWidth: '130px', wordBreak: 'break-word' }}>
           <code style={{ fontSize: '0.85rem' }}>{c.image}</code>
         </Td>
-        <Td dataLabel="Ports">
+        <Td dataLabel="Ports" style={{ minWidth: '100px', wordBreak: 'break-word' }}>
           <PortLinks ports={c.ports} />
         </Td>
-        <Td dataLabel="Created">
+        <Td dataLabel="Created" style={{ whiteSpace: 'nowrap' }}>
           <span style={{ fontSize: '0.85rem' }}>{c.created}</span>
         </Td>
-        <Td dataLabel="Actions" style={{ textAlign: 'right' }}>
-          <Flex justifyContent={{ default: 'justifyContentFlexEnd' }} spaceItems={{ default: 'spaceItemsXs' }}>
+        <Td dataLabel="Actions" style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+          <Flex justifyContent={{ default: 'justifyContentFlexEnd' }} spaceItems={{ default: 'spaceItemsXs' }} flexWrap={{ default: 'nowrap' }}>
             {isRunning ? (
-              <>
-                <Tooltip content="Stop Container">
-                  <Button
-                    variant="plain"
-                    icon={<StopIcon />}
-                    onClick={() => onAction(c.id, 'stop')}
-                    aria-label="Stop"
-                  />
-                </Tooltip>
-                <Tooltip content="Force Kill Container">
-                  <Button
-                    variant="plain"
-                    icon={<BanIcon style={{ color: 'var(--pf-v5-global--warning-color--100, #f0ab00)' }} />}
-                    onClick={() => onAction(c.id, 'kill')}
-                    aria-label="Kill"
-                  />
-                </Tooltip>
-                <Tooltip content="Restart Container">
-                  <Button
-                    variant="plain"
-                    icon={<SyncAltIcon />}
-                    onClick={() => onAction(c.id, 'restart')}
-                    aria-label="Restart"
-                  />
-                </Tooltip>
-                <Tooltip content="Open Terminal">
-                  <Button
-                    variant="plain"
-                    icon={<TerminalIcon />}
-                    onClick={() => onOpenTerminal(c)}
-                    aria-label="Terminal"
-                  />
-                </Tooltip>
-              </>
+              <Tooltip content="Stop Container">
+                <Button
+                  variant="plain"
+                  icon={<StopIcon />}
+                  onClick={() => onAction(c.id, 'stop')}
+                  aria-label="Stop"
+                />
+              </Tooltip>
             ) : (
               <Tooltip content="Start Container">
                 <Button
@@ -251,24 +233,71 @@ export const ContainersTab: React.FC<ContainersTabProps> = ({
               />
             </Tooltip>
 
-            <Tooltip content="Inspect Details">
-              <Button
-                variant="plain"
-                icon={<InfoCircleIcon />}
-                onClick={() => onOpenInspect('container', c.id, c.name)}
-                aria-label="Inspect"
-              />
-            </Tooltip>
-
-            <Tooltip content={canDelete ? 'Delete Container' : 'Cannot delete running container'}>
-              <Button
-                variant="plain"
-                icon={<TrashIcon style={{ color: canDelete ? 'var(--pf-v5-global--danger-color--100, #ff5555)' : '#8b949e' }} />}
-                onClick={() => onDelete(c)}
-                isDisabled={!canDelete}
-                aria-label="Delete"
-              />
-            </Tooltip>
+            <Dropdown
+              popperProps={{
+                position: 'right',
+                preventOverflow: true,
+                appendTo: () => document.body,
+              }}
+              isOpen={isMenuOpen}
+              onSelect={() => setOpenDropdownId(null)}
+              onOpenChange={(isOpen) => setOpenDropdownId(isOpen ? c.id : null)}
+              toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
+                <MenuToggle
+                  ref={toggleRef}
+                  aria-label="Container actions"
+                  variant="plain"
+                  onClick={() => setOpenDropdownId(isMenuOpen ? null : c.id)}
+                  isExpanded={isMenuOpen}
+                >
+                  <EllipsisVIcon />
+                </MenuToggle>
+              )}
+            >
+              <DropdownList>
+                {isRunning && (
+                  <>
+                    <DropdownItem
+                      key="restart"
+                      icon={<SyncAltIcon />}
+                      onClick={() => onAction(c.id, 'restart')}
+                    >
+                      Restart
+                    </DropdownItem>
+                    <DropdownItem
+                      key="terminal"
+                      icon={<TerminalIcon />}
+                      onClick={() => onOpenTerminal(c)}
+                    >
+                      Terminal
+                    </DropdownItem>
+                    <DropdownItem
+                      key="kill"
+                      icon={<BanIcon style={{ color: 'var(--pf-v5-global--warning-color--100, #f0ab00)' }} />}
+                      onClick={() => onAction(c.id, 'kill')}
+                    >
+                      Force Kill
+                    </DropdownItem>
+                  </>
+                )}
+                <DropdownItem
+                  key="inspect"
+                  icon={<InfoCircleIcon />}
+                  onClick={() => onOpenInspect('container', c.id, c.name)}
+                >
+                  Inspect
+                </DropdownItem>
+                <DropdownItem
+                  key="delete"
+                  icon={<TrashIcon />}
+                  isDisabled={!canDelete}
+                  onClick={() => onDelete(c)}
+                  style={{ color: canDelete ? 'var(--pf-v5-global--danger-color--100)' : undefined }}
+                >
+                  Delete
+                </DropdownItem>
+              </DropdownList>
+            </Dropdown>
           </Flex>
         </Td>
       </Tr>

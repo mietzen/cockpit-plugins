@@ -157,6 +157,32 @@ class TestSmbParser(unittest.TestCase):
         if os.path.exists("/tmp/nonexistent_smb_conf_for_test.conf"):
             os.remove("/tmp/nonexistent_smb_conf_for_test.conf")
 
+    def test_time_machine_detection(self):
+        conf = """
+[global]
+    workgroup = WORKGROUP
+    vfs objects = catia fruit streams_xattr
+
+[normal_share]
+    path = /srv/normal
+    comment = Normal Document Share
+
+[tm_share]
+    path = /srv/tm
+    fruit:time machine = yes
+
+[backup_share]
+    path = /srv/backup
+    comment = Time Machine Backups
+"""
+        with open(self.tmp.name, "w") as f:
+            f.write(conf)
+        data = self.parser.parse()
+        shares = {s["name"]: s for s in data["shares"]}
+        self.assertFalse(shares["normal_share"]["fruit_time_machine"])
+        self.assertTrue(shares["tm_share"]["fruit_time_machine"])
+        self.assertTrue(shares["backup_share"]["fruit_time_machine"])
+
 
 if __name__ == "__main__":
     unittest.main()

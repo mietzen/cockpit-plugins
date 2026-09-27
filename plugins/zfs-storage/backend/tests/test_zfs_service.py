@@ -652,7 +652,6 @@ class TestZfsServiceActions(unittest.TestCase):
         res = self.svc.get_sanoid_info()
         self.assertFalse(res["installed"])
         self.assertFalse(res["sanoid_installed"])
-        self.assertFalse(res["syncoid_installed"])
         self.assertEqual(res["policies"], [])
 
     @patch("os.path.exists")
@@ -662,19 +661,14 @@ class TestZfsServiceActions(unittest.TestCase):
         mock_exists.return_value = True
         mock_run.side_effect = [
             MagicMock(returncode=0, stdout="/usr/bin/sanoid\n", stderr=""),  # which sanoid
-            MagicMock(returncode=0, stdout="/usr/bin/syncoid\n", stderr=""),  # which syncoid
-            MagicMock(returncode=0, stdout="syncoid-tank.timer enabled\n", stderr=""),  # list-unit-files
             MagicMock(returncode=0, stdout="active\n", stderr=""),  # is-active sanoid.timer
             MagicMock(returncode=0, stdout="inactive\n", stderr=""),  # is-active sanoid.service
-            MagicMock(returncode=0, stdout="NEXT LEFT LAST PASSED UNIT ACTIVATES\n...", stderr=""),  # list-timers syncoid
-            MagicMock(returncode=0, stdout="inactive\n", stderr=""),  # is-active syncoid.service
         ]
         res = self.svc.get_sanoid_info()
         self.assertTrue(res["installed"])
         self.assertTrue(res["sanoid_installed"])
-        self.assertTrue(res["syncoid_installed"])
         self.assertTrue(res["sanoid_timer_active"])
-        self.assertTrue(res["syncoid_timer_active"])
+        self.assertFalse(res["sanoid_service_active"])
         self.assertEqual(len(res["policies"]), 1)
         self.assertEqual(res["policies"][0]["dataset"], "tank/data")
         self.assertEqual(res["policies"][0]["hourly"], 24)
