@@ -14,12 +14,16 @@ from backend.config_manager import (
 
 
 def test_parse_default_config_when_file_not_found():
-    cfg = parse_code_server_config("/non/existent/path/config.yaml")
+    cfg = parse_code_server_config("/non/existent/path/config.yaml", username="root")
     assert cfg.bind_addr == "127.0.0.1:8080"
     assert cfg.host == "127.0.0.1"
     assert cfg.port == 8080
     assert cfg.auth == "none"
     assert cfg.cert is False
+
+    cfg_user = parse_code_server_config("/non/existent/path/config.yaml")
+    assert cfg_user.host == "127.0.0.1"
+    assert cfg_user.port >= 8080
 
 
 def test_code_server_config_properties_and_to_dict():
