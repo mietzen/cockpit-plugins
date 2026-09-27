@@ -89,7 +89,7 @@ type ActiveModal =
     }
   | null;
 
-const IGNORED_PREFIXES = ["zfs-storage", "cockpit-zfs", "zfs", "index"];
+const IGNORED_PREFIXES = ["zfs-storage", "cockpit-zfs", "index"];
 
 const parseRoute = (segments: string[]): AppRoute => {
   const clean = segments.map((s) => s.trim().toLowerCase()).filter(Boolean);

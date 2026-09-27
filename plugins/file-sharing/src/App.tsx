@@ -28,7 +28,7 @@ declare global {
   }
 }
 
-const IGNORED_PREFIXES = ["file-sharing", "cockpit-file-sharing", "sharing", "index"];
+const IGNORED_PREFIXES = ["file-sharing", "cockpit-file-sharing", "index"];
 
 const parseView = (segments: string[]): string => {
   const cleanStr = segments.map((s) => s.trim().toLowerCase()).filter(Boolean);
