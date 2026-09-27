@@ -1939,72 +1939,94 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
       }
     }
 
-    // Interact with Sanoid Schedule Modal (Create)
-    const addScheduleBtn = frame.locator("button:has-text('Add Schedule')").first();
-    if (await addScheduleBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
-      await addScheduleBtn.click({ timeout: 1000 }).catch(() => {});
-      await page.waitForTimeout(200);
-
-      const dialog = frame.locator("[role='dialog'], .pf-v5-c-modal-box, .pf-v6-c-modal-box").first();
-      if (await dialog.isVisible({ timeout: 1000 }).catch(() => false)) {
-        const freqInput = dialog.locator("input#sanoid-frequently").first();
-        if (await freqInput.isVisible().catch(() => false)) {
-          await freqInput.fill("4").catch(() => {});
-        }
-        const hourlyInput = dialog.locator("input#sanoid-hourly").first();
-        if (await hourlyInput.isVisible().catch(() => false)) {
-          await hourlyInput.fill("48").catch(() => {});
-        }
-        const recursiveCb = dialog.locator("input#sanoid-recursive, label:has-text('Recursive')").first();
-        if (await recursiveCb.isVisible().catch(() => false)) {
-          await recursiveCb.click().catch(() => {});
-        }
-        const autosnapCb = dialog.locator("input#sanoid-autosnap, label:has-text('Enable Autosnap')").first();
-        if (await autosnapCb.isVisible().catch(() => false)) {
-          await autosnapCb.click().catch(() => {});
-        }
-        const cancelBtn = dialog.locator("button:has-text('Cancel')").first();
-        if (await cancelBtn.isVisible().catch(() => false)) {
-          await cancelBtn.click().catch(() => {});
-        }
-      }
-    }
-
-    // Interact with Sanoid Schedule Modal (Edit)
-    const editScheduleBtn = frame.locator("button[aria-label*='Edit schedule']").first();
-    if (await editScheduleBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
-      await editScheduleBtn.click({ timeout: 1000 }).catch(() => {});
-      await page.waitForTimeout(200);
-
-      const dialog = frame.locator("[role='dialog'], .pf-v5-c-modal-box, .pf-v6-c-modal-box").first();
-      if (await dialog.isVisible({ timeout: 1000 }).catch(() => false)) {
-        const cancelBtn = dialog.locator("button:has-text('Cancel')").first();
-        if (await cancelBtn.isVisible().catch(() => false)) {
-          await cancelBtn.click().catch(() => {});
-        }
-      }
-    }
-
-    // Interact with Sanoid Schedule Delete Modal
-    const deleteScheduleBtn = frame.locator("button[aria-label*='Delete schedule']").first();
-    if (await deleteScheduleBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
-      await deleteScheduleBtn.click({ timeout: 1000 }).catch(() => {});
-      await page.waitForTimeout(200);
-
-      const dialog = frame.locator("[role='dialog'], .pf-v5-c-modal-box, .pf-v6-c-modal-box").first();
-      if (await dialog.isVisible({ timeout: 1000 }).catch(() => false)) {
-        const cancelBtn = dialog.locator("button:has-text('Cancel')").first();
-        if (await cancelBtn.isVisible().catch(() => false)) {
-          await cancelBtn.click().catch(() => {});
-        }
-      }
-    }
-
     // Sort Host Disks Table on Dashboard
     const hostDiskSorts = frame.locator("table[aria-label='Dashboard Disks Table'] button.pf-v5-c-table__button, table[aria-label='Dashboard Disks Table'] button.pf-v6-c-table__button");
     const hdCount = await hostDiskSorts.count();
     for (let i = 0; i < hdCount; i++) {
       await hostDiskSorts.nth(i).click({ timeout: 500 }).catch(() => {});
+    }
+
+    // 2. Switch to Snapshot Automations Tab
+    const automationsTab = frame.locator("button:has-text('Snapshot Automations'), button:has-text('Automations')").first();
+    if (await automationsTab.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await automationsTab.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(300);
+
+      // Search schedules
+      const searchInput = frame.locator("input[placeholder*='Search snapshot schedules']").first();
+      if (await searchInput.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await searchInput.fill("tank").catch(() => {});
+        await page.waitForTimeout(100);
+        await searchInput.fill("").catch(() => {});
+      }
+
+      // Sort table columns
+      const sanoidSorts = frame.locator("table[aria-label='Sanoid Policies Table'] button.pf-v5-c-table__button, table[aria-label='Sanoid Policies Table'] button.pf-v6-c-table__button, table[aria-label='Sanoid Policies Table'] th button");
+      const sCount = await sanoidSorts.count();
+      for (let i = 0; i < sCount; i++) {
+        await sanoidSorts.nth(i).click({ timeout: 500 }).catch(() => {});
+      }
+
+      // Interact with Sanoid Schedule Modal (Create)
+      const addScheduleBtn = frame.locator("button:has-text('Add Schedule')").first();
+      if (await addScheduleBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await addScheduleBtn.click({ timeout: 1000 }).catch(() => {});
+        await page.waitForTimeout(200);
+
+        const dialog = frame.locator("[role='dialog'], .pf-v5-c-modal-box, .pf-v6-c-modal-box").first();
+        if (await dialog.isVisible({ timeout: 1000 }).catch(() => false)) {
+          const freqInput = dialog.locator("input#sanoid-frequently").first();
+          if (await freqInput.isVisible().catch(() => false)) {
+            await freqInput.fill("4").catch(() => {});
+          }
+          const hourlyInput = dialog.locator("input#sanoid-hourly").first();
+          if (await hourlyInput.isVisible().catch(() => false)) {
+            await hourlyInput.fill("48").catch(() => {});
+          }
+          const recursiveCb = dialog.locator("input#sanoid-recursive, label:has-text('Recursive')").first();
+          if (await recursiveCb.isVisible().catch(() => false)) {
+            await recursiveCb.click().catch(() => {});
+          }
+          const autosnapCb = dialog.locator("input#sanoid-autosnap, label:has-text('Enable Autosnap')").first();
+          if (await autosnapCb.isVisible().catch(() => false)) {
+            await autosnapCb.click().catch(() => {});
+          }
+          const cancelBtn = dialog.locator("button:has-text('Cancel')").first();
+          if (await cancelBtn.isVisible().catch(() => false)) {
+            await cancelBtn.click().catch(() => {});
+          }
+        }
+      }
+
+      // Interact with Sanoid Schedule Modal (Edit)
+      const editScheduleBtn = frame.locator("button[aria-label*='Edit schedule']").first();
+      if (await editScheduleBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await editScheduleBtn.click({ timeout: 1000 }).catch(() => {});
+        await page.waitForTimeout(200);
+
+        const dialog = frame.locator("[role='dialog'], .pf-v5-c-modal-box, .pf-v6-c-modal-box").first();
+        if (await dialog.isVisible({ timeout: 1000 }).catch(() => false)) {
+          const cancelBtn = dialog.locator("button:has-text('Cancel')").first();
+          if (await cancelBtn.isVisible().catch(() => false)) {
+            await cancelBtn.click().catch(() => {});
+          }
+        }
+      }
+
+      // Interact with Sanoid Schedule Delete Modal
+      const deleteScheduleBtn = frame.locator("button[aria-label*='Delete schedule']").first();
+      if (await deleteScheduleBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await deleteScheduleBtn.click({ timeout: 1000 }).catch(() => {});
+        await page.waitForTimeout(200);
+
+        const dialog = frame.locator("[role='dialog'], .pf-v5-c-modal-box, .pf-v6-c-modal-box").first();
+        if (await dialog.isVisible({ timeout: 1000 }).catch(() => false)) {
+          const cancelBtn = dialog.locator("button:has-text('Cancel')").first();
+          if (await cancelBtn.isVisible().catch(() => false)) {
+            await cancelBtn.click().catch(() => {});
+          }
+        }
+      }
     }
 
     // 2. DisksView sorting

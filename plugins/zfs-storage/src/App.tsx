@@ -22,6 +22,7 @@ import { DashboardView } from "./components/DashboardView";
 import { PoolsView } from "./components/PoolsView";
 import { PoolDetailsView } from "./components/PoolDetailsView";
 import { DisksView } from "./components/DisksView";
+import { AutomationsView } from "./components/AutomationsView";
 import { SettingsView } from "./components/SettingsView";
 import { CreatePoolWizard } from "./components/CreatePoolWizard";
 import { CreateDatasetModal } from "./components/Modals/CreateDatasetModal";
@@ -42,7 +43,7 @@ import { formatBytes, formatPercentage, formatDate, getHealthBadgeColor } from "
 declare const cockpit: any;
 
 interface AppRoute {
-  view: "dashboard" | "pools" | "pool-details" | "disks" | "settings";
+  view: "dashboard" | "pools" | "pool-details" | "disks" | "automations" | "settings";
   poolName: string | null;
   subTab: string;
 }
@@ -122,6 +123,9 @@ const parseRoute = (segments: string[]): AppRoute => {
   }
   if (root === "disks") {
     return { view: "disks", poolName: null, subTab: "topology" };
+  }
+  if (root === "automations" || root === "sanoid") {
+    return { view: "automations", poolName: null, subTab: "topology" };
   }
   if (root === "settings") {
     return { view: "settings", poolName: null, subTab: "topology" };
@@ -459,7 +463,6 @@ export const App: React.FC = () => {
           systemInfo={systemInfo}
           pools={pools}
           disks={disks}
-          datasetOptions={datasets.map((d) => d.name)}
           onSelectPool={handleSelectPool}
           onCreatePool={() => setActiveModal({ type: "create-pool" })}
           onImportPool={() => {
@@ -474,8 +477,6 @@ export const App: React.FC = () => {
           }}
           onViewArcDetails={() => setActiveModal({ type: "arc-details" })}
           onViewSmartDetails={handleViewSmartDetails}
-          onSaveSanoidSchedule={handleSaveSanoidSchedule}
-          onDeleteSanoidSchedule={handleDeleteSanoidSchedule}
         />
       </div>
 
@@ -607,6 +608,15 @@ export const App: React.FC = () => {
           onWipeDisk={() => {}}
           onRunSmartTest={() => {}}
           onViewSmartDetails={handleViewSmartDetails}
+        />
+      </div>
+
+      <div style={{ display: route.view === "automations" ? "block" : "none" }}>
+        <AutomationsView
+          sanoidInfo={systemInfo?.sanoid}
+          datasetOptions={datasets.map((d) => d.name)}
+          onSaveSchedule={handleSaveSanoidSchedule}
+          onDeleteSchedule={handleDeleteSanoidSchedule}
         />
       </div>
 

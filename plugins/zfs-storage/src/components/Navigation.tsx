@@ -37,6 +37,7 @@ export const Navigation: React.FC<NavigationProps> = ({
               <Tab eventKey="dashboard" title={<TabTitleText>Overview</TabTitleText>} />
               <Tab eventKey="pools" title={<TabTitleText>Pools</TabTitleText>} />
               <Tab eventKey="disks" title={<TabTitleText>Disks &amp; SMART</TabTitleText>} />
+              <Tab eventKey="automations" title={<TabTitleText>Snapshot Automations</TabTitleText>} />
               <Tab eventKey="settings" title={<TabTitleText>Settings</TabTitleText>} />
             </Tabs>
           </FlexItem>
