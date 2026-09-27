@@ -1945,9 +1945,20 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
       await addScheduleBtn.click({ timeout: 1000 }).catch(() => {});
       await page.waitForTimeout(200);
 
-      const cancelScheduleBtn = frame.locator("[role='dialog'] button:has-text('Cancel'), body > [role='dialog'] button:has-text('Cancel')").first();
-      if (await cancelScheduleBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
-        await cancelScheduleBtn.click({ timeout: 1000 }).catch(() => {});
+      const dialog = page.locator("[role='dialog'], .pf-v5-c-modal-box, .pf-v6-c-modal-box").first();
+      if (await dialog.isVisible({ timeout: 1000 }).catch(() => false)) {
+        const hourlyInput = dialog.locator("input#sanoid-hourly").first();
+        if (await hourlyInput.isVisible().catch(() => false)) {
+          await hourlyInput.fill("48").catch(() => {});
+        }
+        const recursiveCb = dialog.locator("input#sanoid-recursive, label:has-text('Recursive')").first();
+        if (await recursiveCb.isVisible().catch(() => false)) {
+          await recursiveCb.click().catch(() => {});
+        }
+        const cancelBtn = dialog.locator("button:has-text('Cancel')").first();
+        if (await cancelBtn.isVisible().catch(() => false)) {
+          await cancelBtn.click().catch(() => {});
+        }
       }
     }
 
@@ -1956,9 +1967,26 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
       await editScheduleBtn.click({ timeout: 1000 }).catch(() => {});
       await page.waitForTimeout(200);
 
-      const cancelScheduleBtn = frame.locator("[role='dialog'] button:has-text('Cancel'), body > [role='dialog'] button:has-text('Cancel')").first();
-      if (await cancelScheduleBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
-        await cancelScheduleBtn.click({ timeout: 1000 }).catch(() => {});
+      const dialog = page.locator("[role='dialog'], .pf-v5-c-modal-box, .pf-v6-c-modal-box").first();
+      if (await dialog.isVisible({ timeout: 1000 }).catch(() => false)) {
+        const cancelBtn = dialog.locator("button:has-text('Cancel')").first();
+        if (await cancelBtn.isVisible().catch(() => false)) {
+          await cancelBtn.click().catch(() => {});
+        }
+      }
+    }
+
+    const deleteScheduleBtn = frame.locator("button[aria-label*='Delete schedule']").first();
+    if (await deleteScheduleBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await deleteScheduleBtn.click({ timeout: 1000 }).catch(() => {});
+      await page.waitForTimeout(200);
+
+      const dialog = page.locator("[role='dialog'], .pf-v5-c-modal-box, .pf-v6-c-modal-box").first();
+      if (await dialog.isVisible({ timeout: 1000 }).catch(() => false)) {
+        const cancelBtn = dialog.locator("button:has-text('Cancel')").first();
+        if (await cancelBtn.isVisible().catch(() => false)) {
+          await cancelBtn.click().catch(() => {});
+        }
       }
     }
 
