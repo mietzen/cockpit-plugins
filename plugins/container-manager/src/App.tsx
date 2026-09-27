@@ -11,7 +11,7 @@ import {
   Button,
   Page,
 } from '@patternfly/react-core';
-import { useCockpitTheme, ConfirmModal } from '@cockpit-plugins/common';
+import { useCockpitTheme, ConfirmModal, useCockpitRoute, NavMode } from '@cockpit-plugins/common';
 
 import {
   ContainerOverview,
@@ -39,23 +39,7 @@ import { ContainerTerminalModal } from './components/ContainerTerminalModal';
 import { ContainerLogsModal } from './components/ContainerLogsModal';
 import { SystemPruneModal } from './components/SystemPruneModal';
 
-const getSegmentsFromEnv = (): string[] => {
-  if (typeof window === 'undefined') {
-    return [];
-  }
-  const hash = window.location.hash.replace(/^#\/?/, '');
-  if (hash) {
-    return hash.split('/').filter(Boolean);
-  }
-  if (window.cockpit && window.cockpit.location && Array.isArray(window.cockpit.location.path)) {
-    const raw = window.cockpit.location.path;
-    if (raw.length > 0 && ['container-manager', 'cockpit-container-manager', 'containers', 'index'].includes(raw[0].toLowerCase())) {
-      return raw.slice(1);
-    }
-    return raw;
-  }
-  return [];
-};
+const IGNORED_PREFIXES = ['container-manager', 'cockpit-container-manager', 'containers', 'index'];
 
 const parseView = (segments: string[]): string => {
   const cleanStr = segments.map((s) => s.trim().toLowerCase()).filter(Boolean);
@@ -69,56 +53,21 @@ const parseView = (segments: string[]): string => {
   return 'dashboard';
 };
 
+const formatSegments = (view: string): string[] => {
+  if (view === 'dashboard') {
+    return [];
+  }
+  return [view];
+};
+
 export const App: React.FC = () => {
   const isDark = useCockpitTheme();
 
-  const [activeView, setActiveView] = useState<string>(() => {
-    return parseView(getSegmentsFromEnv());
-  });
-
-  const lastNavigatedPathRef = React.useRef<string>('');
+  const [activeView, setActiveView] = useCockpitRoute(parseView, formatSegments, IGNORED_PREFIXES);
 
   const navigateToView = useCallback((view: string) => {
-    setActiveView(view);
-    lastNavigatedPathRef.current = view;
-
-    const segments = view === 'dashboard' ? [] : [view];
-    if (typeof window !== 'undefined') {
-      const targetHash = segments.length > 0 ? `#/${segments.join('/')}` : '#/';
-      if (window.location.hash !== targetHash) {
-        window.history.replaceState(null, '', targetHash);
-      }
-    }
-  }, []);
-
-  const syncFromUrl = useCallback(() => {
-    const segments = getSegmentsFromEnv();
-    const currentPathStr = segments.length > 0 ? segments[0].toLowerCase() : 'dashboard';
-    if (currentPathStr === lastNavigatedPathRef.current) {
-      return;
-    }
-    lastNavigatedPathRef.current = currentPathStr;
-    setActiveView(parseView(segments));
-  }, []);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined' && window.cockpit && window.cockpit.location) {
-      const handleLocationChanged = () => syncFromUrl();
-      window.cockpit.addEventListener('locationchanged', handleLocationChanged);
-      return () => window.cockpit.removeEventListener('locationchanged', handleLocationChanged);
-    }
-  }, [syncFromUrl]);
-
-  useEffect(() => {
-    const handleHashChange = () => syncFromUrl();
-    const handlePopState = () => syncFromUrl();
-    window.addEventListener('hashchange', handleHashChange);
-    window.addEventListener('popstate', handlePopState);
-    return () => {
-      window.removeEventListener('hashchange', handleHashChange);
-      window.removeEventListener('popstate', handlePopState);
-    };
-  }, [syncFromUrl]);
+    setActiveView(view, NavMode.Replace);
+  }, [setActiveView]);
 
   const [overview, setOverview] = useState<ContainerOverview>(
     typeof window !== 'undefined' && window.cockpit ? DEFAULT_EMPTY_OVERVIEW : DEFAULT_MOCK_OVERVIEW

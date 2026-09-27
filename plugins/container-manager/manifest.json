@@ -7,5 +7,6 @@
       "order": 35
     }
   },
+  "preload": [ "index" ],
   "content-security-policy": "default-src 'self' 'unsafe-inline' 'unsafe-eval' blob: data:; connect-src 'self' blob: data:; object-src 'self' blob: data:;"
 }

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import "@patternfly/react-core/dist/styles/base.css";
 import "@cockpit-plugins/common/src/styles/cockpit-theme.css";
-import { useCockpitTheme } from "@cockpit-plugins/common";
+import { useCockpitTheme, useCockpitRoute, NavMode } from "@cockpit-plugins/common";
 import {
   Alert,
   AlertActionCloseButton,
@@ -28,23 +28,7 @@ declare global {
   }
 }
 
-const getSegmentsFromEnv = (): string[] => {
-  if (typeof window === "undefined") {
-    return [];
-  }
-  const hash = window.location.hash.replace(/^#\/?/, "");
-  if (hash) {
-    return hash.split("/").filter(Boolean);
-  }
-  if (typeof cockpit !== "undefined" && cockpit.location && Array.isArray(cockpit.location.path)) {
-    const raw = cockpit.location.path;
-    if (raw.length > 0 && ["file-sharing", "cockpit-file-sharing", "sharing", "index"].includes(raw[0].toLowerCase())) {
-      return raw.slice(1);
-    }
-    return raw;
-  }
-  return [];
-};
+const IGNORED_PREFIXES = ["file-sharing", "cockpit-file-sharing", "sharing", "index"];
 
 const parseView = (segments: string[]): string => {
   const cleanStr = segments.map((s) => s.trim().toLowerCase()).filter(Boolean);
@@ -58,56 +42,21 @@ const parseView = (segments: string[]): string => {
   return "dashboard";
 };
 
+const formatSegments = (view: string): string[] => {
+  if (view === "dashboard") {
+    return [];
+  }
+  return [view];
+};
+
 export const App: React.FC = () => {
   useCockpitTheme();
 
-  const [activeView, setActiveView] = useState<string>(() => {
-    return parseView(getSegmentsFromEnv());
-  });
-
-  const lastNavigatedPathRef = useRef<string>("");
+  const [activeView, setActiveView] = useCockpitRoute(parseView, formatSegments, IGNORED_PREFIXES);
 
   const navigateToView = useCallback((view: string) => {
-    setActiveView(view);
-    lastNavigatedPathRef.current = view;
-
-    const segments = view === "dashboard" ? [] : [view];
-    if (typeof window !== "undefined") {
-      const targetHash = segments.length > 0 ? `#/${segments.join("/")}` : "#/";
-      if (window.location.hash !== targetHash) {
-        window.history.replaceState(null, "", targetHash);
-      }
-    }
-  }, []);
-
-  const syncFromUrl = useCallback(() => {
-    const segments = getSegmentsFromEnv();
-    const currentPathStr = segments.length > 0 ? segments[0].toLowerCase() : "dashboard";
-    if (currentPathStr === lastNavigatedPathRef.current) {
-      return;
-    }
-    lastNavigatedPathRef.current = currentPathStr;
-    setActiveView(parseView(segments));
-  }, []);
-
-  useEffect(() => {
-    if (typeof cockpit !== "undefined" && cockpit.location) {
-      const handleLocationChanged = () => syncFromUrl();
-      cockpit.addEventListener("locationchanged", handleLocationChanged);
-      return () => cockpit.removeEventListener("locationchanged", handleLocationChanged);
-    }
-  }, [syncFromUrl]);
-
-  useEffect(() => {
-    const handleHashChange = () => syncFromUrl();
-    const handlePopState = () => syncFromUrl();
-    window.addEventListener("hashchange", handleHashChange);
-    window.addEventListener("popstate", handlePopState);
-    return () => {
-      window.removeEventListener("hashchange", handleHashChange);
-      window.removeEventListener("popstate", handlePopState);
-    };
-  }, [syncFromUrl]);
+    setActiveView(view, NavMode.Replace);
+  }, [setActiveView]);
 
   const [data, setData] = useState<FileSharingOverview | null>(null);
   const [loading, setLoading] = useState(true);

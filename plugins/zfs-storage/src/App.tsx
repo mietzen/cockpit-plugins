@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import "@patternfly/react-core/dist/styles/base.css";
 import "@cockpit-plugins/common/src/styles/cockpit-theme.css";
-import { useCockpitTheme } from "@cockpit-plugins/common";
+import { useCockpitTheme, useCockpitRoute, NavMode } from "@cockpit-plugins/common";
 import {
   Alert,
   AlertGroup,
@@ -89,23 +89,7 @@ type ActiveModal =
     }
   | null;
 
-const getSegmentsFromEnv = (): string[] => {
-  if (typeof window === "undefined") {
-    return [];
-  }
-  const hash = window.location.hash.replace(/^#\/?/, "");
-  if (hash) {
-    return hash.split("/").filter(Boolean);
-  }
-  if (typeof cockpit !== "undefined" && cockpit.location && Array.isArray(cockpit.location.path)) {
-    const raw = cockpit.location.path;
-    if (raw.length > 0 && ["zfs-storage", "cockpit-zfs", "zfs", "index"].includes(raw[0].toLowerCase())) {
-      return raw.slice(1);
-    }
-    return raw;
-  }
-  return [];
-};
+const IGNORED_PREFIXES = ["zfs-storage", "cockpit-zfs", "zfs", "index"];
 
 const parseRoute = (segments: string[]): AppRoute => {
   const clean = segments.map((s) => s.trim().toLowerCase()).filter(Boolean);
@@ -133,14 +117,25 @@ const parseRoute = (segments: string[]): AppRoute => {
   return { view: "dashboard", poolName: null, subTab: "topology" };
 };
 
+const formatSegments = (r: AppRoute): string[] => {
+  if (r.view === "dashboard") {
+    return [];
+  }
+  if (r.view === "pool-details" && r.poolName) {
+    return ["pools", r.poolName, r.subTab || "topology"];
+  }
+  return [r.view];
+};
+
 export const App: React.FC = () => {
   useCockpitTheme();
 
-  const [route, setRoute] = useState<AppRoute>(() => {
-    return parseRoute(getSegmentsFromEnv());
-  });
+  const [route, setRoute] = useCockpitRoute(parseRoute, formatSegments, IGNORED_PREFIXES);
 
-  const lastNavigatedPathRef = useRef<string>("");
+  const navigateTo = useCallback((segments: string[]) => {
+    const nextRoute = parseRoute(segments);
+    setRoute(nextRoute, NavMode.Replace);
+  }, [setRoute]);
 
   const [systemInfo, setSystemInfo] = useState<SystemInfo | null>(null);
   const [pools, setPools] = useState<ZPool[]>([]);
@@ -156,61 +151,6 @@ export const App: React.FC = () => {
 
   // Consolidated Modal State (resolves state bloat)
   const [activeModal, setActiveModal] = useState<ActiveModal>(null);
-
-  const navigateTo = useCallback((segments: string[]) => {
-    const nextRoute = parseRoute(segments);
-    setRoute(nextRoute);
-
-    const fullPathStr = segments.join("/");
-    lastNavigatedPathRef.current = fullPathStr;
-
-    if (typeof window !== "undefined") {
-      const targetHash = segments.length > 0 ? `#/${segments.join("/")}` : "#/";
-      if (window.location.hash !== targetHash) {
-        window.history.replaceState(null, "", targetHash);
-      }
-    }
-  }, []);
-
-  const syncFromUrl = useCallback(() => {
-    const segments = getSegmentsFromEnv();
-    const currentPathStr = segments.join("/");
-    if (currentPathStr === lastNavigatedPathRef.current) {
-      return;
-    }
-
-    lastNavigatedPathRef.current = currentPathStr;
-    setRoute(parseRoute(segments));
-  }, []);
-
-  useEffect(() => {
-    if (typeof cockpit !== "undefined" && cockpit.location) {
-      const handleLocationChanged = () => {
-        syncFromUrl();
-      };
-      cockpit.addEventListener("locationchanged", handleLocationChanged);
-      return () => {
-        cockpit.removeEventListener("locationchanged", handleLocationChanged);
-      };
-    }
-  }, [syncFromUrl]);
-
-  useEffect(() => {
-    const handleHashChange = () => {
-      syncFromUrl();
-    };
-    const handlePopState = () => {
-      syncFromUrl();
-    };
-
-    window.addEventListener("hashchange", handleHashChange);
-    window.addEventListener("popstate", handlePopState);
-
-    return () => {
-      window.removeEventListener("hashchange", handleHashChange);
-      window.removeEventListener("popstate", handlePopState);
-    };
-  }, [syncFromUrl]);
 
   const addAlert = (variant: "success" | "danger" | "warning" | "info", title: string, message?: string) => {
     const id = `alert-${Date.now()}-${Math.random()}`;
