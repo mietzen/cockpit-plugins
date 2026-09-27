@@ -31,6 +31,7 @@ from parsers import (
     parse_lsblk,
     parse_smartctl,
     parse_arcstats,
+    parse_int,
 )
 from sanoid_manager import (
     parse_sanoid_conf_file,
@@ -313,7 +314,7 @@ class ZfsService:
             dev_name = dev.get("name", "")
             dev_type = dev.get("type", "")
             if dev_type in ("disk", "loop") and not dev_name.startswith("zd") and not dev_name.startswith("ram"):
-                if dev.get("size", 0) <= 0:
+                if parse_int(dev.get("size", 0)) <= 0:
                     continue
                 path = dev.get("path") or f"/dev/{dev.get('name')}"
 

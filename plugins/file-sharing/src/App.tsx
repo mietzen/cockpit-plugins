@@ -60,8 +60,7 @@ export const App: React.FC = () => {
 
   const navigateToView = useCallback((view: string) => {
     setActiveView(view, NavMode.Push);
-    loadData(true);
-  }, [setActiveView, loadData]);
+  }, [setActiveView]);
 
   const [data, setData] = useState<FileSharingOverview | null>(null);
   const [loading, setLoading] = useState(true);
