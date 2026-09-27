@@ -32,6 +32,7 @@ import {
   FormSelectOption,
   Checkbox,
   Alert,
+  Tooltip,
 } from "@patternfly/react-core";
 import { Table, Thead, Tbody, Tr, Th, Td, ThProps } from "@patternfly/react-table";
 import {
@@ -46,6 +47,13 @@ import {
   PencilAltIcon,
 } from "@patternfly/react-icons";
 import { SmbUser, SmbGroup, UserAccessMatrixItem } from "../types";
+
+const ACCESS_BADGE_CONFIG: Record<string, { label: string; color: "green" | "blue" | "purple" | "grey" }> = {
+  read_write: { label: "Read / Write", color: "green" },
+  read_only: { label: "Read-Only", color: "blue" },
+  guest_only: { label: "Guest Only", color: "purple" },
+  denied: { label: "Denied", color: "grey" },
+};
 
 interface UsersTabProps {
   users: SmbUser[];
@@ -505,16 +513,14 @@ export const UsersTab: React.FC<UsersTabProps> = ({
                       {allShareNames.map((sName) => {
                         const perm = item.shares.find((s) => s.share_name === sName);
                         if (!perm) return <Td key={sName}>—</Td>;
-                        if (perm.access === "read_write") {
-                          return <Td key={sName}><Label color="green">Read / Write</Label></Td>;
-                        }
-                        if (perm.access === "read_only") {
-                          return <Td key={sName}><Label color="blue">Read-Only</Label></Td>;
-                        }
-                        if (perm.access === "guest_only") {
-                          return <Td key={sName}><Label color="purple">Guest Only</Label></Td>;
-                        }
-                        return <Td key={sName}><Label color="grey">Denied</Label></Td>;
+                        const cfg = ACCESS_BADGE_CONFIG[perm.access] || ACCESS_BADGE_CONFIG.denied;
+                        return (
+                          <Td key={sName}>
+                            <Tooltip content={perm.reason}>
+                              <Label color={cfg.color}>{cfg.label}</Label>
+                            </Tooltip>
+                          </Td>
+                        );
                       })}
                     </Tr>
                   ))}

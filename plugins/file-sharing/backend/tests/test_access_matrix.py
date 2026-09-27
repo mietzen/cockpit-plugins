@@ -174,7 +174,7 @@ class TestAccessMatrix(unittest.TestCase):
             {"username": "bob", "full_name": "Bob Buyer", "is_enabled": True},
             {"username": "charlie", "full_name": "Charlie Restricted", "is_enabled": True},
         ]
-        matrix = calculate_smb_user_matrix(shares, users)
+        matrix = calculate_smb_user_matrix(shares, users, path_exists_fn=lambda p: True)
 
         # Alice: homes -> /home/alice, read_write
         alice_homes = matrix[0]["shares"][0]
@@ -195,6 +195,41 @@ class TestAccessMatrix(unittest.TestCase):
         charlie_homes = matrix[2]["shares"][0]
         self.assertEqual(charlie_homes["share_path"], "/home/charlie")
         self.assertEqual(charlie_homes["access"], "denied")
+
+    def test_smb_matrix_homes_missing_directory(self):
+        shares = [
+            {
+                "name": "homes",
+                "path": "/home/%S",
+                "read_only": False,
+                "guest_ok": False,
+                "valid_users": "%S",
+            },
+        ]
+        users = [
+            {"username": "alice", "full_name": "Alice Admin", "is_enabled": True},
+            {"username": "paperless", "full_name": "Paperless Service", "is_enabled": True},
+            {"username": "proxmox", "full_name": "Proxmox Service", "is_enabled": True},
+        ]
+
+        # Alice has /home/alice; paperless and proxmox do not have home directories
+        existing_dirs = {"/home/alice"}
+        path_exists_fn = lambda p: p in existing_dirs
+
+        matrix = calculate_smb_user_matrix(shares, users, path_exists_fn=path_exists_fn)
+
+        # Alice: home exists -> read_write
+        self.assertEqual(matrix[0]["shares"][0]["access"], "read_write")
+
+        # Paperless: no home dir -> denied
+        self.assertEqual(matrix[1]["shares"][0]["access"], "denied")
+        self.assertIn("Home directory", matrix[1]["shares"][0]["reason"])
+        self.assertIn("/home/paperless", matrix[1]["shares"][0]["reason"])
+
+        # Proxmox: no home dir -> denied
+        self.assertEqual(matrix[2]["shares"][0]["access"], "denied")
+        self.assertIn("Home directory", matrix[2]["shares"][0]["reason"])
+        self.assertIn("/home/proxmox", matrix[2]["shares"][0]["reason"])
 
 
 if __name__ == "__main__":
