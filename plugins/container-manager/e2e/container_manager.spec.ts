@@ -235,12 +235,10 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     for (const colName of ['Repository', 'Tag', 'Image ID', 'Size', 'Usage']) {
       const imgTh = frame.locator(`table[aria-label="Images Table"] th button:has-text("${colName}"), table[aria-label="Images Table"] th:has-text("${colName}")`).first();
       if (await imgTh.isVisible({ timeout: 1500 }).catch(() => false)) {
-        await imgTh.click();
-        await frame.waitForTimeout(100);
-        await imgTh.click();
-        await frame.waitForTimeout(100);
-        await imgTh.click();
-        await frame.waitForTimeout(100);
+        for (let i = 0; i < 3; i++) {
+          await imgTh.click();
+          await frame.waitForTimeout(100);
+        }
       }
     }
     if (initialImgRows > 0) {

@@ -40,8 +40,6 @@ import {
   ImageItem,
   VolumeItem,
   NetworkItem,
-  EnginesDetection,
-  EngineType,
 } from '../types';
 import { HashId } from './HashId';
 import { PortLinks } from './PortLinks';
@@ -51,8 +49,6 @@ export interface DashboardViewProps {
   images: ImageItem[];
   volumes: VolumeItem[];
   networks: NetworkItem[];
-  engines?: EnginesDetection;
-  activeEngine?: EngineType;
   onNavigateTab: (tab: string) => void;
   onAction: (id: string, action: 'start' | 'stop' | 'kill' | 'restart') => void;
   onOpenTerminal: (container: ContainerItem) => void;
@@ -65,8 +61,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   images,
   volumes,
   networks,
-  engines,
-  activeEngine,
   onNavigateTab,
   onAction,
   onOpenTerminal,
