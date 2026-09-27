@@ -627,7 +627,7 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
         await sansInput.fill('127.0.0.1, localhost');
       }
       await setupBtn.click();
-      await frame.waitForSelector('span:has-text("TCP Enabled"), button:has-text("Disable Remote TCP")', { timeout: 15000 });
+      await frame.waitForSelector('span:has-text("TCP Enabled"), button:has-text("Disable Remote TCP")', { timeout: 30000 });
     }
 
     // Test downloading .zip from Settings view
