@@ -8,7 +8,7 @@ import {
   AlertActionCloseButton,
   Spinner,
 } from "@patternfly/react-core";
-import { useCockpitTheme, useCockpitRoute, NavMode } from "@cockpit-plugins/common";
+import { useCockpitTheme } from "@cockpit-plugins/common";
 
 import { CodeServerStatus, CodeServerConfigData } from "./types";
 import { codeServerApi, DEFAULT_MOCK_STATUS } from "./api/codeServerClient";
@@ -17,27 +17,8 @@ import { CodeServerIframe } from "./components/CodeServerIframe";
 import { InstallPrompt } from "./components/InstallPrompt";
 import { SettingsModal } from "./components/SettingsModal";
 
-const IGNORED_PREFIXES = ["code-server", "cockpit-code-server", "vscode", "index"];
-
-const parseRoute = (segments: string[]): string => {
-  const clean = segments.map((s) => s.trim().toLowerCase()).filter(Boolean);
-  if (clean.length === 0 || clean[0] === "index" || clean[0] === "main") {
-    return "main";
-  }
-  return clean[0];
-};
-
-const formatSegments = (view: string): string[] => {
-  if (view === "main") {
-    return [];
-  }
-  return [view];
-};
-
 export const App: React.FC = () => {
   useCockpitTheme();
-
-  const [activeView, setActiveView] = useCockpitRoute(parseRoute, formatSegments, IGNORED_PREFIXES);
 
   const [status, setStatus] = useState<CodeServerStatus>(DEFAULT_MOCK_STATUS);
   const [isLoading, setIsLoading] = useState<boolean>(false);

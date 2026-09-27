@@ -10,6 +10,19 @@ if _CURRENT_DIR not in sys.path:
     sys.path.insert(0, _CURRENT_DIR)
 
 try:
+    from .config_manager import (
+        CodeServerConfig,
+        get_user_config_path,
+        parse_code_server_config,
+        write_code_server_config,
+    )
+    from .service_manager import (
+        get_binary_info,
+        get_service_status,
+        manage_service,
+        install_code_server,
+    )
+except ImportError:
     from config_manager import (
         CodeServerConfig,
         get_user_config_path,
@@ -17,19 +30,6 @@ try:
         write_code_server_config,
     )
     from service_manager import (
-        get_binary_info,
-        get_service_status,
-        manage_service,
-        install_code_server,
-    )
-except ImportError:
-    from backend.config_manager import (
-        CodeServerConfig,
-        get_user_config_path,
-        parse_code_server_config,
-        write_code_server_config,
-    )
-    from backend.service_manager import (
         get_binary_info,
         get_service_status,
         manage_service,

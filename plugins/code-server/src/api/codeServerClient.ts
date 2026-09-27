@@ -73,7 +73,7 @@ export class CodeServerClient {
       args.push("--user", username);
     }
 
-    const res = await this.executeHelper(args, "try");
+    const res = await this.executeHelper(args, "require");
     return res || DEFAULT_MOCK_STATUS;
   }
 

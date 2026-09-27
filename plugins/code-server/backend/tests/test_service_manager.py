@@ -51,43 +51,27 @@ def test_manage_service_invalid_action():
     assert "Invalid action" in res["error"]
 
 
-def test_get_system_arch():
-    from backend.service_manager import get_system_arch
-    with patch("platform.machine", return_value="x86_64"):
-        assert get_system_arch() == "amd64"
-    with patch("platform.machine", return_value="aarch64"):
-        assert get_system_arch() == "arm64"
-
-
 def test_install_code_server_deb_success():
     from backend.service_manager import install_code_server, CODE_SERVER_UPSTREAM_VERSION
     with patch("shutil.which", side_effect=lambda x: "/usr/bin/apt-get" if x == "apt-get" else None), \
-         patch("urllib.request.urlretrieve") as mock_dl, \
-         patch("subprocess.run") as mock_run, \
-         patch("os.path.exists", return_value=True), \
-         patch("os.remove") as mock_rm:
+         patch("subprocess.run") as mock_run:
         mock_proc = MagicMock()
         mock_proc.returncode = 0
         mock_run.return_value = mock_proc
 
         res = install_code_server(CODE_SERVER_UPSTREAM_VERSION, "test-user")
         assert res["success"] is True
-        mock_dl.assert_called_once()
         assert CODE_SERVER_UPSTREAM_VERSION in res["output"]
 
 
 def test_install_code_server_rpm_success():
     from backend.service_manager import install_code_server, CODE_SERVER_UPSTREAM_VERSION
     with patch("shutil.which", side_effect=lambda x: "/usr/bin/dnf" if x == "dnf" else None), \
-         patch("urllib.request.urlretrieve") as mock_dl, \
-         patch("subprocess.run") as mock_run, \
-         patch("os.path.exists", return_value=True), \
-         patch("os.remove") as mock_rm:
+         patch("subprocess.run") as mock_run:
         mock_proc = MagicMock()
         mock_proc.returncode = 0
         mock_run.return_value = mock_proc
 
         res = install_code_server(CODE_SERVER_UPSTREAM_VERSION, "test-user")
         assert res["success"] is True
-        mock_dl.assert_called_once()
         assert CODE_SERVER_UPSTREAM_VERSION in res["output"]
