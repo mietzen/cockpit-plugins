@@ -133,28 +133,35 @@ def ensure_user_dir_permissions(username: Optional[str] = None) -> None:
         uid = pw.pw_uid
         gid = pw.pw_gid
         user_home = pw.pw_dir
-        config_dir = os.path.join(user_home, ".config", "code-server")
-        if os.path.isdir(config_dir):
-            for root, dirs, files in os.walk(config_dir):
-                for d in dirs:
-                    dpath = os.path.join(root, d)
-                    try:
-                        os.chown(dpath, uid, gid)
-                        os.chmod(dpath, 0o755)
-                    except Exception:
-                        pass
-                for f in files:
-                    fpath = os.path.join(root, f)
-                    try:
-                        os.chown(fpath, uid, gid)
-                        os.chmod(fpath, 0o600)
-                    except Exception:
-                        pass
-            try:
-                os.chown(config_dir, uid, gid)
-                os.chmod(config_dir, 0o755)
-            except Exception:
-                pass
+
+        target_dirs = [
+            os.path.join(user_home, ".config", "code-server"),
+            os.path.join(user_home, ".local", "share", "code-server"),
+            os.path.join(user_home, ".cache", "code-server"),
+        ]
+
+        for target in target_dirs:
+            if os.path.exists(target):
+                for root, dirs, files in os.walk(target):
+                    for d in dirs:
+                        dpath = os.path.join(root, d)
+                        try:
+                            os.chown(dpath, uid, gid)
+                            os.chmod(dpath, 0o755)
+                        except Exception:
+                            pass
+                    for f in files:
+                        fpath = os.path.join(root, f)
+                        try:
+                            os.chown(fpath, uid, gid)
+                            os.chmod(fpath, 0o600)
+                        except Exception:
+                            pass
+                try:
+                    os.chown(target, uid, gid)
+                    os.chmod(target, 0o755)
+                except Exception:
+                    pass
     except Exception:
         pass
 
