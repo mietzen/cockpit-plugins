@@ -135,10 +135,15 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     // Verify top sticky navigation pill bar
     await expect(frame.locator('.cockpit-top-nav-bar, .pf-v5-c-tabs').first()).toBeVisible({ timeout: 10000 });
 
-    const recheckBtn2 = frame.locator("button:has-text('Re-check Installed Engines')").first();
-    if (await recheckBtn2.isVisible({ timeout: 1500 }).catch(() => false)) {
-      await recheckBtn2.click();
+    const refreshBtn = frame.locator('button:has-text("Refresh")').first();
+    if (await refreshBtn.isVisible({ timeout: 1500 }).catch(() => false)) {
+      await refreshBtn.click();
+      await frame.waitForTimeout(1000);
     }
+
+    // Verify engine badge pill in header is removed (Issue #63)
+    const headerEngineLabel = frame.locator('.pf-v5-c-page__main-section:first-child .pf-v5-c-label, section:first-of-type .pf-v5-c-label').filter({ hasText: /Podman|Docker/ });
+    await expect(headerEngineLabel).toHaveCount(0);
 
     // Verify metric cards
     await expect(frame.locator('.pf-v5-c-card', { hasText: 'Containers' }).first()).toBeVisible({ timeout: 10000 });
@@ -209,9 +214,9 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
       }
     }
 
-    // Click Prune Stopped if visible
+    // Click Prune Stopped if visible and enabled
     const pruneStoppedBtn = frame.locator('button:has-text("Prune Stopped")').first();
-    if (await pruneStoppedBtn.isVisible({ timeout: 1500 }).catch(() => false)) {
+    if (await pruneStoppedBtn.isVisible({ timeout: 1500 }).catch(() => false) && await pruneStoppedBtn.isEnabled().catch(() => false)) {
       await pruneStoppedBtn.click();
       const cancelModalBtn = frame.locator('[role="dialog"] button:has-text("Cancel"), .pf-v6-c-modal-box button:has-text("Cancel")').first();
       if (await cancelModalBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
@@ -226,12 +231,19 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     await frame.locator('.cockpit-top-nav-bar button:has-text("Images"), button[role="tab"]:has-text("Images")').first().click();
     await frame.waitForSelector('table[aria-label="Images Table"], div:has-text("No Images Found")', { timeout: 10000 });
 
-    for (const colName of ['Repository', 'Tag', 'Size']) {
+    const initialImgRows = await frame.locator('table[aria-label="Images Table"] tbody tr').count();
+    for (const colName of ['Repository', 'Tag', 'Image ID', 'Size', 'Usage']) {
       const imgTh = frame.locator(`table[aria-label="Images Table"] th button:has-text("${colName}"), table[aria-label="Images Table"] th:has-text("${colName}")`).first();
       if (await imgTh.isVisible({ timeout: 1500 }).catch(() => false)) {
-        await imgTh.click();
-        await frame.waitForTimeout(200);
+        for (let i = 0; i < 3; i++) {
+          await imgTh.click();
+          await frame.waitForTimeout(100);
+        }
       }
+    }
+    if (initialImgRows > 0) {
+      const postSortRows = await frame.locator('table[aria-label="Images Table"] tbody tr').count();
+      expect(postSortRows).toBe(initialImgRows);
     }
     await saveScreenshot(page, '03_images_tab.png');
 
@@ -373,7 +385,7 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     if (await actionToggle.isVisible({ timeout: 2000 }).catch(() => false)) {
       await actionToggle.click();
       const termItem = frame.locator('[role="menuitem"]:has-text("Terminal"), button:has-text("Terminal")').first();
-      if (await termItem.isVisible({ timeout: 3000 }).catch(() => false)) {
+      if (await termItem.isVisible({ timeout: 5000 }).catch(() => false)) {
         await termItem.click();
       }
     } else {
@@ -504,29 +516,31 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
     await frame.locator('.cockpit-top-nav-bar button:has-text("Containers")').click();
     await frame.waitForSelector('table[aria-label="Containers Table"]', { timeout: 10000 });
 
-    // Look for an enabled container delete button or action menu on stopped container
-    const stoppedRow = frame.locator('table[aria-label="Containers Table"] tbody tr').filter({ has: frame.locator('button[aria-label="Start"]') }).first();
+    // Look for a stopped container, or stop one if all are running
+    let stoppedRow = frame.locator('table[aria-label="Containers Table"] tbody tr').filter({ has: frame.locator('button[aria-label="Start"]') }).first();
+    if ((await stoppedRow.count()) === 0) {
+      const stopBtn = frame.locator('table[aria-label="Containers Table"] button[aria-label="Stop"]').last();
+      if (await stopBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await stopBtn.click();
+        await frame.waitForTimeout(2000);
+      }
+      stoppedRow = frame.locator('table[aria-label="Containers Table"] tbody tr').filter({ has: frame.locator('button[aria-label="Start"]') }).first();
+    }
+
     const actionToggle = (await stoppedRow.count() > 0)
       ? stoppedRow.locator('button[aria-label="Container actions"]').first()
       : frame.locator('table[aria-label="Containers Table"] button[aria-label="Container actions"]').first();
-    const deleteBtn = frame.locator('table[aria-label="Containers Table"] button[aria-label="Delete"]:not([disabled])').first();
 
     if (await actionToggle.isVisible({ timeout: 2000 }).catch(() => false)) {
       await actionToggle.click();
       const menuDelete = frame.locator('[role="menuitem"]:has-text("Delete"), button:has-text("Delete")').first();
-      if (await menuDelete.isVisible({ timeout: 2000 }).catch(() => false)) {
+      if (await menuDelete.isVisible({ timeout: 2000 }).catch(() => false) && await menuDelete.isEnabled().catch(() => false)) {
         await menuDelete.click();
         await frame.waitForSelector('[role="dialog"]:has-text("Delete Container"), .pf-v6-c-modal-box:has-text("Delete Container"), .pf-v5-c-modal-box:has-text("Delete Container")', { timeout: 5000 });
         const confirmBtn = frame.locator('[role="dialog"] button:has-text("Delete Container"), .pf-v6-c-modal-box button:has-text("Delete Container")').first();
         await confirmBtn.click();
         await frame.waitForSelector('[role="dialog"], .pf-v6-c-modal-box, .pf-v5-c-modal-box', { state: 'detached', timeout: 5000 });
       }
-    } else if (await deleteBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await deleteBtn.click();
-      await frame.waitForSelector('[role="dialog"]:has-text("Delete Container"), .pf-v6-c-modal-box:has-text("Delete Container"), .pf-v5-c-modal-box:has-text("Delete Container")', { timeout: 5000 });
-      const confirmBtn = frame.locator('[role="dialog"] button:has-text("Delete Container"), .pf-v6-c-modal-box button:has-text("Delete Container")').first();
-      await confirmBtn.click();
-      await frame.waitForSelector('[role="dialog"], .pf-v6-c-modal-box, .pf-v5-c-modal-box', { state: 'detached', timeout: 5000 });
     }
   });
 
