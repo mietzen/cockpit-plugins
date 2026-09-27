@@ -48,6 +48,13 @@ import {
 } from "@patternfly/react-icons";
 import { SmbUser, SmbGroup, UserAccessMatrixItem } from "../types";
 
+const ACCESS_BADGE_CONFIG: Record<string, { label: string; color: "green" | "blue" | "purple" | "grey" }> = {
+  read_write: { label: "Read / Write", color: "green" },
+  read_only: { label: "Read-Only", color: "blue" },
+  guest_only: { label: "Guest Only", color: "purple" },
+  denied: { label: "Denied", color: "grey" },
+};
+
 interface UsersTabProps {
   users: SmbUser[];
   groups?: SmbGroup[];
@@ -506,37 +513,11 @@ export const UsersTab: React.FC<UsersTabProps> = ({
                       {allShareNames.map((sName) => {
                         const perm = item.shares.find((s) => s.share_name === sName);
                         if (!perm) return <Td key={sName}>—</Td>;
-                        if (perm.access === "read_write") {
-                          return (
-                            <Td key={sName}>
-                              <Tooltip content={perm.reason}>
-                                <Label color="green">Read / Write</Label>
-                              </Tooltip>
-                            </Td>
-                          );
-                        }
-                        if (perm.access === "read_only") {
-                          return (
-                            <Td key={sName}>
-                              <Tooltip content={perm.reason}>
-                                <Label color="blue">Read-Only</Label>
-                              </Tooltip>
-                            </Td>
-                          );
-                        }
-                        if (perm.access === "guest_only") {
-                          return (
-                            <Td key={sName}>
-                              <Tooltip content={perm.reason}>
-                                <Label color="purple">Guest Only</Label>
-                              </Tooltip>
-                            </Td>
-                          );
-                        }
+                        const cfg = ACCESS_BADGE_CONFIG[perm.access] || ACCESS_BADGE_CONFIG.denied;
                         return (
                           <Td key={sName}>
                             <Tooltip content={perm.reason}>
-                              <Label color="grey">Denied</Label>
+                              <Label color={cfg.color}>{cfg.label}</Label>
                             </Tooltip>
                           </Td>
                         );

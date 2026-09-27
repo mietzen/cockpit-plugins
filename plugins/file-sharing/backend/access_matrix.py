@@ -15,6 +15,10 @@ class AclTokenType(str, Enum):
     GROUP = "group"
 
 
+DEFAULT_HOMES_SHARE_NAME = "homes"
+DEFAULT_HOMES_PATH = "/home/%S"
+
+
 def parse_acl_tokens(acl_str: str) -> List[Tuple[AclTokenType, str]]:
     """Parses space- or comma-separated tokens into (token_type, name), supporting quotes."""
     if not acl_str:
@@ -88,8 +92,8 @@ def calculate_smb_user_matrix(
         for share in shares:
             share_name = share.get("name", "")
             raw_path = share.get("path", "")
-            if not raw_path and share_name.lower() == "homes":
-                raw_path = "/home/%S"
+            if not raw_path and share_name.lower() == DEFAULT_HOMES_SHARE_NAME:
+                raw_path = DEFAULT_HOMES_PATH
             share_path = expand_macros(raw_path, username)
             read_only = share.get("read_only", True)
             guest_ok = share.get("guest_ok", False)
@@ -108,11 +112,11 @@ def calculate_smb_user_matrix(
             reason = "Default share permissions"
 
             is_homes = (
-                share_name.lower() == "homes"
+                share_name.lower() == DEFAULT_HOMES_SHARE_NAME
                 or "%s" in raw_path.lower()
                 or "%u" in raw_path.lower()
-                or "%h" in raw_path.lower()
-                or raw_path.startswith("/home/")
+                or "%H" in raw_path
+                or share_path == f"/home/{username}"
             )
 
             if is_homes and not path_checker(share_path):
