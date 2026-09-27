@@ -44,10 +44,33 @@ def get_binary_info() -> Dict[str, Any]:
     }
 
 
-def get_service_unit_name(username: Optional[str] = None) -> str:
+def resolve_username(username: Optional[str] = None) -> str:
     if username and username != "root":
-        return f"code-server@{username}.service"
-    return "code-server.service"
+        return username
+    sudo_user = os.environ.get("SUDO_USER")
+    if sudo_user and sudo_user != "root":
+        return sudo_user
+    logname = os.environ.get("LOGNAME") or os.environ.get("USER")
+    if logname and logname != "root":
+        return logname
+    try:
+        with open("/etc/passwd", "r") as f:
+            for line in f:
+                parts = line.strip().split(":")
+                if len(parts) >= 3 and parts[2].isdigit():
+                    uid = int(parts[2])
+                    if 1000 <= uid < 65534:
+                        return parts[0]
+    except Exception:
+        pass
+    return username or "root"
+
+
+def get_service_unit_name(username: Optional[str] = None) -> str:
+    user = resolve_username(username)
+    if user and user != "root":
+        return f"code-server@{user}.service"
+    return "code-server@root.service"
 
 
 def get_service_status(username: Optional[str] = None) -> Dict[str, Any]:

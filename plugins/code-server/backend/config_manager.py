@@ -38,9 +38,10 @@ class CodeServerConfig:
 
 
 def get_user_config_path(username: Optional[str] = None) -> str:
-    if username:
+    user = username or os.environ.get("SUDO_USER") or os.environ.get("LOGNAME") or os.environ.get("USER")
+    if user and user != "root":
         try:
-            pw = pwd.getpwnam(username)
+            pw = pwd.getpwnam(user)
             return os.path.join(pw.pw_dir, ".config", "code-server", "config.yaml")
         except KeyError:
             pass

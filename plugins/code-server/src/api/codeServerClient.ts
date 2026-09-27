@@ -63,14 +63,25 @@ export class CodeServerClient {
     }
   }
 
+  private async getCurrentUser(): Promise<string | undefined> {
+    if (typeof cockpit !== "undefined" && typeof cockpit.user === "function") {
+      try {
+        const u = await cockpit.user();
+        return u?.name || u?.user;
+      } catch {}
+    }
+    return undefined;
+  }
+
   async getStatus(username?: string): Promise<CodeServerStatus> {
     if (!this.isCockpitAvailable()) {
       return DEFAULT_MOCK_STATUS;
     }
 
+    const user = username || (await this.getCurrentUser());
     const args = ["status"];
-    if (username) {
-      args.push("--user", username);
+    if (user) {
+      args.push("--user", user);
     }
 
     const res = await this.executeHelper(args, "require");
@@ -85,9 +96,10 @@ export class CodeServerClient {
       return { status: "ok", message: `Mock service ${verb} succeeded` };
     }
 
+    const user = username || (await this.getCurrentUser());
     const args = ["service", verb];
-    if (username) {
-      args.push("--user", username);
+    if (user) {
+      args.push("--user", user);
     }
 
     return await this.executeHelper(args);
@@ -98,9 +110,10 @@ export class CodeServerClient {
       return { status: "ok", message: "Mock config saved" };
     }
 
+    const user = username || (await this.getCurrentUser());
     const args = ["save_config", "--data", JSON.stringify(config)];
-    if (username) {
-      args.push("--user", username);
+    if (user) {
+      args.push("--user", user);
     }
 
     return await this.executeHelper(args);
@@ -111,9 +124,10 @@ export class CodeServerClient {
       return { status: "ok", message: "Mock install complete" };
     }
 
+    const user = username || (await this.getCurrentUser());
     const args = ["install"];
-    if (username) {
-      args.push("--user", username);
+    if (user) {
+      args.push("--user", user);
     }
 
     return await this.executeHelper(args);
