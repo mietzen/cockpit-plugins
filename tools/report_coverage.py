@@ -29,6 +29,8 @@ TIER_CONFIG = {
             "containerClient.ts",
             "fileSharingClient.ts",
             "zfsClient.ts",
+            "codeServerClient.ts",
+            "code_server_helper.py",
             "Client.ts",
         ],
     },

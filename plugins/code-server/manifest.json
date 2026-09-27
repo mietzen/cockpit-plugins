@@ -1,0 +1,13 @@
+{
+  "name": "code-server",
+  "version": 1,
+  "menu": {
+    "index": {
+      "label": "VS Code Server",
+      "order": 50,
+      "section": "tools"
+    }
+  },
+  "preload": [ "index" ],
+  "content-security-policy": "default-src 'self' 'unsafe-inline' 'unsafe-eval' blob: data:; connect-src 'self' * ws: wss:; frame-src * 'self' blob: data:; object-src 'self' blob: data:;"
+}

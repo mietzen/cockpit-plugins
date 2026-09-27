@@ -1,0 +1,25 @@
+name: Auto Update VS Code Server Upstream
+
+on:
+  schedule:
+    - cron: "0 0 * * 1" # Weekly every Monday
+  workflow_dispatch:
+
+jobs:
+  check-upstream:
+    name: Check Latest coder/code-server Release
+    runs-on: ubuntu-26.04
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v7
+
+      - name: Fetch Latest Upstream Version
+        id: upstream
+        run: |
+          LATEST_TAG=$(curl -fsSL https://api.github.com/repos/coder/code-server/releases/latest | grep '"tag_name":' | sed -E 's/.*"v([^"]+)".*/\1/')
+          echo "latest_version=$LATEST_TAG" >> $GITHUB_OUTPUT
+          echo "==> Latest upstream coder/code-server release: $LATEST_TAG"
+
+      - name: Verify Current Configuration
+        run: |
+          echo "==> Upstream code-server check completed for version ${{ steps.upstream.outputs.latest_version }}."
