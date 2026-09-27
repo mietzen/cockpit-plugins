@@ -33,10 +33,11 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
   const isInstalled = status.binary.installed;
   const isRunning = status.service.active;
   const port = status.config.port || 8080;
+  const protocol = status.config.cert ? "https:" : "http:";
 
   // Construct target URL for standalone opening
   const hostName = typeof window !== "undefined" ? window.location.hostname : "localhost";
-  const externalUrl = `http://${hostName}:${port}/`;
+  const externalUrl = `${protocol}//${hostName}:${port}/`;
 
   const handleOpenNewTab = () => {
     window.open(externalUrl, "_blank", "noopener,noreferrer");
@@ -51,8 +52,18 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
           flexWrap={{ default: "wrap" }}
           gap={{ default: "gapMd" }}
         >
-          <Flex alignItems={{ default: "alignItemsCenter" }} spaceItems={{ default: "spaceItemsMd" }}>
+          <Flex alignItems={{ default: "alignItemsCenter" }} spaceItems={{ default: "spaceItemsSm" }}>
             <h1 style={{ fontSize: "1.25rem", fontWeight: 600, margin: 0 }}>VS Code Server</h1>
+
+            <Tooltip content={`Open VS Code Server in new browser tab (${externalUrl})`}>
+              <Button
+                variant="plain"
+                icon={<ExternalLinkAltIcon />}
+                onClick={handleOpenNewTab}
+                aria-label="Open VS Code in new tab"
+                style={{ padding: "0 4px" }}
+              />
+            </Tooltip>
             
             {isInstalled ? (
               <Label color={isRunning ? "green" : "grey"} isCompact>

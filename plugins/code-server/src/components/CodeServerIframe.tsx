@@ -28,7 +28,8 @@ export const CodeServerIframe: React.FC<CodeServerIframeProps> = ({
   const password = status.config.password;
 
   const hostName = typeof window !== "undefined" ? window.location.hostname : "localhost";
-  const targetUrl = `http://${hostName}:${port}/`;
+  const protocol = status.config.cert ? "https:" : "http:";
+  const targetUrl = `${protocol}//${hostName}:${port}/`;
 
   if (!isRunning) {
     return (

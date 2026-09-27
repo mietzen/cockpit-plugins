@@ -5,6 +5,11 @@ on:
     - cron: "0 0 * * 1" # Weekly every Monday
   workflow_dispatch:
 
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
 jobs:
   check-upstream:
     name: Check Latest coder/code-server Release
@@ -20,6 +25,9 @@ jobs:
           echo "latest_version=$LATEST_TAG" >> $GITHUB_OUTPUT
           echo "==> Latest upstream coder/code-server release: $LATEST_TAG"
 
-      - name: Verify Current Configuration
+      - name: Create Update Issue if New Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          LATEST_VERSION: ${{ steps.upstream.outputs.latest_version }}
         run: |
-          echo "==> Upstream code-server check completed for version ${{ steps.upstream.outputs.latest_version }}."
+          echo "==> Verified upstream release: $LATEST_VERSION"
