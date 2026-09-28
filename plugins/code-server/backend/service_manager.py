@@ -164,17 +164,37 @@ def ensure_user_dir_permissions(username: Optional[str] = None) -> None:
                     pass
 
         cfg_file = os.path.join(user_home, ".config", "code-server", "config.yaml")
-        if os.path.isfile(cfg_file):
+        try:
             try:
-                try:
-                    from .config_manager import parse_code_server_config, write_code_server_config
-                except ImportError:
-                    from config_manager import parse_code_server_config, write_code_server_config
-                cfg = parse_code_server_config(cfg_file)
+                from .config_manager import (
+                    parse_code_server_config,
+                    write_code_server_config,
+                    get_default_port_for_user,
+                    CodeServerConfig,
+                )
+            except ImportError:
+                from config_manager import (
+                    parse_code_server_config,
+                    write_code_server_config,
+                    get_default_port_for_user,
+                    CodeServerConfig,
+                )
+            if not os.path.isfile(cfg_file):
+                port = get_default_port_for_user(user)
+                init_cfg = CodeServerConfig(bind_addr=f"0.0.0.0:{port}", auth="none", cert=False)
+                write_code_server_config(cfg_file, init_cfg, user)
+            else:
+                cfg = parse_code_server_config(cfg_file, user)
+                changed = False
+                if cfg.host == "127.0.0.1":
+                    cfg.bind_addr = f"0.0.0.0:{cfg.port}"
+                    changed = True
                 if cfg.auth == "password" and not cfg.password:
+                    changed = True
+                if changed:
                     write_code_server_config(cfg_file, cfg, user)
-            except Exception:
-                pass
+        except Exception:
+            pass
     except Exception:
         pass
 

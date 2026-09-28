@@ -171,8 +171,9 @@ if [ "${PLUGIN_NAME}" = "code-server" ]; then
                 CFG="\$CFG_DIR/config.yaml"
                 mkdir -p "\$CFG_DIR" 2>/dev/null || true
                 if [ ! -f "\$CFG" ]; then
-                    printf "bind-addr: 127.0.0.1:%s\\nauth: none\\ncert: false\\n" "\$PORT" > "\$CFG"
+                    printf "bind-addr: 0.0.0.0:%s\\nauth: none\\ncert: false\\n" "\$PORT" > "\$CFG"
                 else
+                    sed -i -E "s/bind-addr: 127\\.0\\.0\\.1:/bind-addr: 0.0.0.0:/" "\$CFG" 2>/dev/null || true
                     if grep -q "auth: password" "\$CFG" 2>/dev/null && ! grep -q "^password:" "\$CFG" 2>/dev/null; then
                         GEN_PASS=\$(head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \\n' | head -c 24)
                         echo "password: \${GEN_PASS}" >> "\$CFG"
