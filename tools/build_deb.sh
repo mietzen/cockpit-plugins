@@ -131,10 +131,30 @@ if [ "${PLUGIN_NAME}" = "code-server" ]; then
                 CFG_DIR="\$U_HOME/.config/code-server"
                 CFG="\$CFG_DIR/config.yaml"
                 mkdir -p "\$CFG_DIR" 2>/dev/null || true
+
+                CERT_ARG="cert: false"
+                if [ -d "/etc/cockpit/ws-certs.d" ]; then
+                    SYS_CERT=\$(find /etc/cockpit/ws-certs.d -name "*.cert" -o -name "*.crt" 2>/dev/null | head -n 1)
+                    SYS_KEY=\$(find /etc/cockpit/ws-certs.d -name "*.key" 2>/dev/null | head -n 1)
+                    if [ -n "\$SYS_CERT" ] && [ -n "\$SYS_KEY" ] && [ -f "\$SYS_CERT" ] && [ -f "\$SYS_KEY" ]; then
+                        cp "\$SYS_CERT" "\$CFG_DIR/server.crt" 2>/dev/null || true
+                        cp "\$SYS_KEY" "\$CFG_DIR/server.key" 2>/dev/null || true
+                        chmod 600 "\$CFG_DIR/server.crt" "\$CFG_DIR/server.key" 2>/dev/null || true
+                        CERT_ARG="cert: \$CFG_DIR/server.crt\\ncert-key: \$CFG_DIR/server.key"
+                    fi
+                fi
+
                 if [ ! -f "\$CFG" ]; then
-                    printf "bind-addr: 0.0.0.0:%s\\nauth: none\\ncert: false\\n" "\$PORT" > "\$CFG"
+                    printf "bind-addr: 0.0.0.0:%s\\nauth: none\\n%b\\napp-name: Code-Server\\ndisable-telemetry: true\\n" "\$PORT" "\$CERT_ARG" > "\$CFG"
                 else
                     sed -i -E "s/bind-addr: 127\\.0\\.0\\.1:/bind-addr: 0.0.0.0:/" "\$CFG" 2>/dev/null || true
+                    if [ -f "\$CFG_DIR/server.crt" ] && [ -f "\$CFG_DIR/server.key" ]; then
+                        if ! grep -q "^cert:" "\$CFG" 2>/dev/null || grep -q "^cert: false" "\$CFG" 2>/dev/null; then
+                            sed -i -E "/^cert:/d" "\$CFG" 2>/dev/null || true
+                            sed -i -E "/^cert-key:/d" "\$CFG" 2>/dev/null || true
+                            printf "cert: %s/server.crt\\ncert-key: %s/server.key\\n" "\$CFG_DIR" "\$CFG_DIR" >> "\$CFG"
+                        fi
+                    fi
                     if grep -q "auth: password" "\$CFG" 2>/dev/null && ! grep -q "^password:" "\$CFG" 2>/dev/null; then
                         GEN_PASS=\$(head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \\n' | head -c 24)
                         echo "password: \${GEN_PASS}" >> "\$CFG"

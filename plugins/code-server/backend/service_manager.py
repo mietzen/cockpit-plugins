@@ -163,7 +163,32 @@ def ensure_user_dir_permissions(username: Optional[str] = None) -> None:
                 except Exception:
                     pass
 
-        cfg_file = os.path.join(user_home, ".config", "code-server", "config.yaml")
+        cfg_dir = os.path.join(user_home, ".config", "code-server")
+        os.makedirs(cfg_dir, exist_ok=True)
+        cert_dst = os.path.join(cfg_dir, "server.crt")
+        key_dst = os.path.join(cfg_dir, "server.key")
+
+        cockpit_certs_dir = "/etc/cockpit/ws-certs.d"
+        if os.path.isdir(cockpit_certs_dir):
+            try:
+                cockpit_cert = None
+                cockpit_key = None
+                for fname in os.listdir(cockpit_certs_dir):
+                    if fname.endswith(".cert") or fname.endswith(".crt"):
+                        cockpit_cert = os.path.join(cockpit_certs_dir, fname)
+                    elif fname.endswith(".key"):
+                        cockpit_key = os.path.join(cockpit_certs_dir, fname)
+                if cockpit_cert and cockpit_key and os.path.isfile(cockpit_cert) and os.path.isfile(cockpit_key):
+                    shutil.copy2(cockpit_cert, cert_dst)
+                    shutil.copy2(cockpit_key, key_dst)
+                    os.chown(cert_dst, uid, gid)
+                    os.chown(key_dst, uid, gid)
+                    os.chmod(cert_dst, 0o600)
+                    os.chmod(key_dst, 0o600)
+            except Exception:
+                pass
+
+        cfg_file = os.path.join(cfg_dir, "config.yaml")
         try:
             try:
                 from .config_manager import (
@@ -179,9 +204,17 @@ def ensure_user_dir_permissions(username: Optional[str] = None) -> None:
                     get_default_port_for_user,
                     CodeServerConfig,
                 )
+            has_custom_cert = os.path.isfile(cert_dst) and os.path.isfile(key_dst)
             if not os.path.isfile(cfg_file):
                 port = get_default_port_for_user(user)
-                init_cfg = CodeServerConfig(bind_addr=f"0.0.0.0:{port}", auth="none", cert=False)
+                init_cfg = CodeServerConfig(
+                    bind_addr=f"0.0.0.0:{port}",
+                    auth="none",
+                    cert=cert_dst if has_custom_cert else False,
+                    cert_key=key_dst if has_custom_cert else None,
+                    app_name="Code-Server",
+                    disable_telemetry=True,
+                )
                 write_code_server_config(cfg_file, init_cfg, user)
             else:
                 cfg = parse_code_server_config(cfg_file, user)
@@ -189,7 +222,14 @@ def ensure_user_dir_permissions(username: Optional[str] = None) -> None:
                 if cfg.host == "127.0.0.1":
                     cfg.bind_addr = f"0.0.0.0:{cfg.port}"
                     changed = True
+                if has_custom_cert and (not cfg.cert or cfg.cert is True):
+                    cfg.cert = cert_dst
+                    cfg.cert_key = key_dst
+                    changed = True
                 if cfg.auth == "password" and not cfg.password:
+                    changed = True
+                if not cfg.app_name:
+                    cfg.app_name = "Code-Server"
                     changed = True
                 if changed:
                     write_code_server_config(cfg_file, cfg, user)

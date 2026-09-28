@@ -41,7 +41,10 @@ export interface CommandResult {
 
 export const getCodeServerUrl = (config?: Partial<CodeServerConfigData>): string => {
   const port = config?.port || 8080;
-  const protocol = config?.cert ? "https:" : "http:";
+  const protocol =
+    config?.cert || (typeof window !== "undefined" && window.location.protocol === "https:")
+      ? "https:"
+      : "http:";
   const hostName = typeof window !== "undefined" ? window.location.hostname : "localhost";
   return `${protocol}//${hostName}:${port}/`;
 };

@@ -12,7 +12,8 @@ class CodeServerConfig:
     bind_addr: str = DEFAULT_BIND_ADDR
     auth: str = DEFAULT_AUTH
     password: Optional[str] = None
-    cert: bool = False
+    cert: Any = False
+    cert_key: Optional[str] = None
     disable_telemetry: bool = False
     app_name: str = "Code-Server"
 
@@ -111,7 +112,14 @@ def parse_code_server_config(path: str, username: Optional[str] = None) -> CodeS
                 elif key == "password":
                     config.password = val
                 elif key == "cert":
-                    config.cert = val.lower() in ("true", "1", "yes")
+                    if val.lower() in ("true", "1", "yes"):
+                        config.cert = True
+                    elif val.lower() in ("false", "0", "no"):
+                        config.cert = False
+                    else:
+                        config.cert = val
+                elif key == "cert-key":
+                    config.cert_key = val
                 elif key == "disable-telemetry":
                     config.disable_telemetry = val.lower() in ("true", "1", "yes")
                 elif key == "app-name":
@@ -179,7 +187,14 @@ def write_code_server_config(path: str, config: CodeServerConfig, username: Opti
                 import secrets
                 auth_secret = secrets.token_hex(12)
             lines.append(f"password: {auth_secret}")  # codeql[py/clear-text-storage-sensitive-data]
-        lines.append(f"cert: {str(bool(config.cert)).lower()}")
+        if isinstance(config.cert, str) and config.cert:
+            lines.append(f"cert: {sanitize_yaml_val(config.cert)}")
+            if config.cert_key:
+                lines.append(f"cert-key: {sanitize_yaml_val(config.cert_key)}")
+        elif config.cert:
+            lines.append("cert: true")
+        else:
+            lines.append("cert: false")
         if config.disable_telemetry:
             lines.append("disable-telemetry: true")
 
