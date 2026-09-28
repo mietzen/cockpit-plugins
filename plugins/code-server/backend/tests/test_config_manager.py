@@ -117,9 +117,8 @@ def test_resolve_username_and_user_config_path():
     with patch.dict(os.environ, {"LOGNAME": "charlie"}, clear=True):
         assert resolve_username(None) == "charlie"
 
-    with patch.dict(os.environ, {}, clear=True), \
-         patch("builtins.open", patch("builtins.open")):
-        assert resolve_username("root") in ("root", "nils")
+    with patch.dict(os.environ, {"USER": "mockuser"}, clear=True):
+        assert resolve_username("root") == "mockuser"
 
     with patch("pwd.getpwnam", side_effect=KeyError("none")):
         path = get_user_config_path("nonexistentuser")
