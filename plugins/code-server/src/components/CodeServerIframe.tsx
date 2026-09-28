@@ -57,8 +57,7 @@ export const CodeServerIframe: React.FC<CodeServerIframeProps> = ({
   }
 
   const handleOpenStandalone = () => {
-    const standaloneUrl = window.location.href.split("#")[0] + "#/";
-    window.open(standaloneUrl, "_blank");
+    window.open(targetUrl, "_blank", "noopener,noreferrer");
   };
 
   return (
