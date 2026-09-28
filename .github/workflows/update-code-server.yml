@@ -13,7 +13,7 @@ permissions:
 jobs:
   check-upstream:
     name: Check Latest coder/code-server Release
-    runs-on: ubuntu-26.04
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v7
