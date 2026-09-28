@@ -43,7 +43,7 @@ def test_code_server_config_properties_and_to_dict():
 
 def test_parse_valid_yaml_config():
     with tempfile.NamedTemporaryFile("w", delete=False, suffix=".yaml") as f:
-        f.write("# Comment line\n\ninvalid_line_no_colon\nbind-addr: 0.0.0.0:8443\nauth: none\ncert: true\npassword: secret-pass\ndisable-telemetry: yes\n")
+        f.write("# Comment line\n\ninvalid_line_no_colon\nbind-addr: 0.0.0.0:8443\nauth: none\ncert: true\nhashed-password: secret-pass\ndisable-telemetry: yes\n")
         tmp_path = f.name
 
     try:
@@ -53,7 +53,7 @@ def test_parse_valid_yaml_config():
         assert cfg.port == 8443
         assert cfg.auth == "none"
         assert cfg.cert is True
-        assert cfg.password == "secret-pass"
+        assert cfg.hashed_password == "secret-pass"
         assert cfg.disable_telemetry is True
     finally:
         os.remove(tmp_path)
@@ -73,8 +73,8 @@ def test_write_and_update_config():
         cfg_path = os.path.join(tmpdir, "subdir", "config.yaml")
         new_cfg = CodeServerConfig(
             bind_addr="127.0.0.1:9000",
-            auth="password",
-            password="my-new-password",
+            auth="none",
+            hashed_password="my-new-password",
             cert=False,
             disable_telemetry=True,
         )
@@ -85,7 +85,7 @@ def test_write_and_update_config():
         parsed = parse_code_server_config(cfg_path)
         assert parsed.bind_addr == "127.0.0.1:9000"
         assert parsed.port == 9000
-        assert parsed.password == "my-new-password"
+        assert parsed.hashed_password == "my-new-password"
         assert parsed.disable_telemetry is True
 
 
@@ -95,7 +95,7 @@ def test_write_config_sanitization():
         malicious_cfg = CodeServerConfig(
             bind_addr="127.0.0.1:8080\nextra-key: injected",
             auth="password\ninjected: true",
-            password="secret\nhacked: 1",
+            hashed_password="secret\nhacked: 1",
             cert=False,
             disable_telemetry=False,
         )
@@ -104,9 +104,10 @@ def test_write_config_sanitization():
         assert success is True
 
         parsed = parse_code_server_config(cfg_path)
-        assert "\n" not in parsed.password
+        assert parsed.hashed_password is not None
+        assert "\n" not in parsed.hashed_password
         assert "\n" not in parsed.bind_addr
-        assert parsed.auth == "password"
+        assert parsed.auth == "none"
 
 
 def test_resolve_username_and_user_config_path():

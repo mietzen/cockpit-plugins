@@ -14,8 +14,7 @@ def test_handle_status_command():
             "bind_addr": "127.0.0.1:8080",
             "host": "127.0.0.1",
             "port": 8080,
-            "auth": "password",
-            "password": "secret",
+            "auth": "none",
             "cert": False,
         }
         mock_cfg.return_value = mock_obj
@@ -42,8 +41,7 @@ def test_handle_save_config_command():
     with patch("backend.code_server_helper.write_code_server_config", return_value=True):
         payload = json.dumps({
             "bind_addr": "0.0.0.0:8080",
-            "auth": "password",
-            "password": "new-pass",
+            "auth": "none",
             "cert": False,
         })
         res = handle_command(["save_config", "--user", "test-user", "--data", payload])

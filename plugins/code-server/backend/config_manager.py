@@ -11,7 +11,7 @@ DEFAULT_AUTH = "none"
 class CodeServerConfig:
     bind_addr: str = DEFAULT_BIND_ADDR
     auth: str = DEFAULT_AUTH
-    password: Optional[str] = None
+    hashed_password: Optional[str] = None
     cert: Any = False
     cert_key: Optional[str] = None
     disable_telemetry: bool = False
@@ -109,8 +109,8 @@ def parse_code_server_config(path: str, username: Optional[str] = None) -> CodeS
                     config.bind_addr = val
                 elif key == "auth":
                     config.auth = val
-                elif key == "password":
-                    config.password = val
+                elif key == "hashed-password":
+                    config.hashed_password = val
                 elif key == "cert":
                     if val.lower() in ("true", "1", "yes"):
                         config.cert = True
@@ -170,7 +170,7 @@ def write_code_server_config(path: str, config: CodeServerConfig, username: Opti
 
         default_bind = get_default_bind_addr_for_user(username)
         clean_bind = sanitize_yaml_val(config.bind_addr) or default_bind
-        clean_auth = "password" if sanitize_yaml_val(config.auth) != "none" else "none"
+        clean_auth = "password" if sanitize_yaml_val(config.auth) == "password" else "none"
 
         lines = [
             f"bind-addr: {clean_bind}",
@@ -178,15 +178,8 @@ def write_code_server_config(path: str, config: CodeServerConfig, username: Opti
         ]
         if config.app_name:
             lines.append(f"app-name: {sanitize_yaml_val(config.app_name)}")
-        auth_secret = sanitize_yaml_val(config.password)
-        if clean_auth == "password":
-            if not auth_secret and os.path.isfile(path):
-                existing = parse_code_server_config(path)
-                auth_secret = sanitize_yaml_val(existing.password)
-            if not auth_secret:
-                import secrets
-                auth_secret = secrets.token_hex(12)
-            lines.append(f"password: {auth_secret}")  # codeql[py/clear-text-storage-sensitive-data]
+        if config.hashed_password:
+            lines.append(f"hashed-password: {sanitize_yaml_val(config.hashed_password)}")
         if isinstance(config.cert, str) and config.cert:
             lines.append(f"cert: {sanitize_yaml_val(config.cert)}")
             if config.cert_key:
@@ -204,7 +197,7 @@ def write_code_server_config(path: str, config: CodeServerConfig, username: Opti
         temp_path = f"{path}.tmp.{os.getpid()}"
         fd = os.open(temp_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
         with open(fd, "w", encoding="utf-8") as f:
-            f.write(content)  # codeql[py/clear-text-storage-sensitive-data]
+            f.write(content)
 
         os.chmod(temp_path, 0o600)
 

@@ -17,7 +17,7 @@ test.describe.serial("Cockpit Code Server E2E Test Suite", () => {
 
   async function getFrame(): Promise<Frame> {
     const frameElement = await page.waitForSelector(
-      "iframe[name*='code-server']",
+      "iframe[name*='code-server'], iframe[src*='code-server']",
       { state: "attached", timeout: 25000 }
     );
     const frame = await frameElement.contentFrame();
@@ -71,7 +71,7 @@ test.describe.serial("Cockpit Code Server E2E Test Suite", () => {
 
   test("01. Authenticate to Cockpit and navigate to VS Code Server", async () => {
     const user = process.env.COCKPIT_USER || "test-user";
-    const pass = process.env.COCKPIT_PASSWORD || "cockpit123";
+    const pass = process.env.COCKPIT_PASSWORD || "password";
 
     await page.goto("/");
 

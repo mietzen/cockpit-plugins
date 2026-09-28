@@ -226,8 +226,6 @@ def ensure_user_dir_permissions(username: Optional[str] = None) -> None:
                     cfg.cert = cert_dst
                     cfg.cert_key = key_dst
                     changed = True
-                if cfg.auth == "password" and not cfg.password:
-                    changed = True
                 if not cfg.app_name:
                     cfg.app_name = "Code-Server"
                     changed = True

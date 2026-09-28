@@ -89,8 +89,8 @@ def handle_command(args: List[str]) -> Dict[str, Any]:
             data = json.loads(parsed.data)
             cfg = CodeServerConfig(
                 bind_addr=data.get("bind_addr", "127.0.0.1:8080"),
-                auth=data.get("auth", "password"),
-                password=data.get("password"),
+                auth=data.get("auth", "none"),
+                hashed_password=data.get("hashed_password"),
                 cert=bool(data.get("cert", False)),
                 disable_telemetry=bool(data.get("disable_telemetry", False)),
             )
