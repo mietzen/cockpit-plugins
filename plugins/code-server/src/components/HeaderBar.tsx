@@ -11,7 +11,6 @@ import {
   StopIcon,
   SyncAltIcon,
   ExternalLinkAltIcon,
-  CogIcon,
 } from "@patternfly/react-icons";
 import { CodeServerStatus, getCodeServerUrl } from "../types";
 
@@ -20,7 +19,6 @@ export interface HeaderBarProps {
   isLoading: boolean;
   onRefresh: () => void;
   onServiceAction: (action: "start" | "stop" | "restart") => void;
-  onOpenSettings: () => void;
 }
 
 export const HeaderBar: React.FC<HeaderBarProps> = ({
@@ -28,7 +26,6 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
   isLoading,
   onRefresh,
   onServiceAction,
-  onOpenSettings,
 }) => {
   const isInstalled = status.binary.installed;
   const isRunning = status.service.active;
@@ -125,13 +122,6 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
                     Start Service
                   </Button>
                 )}
-
-                <Button
-                  variant="plain"
-                  icon={<CogIcon />}
-                  onClick={onOpenSettings}
-                  aria-label="Code Server settings"
-                />
               </>
             )}
 

@@ -10,12 +10,11 @@ import {
 } from "@patternfly/react-core";
 import { useCockpitTheme } from "@cockpit-plugins/common";
 
-import { CodeServerStatus, CodeServerConfigData } from "./types";
+import { CodeServerStatus } from "./types";
 import { codeServerApi, DEFAULT_MOCK_STATUS } from "./api/codeServerClient";
 import { HeaderBar } from "./components/HeaderBar";
 import { CodeServerIframe } from "./components/CodeServerIframe";
 import { InstallPrompt } from "./components/InstallPrompt";
-import { SettingsModal } from "./components/SettingsModal";
 
 export const App: React.FC = () => {
   useCockpitTheme();
@@ -23,7 +22,6 @@ export const App: React.FC = () => {
   const [status, setStatus] = useState<CodeServerStatus>(DEFAULT_MOCK_STATUS);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [initialLoaded, setInitialLoaded] = useState<boolean>(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
 
   const [alerts, setAlerts] = useState<
     Array<{ id: string; variant: "success" | "danger" | "warning" | "info"; title: string; message?: string }>
@@ -41,10 +39,14 @@ export const App: React.FC = () => {
     }, 6000);
   };
 
-  const loadStatus = useCallback(async (isSilent = false) => {
+  const loadStatus = useCallback(async (isSilent = false, autoStart = false) => {
     if (!isSilent) setIsLoading(true);
     try {
-      const data = await codeServerApi.getStatus();
+      let data = await codeServerApi.getStatus();
+      if (autoStart && data.binary.installed && !data.service.active) {
+        await codeServerApi.serviceAction("start");
+        data = await codeServerApi.getStatus();
+      }
       setStatus(data);
     } catch (err: any) {
       addAlert("danger", "Failed to load VS Code Server status", err.message || String(err));
@@ -55,10 +57,10 @@ export const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    loadStatus();
+    loadStatus(false, true);
 
     const handleRefresh = () => {
-      loadStatus(true);
+      loadStatus(true, false);
     };
 
     window.addEventListener("focus", handleRefresh);
@@ -92,25 +94,6 @@ export const App: React.FC = () => {
     }
   };
 
-  const handleSaveConfig = async (newConfig: Partial<CodeServerConfigData>) => {
-    setIsLoading(true);
-    try {
-      const res = await codeServerApi.saveConfig(newConfig);
-      if (res.status === "error") {
-        addAlert("danger", "Failed to save configuration", res.error);
-      } else {
-        addAlert("success", "Configuration saved. Restarting service...");
-        setIsSettingsOpen(false);
-        await codeServerApi.serviceAction("restart");
-        await loadStatus(true);
-      }
-    } catch (err: any) {
-      addAlert("danger", "Save config error", err.message || String(err));
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handleInstall = async () => {
     setIsLoading(true);
     try {
@@ -119,7 +102,7 @@ export const App: React.FC = () => {
         addAlert("danger", "Failed to install code-server", res.error);
       } else {
         addAlert("success", "code-server installed successfully");
-        await loadStatus();
+        await loadStatus(false, true);
       }
     } catch (err: any) {
       addAlert("danger", "Installation error", err.message || String(err));
@@ -162,7 +145,6 @@ export const App: React.FC = () => {
         isLoading={isLoading}
         onRefresh={() => loadStatus()}
         onServiceAction={handleServiceAction}
-        onOpenSettings={() => setIsSettingsOpen(true)}
       />
 
       {status.binary.installed ? (
@@ -173,16 +155,6 @@ export const App: React.FC = () => {
         />
       ) : (
         <InstallPrompt isLoading={isLoading} onInstall={handleInstall} />
-      )}
-
-      {isSettingsOpen && (
-        <SettingsModal
-          isOpen={isSettingsOpen}
-          config={status.config}
-          isLoading={isLoading}
-          onClose={() => setIsSettingsOpen(false)}
-          onSave={handleSaveConfig}
-        />
       )}
     </Page>
   );

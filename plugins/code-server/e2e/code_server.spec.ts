@@ -142,23 +142,14 @@ test.describe.serial("Cockpit Code Server E2E Test Suite", () => {
     expect(hasAnyAction).toBeTruthy();
   });
 
-  test("03. Open and interact with Configuration Settings Modal", async () => {
+  test("03. Verify embedded IDE iframe or status banner", async () => {
     const frame = await getFrame();
 
-    const settingsBtn = frame.locator("button[aria-label='Code Server settings']").first();
-    if (await settingsBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await settingsBtn.click();
-      await frame.waitForSelector("[role='dialog']:has-text('VS Code Server Configuration')", { timeout: 5000 });
-
-      await saveScreenshot(page, "cs-02-settings-modal.png");
-
-      const portInput = frame.locator("input#cs-port");
-      await expect(portInput).toBeVisible();
-
-      // Close modal
-      const cancelBtn = frame.locator("[role='dialog'] button:has-text('Cancel')").first();
-      await cancelBtn.click();
-      await frame.waitForSelector("[role='dialog']", { state: "detached", timeout: 5000 });
+    const runningLabel = frame.locator("span.pf-v5-c-label:has-text('Running'), span:has-text('Running')").first();
+    const isRunning = await runningLabel.isVisible({ timeout: 5000 }).catch(() => false);
+    if (isRunning) {
+      const iframe = frame.locator("iframe[title='VS Code Server']").first();
+      await expect(iframe).toBeVisible({ timeout: 10000 });
     }
   });
 });
