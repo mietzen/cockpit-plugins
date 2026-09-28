@@ -3,7 +3,7 @@ import pwd
 from dataclasses import dataclass, asdict
 from typing import Optional, Dict, Any
 
-DEFAULT_BIND_ADDR = "0.0.0.0:8080"
+DEFAULT_BIND_ADDR = "127.0.0.1:8080"
 DEFAULT_AUTH = "none"
 
 
@@ -21,7 +21,7 @@ class CodeServerConfig:
     def host(self) -> str:
         if ":" in self.bind_addr:
             return self.bind_addr.split(":")[0]
-        return "0.0.0.0"
+        return "127.0.0.1"
 
     @property
     def port(self) -> int:
@@ -74,7 +74,7 @@ def get_default_port_for_user(username: Optional[str] = None) -> int:
 
 
 def get_default_bind_addr_for_user(username: Optional[str] = None) -> str:
-    return f"0.0.0.0:{get_default_port_for_user(username)}"
+    return f"127.0.0.1:{get_default_port_for_user(username)}"
 
 
 def get_user_config_path(username: Optional[str] = None) -> str:
@@ -200,10 +200,11 @@ def write_code_server_config(path: str, config: CodeServerConfig, username: Opti
 
         content = "\n".join(lines) + "\n"
 
-        # Atomic write via temporary file in same directory
+        # Atomic write via temporary file in same directory with 0600 permissions
         temp_path = f"{path}.tmp.{os.getpid()}"
-        with open(temp_path, "w", encoding="utf-8") as f:
-            f.write(content)
+        fd = os.open(temp_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with open(fd, "w", encoding="utf-8") as f:
+            f.write(content)  # codeql[py/clear-text-storage-sensitive-data]
 
         os.chmod(temp_path, 0o600)
 

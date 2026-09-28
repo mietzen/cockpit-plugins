@@ -16,29 +16,29 @@ from backend.config_manager import (
 def test_parse_default_config_when_file_not_found():
     with patch.dict(os.environ, {"USER": "root", "LOGNAME": "root"}, clear=True):
         cfg = parse_code_server_config("/non/existent/path/config.yaml", username="root")
-        assert cfg.bind_addr == "0.0.0.0:8080"
-        assert cfg.host == "0.0.0.0"
+        assert cfg.bind_addr == "127.0.0.1:8080"
+        assert cfg.host == "127.0.0.1"
         assert cfg.port == 8080
         assert cfg.auth == "none"
         assert cfg.cert is False
 
     cfg_user = parse_code_server_config("/non/existent/path/config.yaml")
-    assert cfg_user.host == "0.0.0.0"
+    assert cfg_user.host == "127.0.0.1"
     assert cfg_user.port >= 8080
 
 
 def test_code_server_config_properties_and_to_dict():
-    cfg_invalid_port = CodeServerConfig(bind_addr="0.0.0.0:invalid")
+    cfg_invalid_port = CodeServerConfig(bind_addr="127.0.0.1:invalid")
     assert cfg_invalid_port.port == 8080
-    assert cfg_invalid_port.host == "0.0.0.0"
+    assert cfg_invalid_port.host == "127.0.0.1"
 
     cfg_no_colon = CodeServerConfig(bind_addr="localhost")
-    assert cfg_no_colon.host == "0.0.0.0"
+    assert cfg_no_colon.host == "127.0.0.1"
     assert cfg_no_colon.port == 8080
 
     data = cfg_invalid_port.to_dict()
     assert data["port"] == 8080
-    assert data["host"] == "0.0.0.0"
+    assert data["host"] == "127.0.0.1"
 
 
 def test_parse_valid_yaml_config():

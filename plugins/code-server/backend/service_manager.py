@@ -208,7 +208,7 @@ def ensure_user_dir_permissions(username: Optional[str] = None) -> None:
             if not os.path.isfile(cfg_file):
                 port = get_default_port_for_user(user)
                 init_cfg = CodeServerConfig(
-                    bind_addr=f"0.0.0.0:{port}",
+                    bind_addr=f"127.0.0.1:{port}",
                     auth="none",
                     cert=cert_dst if has_custom_cert else False,
                     cert_key=key_dst if has_custom_cert else None,
@@ -219,8 +219,8 @@ def ensure_user_dir_permissions(username: Optional[str] = None) -> None:
             else:
                 cfg = parse_code_server_config(cfg_file, user)
                 changed = False
-                if cfg.host == "127.0.0.1":
-                    cfg.bind_addr = f"0.0.0.0:{cfg.port}"
+                if cfg.host == "0.0.0.0":
+                    cfg.bind_addr = f"127.0.0.1:{cfg.port}"
                     changed = True
                 if has_custom_cert and (not cfg.cert or cfg.cert is True):
                     cfg.cert = cert_dst

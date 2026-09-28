@@ -184,9 +184,9 @@ if [ "${PLUGIN_NAME}" = "code-server" ]; then
                 fi
 
                 if [ ! -f "\$CFG" ]; then
-                    printf "bind-addr: 0.0.0.0:%s\\nauth: none\\n%b\\napp-name: Code-Server\\ndisable-telemetry: true\\n" "\$PORT" "\$CERT_ARG" > "\$CFG"
+                    printf "bind-addr: 127.0.0.1:%s\\nauth: none\\n%b\\napp-name: Code-Server\\ndisable-telemetry: true\\n" "\$PORT" "\$CERT_ARG" > "\$CFG"
                 else
-                    sed -i -E "s/bind-addr: 127\\.0\\.0\\.1:/bind-addr: 0.0.0.0:/" "\$CFG" 2>/dev/null || true
+                    sed -i -E "s/bind-addr: 0\\.0\\.0\\.0:/bind-addr: 127.0.0.1:/" "\$CFG" 2>/dev/null || true
                     if [ -f "\$CFG_DIR/server.crt" ] && [ -f "\$CFG_DIR/server.key" ]; then
                         if ! grep -q "^cert:" "\$CFG" 2>/dev/null || grep -q "^cert: false" "\$CFG" 2>/dev/null; then
                             sed -i -E "/^cert:/d" "\$CFG" 2>/dev/null || true
