@@ -12,7 +12,6 @@ import { useCockpitTheme } from "@cockpit-plugins/common";
 
 import { CodeServerStatus } from "./types";
 import { codeServerApi, DEFAULT_MOCK_STATUS } from "./api/codeServerClient";
-import { HeaderBar } from "./components/HeaderBar";
 import { CodeServerIframe } from "./components/CodeServerIframe";
 import { InstallPrompt } from "./components/InstallPrompt";
 
@@ -139,13 +138,6 @@ export const App: React.FC = () => {
           </Alert>
         ))}
       </AlertGroup>
-
-      <HeaderBar
-        status={status}
-        isLoading={isLoading}
-        onRefresh={() => loadStatus()}
-        onServiceAction={handleServiceAction}
-      />
 
       {status.binary.installed ? (
         <CodeServerIframe

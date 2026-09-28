@@ -1,11 +1,10 @@
 {
   "name": "code-server",
   "version": 1,
-  "menu": {
+  "tools": {
     "index": {
-      "label": "VS Code Server",
-      "order": 50,
-      "section": "tools"
+      "label": "Code-Server",
+      "order": 50
     }
   },
   "preload": [ "index" ],

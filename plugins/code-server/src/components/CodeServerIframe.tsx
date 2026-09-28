@@ -6,9 +6,9 @@ import {
   EmptyStateBody,
   EmptyStateFooter,
   Button,
-  ClipboardCopy,
+  Tooltip,
 } from "@patternfly/react-core";
-import { PlayIcon, ExclamationTriangleIcon } from "@patternfly/react-icons";
+import { PlayIcon, ExclamationTriangleIcon, ExternalLinkAltIcon } from "@patternfly/react-icons";
 import { CodeServerStatus, getCodeServerUrl } from "../types";
 
 export interface CodeServerIframeProps {
@@ -24,15 +24,14 @@ export const CodeServerIframe: React.FC<CodeServerIframeProps> = ({
 }) => {
   const [iframeError, setIframeError] = useState<boolean>(false);
   const isRunning = status.service.active;
-  const password = status.config.password;
   const targetUrl = getCodeServerUrl(status.config);
 
   if (!isRunning) {
     return (
-      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "65vh" }}>
+      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "80vh" }}>
         <EmptyState>
           <EmptyStateHeader
-            titleText="VS Code Server is Stopped"
+            titleText="Code-Server is Stopped"
             headingLevel="h2"
             icon={<EmptyStateIcon icon={PlayIcon} />}
           />
@@ -57,41 +56,52 @@ export const CodeServerIframe: React.FC<CodeServerIframeProps> = ({
     );
   }
 
+  const handleOpenStandalone = () => {
+    const standaloneUrl = window.location.href.split("#")[0] + "#/";
+    window.open(standaloneUrl, "_blank");
+  };
+
   return (
-    <div style={{ position: "relative", width: "100%", height: "calc(100vh - 72px)", display: "flex", flexDirection: "column" }}>
-      {password && (
-        <div
-          style={{
-            padding: "0.5rem 1rem",
-            backgroundColor: "var(--pf-v5-global--BackgroundColor--200, #161b22)",
-            borderBottom: "1px solid var(--pf-v5-global--BorderColor--100, #30363d)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            fontSize: "0.85rem",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-            <span><strong>Authentication Password:</strong></span>
-            <div style={{ width: "240px" }}>
-              <ClipboardCopy isReadOnly isCode hoverTip="Copy password" clickTip="Copied">
-                {password}
-              </ClipboardCopy>
-            </div>
-          </div>
-          <div>
-            <span style={{ color: "var(--pf-v5-global--Color--200, #8b949e)" }}>
-              If your browser blocks the HTTP iframe on an HTTPS connection, click <strong>Open in New Tab</strong> above.
-            </span>
-          </div>
-        </div>
-      )}
+    <div style={{ position: "relative", width: "100%", height: "100vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      <div
+        style={{
+          position: "absolute",
+          top: "10px",
+          left: "10px",
+          zIndex: 1000,
+        }}
+      >
+        <Tooltip content="Open in New Tab">
+          <Button
+            variant="plain"
+            aria-label="Open in New Tab"
+            onClick={handleOpenStandalone}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: "32px",
+              height: "32px",
+              padding: 0,
+              borderRadius: "6px",
+              backgroundColor: "rgba(20, 20, 25, 0.7)",
+              backdropFilter: "blur(6px)",
+              border: "1px solid rgba(255, 255, 255, 0.15)",
+              color: "#c9d1d9",
+              boxShadow: "0 2px 8px rgba(0, 0, 0, 0.35)",
+              cursor: "pointer",
+            }}
+          >
+            <ExternalLinkAltIcon />
+          </Button>
+        </Tooltip>
+      </div>
 
       {iframeError ? (
         <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%" }}>
           <EmptyState>
             <EmptyStateHeader
-              titleText="Unable to Embed VS Code in Frame"
+              titleText="Unable to Embed Code-Server in Frame"
               headingLevel="h2"
               icon={<EmptyStateIcon icon={ExclamationTriangleIcon} />}
             />
@@ -101,7 +111,7 @@ export const CodeServerIframe: React.FC<CodeServerIframeProps> = ({
             <EmptyStateFooter>
               <Button
                 variant="primary"
-                onClick={() => window.open(targetUrl, "_blank", "noopener,noreferrer")}
+                onClick={handleOpenStandalone}
               >
                 Open in New Tab
               </Button>
@@ -111,7 +121,7 @@ export const CodeServerIframe: React.FC<CodeServerIframeProps> = ({
       ) : (
         <iframe
           src={targetUrl}
-          title="VS Code Server"
+          title="Code-Server"
           style={{
             width: "100%",
             height: "100%",

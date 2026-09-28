@@ -150,14 +150,28 @@ if [ "${PLUGIN_NAME}" = "code-server" ]; then
             systemctl enable --now "code-server@\${u}.service" 2>/dev/null || true
         fi
     done
+    CODE_BIN=\$(command -v code-server 2>/dev/null || true)
+    if [ -n "\$CODE_BIN" ]; then
+        mkdir -p /usr/local/bin
+        cat << 'CODE_WRAPPER_EOF' > /usr/local/bin/code
+#!/bin/sh
+exec code-server "\$@"
+CODE_WRAPPER_EOF
+        chmod 755 /usr/local/bin/code
+    fi
 fi
 exit 0
 POSTINST_EOF
     chmod 755 "$STAGE_DIR/DEBIAN/postinst"
 
-    cat << 'PRERM_EOF' > "$STAGE_DIR/DEBIAN/prerm"
+    cat << PRERM_EOF > "$STAGE_DIR/DEBIAN/prerm"
 #!/bin/sh
 set -e
+if [ "${PLUGIN_NAME}" = "code-server" ]; then
+    if [ -f /usr/local/bin/code ] && grep -q "exec code-server" /usr/local/bin/code 2>/dev/null; then
+        rm -f /usr/local/bin/code
+    fi
+fi
 exit 0
 PRERM_EOF
     chmod 755 "$STAGE_DIR/DEBIAN/prerm"

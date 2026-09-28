@@ -14,6 +14,7 @@ class CodeServerConfig:
     password: Optional[str] = None
     cert: bool = False
     disable_telemetry: bool = False
+    app_name: str = "Code-Server"
 
     @property
     def host(self) -> str:
@@ -113,6 +114,8 @@ def parse_code_server_config(path: str, username: Optional[str] = None) -> CodeS
                     config.cert = val.lower() in ("true", "1", "yes")
                 elif key == "disable-telemetry":
                     config.disable_telemetry = val.lower() in ("true", "1", "yes")
+                elif key == "app-name":
+                    config.app_name = val
     except Exception:
         pass
 
@@ -165,6 +168,8 @@ def write_code_server_config(path: str, config: CodeServerConfig, username: Opti
             f"bind-addr: {clean_bind}",
             f"auth: {clean_auth}",
         ]
+        if config.app_name:
+            lines.append(f"app-name: {sanitize_yaml_val(config.app_name)}")
         auth_secret = sanitize_yaml_val(config.password)
         if clean_auth == "password":
             if not auth_secret and os.path.isfile(path):
