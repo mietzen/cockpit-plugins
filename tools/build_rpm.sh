@@ -160,32 +160,32 @@ if [ -d /usr/libexec/${HELPER_DIR_NAME} ]; then
     chmod -R 755 /usr/libexec/${HELPER_DIR_NAME}
 fi
 if [ "${PLUGIN_NAME}" = "code-server" ]; then
-    TARGET_USERS=$(awk -F: '$3 >= 1000 && $3 < 65534 {print $1}' /etc/passwd 2>/dev/null || true)
-    for u in ${TARGET_USERS}; do
-        if id "$u" >/dev/null 2>&1; then
-            U_HOME=$(getent passwd "$u" | cut -d: -f6)
-            UID_NUM=$(id -u "$u" 2>/dev/null || echo 1000)
-            PORT=$(( 8080 + UID_NUM - 1000 ))
-            if [ -n "$U_HOME" ]; then
-                CFG_DIR="$U_HOME/.config/code-server"
-                CFG="$CFG_DIR/config.yaml"
-                mkdir -p "$CFG_DIR" 2>/dev/null || true
-                if [ ! -f "$CFG" ]; then
-                    printf "bind-addr: 127.0.0.1:%s\nauth: none\ncert: false\n" "$PORT" > "$CFG"
+    TARGET_USERS=\$(awk -F: '\$3 >= 1000 && \$3 < 65534 {print \$1}' /etc/passwd 2>/dev/null || true)
+    for u in \${TARGET_USERS}; do
+        if id "\$u" >/dev/null 2>&1; then
+            U_HOME=\$(getent passwd "\$u" | cut -d: -f6)
+            UID_NUM=\$(id -u "\$u" 2>/dev/null || echo 1000)
+            PORT=\$(( 8080 + UID_NUM - 1000 ))
+            if [ -n "\$U_HOME" ]; then
+                CFG_DIR="\$U_HOME/.config/code-server"
+                CFG="\$CFG_DIR/config.yaml"
+                mkdir -p "\$CFG_DIR" 2>/dev/null || true
+                if [ ! -f "\$CFG" ]; then
+                    printf "bind-addr: 127.0.0.1:%s\\nauth: none\\ncert: false\\n" "\$PORT" > "\$CFG"
                 else
-                    if grep -q "auth: password" "$CFG" 2>/dev/null && ! grep -q "^password:" "$CFG" 2>/dev/null; then
-                        GEN_PASS=$(head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n' | head -c 24)
-                        echo "password: ${GEN_PASS}" >> "$CFG"
+                    if grep -q "auth: password" "\$CFG" 2>/dev/null && ! grep -q "^password:" "\$CFG" 2>/dev/null; then
+                        GEN_PASS=\$(head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \\n' | head -c 24)
+                        echo "password: \${GEN_PASS}" >> "\$CFG"
                     fi
                 fi
                 for p in ".config/code-server" ".local/share/code-server" ".cache/code-server"; do
-                    if [ -d "$U_HOME/$p" ]; then
-                        chown -R "$u:$u" "$U_HOME/$p" 2>/dev/null || true
-                        chmod -R u+rwX "$U_HOME/$p" 2>/dev/null || true
+                    if [ -d "\$U_HOME/\$p" ]; then
+                        chown -R "\$u:\$u" "\$U_HOME/\$p" 2>/dev/null || true
+                        chmod -R u+rwX "\$U_HOME/\$p" 2>/dev/null || true
                     fi
                 done
             fi
-            systemctl enable --now "code-server@${u}.service" 2>/dev/null || true
+            systemctl enable --now "code-server@\${u}.service" 2>/dev/null || true
         fi
     done
 fi
