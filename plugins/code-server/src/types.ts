@@ -14,17 +14,21 @@ export interface ServiceInfo {
 }
 
 export interface CodeServerConfigData {
-  bind_addr: string;
+  bind_addr?: string;
+  socket?: string;
+  socket_mode?: string;
   host: string;
   port: number;
   auth: "password" | "none" | string;
   password?: string;
-  cert: boolean;
+  cert: boolean | string;
   disable_telemetry?: boolean;
 }
 
 export interface CodeServerStatus {
   status: "ok" | "error";
+  user?: string;
+  uid?: number;
   binary: BinaryInfo;
   service: ServiceInfo;
   config: CodeServerConfigData;
@@ -39,12 +43,13 @@ export interface CommandResult {
   output?: string;
 }
 
-export const getCodeServerUrl = (config?: Partial<CodeServerConfigData>): string => {
-  const port = config?.port || 8080;
-  const protocol =
-    config?.cert || (typeof window !== "undefined" && window.location.protocol === "https:")
-      ? "https:"
-      : "http:";
-  const hostName = typeof window !== "undefined" ? window.location.hostname : "localhost";
-  return `${protocol}//${hostName}:${port}/`;
+export const getCodeServerUrl = (
+  uidOrConfig?: number | string | null | Partial<CodeServerConfigData>,
+  _config?: Partial<CodeServerConfigData>
+): string => {
+  let effectiveUid: number | string = 1000;
+  if (typeof uidOrConfig === "number" || typeof uidOrConfig === "string") {
+    effectiveUid = uidOrConfig;
+  }
+  return `/code-server/${effectiveUid}/`;
 };

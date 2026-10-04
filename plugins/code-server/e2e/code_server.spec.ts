@@ -121,9 +121,9 @@ test.describe.serial("Cockpit Code Server E2E Test Suite", () => {
 
     const frame = await getFrame();
     await frame.locator("#root").waitFor({ state: "attached", timeout: 20000 });
-    const hasFrameContent =
-      (await frame.locator("iframe[title*='Code'], h2:has-text('Code-Server is Stopped'), h2:has-text('Install')").first().isVisible({ timeout: 25000 }).catch(() => false));
-    expect(hasFrameContent).toBeTruthy();
+    const contentLocator = frame.locator("iframe[title*='Code'], h2:has-text('Code-Server is Stopped'), h2:has-text('Install')").first();
+    await contentLocator.waitFor({ state: "visible", timeout: 25000 });
+    expect(await contentLocator.isVisible()).toBeTruthy();
 
     await saveScreenshot(page, "cs-01-overview-dark.png");
   });
@@ -131,26 +131,18 @@ test.describe.serial("Cockpit Code Server E2E Test Suite", () => {
   test("02. Verify Overlay Controls and Actions", async () => {
     const frame = await getFrame();
 
-    // Verify Open in New Tab overlay icon or Start/Install controls
-    const newTabBtn = frame.locator("button[aria-label='Open in New Tab'], button:has-text('Open in New Tab')").first();
-    const startBtn = frame.locator("button:has-text('Start Service')").first();
-    const installBtn = frame.locator("button:has-text('Install code-server')").first();
-
-    const hasAnyAction =
-      (await newTabBtn.isVisible().catch(() => false)) ||
-      (await startBtn.isVisible().catch(() => false)) ||
-      (await installBtn.isVisible().catch(() => false));
-
-    expect(hasAnyAction).toBeTruthy();
+    const actionLocator = frame.locator("button[aria-label='Open in New Tab'], button:has-text('Open in New Tab'), button:has-text('Start Service'), button:has-text('Install code-server')").first();
+    await actionLocator.waitFor({ state: "visible", timeout: 15000 });
+    expect(await actionLocator.isVisible()).toBeTruthy();
   });
 
   test("03. Verify embedded IDE iframe", async () => {
     const frame = await getFrame();
 
     const ideIframe = frame.locator("iframe[title='Code-Server'], iframe[title='VS Code Server']").first();
-    const isIframeVisible = await ideIframe.isVisible({ timeout: 10000 }).catch(() => false);
-    if (isIframeVisible) {
-      await expect(ideIframe).toBeVisible();
-    }
+    await ideIframe.waitFor({ state: "visible", timeout: 15000 });
+    await expect(ideIframe).toBeVisible();
+    const src = await ideIframe.getAttribute("src");
+    expect(src).toContain("/code-server/");
   });
 });

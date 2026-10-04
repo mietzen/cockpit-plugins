@@ -90,7 +90,7 @@ if command -v rpmbuild >/dev/null 2>&1; then
         RPM_DESC="Docker and Podman container management plugin for Cockpit."
     elif [ "$PLUGIN_NAME" = "code-server" ]; then
         RPM_SUMMARY="VS Code Server plugin for Cockpit"
-        RPM_REQUIRES="cockpit-bridge, python3, code-server"
+        RPM_REQUIRES="cockpit-bridge, python3, code-server, nginx"
         RPM_DESC="VS Code Server plugin for Cockpit."
     fi
 
@@ -136,6 +136,20 @@ fi
 if [ -d "${PWD}/${PLUGIN_DIR}/backend" ]; then
     cp -r "${PWD}/${PLUGIN_DIR}/backend/"* %{buildroot}/usr/libexec/${HELPER_DIR_NAME}/
 fi
+if [ -d "${PWD}/${PLUGIN_DIR}/packaging" ]; then
+    if [ -f "${PWD}/${PLUGIN_DIR}/packaging/systemd/10-code-server.conf" ]; then
+        mkdir -p %{buildroot}/etc/systemd/system/cockpit.socket.d
+        cp "${PWD}/${PLUGIN_DIR}/packaging/systemd/10-code-server.conf" %{buildroot}/etc/systemd/system/cockpit.socket.d/
+    fi
+    if [ -f "${PWD}/${PLUGIN_DIR}/packaging/nginx/cockpit-code-server.conf" ]; then
+        mkdir -p %{buildroot}/etc/nginx/conf.d
+        cp "${PWD}/${PLUGIN_DIR}/packaging/nginx/cockpit-code-server.conf" %{buildroot}/etc/nginx/conf.d/
+    fi
+    if [ -f "${PWD}/${PLUGIN_DIR}/packaging/tmpfiles/cockpit-code-server.conf" ]; then
+        mkdir -p %{buildroot}/usr/lib/tmpfiles.d
+        cp "${PWD}/${PLUGIN_DIR}/packaging/tmpfiles/cockpit-code-server.conf" %{buildroot}/usr/lib/tmpfiles.d/
+    fi
+fi
 if [ -d "${PWD}/packages/common/python/cockpit_common" ]; then
     mkdir -p %{buildroot}/usr/libexec/${HELPER_DIR_NAME}/cockpit_common
     cp -r "${PWD}/packages/common/python/cockpit_common/"* %{buildroot}/usr/libexec/${HELPER_DIR_NAME}/cockpit_common/
@@ -154,51 +168,89 @@ rm -rf %{buildroot}
 %defattr(-,root,root,-)
 /usr/share/cockpit/${PLUGIN_NAME}
 /usr/libexec/${HELPER_DIR_NAME}
+%{_sysconfdir}/systemd/system/cockpit.socket.d/10-code-server.conf
+%{_sysconfdir}/nginx/conf.d/cockpit-code-server.conf
+/usr/lib/tmpfiles.d/cockpit-code-server.conf
 
 %post
 if [ -d /usr/libexec/${HELPER_DIR_NAME} ]; then
     chmod -R 755 /usr/libexec/${HELPER_DIR_NAME}
 fi
 if [ "${PLUGIN_NAME}" = "code-server" ]; then
+    mkdir -p /run/code-server
+    chmod 1777 /run/code-server
+    if command -v systemd-tmpfiles >/dev/null 2>&1; then
+        systemd-tmpfiles --create /usr/lib/tmpfiles.d/cockpit-code-server.conf 2>/dev/null || true
+    fi
+
+    if [ ! -f /etc/cockpit/ws-certs.d/0-self-signed.cert ] || [ ! -f /etc/cockpit/ws-certs.d/0-self-signed.key ]; then
+        if command -v remotectl >/dev/null 2>&1; then
+            remotectl certificate --ensure 2>/dev/null || true
+        fi
+        SYS_CERT=\$(find /etc/cockpit/ws-certs.d -name "*.cert" -o -name "*.crt" 2>/dev/null | sort -r | head -n 1)
+        SYS_KEY=\$(find /etc/cockpit/ws-certs.d -name "*.key" 2>/dev/null | sort -r | head -n 1)
+        if [ -n "\$SYS_CERT" ] && [ -n "\$SYS_KEY" ]; then
+            ln -sf "\$SYS_CERT" /etc/cockpit/ws-certs.d/0-self-signed.cert 2>/dev/null || true
+            ln -sf "\$SYS_KEY" /etc/cockpit/ws-certs.d/0-self-signed.key 2>/dev/null || true
+        fi
+    fi
+
+    # Ensure cockpit.conf has reverse-proxy headers under [WebService]
+    if [ -f /etc/cockpit/cockpit.conf ]; then
+        if ! grep -q "^\\[WebService\\]" /etc/cockpit/cockpit.conf 2>/dev/null; then
+            printf "\\n[WebService]\\nProtocolHeader = X-Forwarded-Proto\\nForwardedForHeader = X-Forwarded-For\\n" >> /etc/cockpit/cockpit.conf
+        else
+            if ! grep -q "^ProtocolHeader" /etc/cockpit/cockpit.conf 2>/dev/null; then
+                sed -i -E "s|^\\[WebService\\]|[WebService]\\nProtocolHeader = X-Forwarded-Proto|" /etc/cockpit/cockpit.conf 2>/dev/null || true
+            fi
+            if ! grep -q "^ForwardedForHeader" /etc/cockpit/cockpit.conf 2>/dev/null; then
+                sed -i -E "s|^\\[WebService\\]|[WebService]\\nForwardedForHeader = X-Forwarded-For|" /etc/cockpit/cockpit.conf 2>/dev/null || true
+            fi
+        fi
+    else
+        mkdir -p /etc/cockpit
+        cat << 'COCKPIT_CONF_EOF' > /etc/cockpit/cockpit.conf
+[WebService]
+ProtocolHeader = X-Forwarded-Proto
+ForwardedForHeader = X-Forwarded-For
+COCKPIT_CONF_EOF
+    fi
+
+    if command -v systemctl >/dev/null 2>&1; then
+        systemctl stop cockpit.socket 2>/dev/null || true
+        systemctl daemon-reload 2>/dev/null || true
+        systemctl start cockpit.socket 2>/dev/null || true
+        if command -v nginx >/dev/null 2>&1 && nginx -t >/dev/null 2>&1; then
+            systemctl reload nginx 2>/dev/null || systemctl restart nginx 2>/dev/null || true
+        fi
+    fi
+
     TARGET_USERS=\$(awk -F: '\$3 >= 1000 && \$3 < 65534 {print \$1}' /etc/passwd 2>/dev/null || true)
     for u in \${TARGET_USERS}; do
         if id "\$u" >/dev/null 2>&1; then
             U_HOME=\$(getent passwd "\$u" | cut -d: -f6)
             UID_NUM=\$(id -u "\$u" 2>/dev/null || echo 1000)
-            PORT=\$(( 8080 + UID_NUM - 1000 ))
             if [ -n "\$U_HOME" ]; then
                 CFG_DIR="\$U_HOME/.config/code-server"
                 CFG="\$CFG_DIR/config.yaml"
                 mkdir -p "\$CFG_DIR" 2>/dev/null || true
 
-                CERT_ARG="cert: false"
-                if [ -d "/etc/cockpit/ws-certs.d" ]; then
-                    SYS_CERT=\$(find /etc/cockpit/ws-certs.d -name "*.cert" -o -name "*.crt" 2>/dev/null | head -n 1)
-                    SYS_KEY=\$(find /etc/cockpit/ws-certs.d -name "*.key" 2>/dev/null | head -n 1)
-                    if [ -n "\$SYS_CERT" ] && [ -n "\$SYS_KEY" ] && [ -f "\$SYS_CERT" ] && [ -f "\$SYS_KEY" ]; then
-                        cp "\$SYS_CERT" "\$CFG_DIR/server.crt" 2>/dev/null || true
-                        cp "\$SYS_KEY" "\$CFG_DIR/server.key" 2>/dev/null || true
-                        chmod 600 "\$CFG_DIR/server.crt" "\$CFG_DIR/server.key" 2>/dev/null || true
-                        CERT_ARG="cert: \$CFG_DIR/server.crt\\ncert-key: \$CFG_DIR/server.key"
+                if [ ! -f "\$CFG" ]; then
+                    printf "socket: /run/code-server/%s.sock\\nsocket-mode: 666\\nauth: none\\ncert: false\\napp-name: Code-Server\\ndisable-telemetry: true\\n" "\$UID_NUM" > "\$CFG"
+                else
+                    sed -i -E "s|^bind-addr:.*|socket: /run/code-server/\${UID_NUM}.sock\\nsocket-mode: 666|" "\$CFG" 2>/dev/null || true
+                    if grep -q "^socket:" "\$CFG" 2>/dev/null; then
+                        sed -i -E "s|^socket:.*|socket: /run/code-server/\${UID_NUM}.sock|" "\$CFG" 2>/dev/null || true
+                    else
+                        printf "socket: /run/code-server/%s.sock\\nsocket-mode: 666\\n" "\$UID_NUM" >> "\$CFG"
                     fi
+                    if ! grep -q "^socket-mode:" "\$CFG" 2>/dev/null; then
+                        echo "socket-mode: 666" >> "\$CFG"
+                    fi
+                    sed -i -E "s|^cert:.*|cert: false|" "\$CFG" 2>/dev/null || true
+                    sed -i -E "s|^cert-key:.*||" "\$CFG" 2>/dev/null || true
                 fi
 
-                if [ ! -f "\$CFG" ]; then
-                    printf "bind-addr: 127.0.0.1:%s\\nauth: none\\n%b\\napp-name: Code-Server\\ndisable-telemetry: true\\n" "\$PORT" "\$CERT_ARG" > "\$CFG"
-                else
-                    sed -i -E "s/bind-addr: 0\\.0\\.0\\.0:/bind-addr: 127.0.0.1:/" "\$CFG" 2>/dev/null || true
-                    if [ -f "\$CFG_DIR/server.crt" ] && [ -f "\$CFG_DIR/server.key" ]; then
-                        if ! grep -q "^cert:" "\$CFG" 2>/dev/null || grep -q "^cert: false" "\$CFG" 2>/dev/null; then
-                            sed -i -E "/^cert:/d" "\$CFG" 2>/dev/null || true
-                            sed -i -E "/^cert-key:/d" "\$CFG" 2>/dev/null || true
-                            printf "cert: %s/server.crt\\ncert-key: %s/server.key\\n" "\$CFG_DIR" "\$CFG_DIR" >> "\$CFG"
-                        fi
-                    fi
-                    if grep -q "auth: password" "\$CFG" 2>/dev/null && ! grep -q "^password:" "\$CFG" 2>/dev/null; then
-                        GEN_PASS=\$(head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \\n' | head -c 24)
-                        echo "password: \${GEN_PASS}" >> "\$CFG"
-                    fi
-                fi
                 for p in ".config/code-server" ".local/share/code-server" ".cache/code-server"; do
                     if [ -d "\$U_HOME/\$p" ]; then
                         chown -R "\$u:\$u" "\$U_HOME/\$p" 2>/dev/null || true
@@ -220,10 +272,22 @@ CODE_WRAPPER_EOF
     fi
 fi
 
-%postun
+%preun
 if [ "${PLUGIN_NAME}" = "code-server" ]; then
-    if [ "\$1" -eq 0 ] && [ -f /usr/local/bin/code ] && grep -q "exec code-server" /usr/local/bin/code 2>/dev/null; then
-        rm -f /usr/local/bin/code
+    if [ "\$1" -eq 0 ]; then
+        if [ -f /usr/local/bin/code ] && grep -q "exec code-server" /usr/local/bin/code 2>/dev/null; then
+            rm -f /usr/local/bin/code
+        fi
+        rm -f /etc/systemd/system/cockpit.socket.d/10-code-server.conf
+        rm -f /etc/nginx/conf.d/cockpit-code-server.conf
+        rm -f /usr/lib/tmpfiles.d/cockpit-code-server.conf
+        if command -v systemctl >/dev/null 2>&1; then
+            if command -v nginx >/dev/null 2>&1 && nginx -t >/dev/null 2>&1; then
+                systemctl restart nginx 2>/dev/null || systemctl reload nginx 2>/dev/null || true
+            fi
+            systemctl daemon-reload 2>/dev/null || true
+            systemctl restart cockpit.socket 2>/dev/null || true
+        fi
     fi
 fi
 

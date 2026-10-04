@@ -163,30 +163,15 @@ def ensure_user_dir_permissions(username: Optional[str] = None) -> None:
                 except Exception:
                     pass
 
+        # Ensure /run/code-server exists with sticky 1777 permissions for user sockets
+        try:
+            os.makedirs("/run/code-server", mode=0o1777, exist_ok=True)
+            os.chmod("/run/code-server", 0o1777)
+        except Exception:
+            pass
+
         cfg_dir = os.path.join(user_home, ".config", "code-server")
         os.makedirs(cfg_dir, exist_ok=True)
-        cert_dst = os.path.join(cfg_dir, "server.crt")
-        key_dst = os.path.join(cfg_dir, "server.key")
-
-        cockpit_certs_dir = "/etc/cockpit/ws-certs.d"
-        if os.path.isdir(cockpit_certs_dir):
-            try:
-                cockpit_cert = None
-                cockpit_key = None
-                for fname in os.listdir(cockpit_certs_dir):
-                    if fname.endswith(".cert") or fname.endswith(".crt"):
-                        cockpit_cert = os.path.join(cockpit_certs_dir, fname)
-                    elif fname.endswith(".key"):
-                        cockpit_key = os.path.join(cockpit_certs_dir, fname)
-                if cockpit_cert and cockpit_key and os.path.isfile(cockpit_cert) and os.path.isfile(cockpit_key):
-                    shutil.copy2(cockpit_cert, cert_dst)
-                    shutil.copy2(cockpit_key, key_dst)
-                    os.chown(cert_dst, uid, gid)
-                    os.chown(key_dst, uid, gid)
-                    os.chmod(cert_dst, 0o600)
-                    os.chmod(key_dst, 0o600)
-            except Exception:
-                pass
 
         cfg_file = os.path.join(cfg_dir, "config.yaml")
         try:
@@ -194,24 +179,23 @@ def ensure_user_dir_permissions(username: Optional[str] = None) -> None:
                 from .config_manager import (
                     parse_code_server_config,
                     write_code_server_config,
-                    get_default_port_for_user,
+                    get_default_socket_path_for_user,
                     CodeServerConfig,
                 )
             except ImportError:
                 from config_manager import (
                     parse_code_server_config,
                     write_code_server_config,
-                    get_default_port_for_user,
+                    get_default_socket_path_for_user,
                     CodeServerConfig,
                 )
-            has_custom_cert = os.path.isfile(cert_dst) and os.path.isfile(key_dst)
+            default_sock = get_default_socket_path_for_user(user)
             if not os.path.isfile(cfg_file):
-                port = get_default_port_for_user(user)
                 init_cfg = CodeServerConfig(
-                    bind_addr=f"127.0.0.1:{port}",
+                    socket=default_sock,
+                    socket_mode="666",
                     auth="none",
-                    cert=cert_dst if has_custom_cert else False,
-                    cert_key=key_dst if has_custom_cert else None,
+                    cert=False,
                     app_name="Code-Server",
                     disable_telemetry=True,
                 )
@@ -219,12 +203,14 @@ def ensure_user_dir_permissions(username: Optional[str] = None) -> None:
             else:
                 cfg = parse_code_server_config(cfg_file, user)
                 changed = False
-                if cfg.host == "0.0.0.0":
-                    cfg.bind_addr = f"127.0.0.1:{cfg.port}"
+                if cfg.socket != default_sock:
+                    cfg.socket = default_sock
+                    cfg.socket_mode = "666"
+                    cfg.bind_addr = None
                     changed = True
-                if has_custom_cert and (not cfg.cert or cfg.cert is True):
-                    cfg.cert = cert_dst
-                    cfg.cert_key = key_dst
+                if cfg.cert is not False:
+                    cfg.cert = False
+                    cfg.cert_key = None
                     changed = True
                 if not cfg.app_name:
                     cfg.app_name = "Code-Server"

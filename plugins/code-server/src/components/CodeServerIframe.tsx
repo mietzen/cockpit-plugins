@@ -24,7 +24,7 @@ export const CodeServerIframe: React.FC<CodeServerIframeProps> = ({
 }) => {
   const [iframeError, setIframeError] = useState<boolean>(false);
   const isRunning = status.service.active;
-  const targetUrl = getCodeServerUrl(status.config);
+  const targetUrl = getCodeServerUrl(status.uid, status.config);
 
   if (!isRunning) {
     return (
@@ -65,8 +65,8 @@ export const CodeServerIframe: React.FC<CodeServerIframeProps> = ({
       <div
         style={{
           position: "absolute",
-          top: "10px",
-          left: "10px",
+          top: "5px",
+          left: "15px",
           zIndex: 1000,
         }}
       >
@@ -79,15 +79,15 @@ export const CodeServerIframe: React.FC<CodeServerIframeProps> = ({
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              width: "32px",
-              height: "32px",
-              padding: 0,
+              width: "24px",
+              height: "24px",
+              padding: "0px",
               borderRadius: "6px",
               backgroundColor: "rgba(20, 20, 25, 0.7)",
               backdropFilter: "blur(6px)",
               border: "1px solid rgba(255, 255, 255, 0.15)",
-              color: "#c9d1d9",
-              boxShadow: "0 2px 8px rgba(0, 0, 0, 0.35)",
+              color: "rgb(201, 209, 217)",
+              boxShadow: "rgba(0, 0, 0, 0.35) 0px 2px 8px",
               cursor: "pointer",
             }}
           >

@@ -15,6 +15,8 @@ try:
         get_user_config_path,
         parse_code_server_config,
         write_code_server_config,
+        resolve_username,
+        get_user_uid,
     )
     from .service_manager import (
         get_binary_info,
@@ -28,6 +30,8 @@ except ImportError:
         get_user_config_path,
         parse_code_server_config,
         write_code_server_config,
+        resolve_username,
+        get_user_uid,
     )
     from service_manager import (
         get_binary_info,
@@ -65,6 +69,8 @@ def handle_command(args: List[str]) -> Dict[str, Any]:
         return {"status": "error", "error": "Invalid arguments"}
 
     if parsed.action == "status":
+        user = resolve_username(parsed.user)
+        uid = get_user_uid(parsed.user)
         binary = get_binary_info()
         service = get_service_status(parsed.user)
         cfg_path = get_user_config_path(parsed.user)
@@ -72,6 +78,8 @@ def handle_command(args: List[str]) -> Dict[str, Any]:
 
         return {
             "status": "ok",
+            "user": user,
+            "uid": uid,
             "binary": binary,
             "service": service,
             "config": config.to_dict(),

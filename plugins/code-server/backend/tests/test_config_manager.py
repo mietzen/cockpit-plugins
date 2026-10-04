@@ -16,15 +16,15 @@ from backend.config_manager import (
 def test_parse_default_config_when_file_not_found():
     with patch.dict(os.environ, {"USER": "root", "LOGNAME": "root"}, clear=True):
         cfg = parse_code_server_config("/non/existent/path/config.yaml", username="root")
-        assert cfg.bind_addr == "127.0.0.1:8080"
-        assert cfg.host == "127.0.0.1"
-        assert cfg.port == 8080
+        assert cfg.socket == "/run/code-server/0.sock"
+        assert cfg.socket_mode == "666"
         assert cfg.auth == "none"
         assert cfg.cert is False
 
     cfg_user = parse_code_server_config("/non/existent/path/config.yaml")
-    assert cfg_user.host == "127.0.0.1"
-    assert cfg_user.port >= 8080
+    assert cfg_user.socket is not None
+    assert "/run/code-server/" in cfg_user.socket
+    assert cfg_user.socket_mode == "666"
 
 
 def test_code_server_config_properties_and_to_dict():
@@ -154,4 +154,33 @@ def test_write_code_server_config_failure():
     with patch("os.makedirs", side_effect=PermissionError("denied")):
         success = write_code_server_config("/root/config.yaml", CodeServerConfig())
         assert success is False
+
+
+def test_parse_socket_config():
+    with tempfile.NamedTemporaryFile("w", delete=False, suffix=".yaml") as f:
+        f.write("socket: /run/code-server/1001.sock\nsocket-mode: 666\nauth: none\n")
+        tmp_path = f.name
+
+    try:
+        cfg = parse_code_server_config(tmp_path)
+        assert cfg.socket == "/run/code-server/1001.sock"
+        assert cfg.socket_mode == "666"
+        assert cfg.auth == "none"
+    finally:
+        os.remove(tmp_path)
+
+
+def test_write_socket_config():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        cfg_path = os.path.join(tmpdir, "config.yaml")
+        cfg = CodeServerConfig(
+            socket="/run/code-server/1000.sock",
+            socket_mode="666",
+            auth="none",
+        )
+        assert write_code_server_config(cfg_path, cfg) is True
+
+        parsed = parse_code_server_config(cfg_path)
+        assert parsed.socket == "/run/code-server/1000.sock"
+        assert parsed.socket_mode == "666"
 

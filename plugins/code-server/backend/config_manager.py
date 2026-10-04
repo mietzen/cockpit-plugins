@@ -5,11 +5,14 @@ from typing import Optional, Dict, Any
 
 DEFAULT_BIND_ADDR = "127.0.0.1:8080"
 DEFAULT_AUTH = "none"
+DEFAULT_SOCKET_MODE = "666"
 
 
 @dataclass
 class CodeServerConfig:
-    bind_addr: str = DEFAULT_BIND_ADDR
+    bind_addr: Optional[str] = None
+    socket: Optional[str] = None
+    socket_mode: Optional[str] = DEFAULT_SOCKET_MODE
     auth: str = DEFAULT_AUTH
     hashed_password: Optional[str] = None
     cert: Any = False
@@ -19,13 +22,13 @@ class CodeServerConfig:
 
     @property
     def host(self) -> str:
-        if ":" in self.bind_addr:
+        if self.bind_addr and ":" in self.bind_addr:
             return self.bind_addr.split(":")[0]
         return "127.0.0.1"
 
     @property
     def port(self) -> int:
-        if ":" in self.bind_addr:
+        if self.bind_addr and ":" in self.bind_addr:
             try:
                 return int(self.bind_addr.split(":")[1])
             except ValueError:
@@ -61,6 +64,25 @@ def resolve_username(username: Optional[str] = None) -> str:
     return username or "root"
 
 
+def get_user_uid(username: Optional[str] = None) -> int:
+    user = resolve_username(username)
+    if user and user != "root":
+        try:
+            pw = pwd.getpwnam(user)
+            return pw.pw_uid
+        except Exception:
+            pass
+    return 1000
+
+
+def get_default_socket_path_for_user(username: Optional[str] = None) -> str:
+    user = resolve_username(username)
+    if user == "root":
+        return "/run/code-server/0.sock"
+    uid = get_user_uid(username)
+    return f"/run/code-server/{uid}.sock"
+
+
 def get_default_port_for_user(username: Optional[str] = None) -> int:
     user = resolve_username(username)
     if user and user != "root":
@@ -90,11 +112,13 @@ def get_user_config_path(username: Optional[str] = None) -> str:
 
 
 def parse_code_server_config(path: str, username: Optional[str] = None) -> CodeServerConfig:
-    default_bind = get_default_bind_addr_for_user(username)
+    default_socket = get_default_socket_path_for_user(username)
     if not os.path.isfile(path):
-        return CodeServerConfig(bind_addr=default_bind)
+        return CodeServerConfig(socket=default_socket, socket_mode=DEFAULT_SOCKET_MODE)
 
-    config = CodeServerConfig(bind_addr=default_bind)
+    config = CodeServerConfig()
+    has_explicit_target = False
+
     try:
         with open(path, "r", encoding="utf-8") as f:
             for line in f:
@@ -105,8 +129,14 @@ def parse_code_server_config(path: str, username: Optional[str] = None) -> CodeS
                 key = k.strip().lower()
                 val = v.strip().strip("'\"")
 
-                if key == "bind-addr":
+                if key == "socket":
+                    config.socket = val
+                    has_explicit_target = True
+                elif key == "socket-mode":
+                    config.socket_mode = val
+                elif key == "bind-addr":
                     config.bind_addr = val
+                    has_explicit_target = True
                 elif key == "auth":
                     config.auth = val
                 elif key == "hashed-password":
@@ -126,6 +156,10 @@ def parse_code_server_config(path: str, username: Optional[str] = None) -> CodeS
                     config.app_name = val
     except Exception:
         pass
+
+    if not has_explicit_target:
+        config.socket = default_socket
+        config.socket_mode = DEFAULT_SOCKET_MODE
 
     return config
 
@@ -168,14 +202,22 @@ def write_code_server_config(path: str, config: CodeServerConfig, username: Opti
         parent_dir = os.path.dirname(path)
         os.makedirs(parent_dir, mode=0o755, exist_ok=True)
 
-        default_bind = get_default_bind_addr_for_user(username)
-        clean_bind = sanitize_yaml_val(config.bind_addr) or default_bind
-        clean_auth = "password" if sanitize_yaml_val(config.auth) == "password" else "none"
+        lines = []
+        if config.socket:
+            clean_socket = sanitize_yaml_val(config.socket)
+            clean_mode = sanitize_yaml_val(config.socket_mode) or DEFAULT_SOCKET_MODE
+            lines.append(f"socket: {clean_socket}")
+            lines.append(f"socket-mode: {clean_mode}")
+        elif config.bind_addr:
+            clean_bind = sanitize_yaml_val(config.bind_addr)
+            lines.append(f"bind-addr: {clean_bind}")
+        else:
+            default_socket = get_default_socket_path_for_user(username)
+            lines.append(f"socket: {default_socket}")
+            lines.append(f"socket-mode: {DEFAULT_SOCKET_MODE}")
 
-        lines = [
-            f"bind-addr: {clean_bind}",
-            f"auth: {clean_auth}",
-        ]
+        clean_auth = "password" if sanitize_yaml_val(config.auth) == "password" else "none"
+        lines.append(f"auth: {clean_auth}")
         if config.app_name:
             lines.append(f"app-name: {sanitize_yaml_val(config.app_name)}")
         if config.hashed_password:
