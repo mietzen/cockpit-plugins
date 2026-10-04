@@ -191,7 +191,7 @@ class TestNfsParser(unittest.TestCase):
             content = f.read()
         self.assertNotIn(path, content)
 
-    def test_delete_export_with_spaces(self):
+    def test_delete_export_spaces(self):
         path = "/srv/my space path"
         self.parser.save_export(path, [{"host": "*"}])
         ok, _ = self.parser.delete_export(path)
