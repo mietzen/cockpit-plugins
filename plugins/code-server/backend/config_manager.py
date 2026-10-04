@@ -44,6 +44,7 @@ class CodeServerConfig:
         return 8080
 
     def to_dict(self) -> Dict[str, Any]:
+        is_auth_configured = self.auth == "password"
         return {
             "bind_addr": self.bind_addr,
             "socket": self.socket,
@@ -55,7 +56,8 @@ class CodeServerConfig:
             "app_name": self.app_name,
             "host": self.host,
             "port": self.port,
-            "has_password": bool(self.password or self.hashed_password),
+            "auth_configured": is_auth_configured,
+            "password_configured": is_auth_configured,
         }
 
 

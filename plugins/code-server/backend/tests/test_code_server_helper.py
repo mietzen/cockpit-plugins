@@ -15,12 +15,10 @@ def test_handle_status_command():
             "bind_addr": "127.0.0.1:8080",
             "host": "127.0.0.1",
             "port": 8080,
-            "auth": "none",
+            "auth": "password",
             "cert": False,
-            "has_password": True,
+            "password_configured": True,
         }
-        mock_obj.password = "secret"
-        mock_obj.hashed_password = None
         mock_cfg.return_value = mock_obj
 
         res = handle_command(["status", "--user", "test-user"])
@@ -28,7 +26,7 @@ def test_handle_status_command():
         assert res["binary"]["installed"] is True
         assert res["service"]["active"] is True
         assert res["config"]["port"] == 8080
-        assert res["has_password"] is True
+        assert res["password_configured"] is True
         assert "password" not in res["config"]
 
 
