@@ -244,7 +244,7 @@ class TestZfsServiceActions(unittest.TestCase):
     @patch("os.path.exists", return_value=True)
     @patch("backend.zfs_helper.ZfsService.get_pools")
     @patch("backend.zfs_helper.run_cmd")
-    def test_get_disks_with_dedup_vdevs(self, mock_run, mock_pools, mock_exists, mock_realpath):
+    def test_get_disks_dedup(self, mock_run, mock_pools, mock_exists, mock_realpath):
         mock_pools.return_value = [
             {
                 "name": "tank",
