@@ -106,6 +106,54 @@ class TestNfsParser(unittest.TestCase):
         ok, msg = self.parser.save_export("/tank/custom", [{"host": "10.0.0.2", "read_only": False}])
         self.assertTrue(ok)
 
+    def test_reject_newlines_in_path(self):
+        ok, _ = self.parser.save_export("/tank/path\nnewline", [{"host": "*"}])
+        self.assertFalse(ok)
+        ok, _ = self.parser.save_export("/tank/path\rreturn", [{"host": "*"}])
+        self.assertFalse(ok)
+
+    def test_reject_invalid_host(self):
+        bad_hosts = ["*(rw,no_root_squash)\n/", "host with spaces", "host(parens)", "host\nname"]
+        for host in bad_hosts:
+            ok, _ = self.parser.save_export("/tank/sec_test", [{"host": host}])
+            self.assertFalse(ok)
+
+    def test_reject_invalid_options(self):
+        bad_opts = [["rw\nno_root_squash"], ["rw;rm -rf /"], ["ro", "bad opt"]]
+        for opts in bad_opts:
+            ok, _ = self.parser.save_export("/tank/sec_test", [{"host": "*", "options": opts}])
+            self.assertFalse(ok)
+
+    def test_validate_anonuid_anongid(self):
+        ok, _ = self.parser.save_export("/tank/sec_test", [{"host": "*", "anonuid": -1}])
+        self.assertFalse(ok)
+        ok, _ = self.parser.save_export("/tank/sec_test", [{"host": "*", "anongid": -10}])
+        self.assertFalse(ok)
+        ok, _ = self.parser.save_export("/tank/sec_test", [{"host": "*", "anonuid": "invalid"}])
+        self.assertFalse(ok)
+        ok, _ = self.parser.save_export("/tank/sec_test", [{"host": "*", "anongid": "1000\nno_root_squash"}])
+        self.assertFalse(ok)
+        ok, _ = self.parser.save_export("/tank/sec_test", [{"host": "*", "anonuid": 0, "anongid": 65534}])
+        self.assertTrue(ok)
+
+    def test_export_path_with_spaces(self):
+        path = "/srv/my share"
+        ok, _ = self.parser.save_export(path, [{"host": "*", "read_only": True}])
+        self.assertTrue(ok)
+
+        exports = self.parser.parse_all()
+        paths = {e["path"]: e for e in exports}
+        self.assertIn(path, paths)
+        self.assertEqual(paths[path]["path"], path)
+
+    def test_delete_export_with_spaces(self):
+        path = "/srv/my space path"
+        self.parser.save_export(path, [{"host": "*"}])
+        ok, _ = self.parser.delete_export(path)
+        self.assertTrue(ok)
+        exports = self.parser.parse_all()
+        self.assertNotIn(path, [e["path"] for e in exports])
+
     def test_parse_line_edge_cases(self):
         self.assertIsNone(self.parser.parse_line("", "file", False, ""))
         self.assertIsNone(self.parser.parse_line("# comment", "file", False, ""))
