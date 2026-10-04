@@ -10,6 +10,13 @@ from typing import Any, Dict, List, Optional, Tuple
 
 DEFAULT_BEGIN_MARKER = "# <-- BEGIN ANSIBLE MANAGED * CONFIG -->"
 DEFAULT_END_MARKER = "# <-- END ANSIBLE MANAGED * CONFIG -->"
+RESERVED_SECTIONS = ("global",)
+SAFE_SHARE_NAME_REGEX = re.compile(r"^[a-zA-Z0-9_\-\. ]+$")
+
+
+def sanitize_param(val: Any) -> str:
+    # Strip newline characters to prevent directive injection
+    return str(val).replace("\r", "").replace("\n", "")
 
 
 def wildcard_to_regex(pattern: str) -> re.Pattern:
@@ -190,6 +197,10 @@ class SmbParser:
         if not share_name:
             return False, "Share name cannot be empty"
 
+        # Validate share name against reserved sections and illegal characters
+        if share_name.lower() in RESERVED_SECTIONS or not SAFE_SHARE_NAME_REGEX.match(share_name):
+            return False, f"Invalid share name '{share_name}'"
+
         content = ""
         if os.path.exists(self.config_path):
             with open(self.config_path, "r", encoding="utf-8", errors="replace") as f:
@@ -201,41 +212,47 @@ class SmbParser:
             if existing["name"].lower() == share_name.lower() and existing.get("is_managed"):
                 return False, f"Share '[{share_name}]' is managed by Ansible ({existing.get('managed_by')}) and is read-only"
 
+        # Sanitize parameters to prevent newline injection
+        sanitized = {
+            k: sanitize_param(v) if isinstance(v, str) else v
+            for k, v in share_data.items()
+        }
+
         # Build share block string
         def bool_str(val: Any) -> str:
             return "yes" if val in (True, "yes", "true", "1", 1) else "no"
 
         params = [
-            f"   path = {share_data.get('path', '')}",
+            f"   path = {sanitized.get('path', '')}",
         ]
-        if share_data.get("comment"):
-            params.append(f"   comment = {share_data['comment']}")
-        params.append(f"   read only = {bool_str(share_data.get('read_only', True))}")
-        params.append(f"   browseable = {bool_str(share_data.get('browseable', True))}")
-        params.append(f"   guest ok = {bool_str(share_data.get('guest_ok', False))}")
+        if sanitized.get("comment"):
+            params.append(f"   comment = {sanitized['comment']}")
+        params.append(f"   read only = {bool_str(sanitized.get('read_only', True))}")
+        params.append(f"   browseable = {bool_str(sanitized.get('browseable', True))}")
+        params.append(f"   guest ok = {bool_str(sanitized.get('guest_ok', False))}")
 
-        if share_data.get("valid_users"):
-            params.append(f"   valid users = {share_data['valid_users']}")
-        if share_data.get("write_list"):
-            params.append(f"   write list = {share_data['write_list']}")
-        if share_data.get("read_list"):
-            params.append(f"   read list = {share_data['read_list']}")
-        if share_data.get("invalid_users"):
-            params.append(f"   invalid users = {share_data['invalid_users']}")
-        if share_data.get("force_user"):
-            params.append(f"   force user = {share_data['force_user']}")
-        if share_data.get("force_group"):
-            params.append(f"   force group = {share_data['force_group']}")
-        if share_data.get("create_mask"):
-            params.append(f"   create mask = {share_data['create_mask']}")
-        if share_data.get("directory_mask"):
-            params.append(f"   directory mask = {share_data['directory_mask']}")
-        if share_data.get("vfs_objects"):
-            params.append(f"   vfs objects = {share_data['vfs_objects']}")
-        elif share_data.get("fruit_time_machine"):
+        if sanitized.get("valid_users"):
+            params.append(f"   valid users = {sanitized['valid_users']}")
+        if sanitized.get("write_list"):
+            params.append(f"   write list = {sanitized['write_list']}")
+        if sanitized.get("read_list"):
+            params.append(f"   read list = {sanitized['read_list']}")
+        if sanitized.get("invalid_users"):
+            params.append(f"   invalid users = {sanitized['invalid_users']}")
+        if sanitized.get("force_user"):
+            params.append(f"   force user = {sanitized['force_user']}")
+        if sanitized.get("force_group"):
+            params.append(f"   force group = {sanitized['force_group']}")
+        if sanitized.get("create_mask"):
+            params.append(f"   create mask = {sanitized['create_mask']}")
+        if sanitized.get("directory_mask"):
+            params.append(f"   directory mask = {sanitized['directory_mask']}")
+        if sanitized.get("vfs_objects"):
+            params.append(f"   vfs objects = {sanitized['vfs_objects']}")
+        elif sanitized.get("fruit_time_machine"):
             params.append("   vfs objects = catia fruit streams_xattr")
 
-        if share_data.get("fruit_time_machine"):
+        if sanitized.get("fruit_time_machine"):
             params.append("   fruit:time machine = yes")
 
         new_block = f"[{share_name}]\n" + "\n".join(params) + "\n"
@@ -270,6 +287,11 @@ class SmbParser:
         return True, f"Share '[{share_name}]' saved successfully"
 
     def delete_share(self, share_name: str) -> Tuple[bool, str]:
+        cleaned_name = share_name.strip()
+        # Reject deletion of reserved sections
+        if cleaned_name.lower() in RESERVED_SECTIONS:
+            return False, f"Cannot delete reserved section '{cleaned_name}'"
+
         if not os.path.exists(self.config_path):
             return False, "smb.conf does not exist"
 
@@ -334,10 +356,12 @@ class SmbParser:
                     k, v = l.split("=", 1)
                     current_global[k.strip().lower()] = v.strip()
 
-        # Update with new values
+        # Update with sanitized values
         for k, v in global_data.items():
             if v is not None and v != "":
-                current_global[k.lower()] = str(v)
+                clean_k = sanitize_param(k).lower()
+                clean_v = sanitize_param(v)
+                current_global[clean_k] = clean_v
 
         global_block_lines = ["[global]"]
         for k, v in current_global.items():
