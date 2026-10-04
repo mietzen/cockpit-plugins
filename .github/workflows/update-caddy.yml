@@ -1,0 +1,63 @@
+name: Auto Update Caddy Upstream
+
+on:
+  schedule:
+    - cron: "0 0 * * 1" # Weekly every Monday
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  check-upstream:
+    name: Check Latest caddyserver/caddy Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v7
+
+      - name: Fetch Latest Upstream Version
+        id: upstream
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          LATEST_TAG=$(gh api repos/caddyserver/caddy/releases/latest --jq .tag_name | sed -E 's/^v//')
+          CURRENT_VERSION=$(grep -oE 'CADDY_UPSTREAM_VERSION = "[^"]+"' plugins/code-server/backend/service_manager.py | cut -d'"' -f2)
+          echo "latest_version=$LATEST_TAG" >> $GITHUB_OUTPUT
+          echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          echo "==> Latest upstream release: $LATEST_TAG (Current: $CURRENT_VERSION)"
+          if [ -n "$LATEST_TAG" ] && [ "$LATEST_TAG" != "$CURRENT_VERSION" ]; then
+            echo "has_update=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_update=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Update Upstream Version and Open PR
+        if: steps.upstream.outputs.has_update == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          LATEST_VERSION: ${{ steps.upstream.outputs.latest_version }}
+          CURRENT_VERSION: ${{ steps.upstream.outputs.current_version }}
+        run: |
+          echo "==> Updating Caddy from $CURRENT_VERSION to $LATEST_VERSION..."
+          BRANCH_NAME="chore/update-caddy-v${LATEST_VERSION}"
+          git checkout -b "$BRANCH_NAME"
+
+          sed -i -E "s/CADDY_UPSTREAM_VERSION = \"[^\"]+\"/CADDY_UPSTREAM_VERSION = \"$LATEST_VERSION\"/" plugins/code-server/backend/service_manager.py
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add plugins/code-server/backend/service_manager.py
+          git commit -m "Update Caddy upstream to v${LATEST_VERSION}
+
+Automated upstream sync updating pinned Caddy reverse proxy package
+to v${LATEST_VERSION}."
+
+          git push -u origin "$BRANCH_NAME" --force
+          gh pr create \
+            --title "Update Caddy upstream to v${LATEST_VERSION}" \
+            --body "Automated update for caddyserver/caddy upstream release v${LATEST_VERSION}." \
+            --head "$BRANCH_NAME" \
+            --base main

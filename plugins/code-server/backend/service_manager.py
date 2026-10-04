@@ -248,6 +248,7 @@ def manage_service(action: str, username: Optional[str] = None) -> Dict[str, Any
 
 
 CODE_SERVER_UPSTREAM_VERSION = "4.139.1"
+CADDY_UPSTREAM_VERSION = "2.8.4"
 
 
 def install_code_server(

@@ -35,10 +35,25 @@ def get_default_version() -> str:
     return "4.139.1"
 
 
-DEFAULT_CADDY_VERSION = "2.8.4"
+def get_default_caddy_version() -> str:
+    """Read default upstream caddy version from service_manager.py."""
+    svc_mgr = os.path.join(
+        os.path.dirname(__file__),
+        "..",
+        "plugins",
+        "code-server",
+        "backend",
+        "service_manager.py",
+    )
+    if os.path.isfile(svc_mgr):
+        with open(svc_mgr, "r", encoding="utf-8") as f:
+            match = re.search(r'CADDY_UPSTREAM_VERSION\s*=\s*"([^"]+)"', f.read())
+            if match:
+                return match.group(1)
+    return "2.8.4"
 
 
-def get_upstream_urls(version: str, caddy_version: str = DEFAULT_CADDY_VERSION) -> List[Tuple[PackageType, str, str]]:
+def get_upstream_urls(version: str, caddy_version: str) -> List[Tuple[PackageType, str, str]]:
     """Build list of upstream package URLs with target filenames."""
     base_url = f"https://github.com/coder/code-server/releases/download/v{version}"
     caddy_base_url = f"https://github.com/caddyserver/caddy/releases/download/v{caddy_version}"
@@ -64,12 +79,12 @@ def download_file(url: str, dest_path: str) -> None:
     os.replace(tmp_path, dest_path)
 
 
-def sync_packages(version: str, deb_dir: str, rpm_dir: str) -> None:
+def sync_packages(version: str, deb_dir: str, rpm_dir: str, caddy_version: str) -> None:
     """Download upstream deb and rpm packages to specified directories."""
     os.makedirs(deb_dir, exist_ok=True)
     os.makedirs(rpm_dir, exist_ok=True)
 
-    items = get_upstream_urls(version)
+    items = get_upstream_urls(version, caddy_version)
     for pkg_type, url, filename in items:
         target_dir = deb_dir if pkg_type == PackageType.DEB else rpm_dir
         dest_path = os.path.join(target_dir, filename)
@@ -86,12 +101,13 @@ def sync_packages(version: str, deb_dir: str, rpm_dir: str) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Download official code-server upstream packages.")
     parser.add_argument("--version", default=get_default_version(), help="Upstream release version")
+    parser.add_argument("--caddy-version", default=get_default_caddy_version(), help="Upstream Caddy release version")
     parser.add_argument("--deb-dir", default=DEFAULT_DEB_DIR, help="Target directory for .deb packages")
     parser.add_argument("--rpm-dir", default=DEFAULT_RPM_DIR, help="Target directory for .rpm packages")
     args = parser.parse_args()
 
-    print(f"==> Downloading upstream code-server packages v{args.version}...")
-    sync_packages(args.version, args.deb_dir, args.rpm_dir)
+    print(f"==> Downloading upstream code-server packages v{args.version} and Caddy v{args.caddy_version}...")
+    sync_packages(args.version, args.deb_dir, args.rpm_dir, args.caddy_version)
     print("==> All upstream packages synchronized successfully.")
 
 
