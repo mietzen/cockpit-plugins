@@ -78,6 +78,8 @@ def handle_command(args: List[str]) -> Dict[str, Any]:
         cfg_dict = config.to_dict()
         has_password = bool(config.password or config.hashed_password)
         cfg_dict["has_password"] = has_password
+        cfg_dict.pop("password", None)
+        cfg_dict.pop("hashed_password", None)
 
         return {
             "status": "ok",

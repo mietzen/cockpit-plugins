@@ -18,6 +18,8 @@ def test_handle_status_command():
             "auth": "none",
             "cert": False,
         }
+        mock_obj.password = "secret"
+        mock_obj.hashed_password = None
         mock_cfg.return_value = mock_obj
 
         res = handle_command(["status", "--user", "test-user"])
@@ -25,6 +27,8 @@ def test_handle_status_command():
         assert res["binary"]["installed"] is True
         assert res["service"]["active"] is True
         assert res["config"]["port"] == 8080
+        assert res["has_password"] is True
+        assert "password" not in res["config"]
 
 
 def test_handle_service_action_command_success_and_failure():
