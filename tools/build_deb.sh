@@ -322,7 +322,7 @@ PRERM_EOF
                 fi
             done
             if [ -z "$ARCHIVE_FILE" ] || [ ! -f "$ARCHIVE_FILE" ]; then
-                python3 tools/download_upstream_packages.py --config "${PLUGIN_DIR}/upstream.json" --archive-dir build/archives
+                python3 tools/download_upstream_packages.py --config "${PLUGIN_DIR}/upstream.json" --type tar.gz --archive-dir build/archives
                 ARCHIVE_FILE="build/archives/caddy_${CADDY_VER}_linux_${TARGET_ARCH}.tar.gz"
             fi
             tar -xzf "$ARCHIVE_FILE" -C "$STAGE_DIR/usr/libexec/${HELPER_DIR_NAME}" caddy

@@ -48,6 +48,13 @@ class TestDownloadUpstreamPackages(unittest.TestCase):
         overridden = dup.build_asset_list(sample_config, {"caddy": "3.0.0"})
         self.assertEqual(overridden[0][2], "caddy_3.0.0_linux_amd64.tar.gz")
 
+        # Test type filtering
+        filtered_empty = dup.build_asset_list(sample_config, asset_types=["deb"])
+        self.assertEqual(len(filtered_empty), 0)
+
+        filtered_tar = dup.build_asset_list(sample_config, asset_types=["tar.gz"])
+        self.assertEqual(len(filtered_tar), 2)
+
     def test_get_target_dir(self):
         deb_dir = "/tmp/debs"
         rpm_dir = "/tmp/rpms"

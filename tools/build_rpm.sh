@@ -125,7 +125,7 @@ if command -v rpmbuild >/dev/null 2>&1; then
                 fi
             done
             if [ -z "$ARCHIVE_FILE" ] || [ ! -f "$ARCHIVE_FILE" ]; then
-                python3 tools/download_upstream_packages.py --config "${PLUGIN_DIR}/upstream.json" --archive-dir build/archives
+                python3 tools/download_upstream_packages.py --config "${PLUGIN_DIR}/upstream.json" --type tar.gz --archive-dir build/archives
                 ARCHIVE_FILE="build/archives/caddy_${CADDY_VER}_linux_${TAR_ARCH}.tar.gz"
             fi
             mkdir -p "$RPMBUILD_DIR/SOURCES"
@@ -143,6 +143,7 @@ if command -v rpmbuild >/dev/null 2>&1; then
         cat << SPEC_EOF > "$SPEC_FILE"
 %define _buildhost localhost
 %define _build_id_links none
+%define __os_install_post %{nil}
 %define _clamp_mtime 1
 %define _build_time ${SOURCE_DATE_EPOCH}
 %define _buildtime ${SOURCE_DATE_EPOCH}
@@ -374,12 +375,14 @@ SPEC_EOF
             --define "_binary_payload w9.gzdio" \
             --define "_source_payload w9.gzdio" \
             --define "_build_id_links none" \
+            --define "__os_install_post %{nil}" \
             --target "${RPM_ARCH}" \
             -bb "$SPEC_FILE"
         find "$RPMBUILD_DIR/RPMS" -name "*.rpm" -exec cp {} "$OUTPUT_DIR/" \;
-        for rpm_f in "$OUTPUT_DIR"/*.rpm; do
+        for rpm_f in "$RPMBUILD_DIR/RPMS"/*/*.rpm; do
             if [ -f "$rpm_f" ]; then
-                python3 tools/reproducible_rpm.py "$rpm_f" --epoch "$SOURCE_DATE_EPOCH"
+                base_name=$(basename "$rpm_f")
+                python3 tools/reproducible_rpm.py "$OUTPUT_DIR/$base_name" --epoch "$SOURCE_DATE_EPOCH"
             fi
         done
         echo "Created reproducible RPM package (${RPM_ARCH}) in $OUTPUT_DIR"

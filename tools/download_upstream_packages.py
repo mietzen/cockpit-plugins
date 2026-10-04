@@ -30,10 +30,12 @@ def load_config(config_path: str) -> Dict[str, Any]:
 def build_asset_list(
     package_config: Dict[str, Any],
     version_overrides: Optional[Dict[str, str]] = None,
+    asset_types: Optional[List[str]] = None,
 ) -> List[Tuple[str, str, str]]:
     # Resolve asset URLs and target filenames using configured version and arch
     results: List[Tuple[str, str, str]] = []
     overrides = version_overrides or {}
+    types_set = set(t.lower() for t in asset_types) if asset_types else None
 
     for pkg in package_config.get("packages", []):
         name = pkg.get("name", "")
@@ -45,6 +47,9 @@ def build_asset_list(
 
         for asset in pkg.get("assets", []):
             asset_type = asset.get("type", "generic").lower()
+            if types_set and asset_type not in types_set:
+                continue
+
             raw_url = asset.get("url", "")
             raw_filename = asset.get("filename", "")
             target_archs = asset.get("archs", pkg_archs)
@@ -126,6 +131,7 @@ def main() -> None:
     parser.add_argument("--rpm-dir", default=DEFAULT_RPM_DIR, help="Target directory for .rpm packages")
     parser.add_argument("--archive-dir", default=DEFAULT_ARCHIVE_DIR, help="Target directory for generic archives")
     parser.add_argument("--override", action="append", default=[], help="Version override (e.g. caddy=2.9.0)")
+    parser.add_argument("--type", action="append", default=[], help="Filter by asset type (e.g. deb, rpm, tar.gz)")
     args = parser.parse_args()
 
     configs = args.config or find_configs()
@@ -142,7 +148,7 @@ def main() -> None:
 
         print(f"==> Processing upstream packages from {config_path}...")
         cfg = load_config(config_path)
-        assets = build_asset_list(cfg, overrides)
+        assets = build_asset_list(cfg, overrides, args.type)
         sync_assets(assets, args.deb_dir, args.rpm_dir, args.archive_dir)
 
     print("==> All upstream packages synchronized successfully.")
