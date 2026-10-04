@@ -13,6 +13,9 @@ from typing import Any, Dict, List, Optional, Tuple
 DEFAULT_BEGIN_MARKER = "# <-- BEGIN ANSIBLE MANAGED * CONFIG -->"
 DEFAULT_END_MARKER = "# <-- END ANSIBLE MANAGED * CONFIG -->"
 
+SAFE_HOST_REGEX = re.compile(r"^[a-zA-Z0-9_\-\.\:\/\*\@]+$")
+SAFE_OPTION_REGEX = re.compile(r"^[a-zA-Z0-9_\=\-]+$")
+
 
 def wildcard_to_regex(pattern: str) -> re.Pattern:
     escaped = fnmatch.translate(pattern)
@@ -41,15 +44,23 @@ class NfsParser:
             return None
 
         # Format: /path/to/export client1(opts) client2(opts)
-        parts = stripped.split()
-        if not parts:
-            return None
+        # Or quoted: "/path with spaces" client1(opts)
+        if stripped.startswith('"'):
+            end_quote = stripped.find('"', 1)
+            if end_quote <= 1:
+                return None
+            export_path = stripped[1:end_quote]
+            client_tokens = stripped[end_quote + 1:].strip()
+        else:
+            parts = stripped.split()
+            if not parts:
+                return None
+            export_path = parts[0]
+            client_tokens = " ".join(parts[1:])
 
-        export_path = parts[0]
         clients: List[Dict[str, Any]] = []
 
         # Find all client(options) pairs in the remainder of the line
-        client_tokens = " ".join(parts[1:])
         matches = re.findall(r"([^\s\(]+)(?:\(([^\)]*)\))?", client_tokens)
 
         for host, opts in matches:
@@ -135,6 +146,12 @@ class NfsParser:
         if not export_path or not export_path.startswith("/"):
             return False, "Export path must be an absolute path starting with '/'"
 
+        if "\r" in export_path or "\n" in export_path:
+            return False, "Export path cannot contain newline characters"
+
+        if '"' in export_path:
+            return False, "Export path cannot contain double quotes"
+
         # Verify not overwriting an Ansible managed export elsewhere
         all_exports = self.parse_all()
         for exp in all_exports:
@@ -150,8 +167,30 @@ class NfsParser:
         client_entries = []
         for c in clients:
             host = c.get("host", "*").strip() or "*"
+            if not SAFE_HOST_REGEX.match(host):
+                return False, f"Invalid NFS client host: {host}"
+
+            for id_key in ("anonuid", "anongid"):
+                if id_key in c and c[id_key] is not None and c[id_key] != "":
+                    val = c[id_key]
+                    if isinstance(val, int) and not isinstance(val, bool):
+                        if val < 0:
+                            return False, f"Invalid {id_key}: must be a non-negative integer"
+                    elif isinstance(val, str) and val.isdigit():
+                        pass
+                    else:
+                        return False, f"Invalid {id_key}: must be a non-negative integer"
+
             opts = c.get("options", [])
-            if not opts:
+            if opts:
+                sanitized_opts = []
+                for opt in opts:
+                    opt_str = str(opt).strip()
+                    if not opt_str or not SAFE_OPTION_REGEX.match(opt_str):
+                        return False, f"Invalid NFS export option: {opt}"
+                    sanitized_opts.append(opt_str)
+                opts = sanitized_opts
+            else:
                 opts = []
                 opts.append("ro" if c.get("read_only", False) else "rw")
                 opts.append("sync" if c.get("sync", True) else "async")
@@ -162,21 +201,31 @@ class NfsParser:
                     opts.append("no_root_squash")
                 if c.get("all_squash", False):
                     opts.append("all_squash")
-                if c.get("anonuid"):
+                if c.get("anonuid") is not None and c.get("anonuid") != "":
                     opts.append(f"anonuid={c['anonuid']}")
-                if c.get("anongid"):
+                if c.get("anongid") is not None and c.get("anongid") != "":
                     opts.append(f"anongid={c['anongid']}")
+
             client_entries.append(f"{host}({','.join(opts)})")
 
-        export_line = f"{export_path} {' '.join(client_entries)}"
+        formatted_path = f'"{export_path}"' if " " in export_path else export_path
+        export_line = f"{formatted_path} {' '.join(client_entries)}"
 
         lines = content.splitlines()
         found = False
         new_lines = []
 
+        target_prefixes = (
+            export_path + " ",
+            export_path + "\t",
+            f'"{export_path}" ',
+            f'"{export_path}"\t',
+        )
+        target_exact = (export_path, f'"{export_path}"')
+
         for line in lines:
             stripped = line.strip()
-            if stripped.startswith(export_path + " ") or stripped == export_path:
+            if stripped.startswith(target_prefixes) or stripped in target_exact:
                 new_lines.append(export_line)
                 found = True
             else:
@@ -206,7 +255,17 @@ class NfsParser:
             content = f.read()
 
         lines = content.splitlines()
-        new_lines = [l for l in lines if not (l.strip().startswith(export_path + " ") or l.strip() == export_path)]
+        target_prefixes = (
+            export_path + " ",
+            export_path + "\t",
+            f'"{export_path}" ',
+            f'"{export_path}"\t',
+        )
+        target_exact = (export_path, f'"{export_path}"')
+        new_lines = [
+            l for l in lines
+            if not (l.strip().startswith(target_prefixes) or l.strip() in target_exact)
+        ]
 
         if len(new_lines) == len(lines):
             return False, f"Export '{export_path}' not found in '{self.cockpit_exports_file}'"
