@@ -208,6 +208,51 @@ class TestSmbParser(unittest.TestCase):
         self.assertTrue(tm["fruit_time_machine"])
         self.assertIn("fruit:time machine = yes", "\n".join(self.parser.parse()["raw_lines"]))
 
+    def test_share_newline_injection(self):
+        # Prevent directive injection via newlines in share parameters
+        payload = {
+            "name": "injected_share",
+            "path": "/srv/share\nroot preexec = /bin/sh",
+            "comment": "Safe comment\nwritelist = root",
+            "valid_users": "alice\nadmin users = root",
+        }
+        ok, _ = self.parser.save_share(payload)
+        data = self.parser.parse()
+        shares = {s["name"]: s for s in data["shares"]}
+        if ok:
+            raw = shares["injected_share"]["raw_params"]
+            self.assertNotIn("root preexec", raw)
+            self.assertNotIn("writelist", raw)
+            self.assertNotIn("admin users", raw)
+
+    def test_invalid_share_names(self):
+        # Reject reserved and malformed share names
+        bad_names = ["global", "GLOBAL", "share[1]", "share]2[", "bad\nshare", "bad/name"]
+        for name in bad_names:
+            ok, _ = self.parser.save_share({"name": name, "path": "/srv/test"})
+            self.assertFalse(ok, f"Expected {name} to be rejected")
+
+    def test_delete_global_rejected(self):
+        # Reject deletion of global section
+        ok, _ = self.parser.delete_share("global")
+        self.assertFalse(ok)
+
+        ok_upper, _ = self.parser.delete_share("GLOBAL")
+        self.assertFalse(ok_upper)
+
+        data = self.parser.parse()
+        self.assertIn("workgroup", data["global"])
+
+    def test_global_newline_sanitize(self):
+        # Sanitize newlines in global configuration
+        payload = {"workgroup": "WORKGROUP\n[injected_sec]\npath = /evil"}
+        ok, _ = self.parser.save_global(payload)
+        self.assertTrue(ok)
+
+        data = self.parser.parse()
+        share_names = [s["name"] for s in data["shares"]]
+        self.assertNotIn("injected_sec", share_names)
+
 
 if __name__ == "__main__":
     unittest.main()
