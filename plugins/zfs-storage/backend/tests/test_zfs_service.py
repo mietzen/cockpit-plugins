@@ -178,13 +178,27 @@ class TestZfsServiceActions(unittest.TestCase):
     @patch("backend.zfs_helper.run_cmd")
     def test_get_pools(self, mock_run):
         pool_line = "tank\t100000000000\t10000000000\t90000000000\t0\t10\t1.00\tONLINE\t-\t123456789\n"
+        status_output = (
+            "pool: tank\n"
+            "state: ONLINE\n"
+            "config:\n"
+            "\ttank ONLINE 0 0 0\n"
+            "\t  sdb ONLINE 0 0 0\n"
+            "dedup\n"
+            "\t  sdc ONLINE 0 0 0\n"
+        )
         mock_run.side_effect = [
             MagicMock(returncode=0, stdout=pool_line, stderr=""),
-            MagicMock(returncode=0, stdout="pool: tank\nstate: ONLINE\nconfig:\n\ttank ONLINE 0 0 0\n\t  sdb ONLINE 0 0 0\n", stderr=""),
+            MagicMock(returncode=0, stdout=status_output, stderr=""),
         ]
         pools = self.svc.get_pools()
         self.assertEqual(len(pools), 1)
         self.assertEqual(pools[0]["name"], "tank")
+        self.assertIsInstance(pools[0]["dedup"], float)
+        self.assertEqual(pools[0]["dedup"], 1.0)
+        self.assertIsInstance(pools[0]["dedup_vdevs"], list)
+        self.assertEqual(len(pools[0]["dedup_vdevs"]), 1)
+        self.assertEqual(pools[0]["dedup_vdevs"][0]["name"], "sdc")
 
     @patch("backend.zfs_helper.run_cmd")
     def test_get_datasets(self, mock_run):

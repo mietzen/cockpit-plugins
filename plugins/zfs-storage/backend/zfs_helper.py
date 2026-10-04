@@ -196,7 +196,7 @@ class ZfsService:
                 pool["logs"] = status_data.get("logs", [])
                 pool["spares"] = status_data.get("spares", [])
                 pool["special"] = status_data.get("special", [])
-                pool["dedup"] = status_data.get("dedup", [])
+                pool["dedup_vdevs"] = status_data.get("dedup", [])
 
         return pools
 

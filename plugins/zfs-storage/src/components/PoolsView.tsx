@@ -113,7 +113,9 @@ export const PoolsView: React.FC<PoolsViewProps> = ({
       } else if (sortIndex === 4) {
         return sortDirection === 'asc' ? a.frag - b.frag : b.frag - a.frag;
       } else if (sortIndex === 5) {
-        return sortDirection === 'asc' ? a.dedup - b.dedup : b.dedup - a.dedup;
+        const aDedup = a.dedup || 0;
+        const bDedup = b.dedup || 0;
+        return sortDirection === 'asc' ? aDedup - bDedup : bDedup - aDedup;
       } else if (sortIndex === 6) {
         aVal = a.scan?.function || '';
         bVal = b.scan?.function || '';
@@ -231,7 +233,7 @@ export const PoolsView: React.FC<PoolsViewProps> = ({
                         </Td>
                         <Td dataLabel="Free">{formatBytes(pool.free)}</Td>
                         <Td dataLabel="Fragmentation">{pool.frag}%</Td>
-                        <Td dataLabel="Deduplication">{pool.dedup}x</Td>
+                        <Td dataLabel="Deduplication">{pool.dedup ? `${pool.dedup}x` : "1.00x"}</Td>
                         <Td dataLabel="Maintenance">
                           {pool.scan?.function === "scrub" ? (
                             isScrubbing ? (
