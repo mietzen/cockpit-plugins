@@ -1,8 +1,11 @@
 import os
+import re
 import shutil
 import tempfile
 from typing import Dict, List, Tuple
 from .runner import run_cmd
+
+SAFE_SAN_REGEX = re.compile(r"^[a-zA-Z0-9_\-\.\:]+$")
 
 
 def check_openssl() -> bool:
@@ -57,6 +60,18 @@ def generate_server_cert(
     including Subject Alternative Names (SANs).
     Returns (server_cert_path, server_key_path).
     """
+    # Validate SANs and primary CN
+    primary_cn = sans[0].strip() if sans else "localhost"
+    if not SAFE_SAN_REGEX.match(primary_cn):
+        raise ValueError(f"Invalid Common Name: {primary_cn}")
+
+    for s in sans:
+        s_clean = s.strip()
+        if not s_clean:
+            continue
+        if not SAFE_SAN_REGEX.match(s_clean):
+            raise ValueError(f"Invalid Subject Alternative Name: {s}")
+
     os.makedirs(output_dir, exist_ok=True)
     server_key = os.path.join(output_dir, "server-key.pem")
     server_cert = os.path.join(output_dir, "server-cert.pem")
@@ -68,7 +83,6 @@ def generate_server_cert(
         raise RuntimeError(f"Failed to generate server key: {err}")
 
     # Generate CSR
-    primary_cn = sans[0] if sans else "localhost"
     rc, _, err = run_cmd([
         "openssl", "req", "-subj", f"/CN={primary_cn}",
         "-sha256", "-new",

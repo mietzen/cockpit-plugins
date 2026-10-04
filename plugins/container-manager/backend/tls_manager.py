@@ -22,6 +22,9 @@ PODMAN_CERTS_DIR = "/etc/containers/certs"
 PODMAN_SYSTEMD_DROPIN_DIR = "/etc/systemd/system/podman.service.d"
 PODMAN_DROPIN_FILE = os.path.join(PODMAN_SYSTEMD_DROPIN_DIR, "override-cockpit-tls.conf")
 
+MIN_PORT = 1
+MAX_PORT = 65535
+
 
 def _get_engine_paths(engine: str):
     if engine == "podman":
@@ -67,6 +70,7 @@ def get_tls_status(engine: str = "docker") -> Dict[str, Any]:
 
     return {
         "engine": engine,
+        "supported": engine != "podman",
         "enabled": dropin_exists,
         "certsExist": certs_exist,
         "port": port,
@@ -82,6 +86,18 @@ def setup_tls(
     sans: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     """Generates TLS certificates and configures systemd override drop-in."""
+    if engine == "podman":
+        return {
+            "status": "error",
+            "error": "Podman system service does not support native TCP mutual TLS. Use SSH connections or Docker engine.",
+        }
+
+    if not (MIN_PORT <= port <= MAX_PORT):
+        return {
+            "status": "error",
+            "error": f"Invalid port {port}: must be between {MIN_PORT} and {MAX_PORT}.",
+        }
+
     if not check_openssl():
         return {"status": "error", "error": "OpenSSL CLI utility is required"}
 
@@ -102,14 +118,7 @@ def setup_tls(
 
     # Generate systemd drop-in override
     os.makedirs(dropin_dir, exist_ok=True)
-    if engine == "podman":
-        dropin_content = f"""[Service]
-ExecStart=
-ExecStart=/usr/bin/podman system service --time=0 tcp:0.0.0.0:{port}
-"""
-    else:
-        # Docker drop-in
-        dropin_content = f"""[Service]
+    dropin_content = f"""[Service]
 ExecStart=
 ExecStart=/usr/bin/dockerd -H fd:// -H tcp://0.0.0.0:{port} --tlsverify --tlscacert={certs_dir}/ca.pem --tlscert={certs_dir}/server-cert.pem --tlskey={certs_dir}/server-key.pem
 """

@@ -15,6 +15,9 @@ if _CURRENT_DIR not in sys.path:
 from engine_adapter import detect_engines, get_adapter
 from tls_manager import disable_tls, get_client_bundle, get_tls_status, setup_tls
 
+MIN_PORT = 1
+MAX_PORT = 65535
+
 
 # Resolve short hostname and effective user for SSH/context commands
 def _get_host_and_user() -> Dict[str, str]:
@@ -96,8 +99,20 @@ def cmd_get_tls_status(args: argparse.Namespace) -> Dict[str, Any]:
     return {"status": "success", "tls": status}
 
 
+def _port_type(val: str) -> int:
+    try:
+        port = int(val)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"Invalid integer: {val}")
+    if not (MIN_PORT <= port <= MAX_PORT):
+        raise argparse.ArgumentTypeError(f"Port {port} out of range ({MIN_PORT}-{MAX_PORT})")
+    return port
+
+
 def cmd_setup_tls(args: argparse.Namespace) -> Dict[str, Any]:
     engine = args.engine or "docker"
+    if not (MIN_PORT <= args.port <= MAX_PORT):
+        return {"status": "error", "error": f"Invalid port {args.port}: must be between {MIN_PORT} and {MAX_PORT}."}
     sans = [s.strip() for s in args.sans.split(",") if s.strip()] if args.sans else None
     return setup_tls(engine=engine, port=args.port, sans=sans)
 
@@ -165,7 +180,7 @@ def main() -> None:
     # setup_tls
     p_setup_tls = subparsers.add_parser("setup_tls")
     p_setup_tls.add_argument("--engine", default="docker", choices=["docker", "podman"])
-    p_setup_tls.add_argument("--port", type=int, default=2376)
+    p_setup_tls.add_argument("--port", type=_port_type, default=2376)
     p_setup_tls.add_argument("--sans", default="", help="Comma-separated Subject Alternative Names")
     p_setup_tls.set_defaults(func=cmd_setup_tls)
 
