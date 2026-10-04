@@ -240,6 +240,29 @@ class TestZfsServiceActions(unittest.TestCase):
         self.assertEqual(len(disks), 1)
         self.assertEqual(disks[0]["name"], "sda")
 
+    @patch("os.path.realpath", side_effect=lambda p: p)
+    @patch("os.path.exists", return_value=True)
+    @patch("backend.zfs_helper.ZfsService.get_pools")
+    @patch("backend.zfs_helper.run_cmd")
+    def test_get_disks_with_dedup_vdevs(self, mock_run, mock_pools, mock_exists, mock_realpath):
+        mock_pools.return_value = [
+            {
+                "name": "tank",
+                "dedup": 1.0,
+                "dedup_vdevs": [{"name": "/dev/sdc", "state": "ONLINE"}],
+                "vdevs": [],
+            }
+        ]
+        lsblk_json = json.dumps({
+            "blockdevices": [
+                {"name": "sdc", "kname": "sdc", "path": "/dev/sdc", "size": 107374182400, "rota": False, "type": "disk", "model": "Test Disk"}
+            ]
+        })
+        mock_run.return_value = MagicMock(returncode=0, stdout=lsblk_json, stderr="")
+        disks = self.svc.get_disks()
+        self.assertEqual(len(disks), 1)
+        self.assertEqual(disks[0]["pool"], "tank")
+
     @patch("sys.argv", ["zfs_helper.py", "system-info"])
     @patch("backend.zfs_helper.ZfsService.get_system_info", return_value={"kernel_module_loaded": True})
     def test_main_cli_system_info(self, mock_info):

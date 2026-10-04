@@ -298,7 +298,7 @@ class ZfsService:
             map_vdevs(pool.get("logs", []))
             map_vdevs(pool.get("spares", []))
             map_vdevs(pool.get("special", []))
-            map_vdevs(pool.get("dedup", []))
+            map_vdevs(pool.get("dedup_vdevs", []))
 
         def get_system_mount(device_info: Dict[str, Any]) -> Optional[str]:
             mountpoint = device_info.get("mountpoint")

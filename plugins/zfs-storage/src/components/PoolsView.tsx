@@ -233,7 +233,7 @@ export const PoolsView: React.FC<PoolsViewProps> = ({
                         </Td>
                         <Td dataLabel="Free">{formatBytes(pool.free)}</Td>
                         <Td dataLabel="Fragmentation">{pool.frag}%</Td>
-                        <Td dataLabel="Deduplication">{pool.dedup ? `${pool.dedup}x` : "1.00x"}</Td>
+                        <Td dataLabel="Deduplication">{typeof pool.dedup === 'number' ? `${pool.dedup.toFixed(2)}x` : '1.00x'}</Td>
                         <Td dataLabel="Maintenance">
                           {pool.scan?.function === "scrub" ? (
                             isScrubbing ? (
