@@ -51,6 +51,8 @@ def resolve_username(username: Optional[str] = None) -> str:
     logname = os.environ.get("LOGNAME") or os.environ.get("USER")
     if logname and logname != "root":
         return logname
+    if username == "root":
+        return "root"
     try:
         with open("/etc/passwd", "r") as f:
             for line in f:
@@ -61,7 +63,7 @@ def resolve_username(username: Optional[str] = None) -> str:
                         return parts[0]
     except Exception:
         pass
-    return username or "root"
+    return "root"
 
 
 def get_user_uid(username: Optional[str] = None) -> int:

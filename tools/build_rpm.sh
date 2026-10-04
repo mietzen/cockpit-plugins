@@ -94,6 +94,14 @@ if command -v rpmbuild >/dev/null 2>&1; then
         RPM_DESC="VS Code Server plugin for Cockpit."
     fi
 
+    RPM_EXTRA_FILES=""
+    if [ "${PLUGIN_NAME}" = "code-server" ]; then
+        RPM_EXTRA_FILES="%{_sysconfdir}/systemd/system/cockpit.socket.d/10-code-server.conf
+%{_sysconfdir}/systemd/system/cockpit-caddy.service
+%{_sysconfdir}/cockpit-code-server/Caddyfile
+/usr/lib/tmpfiles.d/cockpit-code-server.conf"
+    fi
+
     SPEC_FILE="$RPMBUILD_DIR/SPECS/${PKG_NAME}.spec"
     cat << SPEC_EOF > "$SPEC_FILE"
 %define _buildhost localhost
@@ -175,10 +183,7 @@ rm -rf %{buildroot}
 %defattr(-,root,root,-)
 /usr/share/cockpit/${PLUGIN_NAME}
 /usr/libexec/${HELPER_DIR_NAME}
-%{_sysconfdir}/systemd/system/cockpit.socket.d/10-code-server.conf
-%{_sysconfdir}/systemd/system/cockpit-caddy.service
-%{_sysconfdir}/cockpit-code-server/Caddyfile
-/usr/lib/tmpfiles.d/cockpit-code-server.conf
+${RPM_EXTRA_FILES}
 
 %post
 if [ -d /usr/libexec/${HELPER_DIR_NAME} ]; then
