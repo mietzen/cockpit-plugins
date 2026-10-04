@@ -11,6 +11,8 @@ from backend.config_manager import (
     resolve_username,
     CodeServerConfig,
     DEFAULT_AUTH,
+    get_default_port_for_user,
+    get_default_bind_addr_for_user,
 )
 
 
@@ -233,4 +235,55 @@ def test_default_auth_and_pass():
         assert parsed_empty.auth != "none"
         assert parsed_empty.auth == "password"
         assert parsed_empty.password is not None
+
+
+def test_default_port_and_bind_addr():
+    fake_pw = pwd.struct_passwd(("testuser", "x", 1005, 1005, "Test User", "/home/testuser", "/bin/bash"))
+    with patch("pwd.getpwnam", return_value=fake_pw):
+        assert get_default_port_for_user("testuser") == 8085
+        assert get_default_bind_addr_for_user("testuser") == "127.0.0.1:8085"
+
+    with patch("pwd.getpwnam", side_effect=KeyError("none")):
+        assert get_default_port_for_user("nonexistent") == 8080
+        assert get_default_bind_addr_for_user("nonexistent") == "127.0.0.1:8080"
+
+
+def test_write_cert_and_telemetry_config():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        cfg_path = os.path.join(tmpdir, "config.yaml")
+        cfg = CodeServerConfig(
+            cert="/etc/ssl/cert.pem",
+            cert_key="/etc/ssl/key.pem",
+            hashed_password="hash",
+            app_name="CustomApp",
+            disable_telemetry=True,
+        )
+        assert write_code_server_config(cfg_path, cfg) is True
+        with open(cfg_path) as f:
+            content = f.read()
+            assert "cert: /etc/ssl/cert.pem" in content
+            assert "cert-key: /etc/ssl/key.pem" in content
+            assert "hashed-password: hash" in content
+            assert "app-name: CustomApp" in content
+            assert "disable-telemetry: true" in content
+
+
+def test_write_empty_target_uses_default_socket():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        cfg_path = os.path.join(tmpdir, "config.yaml")
+        cfg = CodeServerConfig()
+        cfg.socket = None
+        cfg.bind_addr = None
+        assert write_code_server_config(cfg_path, cfg) is True
+        parsed = parse_code_server_config(cfg_path)
+        assert parsed.socket is not None
+        assert "/run/code-server/" in parsed.socket
+
+
+def test_write_code_server_config_exception_cleanup():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        cfg_path = os.path.join(tmpdir, "config.yaml")
+        with patch("os.chmod", side_effect=OSError("chmod failed")):
+            assert write_code_server_config(cfg_path, CodeServerConfig()) is False
+
 
