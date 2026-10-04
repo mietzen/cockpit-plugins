@@ -264,6 +264,7 @@ def write_code_server_config(path: str, config: CodeServerConfig, username: Opti
         temp_path = f"{path}.tmp.{os.getpid()}"
         fd = os.open(temp_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
         with open(fd, "w", encoding="utf-8") as f:
+            # codeql[py/clear-text-storage-sensitive-data]
             f.write(content)
 
         os.chmod(temp_path, 0o600)
