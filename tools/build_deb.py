@@ -176,7 +176,8 @@ for u in ${TARGET_USERS}; do
             mkdir -p "$CFG_DIR" 2>/dev/null || true
 
             if [ ! -f "$CFG" ]; then
-                printf "socket: /run/code-server/%s.sock\\nsocket-mode: 600\\nauth: none\\ncert: false\\napp-name: Code-Server\\ndisable-telemetry: true\\n" "$UID_NUM" > "$CFG"
+                PASS_TOKEN=$(python3 -c "import secrets; print(secrets.token_urlsafe(24))" 2>/dev/null || tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 32)
+                printf "socket: /run/code-server/%s.sock\\nsocket-mode: 600\\nauth: password\\npassword: %s\\ncert: false\\napp-name: Code-Server\\ndisable-telemetry: true\\n" "$UID_NUM" "$PASS_TOKEN" > "$CFG"
             else
                 sed -i -E "s|^bind-addr:.*|socket: /run/code-server/${UID_NUM}.sock\\nsocket-mode: 600|" "$CFG" 2>/dev/null || true
                 if grep -q "^socket:" "$CFG" 2>/dev/null; then
@@ -190,6 +191,16 @@ for u in ${TARGET_USERS}; do
                 fi
                 sed -i -E "s|^cert:.*|cert: false|" "$CFG" 2>/dev/null || true
                 sed -i -E "s|^cert-key:.*||" "$CFG" 2>/dev/null || true
+                if grep -qE "^auth:[[:space:]]*none" "$CFG" 2>/dev/null; then
+                    sed -i -E "s|^auth:.*|auth: password|" "$CFG" 2>/dev/null || true
+                elif ! grep -q "^auth:" "$CFG" 2>/dev/null; then
+                    echo "auth: password" >> "$CFG"
+                fi
+                if ! grep -qE "^(password|hashed-password):[[:space:]]*[^[:space:]]+" "$CFG" 2>/dev/null; then
+                    PASS_TOKEN=$(python3 -c "import secrets; print(secrets.token_urlsafe(24))" 2>/dev/null || tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 32)
+                    sed -i -E "s|^password:.*||" "$CFG" 2>/dev/null || true
+                    echo "password: $PASS_TOKEN" >> "$CFG"
+                fi
             fi
 
             for p in ".config/code-server" ".local/share/code-server" ".cache/code-server"; do

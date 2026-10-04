@@ -2,6 +2,7 @@ import json
 import pytest
 from unittest.mock import patch, MagicMock
 from backend.code_server_helper import handle_command, main
+from backend.config_manager import CodeServerConfig
 
 
 def test_handle_status_command():
@@ -14,8 +15,9 @@ def test_handle_status_command():
             "bind_addr": "127.0.0.1:8080",
             "host": "127.0.0.1",
             "port": 8080,
-            "auth": "none",
+            "auth": "password",
             "cert": False,
+            "auth_configured": True,
         }
         mock_cfg.return_value = mock_obj
 
@@ -24,6 +26,8 @@ def test_handle_status_command():
         assert res["binary"]["installed"] is True
         assert res["service"]["active"] is True
         assert res["config"]["port"] == 8080
+        assert res["auth_configured"] is True
+        assert "password" not in res["config"]
 
 
 def test_handle_service_action_command_success_and_failure():
@@ -53,6 +57,25 @@ def test_handle_save_config_command():
 
     res = handle_command(["save_config", "--user", "test-user", "--data", "invalid-json{"])
     assert res["status"] == "error"
+
+
+def test_save_config_keeps_creds():
+    mock_existing = CodeServerConfig(
+        socket="/run/code-server/1000.sock",
+        socket_mode="600",
+        auth="password",
+        password="existing-secret",
+    )
+    with patch("backend.code_server_helper.parse_code_server_config", return_value=mock_existing), \
+         patch("backend.code_server_helper.write_code_server_config") as mock_write:
+        mock_write.return_value = True
+        payload = json.dumps({"cert": True})
+        res = handle_command(["save_config", "--user", "test-user", "--data", payload])
+        assert res["status"] == "ok"
+        saved_cfg = mock_write.call_args[0][1]
+        assert saved_cfg.socket == "/run/code-server/1000.sock"
+        assert saved_cfg.password == "existing-secret"
+        assert saved_cfg.cert is True
 
 
 def test_handle_install_command():

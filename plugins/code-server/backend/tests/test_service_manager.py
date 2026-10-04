@@ -125,6 +125,70 @@ def test_ensure_user_dir_permissions_success():
             assert mock_chown.called
             assert mock_chmod.called
 
+            with open(os.path.join(cfg_dir, "config.yaml"), "r") as f:
+                content = f.read()
+                assert "auth: password" in content
+                assert "password:" in content
+                assert "socket: /run/code-server/1000.sock" in content
+
+
+def test_ensure_user_dir_new_cfg():
+    import pwd
+    import tempfile
+    with tempfile.TemporaryDirectory() as tmpdir:
+        fake_home = os.path.join(tmpdir, "home", "testuser")
+        fake_pw = pwd.struct_passwd(("testuser", "x", 1000, 1000, "Test User", fake_home, "/bin/bash"))
+        with patch("pwd.getpwnam", return_value=fake_pw), \
+             patch("os.chown"), patch("os.chmod"):
+            ensure_user_dir_permissions("testuser")
+            cfg_file = os.path.join(fake_home, ".config", "code-server", "config.yaml")
+            assert os.path.isfile(cfg_file)
+            with open(cfg_file, "r") as f:
+                content = f.read()
+                assert "auth: password" in content
+                assert "password:" in content
+
+
+def test_ensure_user_dir_migrate():
+    import pwd
+    import tempfile
+    with tempfile.TemporaryDirectory() as tmpdir:
+        fake_home = os.path.join(tmpdir, "home", "testuser")
+        cfg_dir = os.path.join(fake_home, ".config", "code-server")
+        os.makedirs(cfg_dir, exist_ok=True)
+        cfg_file = os.path.join(cfg_dir, "config.yaml")
+        with open(cfg_file, "w") as f:
+            f.write("socket: /run/code-server/1000.sock\nauth: none\n")
+
+        fake_pw = pwd.struct_passwd(("testuser", "x", 1000, 1000, "Test User", fake_home, "/bin/bash"))
+        with patch("pwd.getpwnam", return_value=fake_pw), \
+             patch("os.chown"), patch("os.chmod"):
+            ensure_user_dir_permissions("testuser")
+            with open(cfg_file, "r") as f:
+                content = f.read()
+                assert "auth: password" in content
+                assert "password:" in content
+
+
+def test_ensure_dir_keep_pass():
+    import pwd
+    import tempfile
+    with tempfile.TemporaryDirectory() as tmpdir:
+        fake_home = os.path.join(tmpdir, "home", "testuser")
+        cfg_dir = os.path.join(fake_home, ".config", "code-server")
+        os.makedirs(cfg_dir, exist_ok=True)
+        cfg_file = os.path.join(cfg_dir, "config.yaml")
+        with open(cfg_file, "w") as f:
+            f.write("socket: /run/code-server/1000.sock\nauth: password\npassword: keep-this-secret\n")
+
+        fake_pw = pwd.struct_passwd(("testuser", "x", 1000, 1000, "Test User", fake_home, "/bin/bash"))
+        with patch("pwd.getpwnam", return_value=fake_pw), \
+             patch("os.chown"), patch("os.chmod"):
+            ensure_user_dir_permissions("testuser")
+            with open(cfg_file, "r") as f:
+                content = f.read()
+                assert "password: keep-this-secret" in content
+
 
 def test_install_code_server_deb_success():
     with patch("shutil.which", side_effect=lambda x: "/usr/bin/apt-get" if x == "apt-get" else None), \

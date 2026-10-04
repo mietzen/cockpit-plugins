@@ -1,11 +1,15 @@
 import os
 import pwd
+import secrets
 from dataclasses import dataclass, asdict
 from typing import Optional, Dict, Any
 
+AUTH_PASSWORD = "password"
+AUTH_NONE = "none"
 DEFAULT_BIND_ADDR = "127.0.0.1:8080"
-DEFAULT_AUTH = "none"
+DEFAULT_AUTH = AUTH_PASSWORD
 DEFAULT_SOCKET_MODE = "600"
+PASSWORD_TOKEN_BYTES = 24
 
 
 @dataclass
@@ -14,11 +18,17 @@ class CodeServerConfig:
     socket: Optional[str] = None
     socket_mode: Optional[str] = DEFAULT_SOCKET_MODE
     auth: str = DEFAULT_AUTH
+    password: Optional[str] = None
     hashed_password: Optional[str] = None
     cert: Any = False
     cert_key: Optional[str] = None
     disable_telemetry: bool = False
     app_name: str = "Code-Server"
+
+    def __post_init__(self):
+        # Auto-generate secure token when auth is password and no secret provided
+        if self.auth == AUTH_PASSWORD and not self.password and not self.hashed_password:
+            self.password = secrets.token_urlsafe(PASSWORD_TOKEN_BYTES)
 
     @property
     def host(self) -> str:
@@ -36,10 +46,20 @@ class CodeServerConfig:
         return 8080
 
     def to_dict(self) -> Dict[str, Any]:
-        data = asdict(self)
-        data["host"] = self.host
-        data["port"] = self.port
-        return data
+        is_auth_configured = self.auth == AUTH_PASSWORD
+        return {
+            "bind_addr": self.bind_addr,
+            "socket": self.socket,
+            "socket_mode": self.socket_mode,
+            "auth": self.auth,
+            "cert": self.cert,
+            "cert_key": self.cert_key,
+            "disable_telemetry": self.disable_telemetry,
+            "app_name": self.app_name,
+            "host": self.host,
+            "port": self.port,
+            "auth_configured": is_auth_configured,
+        }
 
 
 def resolve_username(username: Optional[str] = None) -> str:
@@ -118,7 +138,7 @@ def parse_code_server_config(path: str, username: Optional[str] = None) -> CodeS
     if not os.path.isfile(path):
         return CodeServerConfig(socket=default_socket, socket_mode=DEFAULT_SOCKET_MODE)
 
-    config = CodeServerConfig()
+    raw_data: Dict[str, Any] = {}
     has_explicit_target = False
 
     try:
@@ -132,38 +152,43 @@ def parse_code_server_config(path: str, username: Optional[str] = None) -> CodeS
                 val = v.strip().strip("'\"")
 
                 if key == "socket":
-                    config.socket = val
+                    raw_data["socket"] = val
                     has_explicit_target = True
                 elif key == "socket-mode":
-                    config.socket_mode = val
+                    raw_data["socket_mode"] = val
                 elif key == "bind-addr":
-                    config.bind_addr = val
+                    raw_data["bind_addr"] = val
                     has_explicit_target = True
                 elif key == "auth":
-                    config.auth = val
+                    raw_data["auth"] = val
+                elif key == "password":
+                    raw_data["password"] = val
                 elif key == "hashed-password":
-                    config.hashed_password = val
+                    raw_data["hashed_password"] = val
                 elif key == "cert":
                     if val.lower() in ("true", "1", "yes"):
-                        config.cert = True
+                        raw_data["cert"] = True
                     elif val.lower() in ("false", "0", "no"):
-                        config.cert = False
+                        raw_data["cert"] = False
                     else:
-                        config.cert = val
+                        raw_data["cert"] = val
                 elif key == "cert-key":
-                    config.cert_key = val
+                    raw_data["cert_key"] = val
                 elif key == "disable-telemetry":
-                    config.disable_telemetry = val.lower() in ("true", "1", "yes")
+                    raw_data["disable_telemetry"] = val.lower() in ("true", "1", "yes")
                 elif key == "app-name":
-                    config.app_name = val
+                    raw_data["app_name"] = val
     except Exception:
         pass
 
     if not has_explicit_target:
-        config.socket = default_socket
-        config.socket_mode = DEFAULT_SOCKET_MODE
+        raw_data["socket"] = default_socket
+        raw_data["socket_mode"] = DEFAULT_SOCKET_MODE
 
-    return config
+    if not raw_data.get("auth"):
+        raw_data["auth"] = DEFAULT_AUTH
+
+    return CodeServerConfig(**raw_data)
 
 
 def sanitize_yaml_val(val: Optional[str]) -> str:
@@ -218,10 +243,14 @@ def write_code_server_config(path: str, config: CodeServerConfig, username: Opti
             lines.append(f"socket: {default_socket}")
             lines.append(f"socket-mode: {DEFAULT_SOCKET_MODE}")
 
-        clean_auth = "password" if sanitize_yaml_val(config.auth) == "password" else "none"
+        raw_auth = sanitize_yaml_val(config.auth)
+        clean_auth = AUTH_NONE if raw_auth == AUTH_NONE else AUTH_PASSWORD
         lines.append(f"auth: {clean_auth}")
         if config.app_name:
             lines.append(f"app-name: {sanitize_yaml_val(config.app_name)}")
+        if config.password:
+            lines.append(f"password: {sanitize_yaml_val(config.password)}")
+
         if config.hashed_password:
             lines.append(f"hashed-password: {sanitize_yaml_val(config.hashed_password)}")
         if isinstance(config.cert, str) and config.cert:
@@ -240,8 +269,10 @@ def write_code_server_config(path: str, config: CodeServerConfig, username: Opti
         # Atomic write via temporary file in same directory with 0600 permissions
         temp_path = f"{path}.tmp.{os.getpid()}"
         fd = os.open(temp_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-        with open(fd, "w", encoding="utf-8") as f:
-            f.write(content)
+        try:
+            os.write(fd, content.encode("utf-8"))
+        finally:
+            os.close(fd)
 
         os.chmod(temp_path, 0o600)
 

@@ -1,11 +1,13 @@
 import os
 import platform
+import secrets
 import shutil
 import subprocess
 import urllib.request
 from typing import Dict, Any, Optional
 
 ALLOWED_ACTIONS = {"start", "stop", "restart", "enable", "disable", "reload"}
+PASSWORD_TOKEN_BYTES = 24
 
 
 def get_binary_info() -> Dict[str, Any]:
@@ -163,6 +165,8 @@ def ensure_user_dir_permissions(username: Optional[str] = None) -> None:
                     write_code_server_config,
                     get_default_socket_path_for_user,
                     CodeServerConfig,
+                    AUTH_PASSWORD,
+                    AUTH_NONE,
                 )
             except ImportError:
                 from config_manager import (
@@ -170,13 +174,16 @@ def ensure_user_dir_permissions(username: Optional[str] = None) -> None:
                     write_code_server_config,
                     get_default_socket_path_for_user,
                     CodeServerConfig,
+                    AUTH_PASSWORD,
+                    AUTH_NONE,
                 )
             default_sock = get_default_socket_path_for_user(user)
             if not os.path.isfile(cfg_file):
                 init_cfg = CodeServerConfig(
                     socket=default_sock,
                     socket_mode="600",
-                    auth="none",
+                    auth=AUTH_PASSWORD,
+                    password=secrets.token_urlsafe(PASSWORD_TOKEN_BYTES),
                     cert=False,
                     app_name="Code-Server",
                     disable_telemetry=True,
@@ -196,6 +203,11 @@ def ensure_user_dir_permissions(username: Optional[str] = None) -> None:
                     changed = True
                 if not cfg.app_name:
                     cfg.app_name = "Code-Server"
+                    changed = True
+                if cfg.auth == AUTH_NONE or (cfg.auth == AUTH_PASSWORD and not cfg.password and not cfg.hashed_password):
+                    cfg.auth = AUTH_PASSWORD
+                    if not cfg.password and not cfg.hashed_password:
+                        cfg.password = secrets.token_urlsafe(PASSWORD_TOKEN_BYTES)
                     changed = True
                 if changed:
                     write_code_server_config(cfg_file, cfg, user)

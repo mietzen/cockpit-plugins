@@ -17,6 +17,7 @@ try:
         write_code_server_config,
         resolve_username,
         get_user_uid,
+        AUTH_PASSWORD,
     )
     from .service_manager import (
         get_binary_info,
@@ -32,6 +33,7 @@ except ImportError:
         write_code_server_config,
         resolve_username,
         get_user_uid,
+        AUTH_PASSWORD,
     )
     from service_manager import (
         get_binary_info,
@@ -75,6 +77,7 @@ def handle_command(args: List[str]) -> Dict[str, Any]:
         service = get_service_status(parsed.user)
         cfg_path = get_user_config_path(parsed.user)
         config = parse_code_server_config(cfg_path, parsed.user)
+        cfg_dict = config.to_dict()
 
         return {
             "status": "ok",
@@ -82,8 +85,9 @@ def handle_command(args: List[str]) -> Dict[str, Any]:
             "uid": uid,
             "binary": binary,
             "service": service,
-            "config": config.to_dict(),
+            "config": cfg_dict,
             "config_path": cfg_path,
+            "auth_configured": cfg_dict.get("auth_configured", False),
         }
 
     elif parsed.action == "service":
@@ -95,14 +99,33 @@ def handle_command(args: List[str]) -> Dict[str, Any]:
     elif parsed.action == "save_config":
         try:
             data = json.loads(parsed.data)
-            cfg = CodeServerConfig(
-                bind_addr=data.get("bind_addr", "127.0.0.1:8080"),
-                auth=data.get("auth", "none"),
-                hashed_password=data.get("hashed_password"),
-                cert=bool(data.get("cert", False)),
-                disable_telemetry=bool(data.get("disable_telemetry", False)),
-            )
             cfg_path = get_user_config_path(parsed.user)
+            existing = parse_code_server_config(cfg_path, parsed.user)
+
+            # Preserve existing credentials if omitted
+            new_password = data.get("password") if "password" in data and data["password"] else existing.password
+            new_hashed_password = (
+                data.get("hashed_password")
+                if "hashed_password" in data and data["hashed_password"]
+                else existing.hashed_password
+            )
+
+            # Preserve socket or bind-addr configuration
+            socket_val = data.get("socket", existing.socket)
+            socket_mode_val = data.get("socket_mode", existing.socket_mode)
+            bind_addr_val = data.get("bind_addr", existing.bind_addr) if not socket_val else None
+
+            cfg = CodeServerConfig(
+                socket=socket_val,
+                socket_mode=socket_mode_val,
+                bind_addr=bind_addr_val,
+                auth=data.get("auth", existing.auth or AUTH_PASSWORD),
+                password=new_password,
+                hashed_password=new_hashed_password,
+                cert=data.get("cert", existing.cert),
+                disable_telemetry=bool(data.get("disable_telemetry", existing.disable_telemetry)),
+                app_name=data.get("app_name", existing.app_name),
+            )
             success = write_code_server_config(cfg_path, cfg, parsed.user)
             if success:
                 return {"status": "ok", "message": "Configuration saved"}

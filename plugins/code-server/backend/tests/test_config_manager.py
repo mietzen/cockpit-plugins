@@ -10,6 +10,7 @@ from backend.config_manager import (
     get_user_config_path,
     resolve_username,
     CodeServerConfig,
+    DEFAULT_AUTH,
 )
 
 
@@ -18,7 +19,8 @@ def test_parse_default_config_when_file_not_found():
         cfg = parse_code_server_config("/non/existent/path/config.yaml", username="root")
         assert cfg.socket == "/run/code-server/0.sock"
         assert cfg.socket_mode == "600"
-        assert cfg.auth == "none"
+        assert cfg.auth == "password"
+        assert cfg.password is not None
         assert cfg.cert is False
 
     cfg_user = parse_code_server_config("/non/existent/path/config.yaml")
@@ -107,7 +109,7 @@ def test_write_config_sanitization():
         assert parsed.hashed_password is not None
         assert "\n" not in parsed.hashed_password
         assert "\n" not in parsed.bind_addr
-        assert parsed.auth == "none"
+        assert parsed.auth == "password"
 
 
 def test_resolve_username_and_user_config_path():
@@ -183,4 +185,52 @@ def test_write_socket_config():
         parsed = parse_code_server_config(cfg_path)
         assert parsed.socket == "/run/code-server/1000.sock"
         assert parsed.socket_mode == "666"
+
+
+def test_default_auth_and_pass():
+    # Assert DEFAULT_AUTH is "password" (never "none")
+    assert DEFAULT_AUTH == "password"
+    assert DEFAULT_AUTH != "none"
+
+    # Verify generated and loaded config without password generates and persists random password
+    with tempfile.TemporaryDirectory() as tmpdir:
+        cfg_path = os.path.join(tmpdir, "config.yaml")
+
+        cfg = CodeServerConfig()
+        assert cfg.auth == "password"
+        assert cfg.password is not None
+        assert len(cfg.password) >= 24
+
+        with open(cfg_path, "w") as f:
+            f.write("bind-addr: 127.0.0.1:8080\nauth: password\n")
+
+        loaded = parse_code_server_config(cfg_path)
+        assert loaded.auth == "password"
+        assert loaded.password is not None
+        assert len(loaded.password) >= 24
+
+        # Verify parse_code_server_config avoids destructive writes during reading
+        with open(cfg_path, "r") as f:
+            content = f.read()
+            assert "password:" not in content
+
+        # Persist explicitly and verify
+        assert write_code_server_config(cfg_path, loaded) is True
+        with open(cfg_path, "r") as f:
+            saved_content = f.read()
+            assert f"password: {loaded.password}" in saved_content
+
+    # Configs cannot default to unauthenticated auth: none
+    default_cfg = CodeServerConfig()
+    assert default_cfg.auth != "none"
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        empty_cfg_path = os.path.join(tmpdir, "empty_config.yaml")
+        with open(empty_cfg_path, "w") as f:
+            f.write("bind-addr: 127.0.0.1:8080\n")
+
+        parsed_empty = parse_code_server_config(empty_cfg_path)
+        assert parsed_empty.auth != "none"
+        assert parsed_empty.auth == "password"
+        assert parsed_empty.password is not None
 
