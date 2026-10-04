@@ -2,6 +2,8 @@ import { test, expect, Page, Frame } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
 
+const COVERAGE_FRAME_TARGET = 'container-manager';
+
 async function saveScreenshot(page: Page, filename: string) {
   const targetDir = process.env.SCREENSHOT_DIR || path.join(process.cwd(), 'test-results', 'screenshots');
   try {
@@ -46,9 +48,15 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
 
   test.afterEach(async ({}, testInfo) => {
     try {
-      if (!page) return;
+      if (!page) {
+        return;
+      }
       let coverageData = null;
       for (const f of page.frames()) {
+        if (!f.url().includes(COVERAGE_FRAME_TARGET)) {
+          continue;
+        }
+
         try {
           const cov = await f.evaluate(() => (window as any).__coverage__);
           if (cov && Object.keys(cov).length > 0) {

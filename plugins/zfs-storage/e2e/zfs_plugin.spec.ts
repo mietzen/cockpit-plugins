@@ -4,6 +4,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 const TEST_POOL = "e2epool";
+const COVERAGE_FRAME_TARGET = "zfs-storage";
 
 async function saveScreenshot(page: Page, filename: string) {
   const targetDir = process.env.SCREENSHOT_DIR || path.join(process.cwd(), "test-results", "screenshots");
@@ -65,9 +66,15 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
 
   test.afterEach(async ({}, testInfo) => {
     try {
-      if (!page) return;
+      if (!page) {
+        return;
+      }
       let coverageData = null;
       for (const f of page.frames()) {
+        if (!f.url().includes(COVERAGE_FRAME_TARGET)) {
+          continue;
+        }
+
         try {
           const cov = await f.evaluate(() => (window as any).__coverage__);
           if (cov && Object.keys(cov).length > 0) {

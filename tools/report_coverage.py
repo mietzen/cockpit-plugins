@@ -3,6 +3,8 @@ import glob
 import os
 import sys
 
+COMMON_PKG_PREFIX = "packages/common/"
+
 TIER_CONFIG = {
     "SECURITY": {
         "title": "🛡️ Security & Destructive Operations",
@@ -140,6 +142,13 @@ def main():
                 # Keep max hit count
                 merged_records[fkey]["lh"] = max(merged_records[fkey]["lh"], r["lh"])
                 merged_records[fkey]["brh"] = max(merged_records[fkey]["brh"], r["brh"])
+
+            # Filter E2E records to target plugin and shared common package
+            if layer == "Frontend E2E":
+                target_prefix = f"plugins/{target}/"
+                clean_fkey = fkey[2:] if fkey.startswith("./") else fkey
+                if not (clean_fkey.startswith(target_prefix) or clean_fkey.startswith(COMMON_PKG_PREFIX)):
+                    continue
 
             target_stats[(target, layer)]["lf"] += r["lf"]
             target_stats[(target, layer)]["lh"] += r["lh"]
