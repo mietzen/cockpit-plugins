@@ -149,6 +149,9 @@ class NfsParser:
         if "\r" in export_path or "\n" in export_path:
             return False, "Export path cannot contain newline characters"
 
+        if '"' in export_path:
+            return False, "Export path cannot contain double quotes"
+
         # Verify not overwriting an Ansible managed export elsewhere
         all_exports = self.parse_all()
         for exp in all_exports:
@@ -212,7 +215,12 @@ class NfsParser:
         found = False
         new_lines = []
 
-        target_prefixes = (export_path + " ", export_path + "\t", f'"{export_path}" ')
+        target_prefixes = (
+            export_path + " ",
+            export_path + "\t",
+            f'"{export_path}" ',
+            f'"{export_path}"\t',
+        )
         target_exact = (export_path, f'"{export_path}"')
 
         for line in lines:
@@ -247,7 +255,12 @@ class NfsParser:
             content = f.read()
 
         lines = content.splitlines()
-        target_prefixes = (export_path + " ", export_path + "\t", f'"{export_path}" ')
+        target_prefixes = (
+            export_path + " ",
+            export_path + "\t",
+            f'"{export_path}" ',
+            f'"{export_path}"\t',
+        )
         target_exact = (export_path, f'"{export_path}"')
         new_lines = [
             l for l in lines

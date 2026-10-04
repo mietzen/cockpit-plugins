@@ -135,6 +135,8 @@ class TestNfsParser(unittest.TestCase):
         self.assertFalse(ok)
         ok, _ = self.parser.save_export("/tank/sec_test", [{"host": "*", "anonuid": 0, "anongid": 65534}])
         self.assertTrue(ok)
+        ok, _ = self.parser.save_export("/tank/sec_test", [{"host": "*", "anonuid": "1000", "anongid": "2000"}])
+        self.assertTrue(ok)
 
     def test_export_path_with_spaces(self):
         path = "/srv/my share"
@@ -145,6 +147,49 @@ class TestNfsParser(unittest.TestCase):
         paths = {e["path"]: e for e in exports}
         self.assertIn(path, paths)
         self.assertEqual(paths[path]["path"], path)
+
+    def test_reject_quotes_in_path(self):
+        ok, _ = self.parser.save_export('/tank/bad"quote', [{"host": "*"}])
+        self.assertFalse(ok)
+
+    def test_valid_custom_options(self):
+        ok, _ = self.parser.save_export("/tank/valid_opts", [{"host": "*", "options": ["rw", "sync"]}])
+        self.assertTrue(ok)
+        exports = {e["path"]: e for e in self.parser.parse_all()}
+        self.assertEqual(exports["/tank/valid_opts"]["clients"][0]["options"], ["rw", "sync"])
+
+    def test_update_quoted_export(self):
+        path = "/srv/my space export"
+        ok, _ = self.parser.save_export(path, [{"host": "10.0.0.1", "read_only": True}])
+        self.assertTrue(ok)
+        ok, _ = self.parser.save_export(path, [{"host": "10.0.0.2", "read_only": False}])
+        self.assertTrue(ok)
+        exports = [e for e in self.parser.parse_all() if e["path"] == path]
+        self.assertEqual(len(exports), 1)
+        self.assertEqual(exports[0]["clients"][0]["host"], "10.0.0.2")
+
+    def test_quoted_path_tab_sep(self):
+        path = "/srv/tab path"
+        with open(self.cockpit_file, "a") as f:
+            f.write(f'"{path}"\t*(ro,sync)\n')
+        exports = {e["path"]: e for e in self.parser.parse_all()}
+        self.assertIn(path, exports)
+
+        # Update tab-separated quoted export
+        ok, _ = self.parser.save_export(path, [{"host": "*", "read_only": False}])
+        self.assertTrue(ok)
+        with open(self.cockpit_file) as f:
+            content = f.read()
+        self.assertEqual(content.count(path), 1)
+
+        # Delete tab-separated quoted export
+        with open(self.cockpit_file, "w") as f:
+            f.write(f'"{path}"\t*(ro,sync)\n')
+        ok, _ = self.parser.delete_export(path)
+        self.assertTrue(ok)
+        with open(self.cockpit_file) as f:
+            content = f.read()
+        self.assertNotIn(path, content)
 
     def test_delete_export_with_spaces(self):
         path = "/srv/my space path"
