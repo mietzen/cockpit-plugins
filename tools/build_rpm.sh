@@ -134,6 +134,11 @@ if command -v rpmbuild >/dev/null 2>&1; then
             CADDY_INSTALL_CMD="cp \"${PWD}/${RPMBUILD_DIR}/SOURCES/caddy\" %{buildroot}/usr/libexec/${HELPER_DIR_NAME}/caddy"
         fi
 
+        SPEC_BUILD_ARCH=""
+        if [ "$RPM_ARCH" = "noarch" ]; then
+            SPEC_BUILD_ARCH="BuildArch:      noarch"
+        fi
+
         SPEC_FILE="$RPMBUILD_DIR/SPECS/${PKG_NAME}.spec"
         cat << SPEC_EOF > "$SPEC_FILE"
 %define _buildhost localhost
@@ -149,7 +154,7 @@ Name:           ${PKG_NAME}
 Version:        ${VERSION}
 Release:        1
 Summary:        ${RPM_SUMMARY}
-BuildArch:      ${RPM_ARCH}
+${SPEC_BUILD_ARCH}
 License:        MIT
 URL:            https://github.com/mietzen/cockpit-plugins
 Requires:       ${RPM_REQUIRES}
@@ -314,8 +319,10 @@ COCKPIT_CONF_EOF
                         chmod -R u+rwX "\$U_HOME/\$p" 2>/dev/null || true
                     fi
                 done
+                rm -f "/run/code-server/\${UID_NUM}.sock" 2>/dev/null || true
             fi
-            systemctl enable --now "code-server@\${u}.service" 2>/dev/null || true
+            systemctl enable "code-server@\${u}.service" 2>/dev/null || true
+            systemctl restart "code-server@\${u}.service" 2>/dev/null || true
         fi
     done
     CODE_BIN=\$(command -v code-server 2>/dev/null || true)

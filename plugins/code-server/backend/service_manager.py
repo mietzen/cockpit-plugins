@@ -232,6 +232,20 @@ def manage_service(action: str, username: Optional[str] = None) -> Dict[str, Any
     if action in ("start", "restart", "enable"):
         ensure_user_dir_permissions(username)
 
+    if action in ("start", "restart"):
+        user = resolve_username(username)
+        try:
+            import pwd
+            pw = pwd.getpwnam(user)
+            sock_path = f"/run/code-server/{pw.pw_uid}.sock"
+            if os.path.exists(sock_path):
+                try:
+                    os.unlink(sock_path)
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
     unit_name = get_service_unit_name(username)
     cmd = ["systemctl", action, unit_name]
 

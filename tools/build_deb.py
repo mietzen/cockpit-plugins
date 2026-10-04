@@ -198,8 +198,10 @@ for u in ${TARGET_USERS}; do
                     chmod -R u+rwX "$U_HOME/$p" 2>/dev/null || true
                 fi
             done
+            rm -f "/run/code-server/${UID_NUM}.sock" 2>/dev/null || true
         fi
-        systemctl enable --now "code-server@${u}.service" 2>/dev/null || true
+        systemctl enable "code-server@${u}.service" 2>/dev/null || true
+        systemctl restart "code-server@${u}.service" 2>/dev/null || true
     fi
 done
 CODE_BIN=$(command -v code-server 2>/dev/null || true)
