@@ -3,7 +3,7 @@
   "version": 1,
   "tools": {
     "index": {
-      "label": "Code-Server",
+      "label": "VS Code Server",
       "order": 50
     }
   },

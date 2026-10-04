@@ -112,7 +112,7 @@ test.describe.serial("Cockpit Code Server E2E Test Suite", () => {
     }
 
     // Click Code-Server entry in sidebar
-    const csLink = page.locator("#sidebar a:has-text('Code-Server'), nav a:has-text('Code-Server'), a:has-text('Code-Server'), a[href*='code-server']").first();
+    const csLink = page.locator("#sidebar a:has-text('VS Code Server'), #sidebar a:has-text('Code-Server'), nav a:has-text('VS Code Server'), nav a:has-text('Code-Server'), a:has-text('VS Code Server'), a:has-text('Code-Server'), a[href*='code-server']").first();
     if (await csLink.isVisible({ timeout: 5000 }).catch(() => false)) {
       await csLink.click();
     } else {

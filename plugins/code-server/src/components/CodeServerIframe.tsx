@@ -24,7 +24,7 @@ export const CodeServerIframe: React.FC<CodeServerIframeProps> = ({
 }) => {
   const [iframeError, setIframeError] = useState<boolean>(false);
   const isRunning = status.service.active;
-  const targetUrl = getCodeServerUrl(status.uid, status.config);
+  const targetUrl = getCodeServerUrl(status.uid);
 
   if (!isRunning) {
     return (

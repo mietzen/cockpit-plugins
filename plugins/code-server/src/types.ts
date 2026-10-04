@@ -43,13 +43,8 @@ export interface CommandResult {
   output?: string;
 }
 
-export const getCodeServerUrl = (
-  uidOrConfig?: number | string | null | Partial<CodeServerConfigData>,
-  _config?: Partial<CodeServerConfigData>
-): string => {
-  let effectiveUid: number | string = 1000;
-  if (typeof uidOrConfig === "number" || typeof uidOrConfig === "string") {
-    effectiveUid = uidOrConfig;
-  }
+export const getCodeServerUrl = (uid?: number | string | null): string => {
+  const effectiveUid = uid ?? 1000;
   return `/code-server/${effectiveUid}/`;
 };
+
