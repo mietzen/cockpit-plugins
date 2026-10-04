@@ -58,7 +58,7 @@ class TestTlsGeneration(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             generate_ca(self.test_dir)
 
-    def test_generate_server_cert_invalid_sans(self):
+    def test_invalid_sans(self):
         ca_cert, ca_key = generate_ca(self.test_dir)
         invalid_sans_cases = [
             ["example.com\nIP:1.2.3.4"],
