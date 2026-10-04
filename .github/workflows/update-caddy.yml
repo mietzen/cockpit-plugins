@@ -52,8 +52,8 @@ jobs:
           git add plugins/code-server/upstream.json
           git commit -m "Update Caddy upstream to v${LATEST_VERSION}
 
-Automated upstream sync updating pinned Caddy reverse proxy package
-to v${LATEST_VERSION}."
+            Automated upstream sync updating pinned Caddy reverse proxy package
+            to v${LATEST_VERSION}."
 
           git push -u origin "$BRANCH_NAME" --force
           gh pr create \

@@ -52,8 +52,8 @@ jobs:
           git add plugins/code-server/upstream.json
           git commit -m "Update code-server upstream to v${LATEST_VERSION}
 
-Automated upstream sync updating pinned code-server package to
-v${LATEST_VERSION}."
+            Automated upstream sync updating pinned code-server package to
+            v${LATEST_VERSION}."
 
           git push -u origin "$BRANCH_NAME" --force
           gh pr create \
