@@ -72,9 +72,6 @@ fi
 
 if [ -n "$DPKG_DEB" ]; then
     echo "==> Using system $DPKG_DEB to build Debian package..."
-    STAGE_DIR="build/deb-staging/${PKG_NAME}"
-    rm -rf "$STAGE_DIR"
-    mkdir -p "$STAGE_DIR/DEBIAN"
     HELPER_DIR_NAME="cockpit-${PLUGIN_NAME}"
     if [ "$PLUGIN_NAME" = "zfs-storage" ]; then
         HELPER_DIR_NAME="cockpit-zfs"
@@ -92,21 +89,31 @@ if [ -n "$DPKG_DEB" ]; then
         DEB_DEPENDS="cockpit-bridge | cockpit, python3, openssl"
         DEB_DESC="Docker and Podman container management plugin for Cockpit"
     elif [ "$PLUGIN_NAME" = "code-server" ]; then
-        DEB_DEPENDS="cockpit-bridge | cockpit, python3, code-server, caddy"
+        DEB_DEPENDS="cockpit-bridge | cockpit, python3, code-server"
         DEB_DESC="VS Code Server plugin for Cockpit"
     fi
 
-    mkdir -p "$STAGE_DIR/usr/share/cockpit/${PLUGIN_NAME}"
-    mkdir -p "$STAGE_DIR/usr/libexec/${HELPER_DIR_NAME}"
-    mkdir -p "$OUTPUT_DIR"
+    if [ "$PLUGIN_NAME" = "code-server" ]; then
+        ARCHS=("amd64" "arm64")
+    else
+        ARCHS=("all")
+    fi
 
-    # Control file
-    cat << CONTROL_EOF > "$STAGE_DIR/DEBIAN/control"
+    for TARGET_ARCH in "${ARCHS[@]}"; do
+        STAGE_DIR="build/deb-staging/${PKG_NAME}-${TARGET_ARCH}"
+        rm -rf "$STAGE_DIR"
+        mkdir -p "$STAGE_DIR/DEBIAN"
+        mkdir -p "$STAGE_DIR/usr/share/cockpit/${PLUGIN_NAME}"
+        mkdir -p "$STAGE_DIR/usr/libexec/${HELPER_DIR_NAME}"
+        mkdir -p "$OUTPUT_DIR"
+
+        # Control file
+        cat << CONTROL_EOF > "$STAGE_DIR/DEBIAN/control"
 Package: ${PKG_NAME}
 Version: ${VERSION}
 Section: admin
 Priority: optional
-Architecture: all
+Architecture: ${TARGET_ARCH}
 Maintainer: Nils Stein <github.nstein@mailbox.org>
 Depends: ${DEB_DEPENDS}
 Homepage: https://github.com/mietzen/cockpit-plugins
@@ -302,15 +309,35 @@ PRERM_EOF
     find "$STAGE_DIR" -name "*.pyc" -delete 2>/dev/null || true
     find "$STAGE_DIR" -name "*.pyo" -delete 2>/dev/null || true
 
-    # Fix permissions and timestamps for reproducible builds
-    find "$STAGE_DIR" -type d -exec chmod 755 {} +
-    find "$STAGE_DIR/usr" -type f -exec chmod 644 {} +
-    find "$STAGE_DIR/usr/libexec/${HELPER_DIR_NAME}" -name "*.py" -exec chmod 755 {} + 2>/dev/null || true
-    find "$STAGE_DIR" -exec touch -d "@$SOURCE_DATE_EPOCH" {} + 2>/dev/null || find "$STAGE_DIR" -exec touch -t "$(date -r "$SOURCE_DATE_EPOCH" +%Y%m%d%H%M.%S 2>/dev/null || date -u -d "@$SOURCE_DATE_EPOCH" +%Y%m%d%H%M.%S)" {} + 2>/dev/null || true
+        # Bundle caddy binary for code-server
+        if [ "$PLUGIN_NAME" = "code-server" ]; then
+            CADDY_VER=$(python3 -c "import json; print(next((p['version'] for p in json.load(open('${PLUGIN_DIR}/upstream.json'))['packages'] if p['name'] == 'caddy'), '2.11.7'))" 2>/dev/null || echo "2.11.7")
+            ARCHIVE_FILE=""
+            for c_dir in "build/archives" "dist-archives" "all-archives"; do
+                if [ -f "${c_dir}/caddy_${CADDY_VER}_linux_${TARGET_ARCH}.tar.gz" ]; then
+                    ARCHIVE_FILE="${c_dir}/caddy_${CADDY_VER}_linux_${TARGET_ARCH}.tar.gz"
+                    break
+                fi
+            done
+            if [ -z "$ARCHIVE_FILE" ]; then
+                python3 tools/download_upstream_packages.py --archive-dir build/archives
+                ARCHIVE_FILE="build/archives/caddy_${CADDY_VER}_linux_${TARGET_ARCH}.tar.gz"
+            fi
+            tar -xzf "$ARCHIVE_FILE" -C "$STAGE_DIR/usr/libexec/${HELPER_DIR_NAME}" caddy
+            chmod 755 "$STAGE_DIR/usr/libexec/${HELPER_DIR_NAME}/caddy"
+        fi
 
-    DEB_FILE="${OUTPUT_DIR}/${PKG_NAME}_${VERSION}_all.deb"
-    "$DPKG_DEB" -Zgzip --uniform-compression --build --root-owner-group "$STAGE_DIR" "$DEB_FILE" 2>/dev/null || "$DPKG_DEB" -Zgzip --build --root-owner-group "$STAGE_DIR" "$DEB_FILE"
-    echo "Created Debian package: $DEB_FILE"
+        # Fix permissions and timestamps for reproducible builds
+        find "$STAGE_DIR" -type d -exec chmod 755 {} +
+        find "$STAGE_DIR/usr" -type f -exec chmod 644 {} +
+        find "$STAGE_DIR/usr/libexec/${HELPER_DIR_NAME}" -name "*.py" -exec chmod 755 {} + 2>/dev/null || true
+        find "$STAGE_DIR/usr/libexec/${HELPER_DIR_NAME}" -name "caddy" -exec chmod 755 {} + 2>/dev/null || true
+        find "$STAGE_DIR" -exec touch -d "@$SOURCE_DATE_EPOCH" {} + 2>/dev/null || find "$STAGE_DIR" -exec touch -t "$(date -r "$SOURCE_DATE_EPOCH" +%Y%m%d%H%M.%S 2>/dev/null || date -u -d "@$SOURCE_DATE_EPOCH" +%Y%m%d%H%M.%S)" {} + 2>/dev/null || true
+
+        DEB_FILE="${OUTPUT_DIR}/${PKG_NAME}_${VERSION}_${TARGET_ARCH}.deb"
+        "$DPKG_DEB" -Zgzip --uniform-compression --build --root-owner-group "$STAGE_DIR" "$DEB_FILE" 2>/dev/null || "$DPKG_DEB" -Zgzip --build --root-owner-group "$STAGE_DIR" "$DEB_FILE"
+        echo "Created Debian package: $DEB_FILE"
+    done
 else
     echo "==> dpkg-deb not found on host, using python fallback..."
     python3 tools/build_deb.py "$PLUGIN_DIR" --output-dir "$OUTPUT_DIR" --version "$VERSION"

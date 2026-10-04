@@ -6,7 +6,7 @@ Requires=cockpit.socket
 
 [Service]
 Type=exec
-ExecStart=/usr/bin/caddy run --config /etc/cockpit-code-server/Caddyfile
+ExecStart=/usr/libexec/cockpit-code-server/caddy run --config /etc/cockpit-code-server/Caddyfile
 KillMode=mixed
 Restart=on-failure
 RestartSec=5s

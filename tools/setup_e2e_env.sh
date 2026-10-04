@@ -9,7 +9,7 @@ echo "========================================="
 if command -v apt-get &>/dev/null; then
     export DEBIAN_FRONTEND=noninteractive
     sudo apt-get update -qq
-    sudo apt-get install -y -qq --no-install-recommends cockpit-ws cockpit-bridge cockpit-system libpam-systemd zfsutils-linux smartmontools python3 util-linux curl samba nfs-kernel-server podman caddy
+    sudo apt-get install -y -qq --no-install-recommends cockpit-ws cockpit-bridge cockpit-system libpam-systemd zfsutils-linux smartmontools python3 util-linux curl samba nfs-kernel-server podman
 fi
 
 # 2. Setup virtual loop disks for ZFS testing

@@ -90,7 +90,7 @@ if command -v rpmbuild >/dev/null 2>&1; then
         RPM_DESC="Docker and Podman container management plugin for Cockpit."
     elif [ "$PLUGIN_NAME" = "code-server" ]; then
         RPM_SUMMARY="VS Code Server plugin for Cockpit"
-        RPM_REQUIRES="cockpit-bridge, python3, code-server, caddy"
+        RPM_REQUIRES="cockpit-bridge, python3, code-server"
         RPM_DESC="VS Code Server plugin for Cockpit."
     fi
 
@@ -102,8 +102,20 @@ if command -v rpmbuild >/dev/null 2>&1; then
 /usr/lib/tmpfiles.d/cockpit-code-server.conf"
     fi
 
-    SPEC_FILE="$RPMBUILD_DIR/SPECS/${PKG_NAME}.spec"
-    cat << SPEC_EOF > "$SPEC_FILE"
+    if [ "$PLUGIN_NAME" = "code-server" ]; then
+        ARCH_PAIRS=("amd64:x86_64" "arm64:aarch64")
+    else
+        ARCH_PAIRS=("all:noarch")
+    fi
+
+    for pair in "${ARCH_PAIRS[@]}"; do
+        TAR_ARCH="${pair%%:*}"
+        RPM_ARCH="${pair##*:}"
+        rm -rf "$RPMBUILD_DIR"
+        mkdir -p "$RPMBUILD_DIR/BUILD" "$RPMBUILD_DIR/RPMS" "$RPMBUILD_DIR/SOURCES" "$RPMBUILD_DIR/SPECS" "$RPMBUILD_DIR/SRPMS"
+
+        SPEC_FILE="$RPMBUILD_DIR/SPECS/${PKG_NAME}.spec"
+        cat << SPEC_EOF > "$SPEC_FILE"
 %define _buildhost localhost
 %define _build_id_links none
 %define _clamp_mtime 1
@@ -117,7 +129,7 @@ Name:           ${PKG_NAME}
 Version:        ${VERSION}
 Release:        1
 Summary:        ${RPM_SUMMARY}
-BuildArch:      noarch
+BuildArch:      ${RPM_ARCH}
 License:        MIT
 URL:            https://github.com/mietzen/cockpit-plugins
 Requires:       ${RPM_REQUIRES}
@@ -169,11 +181,28 @@ if [ -d "${PWD}/packages/common/python/cockpit_common" ]; then
     mkdir -p %{buildroot}/usr/libexec/${HELPER_DIR_NAME}/cockpit_common
     cp -r "${PWD}/packages/common/python/cockpit_common/"* %{buildroot}/usr/libexec/${HELPER_DIR_NAME}/cockpit_common/
 fi
+if [ "${PLUGIN_NAME}" = "code-server" ]; then
+    CADDY_VER=$(python3 -c "import json; print(next((p['version'] for p in json.load(open('${PWD}/${PLUGIN_DIR}/upstream.json'))['packages'] if p['name'] == 'caddy'), '2.11.7'))" 2>/dev/null || echo "2.11.7")
+    ARCHIVE_FILE=""
+    for c_dir in "build/archives" "dist-archives" "all-archives"; do
+        if [ -f "${PWD}/${c_dir}/caddy_${CADDY_VER}_linux_${TAR_ARCH}.tar.gz" ]; then
+            ARCHIVE_FILE="${PWD}/${c_dir}/caddy_${CADDY_VER}_linux_${TAR_ARCH}.tar.gz"
+            break
+        fi
+    done
+    if [ -z "$ARCHIVE_FILE" ]; then
+        python3 "${PWD}/tools/download_upstream_packages.py" --archive-dir "${PWD}/build/archives"
+        ARCHIVE_FILE="${PWD}/build/archives/caddy_${CADDY_VER}_linux_${TAR_ARCH}.tar.gz"
+    fi
+    tar -xzf "$ARCHIVE_FILE" -C %{buildroot}/usr/libexec/${HELPER_DIR_NAME} caddy
+    chmod 755 %{buildroot}/usr/libexec/${HELPER_DIR_NAME}/caddy
+fi
 rm -rf %{buildroot}/usr/libexec/${HELPER_DIR_NAME}/tests
 find %{buildroot} -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
 find %{buildroot} -name "*.pyc" -delete 2>/dev/null || true
 find %{buildroot} -name "*.pyo" -delete 2>/dev/null || true
 find %{buildroot}/usr/libexec/${HELPER_DIR_NAME} -name "*.py" -exec chmod 755 {} + 2>/dev/null || true
+find %{buildroot}/usr/libexec/${HELPER_DIR_NAME} -name "caddy" -exec chmod 755 {} + 2>/dev/null || true
 find %{buildroot} -exec touch -d "@${SOURCE_DATE_EPOCH}" {} + 2>/dev/null || true
 
 %clean
@@ -322,25 +351,27 @@ fi
 
 SPEC_EOF
 
-    rpmbuild \
-        --define "_topdir ${PWD}/${RPMBUILD_DIR}" \
-        --define "_buildhost localhost" \
-        --define "_clamp_mtime 1" \
-        --define "_build_time ${SOURCE_DATE_EPOCH}" \
-        --define "_buildtime ${SOURCE_DATE_EPOCH}" \
-        --define "_source_date_epoch ${SOURCE_DATE_EPOCH}" \
-        --define "_source_date_epoch_from_changelog 0" \
-        --define "_binary_payload w9.gzdio" \
-        --define "_source_payload w9.gzdio" \
-        --define "_build_id_links none" \
-        -bb "$SPEC_FILE"
-    find "$RPMBUILD_DIR/RPMS" -name "*.rpm" -exec cp {} "$OUTPUT_DIR/" \;
-    for rpm_f in "$OUTPUT_DIR"/*.rpm; do
-        if [ -f "$rpm_f" ]; then
-            python3 tools/reproducible_rpm.py "$rpm_f" --epoch "$SOURCE_DATE_EPOCH"
-        fi
+        rpmbuild \
+            --define "_topdir ${PWD}/${RPMBUILD_DIR}" \
+            --define "_buildhost localhost" \
+            --define "_clamp_mtime 1" \
+            --define "_build_time ${SOURCE_DATE_EPOCH}" \
+            --define "_buildtime ${SOURCE_DATE_EPOCH}" \
+            --define "_source_date_epoch ${SOURCE_DATE_EPOCH}" \
+            --define "_source_date_epoch_from_changelog 0" \
+            --define "_binary_payload w9.gzdio" \
+            --define "_source_payload w9.gzdio" \
+            --define "_build_id_links none" \
+            --target "${RPM_ARCH}" \
+            -bb "$SPEC_FILE"
+        find "$RPMBUILD_DIR/RPMS" -name "*.rpm" -exec cp {} "$OUTPUT_DIR/" \;
+        for rpm_f in "$OUTPUT_DIR"/*.rpm; do
+            if [ -f "$rpm_f" ]; then
+                python3 tools/reproducible_rpm.py "$rpm_f" --epoch "$SOURCE_DATE_EPOCH"
+            fi
+        done
+        echo "Created reproducible RPM package (${RPM_ARCH}) in $OUTPUT_DIR"
     done
-    echo "Created reproducible RPM package in $OUTPUT_DIR"
 else
     echo "==> rpmbuild not found on host, creating fallback RPM staging..."
     mkdir -p "$OUTPUT_DIR"
