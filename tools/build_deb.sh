@@ -165,10 +165,11 @@ COCKPIT_CONF_EOF
     fi
 
     if command -v systemctl >/dev/null 2>&1; then
-        if systemctl is-active caddy.service >/dev/null 2>&1; then
+        if systemctl list-unit-files caddy.service >/dev/null 2>&1; then
             if grep -q "Hello, world!" /etc/caddy/Caddyfile 2>/dev/null || grep -q "/usr/share/caddy" /etc/caddy/Caddyfile 2>/dev/null; then
                 systemctl stop caddy.service 2>/dev/null || true
                 systemctl disable caddy.service 2>/dev/null || true
+                systemctl reset-failed caddy.service 2>/dev/null || true
             fi
         fi
         systemctl stop cockpit.socket 2>/dev/null || true
