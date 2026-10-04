@@ -1,11 +1,13 @@
 import os
 import platform
+import secrets
 import shutil
 import subprocess
 import urllib.request
 from typing import Dict, Any, Optional
 
 ALLOWED_ACTIONS = {"start", "stop", "restart", "enable", "disable", "reload"}
+PASSWORD_TOKEN_BYTES = 24
 
 
 def get_binary_info() -> Dict[str, Any]:
@@ -176,7 +178,8 @@ def ensure_user_dir_permissions(username: Optional[str] = None) -> None:
                 init_cfg = CodeServerConfig(
                     socket=default_sock,
                     socket_mode="600",
-                    auth="none",
+                    auth="password",
+                    password=secrets.token_urlsafe(PASSWORD_TOKEN_BYTES),
                     cert=False,
                     app_name="Code-Server",
                     disable_telemetry=True,

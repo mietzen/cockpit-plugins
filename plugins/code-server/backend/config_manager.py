@@ -1,11 +1,13 @@
 import os
 import pwd
+import secrets
 from dataclasses import dataclass, asdict
 from typing import Optional, Dict, Any
 
 DEFAULT_BIND_ADDR = "127.0.0.1:8080"
-DEFAULT_AUTH = "none"
+DEFAULT_AUTH = "password"
 DEFAULT_SOCKET_MODE = "600"
+PASSWORD_TOKEN_BYTES = 24
 
 
 @dataclass
@@ -14,11 +16,17 @@ class CodeServerConfig:
     socket: Optional[str] = None
     socket_mode: Optional[str] = DEFAULT_SOCKET_MODE
     auth: str = DEFAULT_AUTH
+    password: Optional[str] = None
     hashed_password: Optional[str] = None
     cert: Any = False
     cert_key: Optional[str] = None
     disable_telemetry: bool = False
     app_name: str = "Code-Server"
+
+    def __post_init__(self):
+        # Auto-generate secure token when auth is password and no secret provided
+        if self.auth == "password" and not self.password and not self.hashed_password:
+            self.password = secrets.token_urlsafe(PASSWORD_TOKEN_BYTES)
 
     @property
     def host(self) -> str:
@@ -118,7 +126,7 @@ def parse_code_server_config(path: str, username: Optional[str] = None) -> CodeS
     if not os.path.isfile(path):
         return CodeServerConfig(socket=default_socket, socket_mode=DEFAULT_SOCKET_MODE)
 
-    config = CodeServerConfig()
+    raw_data: Dict[str, Any] = {}
     has_explicit_target = False
 
     try:
@@ -132,36 +140,48 @@ def parse_code_server_config(path: str, username: Optional[str] = None) -> CodeS
                 val = v.strip().strip("'\"")
 
                 if key == "socket":
-                    config.socket = val
+                    raw_data["socket"] = val
                     has_explicit_target = True
                 elif key == "socket-mode":
-                    config.socket_mode = val
+                    raw_data["socket_mode"] = val
                 elif key == "bind-addr":
-                    config.bind_addr = val
+                    raw_data["bind_addr"] = val
                     has_explicit_target = True
                 elif key == "auth":
-                    config.auth = val
+                    raw_data["auth"] = val
+                elif key == "password":
+                    raw_data["password"] = val
                 elif key == "hashed-password":
-                    config.hashed_password = val
+                    raw_data["hashed_password"] = val
                 elif key == "cert":
                     if val.lower() in ("true", "1", "yes"):
-                        config.cert = True
+                        raw_data["cert"] = True
                     elif val.lower() in ("false", "0", "no"):
-                        config.cert = False
+                        raw_data["cert"] = False
                     else:
-                        config.cert = val
+                        raw_data["cert"] = val
                 elif key == "cert-key":
-                    config.cert_key = val
+                    raw_data["cert_key"] = val
                 elif key == "disable-telemetry":
-                    config.disable_telemetry = val.lower() in ("true", "1", "yes")
+                    raw_data["disable_telemetry"] = val.lower() in ("true", "1", "yes")
                 elif key == "app-name":
-                    config.app_name = val
+                    raw_data["app_name"] = val
     except Exception:
         pass
 
     if not has_explicit_target:
-        config.socket = default_socket
-        config.socket_mode = DEFAULT_SOCKET_MODE
+        raw_data["socket"] = default_socket
+        raw_data["socket_mode"] = DEFAULT_SOCKET_MODE
+
+    if not raw_data.get("auth"):
+        raw_data["auth"] = DEFAULT_AUTH
+
+    had_password = bool(raw_data.get("password") or raw_data.get("hashed_password"))
+    config = CodeServerConfig(**raw_data)
+
+    # Persist generated password if missing in existing file
+    if config.auth == "password" and not had_password and os.path.isfile(path):
+        write_code_server_config(path, config, username)
 
     return config
 
@@ -218,10 +238,13 @@ def write_code_server_config(path: str, config: CodeServerConfig, username: Opti
             lines.append(f"socket: {default_socket}")
             lines.append(f"socket-mode: {DEFAULT_SOCKET_MODE}")
 
-        clean_auth = "password" if sanitize_yaml_val(config.auth) == "password" else "none"
+        raw_auth = sanitize_yaml_val(config.auth)
+        clean_auth = "none" if raw_auth == "none" else "password"
         lines.append(f"auth: {clean_auth}")
         if config.app_name:
             lines.append(f"app-name: {sanitize_yaml_val(config.app_name)}")
+        if config.password:
+            lines.append(f"password: {sanitize_yaml_val(config.password)}")
         if config.hashed_password:
             lines.append(f"hashed-password: {sanitize_yaml_val(config.hashed_password)}")
         if isinstance(config.cert, str) and config.cert:
