@@ -17,6 +17,7 @@ try:
         write_code_server_config,
         resolve_username,
         get_user_uid,
+        AUTH_PASSWORD,
     )
     from .service_manager import (
         get_binary_info,
@@ -32,6 +33,7 @@ except ImportError:
         write_code_server_config,
         resolve_username,
         get_user_uid,
+        AUTH_PASSWORD,
     )
     from service_manager import (
         get_binary_info,
@@ -117,7 +119,7 @@ def handle_command(args: List[str]) -> Dict[str, Any]:
                 socket=socket_val,
                 socket_mode=socket_mode_val,
                 bind_addr=bind_addr_val,
-                auth=data.get("auth", existing.auth or "password"),
+                auth=data.get("auth", existing.auth or AUTH_PASSWORD),
                 password=new_password,
                 hashed_password=new_hashed_password,
                 cert=data.get("cert", existing.cert),

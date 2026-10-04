@@ -59,7 +59,7 @@ def test_handle_save_config_command():
     assert res["status"] == "error"
 
 
-def test_handle_save_config_preserves_creds_and_socket():
+def test_save_config_keeps_creds():
     mock_existing = CodeServerConfig(
         socket="/run/code-server/1000.sock",
         socket_mode="600",

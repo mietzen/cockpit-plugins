@@ -4,8 +4,10 @@ import secrets
 from dataclasses import dataclass, asdict
 from typing import Optional, Dict, Any
 
+AUTH_PASSWORD = "password"
+AUTH_NONE = "none"
 DEFAULT_BIND_ADDR = "127.0.0.1:8080"
-DEFAULT_AUTH = "password"
+DEFAULT_AUTH = AUTH_PASSWORD
 DEFAULT_SOCKET_MODE = "600"
 PASSWORD_TOKEN_BYTES = 24
 
@@ -25,7 +27,7 @@ class CodeServerConfig:
 
     def __post_init__(self):
         # Auto-generate secure token when auth is password and no secret provided
-        if self.auth == "password" and not self.password and not self.hashed_password:
+        if self.auth == AUTH_PASSWORD and not self.password and not self.hashed_password:
             self.password = secrets.token_urlsafe(PASSWORD_TOKEN_BYTES)
 
     @property
@@ -44,7 +46,7 @@ class CodeServerConfig:
         return 8080
 
     def to_dict(self) -> Dict[str, Any]:
-        is_auth_configured = self.auth == "password"
+        is_auth_configured = self.auth == AUTH_PASSWORD
         return {
             "bind_addr": self.bind_addr,
             "socket": self.socket,
@@ -242,7 +244,7 @@ def write_code_server_config(path: str, config: CodeServerConfig, username: Opti
             lines.append(f"socket-mode: {DEFAULT_SOCKET_MODE}")
 
         raw_auth = sanitize_yaml_val(config.auth)
-        clean_auth = "none" if raw_auth == "none" else "password"
+        clean_auth = AUTH_NONE if raw_auth == AUTH_NONE else AUTH_PASSWORD
         lines.append(f"auth: {clean_auth}")
         if config.app_name:
             lines.append(f"app-name: {sanitize_yaml_val(config.app_name)}")

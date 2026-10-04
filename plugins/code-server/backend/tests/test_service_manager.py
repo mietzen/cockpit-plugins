@@ -170,7 +170,7 @@ def test_ensure_user_dir_migrate():
                 assert "password:" in content
 
 
-def test_ensure_user_dir_keep_pass():
+def test_ensure_dir_keep_pass():
     import pwd
     import tempfile
     with tempfile.TemporaryDirectory() as tmpdir:
