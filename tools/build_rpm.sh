@@ -202,9 +202,13 @@ if [ "${PLUGIN_NAME}" = "code-server" ]; then
         fi
         SYS_CERT=\$(find /etc/cockpit/ws-certs.d -name "*.cert" -o -name "*.crt" 2>/dev/null | sort -r | head -n 1)
         SYS_KEY=\$(find /etc/cockpit/ws-certs.d -name "*.key" 2>/dev/null | sort -r | head -n 1)
-        if [ -n "\$SYS_CERT" ] && [ -n "\$SYS_KEY" ]; then
+        if [ -n "\$SYS_CERT" ]; then
+            if [ -z "\$SYS_KEY" ]; then
+                SYS_KEY="\$SYS_CERT"
+            fi
             ln -sf "\$SYS_CERT" /etc/cockpit/ws-certs.d/0-self-signed.cert 2>/dev/null || true
             ln -sf "\$SYS_KEY" /etc/cockpit/ws-certs.d/0-self-signed.key 2>/dev/null || true
+            chmod 600 /etc/cockpit/ws-certs.d/0-self-signed.cert /etc/cockpit/ws-certs.d/0-self-signed.key 2>/dev/null || true
         fi
     fi
 
