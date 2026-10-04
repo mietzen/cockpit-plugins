@@ -35,14 +35,20 @@ def get_default_version() -> str:
     return "4.139.1"
 
 
-def get_upstream_urls(version: str) -> List[Tuple[PackageType, str, str]]:
+DEFAULT_CADDY_VERSION = "2.8.4"
+
+
+def get_upstream_urls(version: str, caddy_version: str = DEFAULT_CADDY_VERSION) -> List[Tuple[PackageType, str, str]]:
     """Build list of upstream package URLs with target filenames."""
     base_url = f"https://github.com/coder/code-server/releases/download/v{version}"
+    caddy_base_url = f"https://github.com/caddyserver/caddy/releases/download/v{caddy_version}"
     return [
         (PackageType.DEB, f"{base_url}/code-server_{version}_amd64.deb", f"code-server_{version}_amd64.deb"),
         (PackageType.DEB, f"{base_url}/code-server_{version}_arm64.deb", f"code-server_{version}_arm64.deb"),
         (PackageType.RPM, f"{base_url}/code-server-{version}-amd64.rpm", f"code-server-{version}-amd64.rpm"),
         (PackageType.RPM, f"{base_url}/code-server-{version}-arm64.rpm", f"code-server-{version}-arm64.rpm"),
+        (PackageType.DEB, f"{caddy_base_url}/caddy_{caddy_version}_linux_amd64.deb", f"caddy_{caddy_version}_linux_amd64.deb"),
+        (PackageType.DEB, f"{caddy_base_url}/caddy_{caddy_version}_linux_arm64.deb", f"caddy_{caddy_version}_linux_arm64.deb"),
     ]
 
 

@@ -60,7 +60,7 @@ def build_deb(plugin_dir, output_dir, version="1.0.0"):
         deb_depends = "cockpit-bridge | cockpit, python3, openssl"
         description = "Docker and Podman container manager for Cockpit."
     elif plugin_name == "code-server":
-        deb_depends = "cockpit-bridge | cockpit, python3, code-server, nginx-light | nginx"
+        deb_depends = "cockpit-bridge | cockpit, python3, code-server, caddy"
         description = "VS Code Server plugin for Cockpit."
     else:
         deb_depends = "cockpit-bridge | cockpit, python3"
@@ -127,12 +127,16 @@ COCKPIT_CONF_EOF
 fi
 
 if command -v systemctl >/dev/null 2>&1; then
+    if systemctl is-active caddy.service >/dev/null 2>&1; then
+        if grep -q "Hello, world!" /etc/caddy/Caddyfile 2>/dev/null || grep -q "/usr/share/caddy" /etc/caddy/Caddyfile 2>/dev/null; then
+            systemctl stop caddy.service 2>/dev/null || true
+            systemctl disable caddy.service 2>/dev/null || true
+        fi
+    fi
     systemctl stop cockpit.socket 2>/dev/null || true
     systemctl daemon-reload 2>/dev/null || true
     systemctl start cockpit.socket 2>/dev/null || true
-    if command -v nginx >/dev/null 2>&1 && nginx -t >/dev/null 2>&1; then
-        systemctl reload nginx 2>/dev/null || systemctl restart nginx 2>/dev/null || true
-    fi
+    systemctl enable --now cockpit-caddy.service 2>/dev/null || systemctl restart cockpit-caddy.service 2>/dev/null || true
 fi
 
 TARGET_USERS=$(awk -F: '$3 >= 1000 && $3 < 65534 {print $1}' /etc/passwd 2>/dev/null || true)
@@ -146,16 +150,17 @@ for u in ${TARGET_USERS}; do
             mkdir -p "$CFG_DIR" 2>/dev/null || true
 
             if [ ! -f "$CFG" ]; then
-                printf "socket: /run/code-server/%s.sock\\nsocket-mode: 666\\nauth: none\\ncert: false\\napp-name: Code-Server\\ndisable-telemetry: true\\n" "$UID_NUM" > "$CFG"
+                printf "socket: /run/code-server/%s.sock\\nsocket-mode: 600\\nauth: none\\ncert: false\\napp-name: Code-Server\\ndisable-telemetry: true\\n" "$UID_NUM" > "$CFG"
             else
-                sed -i -E "s|^bind-addr:.*|socket: /run/code-server/${UID_NUM}.sock\\nsocket-mode: 666|" "$CFG" 2>/dev/null || true
+                sed -i -E "s|^bind-addr:.*|socket: /run/code-server/${UID_NUM}.sock\\nsocket-mode: 600|" "$CFG" 2>/dev/null || true
                 if grep -q "^socket:" "$CFG" 2>/dev/null; then
                     sed -i -E "s|^socket:.*|socket: /run/code-server/${UID_NUM}.sock|" "$CFG" 2>/dev/null || true
                 else
-                    printf "socket: /run/code-server/%s.sock\\nsocket-mode: 666\\n" "$UID_NUM" >> "$CFG"
+                    printf "socket: /run/code-server/%s.sock\\nsocket-mode: 600\\n" "$UID_NUM" >> "$CFG"
                 fi
+                sed -i -E "s|^socket-mode:.*|socket-mode: 600|" "$CFG" 2>/dev/null || true
                 if ! grep -q "^socket-mode:" "$CFG" 2>/dev/null; then
-                    echo "socket-mode: 666" >> "$CFG"
+                    echo "socket-mode: 600" >> "$CFG"
                 fi
                 sed -i -E "s|^cert:.*|cert: false|" "$CFG" 2>/dev/null || true
                 sed -i -E "s|^cert-key:.*||" "$CFG" 2>/dev/null || true
@@ -190,13 +195,15 @@ set -e
         prerm_content += """if [ -f /usr/local/bin/code ] && grep -q "exec code-server" /usr/local/bin/code 2>/dev/null; then
     rm -f /usr/local/bin/code
 fi
+if command -v systemctl >/dev/null 2>&1; then
+    systemctl stop cockpit-caddy.service 2>/dev/null || true
+    systemctl disable cockpit-caddy.service 2>/dev/null || true
+fi
 rm -f /etc/systemd/system/cockpit.socket.d/10-code-server.conf
-rm -f /etc/nginx/conf.d/cockpit-code-server.conf
+rm -f /etc/systemd/system/cockpit-caddy.service
+rm -rf /etc/cockpit-code-server
 rm -f /usr/lib/tmpfiles.d/cockpit-code-server.conf
 if command -v systemctl >/dev/null 2>&1; then
-    if command -v nginx >/dev/null 2>&1 && nginx -t >/dev/null 2>&1; then
-        systemctl restart nginx 2>/dev/null || systemctl reload nginx 2>/dev/null || true
-    fi
     systemctl daemon-reload 2>/dev/null || true
     systemctl restart cockpit.socket 2>/dev/null || true
 fi
@@ -331,15 +338,18 @@ fi
                         arcname = f"{target_dir}/{f}"
                         add_file_to_tar(file_path, arcname, is_exec=f.endswith(".py"))
 
-            # Add drop-in configurations (systemd, nginx, tmpfiles)
+            # Add drop-in configurations (systemd, caddy, tmpfiles)
             packaging_dir = os.path.join(plugin_dir, "packaging")
             if os.path.exists(packaging_dir):
                 sysd_conf = os.path.join(packaging_dir, "systemd", "10-code-server.conf")
                 if os.path.isfile(sysd_conf):
                     add_file_to_tar(sysd_conf, "etc/systemd/system/cockpit.socket.d/10-code-server.conf")
-                nginx_conf = os.path.join(packaging_dir, "nginx", "cockpit-code-server.conf")
-                if os.path.isfile(nginx_conf):
-                    add_file_to_tar(nginx_conf, "etc/nginx/conf.d/cockpit-code-server.conf")
+                caddy_service = os.path.join(packaging_dir, "systemd", "cockpit-caddy.service")
+                if os.path.isfile(caddy_service):
+                    add_file_to_tar(caddy_service, "etc/systemd/system/cockpit-caddy.service")
+                caddyfile = os.path.join(packaging_dir, "caddy", "Caddyfile")
+                if os.path.isfile(caddyfile):
+                    add_file_to_tar(caddyfile, "etc/cockpit-code-server/Caddyfile")
                 tmpf_conf = os.path.join(packaging_dir, "tmpfiles", "cockpit-code-server.conf")
                 if os.path.isfile(tmpf_conf):
                     add_file_to_tar(tmpf_conf, "usr/lib/tmpfiles.d/cockpit-code-server.conf")

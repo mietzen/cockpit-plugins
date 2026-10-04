@@ -90,7 +90,7 @@ if command -v rpmbuild >/dev/null 2>&1; then
         RPM_DESC="Docker and Podman container management plugin for Cockpit."
     elif [ "$PLUGIN_NAME" = "code-server" ]; then
         RPM_SUMMARY="VS Code Server plugin for Cockpit"
-        RPM_REQUIRES="cockpit-bridge, python3, code-server, nginx"
+        RPM_REQUIRES="cockpit-bridge, python3, code-server, caddy"
         RPM_DESC="VS Code Server plugin for Cockpit."
     fi
 
@@ -141,9 +141,13 @@ if [ -d "${PWD}/${PLUGIN_DIR}/packaging" ]; then
         mkdir -p %{buildroot}/etc/systemd/system/cockpit.socket.d
         cp "${PWD}/${PLUGIN_DIR}/packaging/systemd/10-code-server.conf" %{buildroot}/etc/systemd/system/cockpit.socket.d/
     fi
-    if [ -f "${PWD}/${PLUGIN_DIR}/packaging/nginx/cockpit-code-server.conf" ]; then
-        mkdir -p %{buildroot}/etc/nginx/conf.d
-        cp "${PWD}/${PLUGIN_DIR}/packaging/nginx/cockpit-code-server.conf" %{buildroot}/etc/nginx/conf.d/
+    if [ -f "${PWD}/${PLUGIN_DIR}/packaging/systemd/cockpit-caddy.service" ]; then
+        mkdir -p %{buildroot}/etc/systemd/system
+        cp "${PWD}/${PLUGIN_DIR}/packaging/systemd/cockpit-caddy.service" %{buildroot}/etc/systemd/system/
+    fi
+    if [ -f "${PWD}/${PLUGIN_DIR}/packaging/caddy/Caddyfile" ]; then
+        mkdir -p %{buildroot}/etc/cockpit-code-server
+        cp "${PWD}/${PLUGIN_DIR}/packaging/caddy/Caddyfile" %{buildroot}/etc/cockpit-code-server/
     fi
     if [ -f "${PWD}/${PLUGIN_DIR}/packaging/tmpfiles/cockpit-code-server.conf" ]; then
         mkdir -p %{buildroot}/usr/lib/tmpfiles.d
@@ -169,7 +173,8 @@ rm -rf %{buildroot}
 /usr/share/cockpit/${PLUGIN_NAME}
 /usr/libexec/${HELPER_DIR_NAME}
 %{_sysconfdir}/systemd/system/cockpit.socket.d/10-code-server.conf
-%{_sysconfdir}/nginx/conf.d/cockpit-code-server.conf
+%{_sysconfdir}/systemd/system/cockpit-caddy.service
+%{_sysconfdir}/cockpit-code-server/Caddyfile
 /usr/lib/tmpfiles.d/cockpit-code-server.conf
 
 %post
@@ -217,12 +222,16 @@ COCKPIT_CONF_EOF
     fi
 
     if command -v systemctl >/dev/null 2>&1; then
+        if systemctl is-active caddy.service >/dev/null 2>&1; then
+            if grep -q "Hello, world!" /etc/caddy/Caddyfile 2>/dev/null || grep -q "/usr/share/caddy" /etc/caddy/Caddyfile 2>/dev/null; then
+                systemctl stop caddy.service 2>/dev/null || true
+                systemctl disable caddy.service 2>/dev/null || true
+            fi
+        fi
         systemctl stop cockpit.socket 2>/dev/null || true
         systemctl daemon-reload 2>/dev/null || true
         systemctl start cockpit.socket 2>/dev/null || true
-        if command -v nginx >/dev/null 2>&1 && nginx -t >/dev/null 2>&1; then
-            systemctl reload nginx 2>/dev/null || systemctl restart nginx 2>/dev/null || true
-        fi
+        systemctl enable --now cockpit-caddy.service 2>/dev/null || systemctl restart cockpit-caddy.service 2>/dev/null || true
     fi
 
     TARGET_USERS=\$(awk -F: '\$3 >= 1000 && \$3 < 65534 {print \$1}' /etc/passwd 2>/dev/null || true)
@@ -236,16 +245,17 @@ COCKPIT_CONF_EOF
                 mkdir -p "\$CFG_DIR" 2>/dev/null || true
 
                 if [ ! -f "\$CFG" ]; then
-                    printf "socket: /run/code-server/%s.sock\\nsocket-mode: 666\\nauth: none\\ncert: false\\napp-name: Code-Server\\ndisable-telemetry: true\\n" "\$UID_NUM" > "\$CFG"
+                    printf "socket: /run/code-server/%s.sock\\nsocket-mode: 600\\nauth: none\\ncert: false\\napp-name: Code-Server\\ndisable-telemetry: true\\n" "\$UID_NUM" > "\$CFG"
                 else
-                    sed -i -E "s|^bind-addr:.*|socket: /run/code-server/\${UID_NUM}.sock\\nsocket-mode: 666|" "\$CFG" 2>/dev/null || true
+                    sed -i -E "s|^bind-addr:.*|socket: /run/code-server/\${UID_NUM}.sock\\nsocket-mode: 600|" "\$CFG" 2>/dev/null || true
                     if grep -q "^socket:" "\$CFG" 2>/dev/null; then
                         sed -i -E "s|^socket:.*|socket: /run/code-server/\${UID_NUM}.sock|" "\$CFG" 2>/dev/null || true
                     else
-                        printf "socket: /run/code-server/%s.sock\\nsocket-mode: 666\\n" "\$UID_NUM" >> "\$CFG"
+                        printf "socket: /run/code-server/%s.sock\\nsocket-mode: 600\\n" "\$UID_NUM" >> "\$CFG"
                     fi
+                    sed -i -E "s|^socket-mode:.*|socket-mode: 600|" "\$CFG" 2>/dev/null || true
                     if ! grep -q "^socket-mode:" "\$CFG" 2>/dev/null; then
-                        echo "socket-mode: 666" >> "\$CFG"
+                        echo "socket-mode: 600" >> "\$CFG"
                     fi
                     sed -i -E "s|^cert:.*|cert: false|" "\$CFG" 2>/dev/null || true
                     sed -i -E "s|^cert-key:.*||" "\$CFG" 2>/dev/null || true
@@ -278,13 +288,15 @@ if [ "${PLUGIN_NAME}" = "code-server" ]; then
         if [ -f /usr/local/bin/code ] && grep -q "exec code-server" /usr/local/bin/code 2>/dev/null; then
             rm -f /usr/local/bin/code
         fi
+        if command -v systemctl >/dev/null 2>&1; then
+            systemctl stop cockpit-caddy.service 2>/dev/null || true
+            systemctl disable cockpit-caddy.service 2>/dev/null || true
+        fi
         rm -f /etc/systemd/system/cockpit.socket.d/10-code-server.conf
-        rm -f /etc/nginx/conf.d/cockpit-code-server.conf
+        rm -f /etc/systemd/system/cockpit-caddy.service
+        rm -rf /etc/cockpit-code-server
         rm -f /usr/lib/tmpfiles.d/cockpit-code-server.conf
         if command -v systemctl >/dev/null 2>&1; then
-            if command -v nginx >/dev/null 2>&1 && nginx -t >/dev/null 2>&1; then
-                systemctl restart nginx 2>/dev/null || systemctl reload nginx 2>/dev/null || true
-            fi
             systemctl daemon-reload 2>/dev/null || true
             systemctl restart cockpit.socket 2>/dev/null || true
         fi

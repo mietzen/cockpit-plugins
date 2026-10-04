@@ -17,14 +17,14 @@ def test_parse_default_config_when_file_not_found():
     with patch.dict(os.environ, {"USER": "root", "LOGNAME": "root"}, clear=True):
         cfg = parse_code_server_config("/non/existent/path/config.yaml", username="root")
         assert cfg.socket == "/run/code-server/0.sock"
-        assert cfg.socket_mode == "666"
+        assert cfg.socket_mode == "600"
         assert cfg.auth == "none"
         assert cfg.cert is False
 
     cfg_user = parse_code_server_config("/non/existent/path/config.yaml")
     assert cfg_user.socket is not None
     assert "/run/code-server/" in cfg_user.socket
-    assert cfg_user.socket_mode == "666"
+    assert cfg_user.socket_mode == "600"
 
 
 def test_code_server_config_properties_and_to_dict():

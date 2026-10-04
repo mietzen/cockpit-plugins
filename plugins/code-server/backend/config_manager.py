@@ -5,7 +5,7 @@ from typing import Optional, Dict, Any
 
 DEFAULT_BIND_ADDR = "127.0.0.1:8080"
 DEFAULT_AUTH = "none"
-DEFAULT_SOCKET_MODE = "666"
+DEFAULT_SOCKET_MODE = "600"
 
 
 @dataclass

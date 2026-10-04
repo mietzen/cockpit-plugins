@@ -193,7 +193,7 @@ def ensure_user_dir_permissions(username: Optional[str] = None) -> None:
             if not os.path.isfile(cfg_file):
                 init_cfg = CodeServerConfig(
                     socket=default_sock,
-                    socket_mode="666",
+                    socket_mode="600",
                     auth="none",
                     cert=False,
                     app_name="Code-Server",
@@ -205,7 +205,7 @@ def ensure_user_dir_permissions(username: Optional[str] = None) -> None:
                 changed = False
                 if cfg.socket != default_sock:
                     cfg.socket = default_sock
-                    cfg.socket_mode = "666"
+                    cfg.socket_mode = "600"
                     cfg.bind_addr = None
                     changed = True
                 if cfg.cert is not False:
