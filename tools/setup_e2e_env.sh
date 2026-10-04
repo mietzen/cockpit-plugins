@@ -89,6 +89,10 @@ fi
 
 # 4. Install all cockpit plugins from dist-debs
 echo "==> Installing plugin packages..."
+if ls dist-debs/cockpit-code-server*.deb 1> /dev/null 2>&1; then
+    echo "==> Downloading upstream code-server packages for E2E..."
+    python3 tools/download_upstream_packages.py --deb-dir dist-debs --rpm-dir dist-rpms || true
+fi
 if ls dist-debs/*.deb 1> /dev/null 2>&1; then
     sudo dpkg -i --force-overwrite dist-debs/*.deb || sudo apt-get install -f -y
 else

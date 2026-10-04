@@ -35,6 +35,8 @@ def sanitize_description(pkg_name: str, desc: str) -> str:
             clean = "SMB and NFS file sharing management plugin for Cockpit"
         elif "container" in pkg_name:
             clean = "Docker and Podman container management plugin for Cockpit"
+        elif "code-server" in pkg_name:
+            clean = "VS Code Server plugin for Cockpit"
         else:
             clean = "Cockpit plugin extension"
     return clean
@@ -84,11 +86,8 @@ def parse_deb_control(deb_path):
     return ""
 
 def generate_apt_repo(deb_dir, output_dir, dist_name="stable", component="main", owner="mietzen", repo="cockpit-plugins", rpm_dir=None):
-    os.makedirs(output_dir, exist_ok=True)
-    dists_dir = os.path.join(output_dir, "dists", dist_name, component, "binary-all")
-    os.makedirs(dists_dir, exist_ok=True)
-
-    packages_entries = []
+    architectures = ["all", "amd64", "arm64"]
+    parsed_packages = []
     packages_summary = []
 
     deb_files = [os.path.join(deb_dir, f) for f in os.listdir(deb_dir) if f.endswith(".deb")]
@@ -103,15 +102,18 @@ def generate_apt_repo(deb_dir, output_dir, dist_name="stable", component="main",
         hashes = get_hashes(deb_bytes)
         control_text = parse_deb_control(deb_path)
 
-        # Parse package name for pool directory
+        # Parse package metadata
         pkg_name = "cockpit-plugin"
         pkg_version = "1.0.0"
+        pkg_arch = "all"
         pkg_desc = "Cockpit plugin"
         for line in control_text.splitlines():
             if line.startswith("Package:"):
                 pkg_name = line.split(":", 1)[1].strip()
             elif line.startswith("Version:"):
                 pkg_version = line.split(":", 1)[1].strip()
+            elif line.startswith("Architecture:"):
+                pkg_arch = line.split(":", 1)[1].strip()
             elif line.startswith("Description:"):
                 pkg_desc = line.split(":", 1)[1].strip()
 
@@ -132,26 +134,48 @@ MD5sum: {hashes['md5']}
 SHA1: {hashes['sha1']}
 SHA256: {hashes['sha256']}
 """
-        packages_entries.append(entry.strip())
-        packages_summary.append({
+        parsed_pkg = {
             "name": pkg_name,
             "version": pkg_version,
+            "arch": pkg_arch,
+            "entry": entry.strip(),
             "filename": dest_deb_rel_path,
             "size": format_size_mib(hashes['size']),
             "sha256": hashes['sha256'],
-            "description": sanitize_description(pkg_name, pkg_desc)
-        })
+            "description": sanitize_description(pkg_name, pkg_desc),
+        }
+        parsed_packages.append(parsed_pkg)
+        packages_summary.append(parsed_pkg)
 
-    # Write Packages & Packages.gz
-    packages_content = "\n\n".join(packages_entries) + "\n"
-    packages_bytes = packages_content.encode("utf-8")
-    packages_path = os.path.join(dists_dir, "Packages")
-    with open(packages_path, "wb") as f:
-        f.write(packages_bytes)
+    # Generate Packages & Packages.gz per architecture
+    release_file_entries = []
+    for arch in architectures:
+        arch_dists_dir = os.path.join(output_dir, "dists", dist_name, component, f"binary-{arch}")
+        os.makedirs(arch_dists_dir, exist_ok=True)
 
-    packages_gz_path = os.path.join(dists_dir, "Packages.gz")
-    with gzip.open(packages_gz_path, "wb") as f:
-        f.write(packages_bytes)
+        if arch == "all":
+            arch_entries = [p["entry"] for p in parsed_packages if p["arch"] == "all"]
+        else:
+            arch_entries = [p["entry"] for p in parsed_packages if p["arch"] in (arch, "all")]
+
+        packages_content = "\n\n".join(arch_entries) + ("\n" if arch_entries else "")
+        packages_bytes = packages_content.encode("utf-8")
+        packages_path = os.path.join(arch_dists_dir, "Packages")
+        with open(packages_path, "wb") as f:
+            f.write(packages_bytes)
+
+        packages_gz_path = os.path.join(arch_dists_dir, "Packages.gz")
+        with gzip.open(packages_gz_path, "wb") as f:
+            f.write(packages_bytes)
+
+        pkgs_info = get_hashes(packages_bytes)
+        pkgs_gz_info = get_hashes(open(packages_gz_path, "rb").read())
+
+        rel_pkgs_path = f"{component}/binary-{arch}/Packages"
+        rel_pkgs_gz_path = f"{component}/binary-{arch}/Packages.gz"
+
+        release_file_entries.append((rel_pkgs_path, pkgs_info))
+        release_file_entries.append((rel_pkgs_gz_path, pkgs_gz_info))
 
     # Release file for dists/stable/
     release_dir = os.path.join(output_dir, "dists", dist_name)
@@ -160,11 +184,9 @@ SHA256: {hashes['sha256']}
     now_utc = now_dt.strftime("%a, %d %b %Y %H:%M:%S UTC")
     valid_utc = valid_dt.strftime("%a, %d %b %Y %H:%M:%S UTC")
 
-    pkgs_info = get_hashes(packages_bytes)
-    pkgs_gz_info = get_hashes(open(packages_gz_path, "rb").read())
-
-    rel_pkgs_path = f"{component}/binary-all/Packages"
-    rel_pkgs_gz_path = f"{component}/binary-all/Packages.gz"
+    md5_lines = "\n".join([f" {info['md5']} {info['size']} {rpath}" for rpath, info in release_file_entries])
+    sha1_lines = "\n".join([f" {info['sha1']} {info['size']} {rpath}" for rpath, info in release_file_entries])
+    sha256_lines = "\n".join([f" {info['sha256']} {info['size']} {rpath}" for rpath, info in release_file_entries])
 
     release_content = f"""Origin: {owner}
 Label: Cockpit Plugins Repository
@@ -177,14 +199,11 @@ Architectures: all amd64 arm64
 Components: {component}
 Description: APT Repository for Cockpit Plugins
 MD5Sum:
- {pkgs_info['md5']} {pkgs_info['size']} {rel_pkgs_path}
- {pkgs_gz_info['md5']} {pkgs_gz_info['size']} {rel_pkgs_gz_path}
+{md5_lines}
 SHA1:
- {pkgs_info['sha1']} {pkgs_info['size']} {rel_pkgs_path}
- {pkgs_gz_info['sha1']} {pkgs_gz_info['size']} {rel_pkgs_gz_path}
+{sha1_lines}
 SHA256:
- {pkgs_info['sha256']} {pkgs_info['size']} {rel_pkgs_path}
- {pkgs_gz_info['sha256']} {pkgs_gz_info['size']} {rel_pkgs_gz_path}
+{sha256_lines}
 """
     release_path = os.path.join(release_dir, "Release")
     with open(release_path, "w", encoding="utf-8") as f:

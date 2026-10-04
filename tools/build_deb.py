@@ -56,6 +56,12 @@ def build_deb(plugin_dir, output_dir, version="1.0.0"):
     elif plugin_name == "file-sharing":
         deb_depends = "cockpit-bridge | cockpit, python3, samba, nfs-kernel-server | nfs-common"
         description = "Advanced SMB (Samba) and NFS file sharing manager for Cockpit.\n Manage Samba shares, NFS exports, Samba users, permissions matrix,\n and live client connection monitoring with PatternFly v5 UI."
+    elif plugin_name == "container-manager":
+        deb_depends = "cockpit-bridge | cockpit, python3, openssl"
+        description = "Docker and Podman container manager for Cockpit."
+    elif plugin_name == "code-server":
+        deb_depends = "cockpit-bridge | cockpit, python3, code-server, nginx-light | nginx"
+        description = "VS Code Server plugin for Cockpit."
     else:
         deb_depends = "cockpit-bridge | cockpit, python3"
         description = f"Cockpit plugin {plugin_name}"
@@ -79,12 +85,123 @@ set -e
 if [ -d /usr/libexec/{helper_dir_name} ]; then
     chmod -R 755 /usr/libexec/{helper_dir_name}
 fi
-exit 0
 """
+    if plugin_name == "code-server":
+        postinst_content += """mkdir -p /run/code-server
+chmod 1777 /run/code-server
+if command -v systemd-tmpfiles >/dev/null 2>&1; then
+    systemd-tmpfiles --create /usr/lib/tmpfiles.d/cockpit-code-server.conf 2>/dev/null || true
+fi
+
+if [ ! -f /etc/cockpit/ws-certs.d/0-self-signed.cert ] || [ ! -f /etc/cockpit/ws-certs.d/0-self-signed.key ]; then
+    if command -v remotectl >/dev/null 2>&1; then
+        remotectl certificate --ensure 2>/dev/null || true
+    fi
+    SYS_CERT=$(find /etc/cockpit/ws-certs.d -name "*.cert" -o -name "*.crt" 2>/dev/null | sort -r | head -n 1)
+    SYS_KEY=$(find /etc/cockpit/ws-certs.d -name "*.key" 2>/dev/null | sort -r | head -n 1)
+    if [ -n "$SYS_CERT" ] && [ -n "$SYS_KEY" ]; then
+        ln -sf "$SYS_CERT" /etc/cockpit/ws-certs.d/0-self-signed.cert 2>/dev/null || true
+        ln -sf "$SYS_KEY" /etc/cockpit/ws-certs.d/0-self-signed.key 2>/dev/null || true
+    fi
+fi
+
+# Ensure cockpit.conf has reverse-proxy headers under [WebService]
+if [ -f /etc/cockpit/cockpit.conf ]; then
+    if ! grep -q "^\\[WebService\\]" /etc/cockpit/cockpit.conf 2>/dev/null; then
+        printf "\\n[WebService]\\nProtocolHeader = X-Forwarded-Proto\\nForwardedForHeader = X-Forwarded-For\\n" >> /etc/cockpit/cockpit.conf
+    else
+        if ! grep -q "^ProtocolHeader" /etc/cockpit/cockpit.conf 2>/dev/null; then
+            sed -i -E "s|^\\[WebService\\]|[WebService]\\nProtocolHeader = X-Forwarded-Proto|" /etc/cockpit/cockpit.conf 2>/dev/null || true
+        fi
+        if ! grep -q "^ForwardedForHeader" /etc/cockpit/cockpit.conf 2>/dev/null; then
+            sed -i -E "s|^\\[WebService\\]|[WebService]\\nForwardedForHeader = X-Forwarded-For|" /etc/cockpit/cockpit.conf 2>/dev/null || true
+        fi
+    fi
+else
+    mkdir -p /etc/cockpit
+    cat << 'COCKPIT_CONF_EOF' > /etc/cockpit/cockpit.conf
+[WebService]
+ProtocolHeader = X-Forwarded-Proto
+ForwardedForHeader = X-Forwarded-For
+COCKPIT_CONF_EOF
+fi
+
+if command -v systemctl >/dev/null 2>&1; then
+    systemctl stop cockpit.socket 2>/dev/null || true
+    systemctl daemon-reload 2>/dev/null || true
+    systemctl start cockpit.socket 2>/dev/null || true
+    if command -v nginx >/dev/null 2>&1 && nginx -t >/dev/null 2>&1; then
+        systemctl reload nginx 2>/dev/null || systemctl restart nginx 2>/dev/null || true
+    fi
+fi
+
+TARGET_USERS=$(awk -F: '$3 >= 1000 && $3 < 65534 {print $1}' /etc/passwd 2>/dev/null || true)
+for u in ${TARGET_USERS}; do
+    if id "$u" >/dev/null 2>&1; then
+        U_HOME=$(getent passwd "$u" | cut -d: -f6)
+        UID_NUM=$(id -u "$u" 2>/dev/null || echo 1000)
+        if [ -n "$U_HOME" ]; then
+            CFG_DIR="$U_HOME/.config/code-server"
+            CFG="$CFG_DIR/config.yaml"
+            mkdir -p "$CFG_DIR" 2>/dev/null || true
+
+            if [ ! -f "$CFG" ]; then
+                printf "socket: /run/code-server/%s.sock\\nsocket-mode: 666\\nauth: none\\ncert: false\\napp-name: Code-Server\\ndisable-telemetry: true\\n" "$UID_NUM" > "$CFG"
+            else
+                sed -i -E "s|^bind-addr:.*|socket: /run/code-server/${UID_NUM}.sock\\nsocket-mode: 666|" "$CFG" 2>/dev/null || true
+                if grep -q "^socket:" "$CFG" 2>/dev/null; then
+                    sed -i -E "s|^socket:.*|socket: /run/code-server/${UID_NUM}.sock|" "$CFG" 2>/dev/null || true
+                else
+                    printf "socket: /run/code-server/%s.sock\\nsocket-mode: 666\\n" "$UID_NUM" >> "$CFG"
+                fi
+                if ! grep -q "^socket-mode:" "$CFG" 2>/dev/null; then
+                    echo "socket-mode: 666" >> "$CFG"
+                fi
+                sed -i -E "s|^cert:.*|cert: false|" "$CFG" 2>/dev/null || true
+                sed -i -E "s|^cert-key:.*||" "$CFG" 2>/dev/null || true
+            fi
+
+            for p in ".config/code-server" ".local/share/code-server" ".cache/code-server"; do
+                if [ -d "$U_HOME/$p" ]; then
+                    chown -R "$u:$u" "$U_HOME/$p" 2>/dev/null || true
+                    chmod -R u+rwX "$U_HOME/$p" 2>/dev/null || true
+                fi
+            done
+        fi
+        systemctl enable --now "code-server@${u}.service" 2>/dev/null || true
+    fi
+done
+CODE_BIN=$(command -v code-server 2>/dev/null || true)
+if [ -n "$CODE_BIN" ]; then
+    mkdir -p /usr/local/bin
+    cat << 'CODE_WRAPPER_EOF' > /usr/local/bin/code
+#!/bin/sh
+exec code-server "$@"
+CODE_WRAPPER_EOF
+    chmod 755 /usr/local/bin/code
+fi
+"""
+    postinst_content += "exit 0\n"
+
     prerm_content = """#!/bin/sh
 set -e
-exit 0
 """
+    if plugin_name == "code-server":
+        prerm_content += """if [ -f /usr/local/bin/code ] && grep -q "exec code-server" /usr/local/bin/code 2>/dev/null; then
+    rm -f /usr/local/bin/code
+fi
+rm -f /etc/systemd/system/cockpit.socket.d/10-code-server.conf
+rm -f /etc/nginx/conf.d/cockpit-code-server.conf
+rm -f /usr/lib/tmpfiles.d/cockpit-code-server.conf
+if command -v systemctl >/dev/null 2>&1; then
+    if command -v nginx >/dev/null 2>&1 && nginx -t >/dev/null 2>&1; then
+        systemctl restart nginx 2>/dev/null || systemctl reload nginx 2>/dev/null || true
+    fi
+    systemctl daemon-reload 2>/dev/null || true
+    systemctl restart cockpit.socket 2>/dev/null || true
+fi
+"""
+    prerm_content += "exit 0\n"
 
     # 2. control.tar.gz
     control_tar_io = io.BytesIO()
@@ -213,6 +330,19 @@ exit 0
                         file_path = os.path.join(root, f)
                         arcname = f"{target_dir}/{f}"
                         add_file_to_tar(file_path, arcname, is_exec=f.endswith(".py"))
+
+            # Add drop-in configurations (systemd, nginx, tmpfiles)
+            packaging_dir = os.path.join(plugin_dir, "packaging")
+            if os.path.exists(packaging_dir):
+                sysd_conf = os.path.join(packaging_dir, "systemd", "10-code-server.conf")
+                if os.path.isfile(sysd_conf):
+                    add_file_to_tar(sysd_conf, "etc/systemd/system/cockpit.socket.d/10-code-server.conf")
+                nginx_conf = os.path.join(packaging_dir, "nginx", "cockpit-code-server.conf")
+                if os.path.isfile(nginx_conf):
+                    add_file_to_tar(nginx_conf, "etc/nginx/conf.d/cockpit-code-server.conf")
+                tmpf_conf = os.path.join(packaging_dir, "tmpfiles", "cockpit-code-server.conf")
+                if os.path.isfile(tmpf_conf):
+                    add_file_to_tar(tmpf_conf, "usr/lib/tmpfiles.d/cockpit-code-server.conf")
 
     data_tar_bytes = data_tar_io.getvalue()
 
