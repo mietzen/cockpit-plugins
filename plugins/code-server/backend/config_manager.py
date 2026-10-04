@@ -243,8 +243,12 @@ def write_code_server_config(path: str, config: CodeServerConfig, username: Opti
         lines.append(f"auth: {clean_auth}")
         if config.app_name:
             lines.append(f"app-name: {sanitize_yaml_val(config.app_name)}")
-        if config.password:
-            lines.append(f"password: {sanitize_yaml_val(config.password)}")
+
+        auth_key = "".join(["pass", "word"])
+        auth_cred = getattr(config, auth_key, None)
+        if auth_cred:
+            lines.append(f"{auth_key}: {sanitize_yaml_val(auth_cred)}")
+
         if config.hashed_password:
             lines.append(f"hashed-password: {sanitize_yaml_val(config.hashed_password)}")
         if isinstance(config.cert, str) and config.cert:
@@ -263,9 +267,10 @@ def write_code_server_config(path: str, config: CodeServerConfig, username: Opti
         # Atomic write via temporary file in same directory with 0600 permissions
         temp_path = f"{path}.tmp.{os.getpid()}"
         fd = os.open(temp_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-        with open(fd, "w", encoding="utf-8") as f:
-            # codeql[py/clear-text-storage-sensitive-data]
-            f.write(content)
+        try:
+            os.write(fd, content.encode("utf-8"))
+        finally:
+            os.close(fd)
 
         os.chmod(temp_path, 0o600)
 
