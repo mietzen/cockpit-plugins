@@ -17,6 +17,7 @@ def test_handle_status_command():
             "port": 8080,
             "auth": "none",
             "cert": False,
+            "has_password": True,
         }
         mock_obj.password = "secret"
         mock_obj.hashed_password = None

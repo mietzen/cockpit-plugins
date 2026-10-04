@@ -76,10 +76,6 @@ def handle_command(args: List[str]) -> Dict[str, Any]:
         cfg_path = get_user_config_path(parsed.user)
         config = parse_code_server_config(cfg_path, parsed.user)
         cfg_dict = config.to_dict()
-        has_password = bool(config.password or config.hashed_password)
-        cfg_dict["has_password"] = has_password
-        cfg_dict.pop("password", None)
-        cfg_dict.pop("hashed_password", None)
 
         return {
             "status": "ok",
@@ -89,7 +85,7 @@ def handle_command(args: List[str]) -> Dict[str, Any]:
             "service": service,
             "config": cfg_dict,
             "config_path": cfg_path,
-            "has_password": has_password,
+            "has_password": cfg_dict.get("has_password", False),
         }
 
     elif parsed.action == "service":

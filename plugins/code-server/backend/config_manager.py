@@ -44,11 +44,19 @@ class CodeServerConfig:
         return 8080
 
     def to_dict(self) -> Dict[str, Any]:
-        data = asdict(self)
-        data["host"] = self.host
-        data["port"] = self.port
-        data["has_password"] = bool(self.password or self.hashed_password)
-        return data
+        return {
+            "bind_addr": self.bind_addr,
+            "socket": self.socket,
+            "socket_mode": self.socket_mode,
+            "auth": self.auth,
+            "cert": self.cert,
+            "cert_key": self.cert_key,
+            "disable_telemetry": self.disable_telemetry,
+            "app_name": self.app_name,
+            "host": self.host,
+            "port": self.port,
+            "has_password": bool(self.password or self.hashed_password),
+        }
 
 
 def resolve_username(username: Optional[str] = None) -> str:
