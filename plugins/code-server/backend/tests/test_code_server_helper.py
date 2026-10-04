@@ -17,7 +17,7 @@ def test_handle_status_command():
             "port": 8080,
             "auth": "password",
             "cert": False,
-            "password_configured": True,
+            "auth_configured": True,
         }
         mock_cfg.return_value = mock_obj
 
@@ -26,7 +26,7 @@ def test_handle_status_command():
         assert res["binary"]["installed"] is True
         assert res["service"]["active"] is True
         assert res["config"]["port"] == 8080
-        assert res["password_configured"] is True
+        assert res["auth_configured"] is True
         assert "password" not in res["config"]
 
 

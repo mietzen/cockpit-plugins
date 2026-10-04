@@ -85,7 +85,7 @@ def handle_command(args: List[str]) -> Dict[str, Any]:
             "service": service,
             "config": cfg_dict,
             "config_path": cfg_path,
-            "password_configured": cfg_dict.get("password_configured", False),
+            "auth_configured": cfg_dict.get("auth_configured", False),
         }
 
     elif parsed.action == "service":

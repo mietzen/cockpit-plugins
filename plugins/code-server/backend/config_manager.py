@@ -57,7 +57,6 @@ class CodeServerConfig:
             "host": self.host,
             "port": self.port,
             "auth_configured": is_auth_configured,
-            "password_configured": is_auth_configured,
         }
 
 
