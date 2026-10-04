@@ -247,8 +247,29 @@ def manage_service(action: str, username: Optional[str] = None) -> Dict[str, Any
         return {"success": False, "error": str(e)}
 
 
-CODE_SERVER_UPSTREAM_VERSION = "4.139.1"
-CADDY_UPSTREAM_VERSION = "2.8.4"
+def read_pinned_version(pkg_name: str, fallback: str) -> str:
+    # Read upstream package version from plugin configuration
+    candidates = [
+        os.path.join(os.path.dirname(__file__), "..", "upstream.json"),
+        os.path.join(os.path.dirname(__file__), "upstream.json"),
+    ]
+    for path in candidates:
+        if not os.path.isfile(path):
+            continue
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                for item in data.get("packages", []):
+                    if item.get("name") == pkg_name and item.get("version"):
+                        return item["version"]
+        except Exception:
+            continue
+
+    return fallback
+
+
+CODE_SERVER_UPSTREAM_VERSION = read_pinned_version("code-server", "4.139.1")
+CADDY_UPSTREAM_VERSION = read_pinned_version("caddy", "2.8.4")
 
 
 def install_code_server(

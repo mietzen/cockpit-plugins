@@ -133,6 +133,9 @@ fi
 if [ -f "${PWD}/${PLUGIN_DIR}/manifest.json" ]; then
     cp "${PWD}/${PLUGIN_DIR}/manifest.json" %{buildroot}/usr/share/cockpit/${PLUGIN_NAME}/
 fi
+if [ -f "${PWD}/${PLUGIN_DIR}/upstream.json" ]; then
+    cp "${PWD}/${PLUGIN_DIR}/upstream.json" %{buildroot}/usr/share/cockpit/${PLUGIN_NAME}/
+fi
 if [ -d "${PWD}/${PLUGIN_DIR}/backend" ]; then
     cp -r "${PWD}/${PLUGIN_DIR}/backend/"* %{buildroot}/usr/libexec/${HELPER_DIR_NAME}/
 fi

@@ -24,7 +24,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           LATEST_TAG=$(gh api repos/coder/code-server/releases/latest --jq .tag_name | sed -E 's/^v//')
-          CURRENT_VERSION=$(grep -oE 'CODE_SERVER_UPSTREAM_VERSION = "[^"]+"' plugins/code-server/backend/service_manager.py | cut -d'"' -f2)
+          CURRENT_VERSION=$(jq -r '.packages[] | select(.name=="code-server") | .version' plugins/code-server/upstream.json)
           echo "latest_version=$LATEST_TAG" >> $GITHUB_OUTPUT
           echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
           echo "==> Latest upstream release: $LATEST_TAG (Current: $CURRENT_VERSION)"
@@ -45,11 +45,11 @@ jobs:
           BRANCH_NAME="chore/update-code-server-v${LATEST_VERSION}"
           git checkout -b "$BRANCH_NAME"
 
-          sed -i -E "s/CODE_SERVER_UPSTREAM_VERSION = \"[^\"]+\"/CODE_SERVER_UPSTREAM_VERSION = \"$LATEST_VERSION\"/" plugins/code-server/backend/service_manager.py
+          jq --arg v "$LATEST_VERSION" '(.packages[] | select(.name=="code-server")).version = $v' plugins/code-server/upstream.json > tmp.json && mv tmp.json plugins/code-server/upstream.json
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add plugins/code-server/backend/service_manager.py
+          git add plugins/code-server/upstream.json
           git commit -m "Update code-server upstream to v${LATEST_VERSION}
 
 Automated upstream sync updating pinned code-server package to

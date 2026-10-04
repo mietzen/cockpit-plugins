@@ -1,74 +1,70 @@
 #!/usr/bin/env python3
 import argparse
 import enum
+import glob
+import json
 import os
-import re
 import sys
 import urllib.request
-from typing import List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
+BUFFER_SIZE = 65536
 DEFAULT_DEB_DIR = "all-debs"
 DEFAULT_RPM_DIR = "all-rpms"
-BUFFER_SIZE = 65536
+UPSTREAM_GLOB = "plugins/*/upstream.json"
 
 
-class PackageType(enum.Enum):
+class AssetType(enum.Enum):
     DEB = "deb"
     RPM = "rpm"
 
 
-def get_default_version() -> str:
-    """Read default upstream version from service_manager.py."""
-    svc_mgr = os.path.join(
-        os.path.dirname(__file__),
-        "..",
-        "plugins",
-        "code-server",
-        "backend",
-        "service_manager.py",
-    )
-    if os.path.isfile(svc_mgr):
-        with open(svc_mgr, "r", encoding="utf-8") as f:
-            match = re.search(r'CODE_SERVER_UPSTREAM_VERSION\s*=\s*"([^"]+)"', f.read())
-            if match:
-                return match.group(1)
-    return "4.139.1"
+def find_configs(root_dir: str = ".") -> List[str]:
+    # Discover all plugin upstream configurations
+    pattern = os.path.join(root_dir, UPSTREAM_GLOB)
+    configs = sorted(glob.glob(pattern))
+    return configs
 
 
-def get_default_caddy_version() -> str:
-    """Read default upstream caddy version from service_manager.py."""
-    svc_mgr = os.path.join(
-        os.path.dirname(__file__),
-        "..",
-        "plugins",
-        "code-server",
-        "backend",
-        "service_manager.py",
-    )
-    if os.path.isfile(svc_mgr):
-        with open(svc_mgr, "r", encoding="utf-8") as f:
-            match = re.search(r'CADDY_UPSTREAM_VERSION\s*=\s*"([^"]+)"', f.read())
-            if match:
-                return match.group(1)
-    return "2.8.4"
+def load_config(config_path: str) -> Dict[str, Any]:
+    # Parse declarative package config file
+    with open(config_path, "r", encoding="utf-8") as f:
+        return json.load(f)
 
 
-def get_upstream_urls(version: str, caddy_version: str) -> List[Tuple[PackageType, str, str]]:
-    """Build list of upstream package URLs with target filenames."""
-    base_url = f"https://github.com/coder/code-server/releases/download/v{version}"
-    caddy_base_url = f"https://github.com/caddyserver/caddy/releases/download/v{caddy_version}"
-    return [
-        (PackageType.DEB, f"{base_url}/code-server_{version}_amd64.deb", f"code-server_{version}_amd64.deb"),
-        (PackageType.DEB, f"{base_url}/code-server_{version}_arm64.deb", f"code-server_{version}_arm64.deb"),
-        (PackageType.RPM, f"{base_url}/code-server-{version}-amd64.rpm", f"code-server-{version}-amd64.rpm"),
-        (PackageType.RPM, f"{base_url}/code-server-{version}-arm64.rpm", f"code-server-{version}-arm64.rpm"),
-        (PackageType.DEB, f"{caddy_base_url}/caddy_{caddy_version}_linux_amd64.deb", f"caddy_{caddy_version}_linux_amd64.deb"),
-        (PackageType.DEB, f"{caddy_base_url}/caddy_{caddy_version}_linux_arm64.deb", f"caddy_{caddy_version}_linux_arm64.deb"),
-    ]
+def build_asset_list(
+    package_config: Dict[str, Any],
+    version_overrides: Optional[Dict[str, str]] = None,
+) -> List[Tuple[AssetType, str, str]]:
+    # Resolve asset URLs and target filenames using configured version
+    results: List[Tuple[AssetType, str, str]] = []
+    overrides = version_overrides or {}
+
+    for pkg in package_config.get("packages", []):
+        name = pkg.get("name", "")
+        version = overrides.get(name, pkg.get("version", ""))
+        if not version:
+            continue
+
+        for asset in pkg.get("assets", []):
+            asset_type_str = asset.get("type", "").lower()
+            try:
+                asset_type = AssetType(asset_type_str)
+            except ValueError:
+                continue
+
+            raw_url = asset.get("url", "")
+            raw_filename = asset.get("filename", "")
+            url = raw_url.replace("${version}", version)
+            filename = raw_filename.replace("${version}", version)
+
+            results.append((asset_type, url, filename))
+
+    return results
 
 
 def download_file(url: str, dest_path: str) -> None:
-    """Download remote asset to local destination path with atomic replace."""
+    # Stream remote asset to temp file before atomic rename
     tmp_path = f"{dest_path}.tmp"
     req = urllib.request.Request(url, headers={"User-Agent": "cockpit-plugins-builder"})
 
@@ -79,14 +75,17 @@ def download_file(url: str, dest_path: str) -> None:
     os.replace(tmp_path, dest_path)
 
 
-def sync_packages(version: str, deb_dir: str, rpm_dir: str, caddy_version: str) -> None:
-    """Download upstream deb and rpm packages to specified directories."""
+def sync_assets(
+    assets: List[Tuple[AssetType, str, str]],
+    deb_dir: str,
+    rpm_dir: str,
+) -> None:
+    # Download pending upstream deb and rpm packages
     os.makedirs(deb_dir, exist_ok=True)
     os.makedirs(rpm_dir, exist_ok=True)
 
-    items = get_upstream_urls(version, caddy_version)
-    for pkg_type, url, filename in items:
-        target_dir = deb_dir if pkg_type == PackageType.DEB else rpm_dir
+    for asset_type, url, filename in assets:
+        target_dir = deb_dir if asset_type == AssetType.DEB else rpm_dir
         dest_path = os.path.join(target_dir, filename)
 
         if os.path.isfile(dest_path) and os.path.getsize(dest_path) > 0:
@@ -98,16 +97,41 @@ def sync_packages(version: str, deb_dir: str, rpm_dir: str, caddy_version: str) 
         print(f"  ✓ Downloaded {filename} ({os.path.getsize(dest_path)} bytes)")
 
 
+def parse_overrides(raw_overrides: List[str]) -> Dict[str, str]:
+    # Convert 'name=version' CLI arguments to dictionary
+    result = {}
+    for item in raw_overrides:
+        if "=" in item:
+            k, v = item.split("=", 1)
+            result[k.strip()] = v.strip()
+    return result
+
+
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Download official code-server upstream packages.")
-    parser.add_argument("--version", default=get_default_version(), help="Upstream release version")
-    parser.add_argument("--caddy-version", default=get_default_caddy_version(), help="Upstream Caddy release version")
+    parser = argparse.ArgumentParser(description="Download upstream packages declared by plugins.")
+    parser.add_argument("--config", action="append", help="Path to upstream.json (defaults to plugins/*/upstream.json)")
     parser.add_argument("--deb-dir", default=DEFAULT_DEB_DIR, help="Target directory for .deb packages")
     parser.add_argument("--rpm-dir", default=DEFAULT_RPM_DIR, help="Target directory for .rpm packages")
+    parser.add_argument("--override", action="append", default=[], help="Version override (e.g. caddy=2.9.0)")
     args = parser.parse_args()
 
-    print(f"==> Downloading upstream code-server packages v{args.version} and Caddy v{args.caddy_version}...")
-    sync_packages(args.version, args.deb_dir, args.rpm_dir, args.caddy_version)
+    configs = args.config or find_configs()
+    if not configs:
+        print("==> No upstream.json configurations found.")
+        return
+
+    overrides = parse_overrides(args.override)
+
+    for config_path in configs:
+        if not os.path.isfile(config_path):
+            print(f"Warning: Config file not found: {config_path}", file=sys.stderr)
+            continue
+
+        print(f"==> Processing upstream packages from {config_path}...")
+        cfg = load_config(config_path)
+        assets = build_asset_list(cfg, overrides)
+        sync_assets(assets, args.deb_dir, args.rpm_dir)
+
     print("==> All upstream packages synchronized successfully.")
 
 

@@ -1,0 +1,48 @@
+{
+  "packages": [
+    {
+      "name": "code-server",
+      "version": "4.139.1",
+      "repo": "coder/code-server",
+      "assets": [
+        {
+          "type": "deb",
+          "filename": "code-server_${version}_amd64.deb",
+          "url": "https://github.com/coder/code-server/releases/download/v${version}/code-server_${version}_amd64.deb"
+        },
+        {
+          "type": "deb",
+          "filename": "code-server_${version}_arm64.deb",
+          "url": "https://github.com/coder/code-server/releases/download/v${version}/code-server_${version}_arm64.deb"
+        },
+        {
+          "type": "rpm",
+          "filename": "code-server-${version}-amd64.rpm",
+          "url": "https://github.com/coder/code-server/releases/download/v${version}/code-server-${version}-amd64.rpm"
+        },
+        {
+          "type": "rpm",
+          "filename": "code-server-${version}-arm64.rpm",
+          "url": "https://github.com/coder/code-server/releases/download/v${version}/code-server-${version}-arm64.rpm"
+        }
+      ]
+    },
+    {
+      "name": "caddy",
+      "version": "2.8.4",
+      "repo": "caddyserver/caddy",
+      "assets": [
+        {
+          "type": "deb",
+          "filename": "caddy_${version}_linux_amd64.deb",
+          "url": "https://github.com/caddyserver/caddy/releases/download/v${version}/caddy_${version}_linux_amd64.deb"
+        },
+        {
+          "type": "deb",
+          "filename": "caddy_${version}_linux_arm64.deb",
+          "url": "https://github.com/caddyserver/caddy/releases/download/v${version}/caddy_${version}_linux_arm64.deb"
+        }
+      ]
+    }
+  ]
+}

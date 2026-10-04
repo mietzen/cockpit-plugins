@@ -256,6 +256,9 @@ PRERM_EOF
     if [ -f "${PLUGIN_DIR}/manifest.json" ]; then
         cp "${PLUGIN_DIR}/manifest.json" "$STAGE_DIR/usr/share/cockpit/${PLUGIN_NAME}/"
     fi
+    if [ -f "${PLUGIN_DIR}/upstream.json" ]; then
+        cp "${PLUGIN_DIR}/upstream.json" "$STAGE_DIR/usr/share/cockpit/${PLUGIN_NAME}/"
+    fi
 
     # Packaging drop-in configurations (systemd, caddy, tmpfiles)
     if [ -d "${PLUGIN_DIR}/packaging" ]; then

@@ -293,6 +293,10 @@ fi
             if os.path.exists(manifest_file):
                 add_file_to_tar(manifest_file, f"{share_target}/manifest.json")
 
+            upstream_file = os.path.join(plugin_dir, "upstream.json")
+            if os.path.exists(upstream_file):
+                add_file_to_tar(upstream_file, f"{share_target}/upstream.json")
+
             for root, dirs, files in os.walk(dist_dir):
                 dirs.sort()
                 files.sort()

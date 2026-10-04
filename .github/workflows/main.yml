@@ -396,7 +396,7 @@ jobs:
         run: |
           python3 tools/verify_release_digests.py --deb-dir all-debs --rpm-dir all-rpms --sync-assets
 
-      - name: Download Official code-server Upstream Packages
+      - name: Download Plugin Upstream Packages
         run: |
           python3 tools/download_upstream_packages.py --deb-dir all-debs --rpm-dir all-rpms
 
