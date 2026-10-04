@@ -114,6 +114,26 @@ if command -v rpmbuild >/dev/null 2>&1; then
         rm -rf "$RPMBUILD_DIR"
         mkdir -p "$RPMBUILD_DIR/BUILD" "$RPMBUILD_DIR/RPMS" "$RPMBUILD_DIR/SOURCES" "$RPMBUILD_DIR/SPECS" "$RPMBUILD_DIR/SRPMS"
 
+        CADDY_INSTALL_CMD=""
+        if [ "$PLUGIN_NAME" = "code-server" ]; then
+            CADDY_VER=$(python3 -c "import json; print(next((p['version'] for p in json.load(open('${PLUGIN_DIR}/upstream.json'))['packages'] if p['name'] == 'caddy'), '2.11.7'))" 2>/dev/null || echo "2.11.7")
+            ARCHIVE_FILE=""
+            for c_dir in "build/archives" "dist-archives" "all-archives"; do
+                if [ -f "${c_dir}/caddy_${CADDY_VER}_linux_${TAR_ARCH}.tar.gz" ]; then
+                    ARCHIVE_FILE="${c_dir}/caddy_${CADDY_VER}_linux_${TAR_ARCH}.tar.gz"
+                    break
+                fi
+            done
+            if [ -z "$ARCHIVE_FILE" ] || [ ! -f "$ARCHIVE_FILE" ]; then
+                python3 tools/download_upstream_packages.py --config "${PLUGIN_DIR}/upstream.json" --archive-dir build/archives
+                ARCHIVE_FILE="build/archives/caddy_${CADDY_VER}_linux_${TAR_ARCH}.tar.gz"
+            fi
+            mkdir -p "$RPMBUILD_DIR/SOURCES"
+            tar -xzf "$ARCHIVE_FILE" -C "$RPMBUILD_DIR/SOURCES" caddy
+            chmod 755 "$RPMBUILD_DIR/SOURCES/caddy"
+            CADDY_INSTALL_CMD="cp \"${PWD}/${RPMBUILD_DIR}/SOURCES/caddy\" %{buildroot}/usr/libexec/${HELPER_DIR_NAME}/caddy"
+        fi
+
         SPEC_FILE="$RPMBUILD_DIR/SPECS/${PKG_NAME}.spec"
         cat << SPEC_EOF > "$SPEC_FILE"
 %define _buildhost localhost
@@ -181,22 +201,7 @@ if [ -d "${PWD}/packages/common/python/cockpit_common" ]; then
     mkdir -p %{buildroot}/usr/libexec/${HELPER_DIR_NAME}/cockpit_common
     cp -r "${PWD}/packages/common/python/cockpit_common/"* %{buildroot}/usr/libexec/${HELPER_DIR_NAME}/cockpit_common/
 fi
-if [ "${PLUGIN_NAME}" = "code-server" ]; then
-    CADDY_VER=$(python3 -c "import json; print(next((p['version'] for p in json.load(open('${PWD}/${PLUGIN_DIR}/upstream.json'))['packages'] if p['name'] == 'caddy'), '2.11.7'))" 2>/dev/null || echo "2.11.7")
-    ARCHIVE_FILE=""
-    for c_dir in "build/archives" "dist-archives" "all-archives"; do
-        if [ -f "${PWD}/${c_dir}/caddy_${CADDY_VER}_linux_${TAR_ARCH}.tar.gz" ]; then
-            ARCHIVE_FILE="${PWD}/${c_dir}/caddy_${CADDY_VER}_linux_${TAR_ARCH}.tar.gz"
-            break
-        fi
-    done
-    if [ -z "$ARCHIVE_FILE" ]; then
-        python3 "${PWD}/tools/download_upstream_packages.py" --archive-dir "${PWD}/build/archives"
-        ARCHIVE_FILE="${PWD}/build/archives/caddy_${CADDY_VER}_linux_${TAR_ARCH}.tar.gz"
-    fi
-    tar -xzf "$ARCHIVE_FILE" -C %{buildroot}/usr/libexec/${HELPER_DIR_NAME} caddy
-    chmod 755 %{buildroot}/usr/libexec/${HELPER_DIR_NAME}/caddy
-fi
+${CADDY_INSTALL_CMD}
 rm -rf %{buildroot}/usr/libexec/${HELPER_DIR_NAME}/tests
 find %{buildroot} -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
 find %{buildroot} -name "*.pyc" -delete 2>/dev/null || true

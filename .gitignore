@@ -1,6 +1,12 @@
 node_modules/
 dist/
 dist-debs/
+dist-rpms/
+dist-debs-repro/
+dist-rpms-repro/
+all-debs/
+all-rpms/
+all-archives/
 pages/
 build/
 playwright-report/
