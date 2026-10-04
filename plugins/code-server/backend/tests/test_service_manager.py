@@ -1,5 +1,7 @@
 import os
+import pwd
 import subprocess
+import tempfile
 import pytest
 from unittest.mock import patch, MagicMock
 from backend.service_manager import (
@@ -232,3 +234,44 @@ def test_install_code_server_failure():
         res = install_code_server(CODE_SERVER_UPSTREAM_VERSION, "test-user")
         assert res["success"] is False
         assert "apt-get error" in res["error"]
+
+
+def test_manage_service_start_unlinks_socket():
+    fake_pw = pwd.struct_passwd(("testuser", "x", 1000, 1000, "Test User", "/home/testuser", "/bin/bash"))
+    mock_proc = MagicMock()
+    mock_proc.returncode = 0
+    with patch("pwd.getpwnam", return_value=fake_pw), \
+         patch("backend.service_manager.resolve_username", return_value="testuser"), \
+         patch("backend.service_manager.ensure_user_dir_permissions"), \
+         patch("subprocess.run", return_value=mock_proc), \
+         patch("os.path.exists", return_value=True), \
+         patch("os.unlink") as mock_unlink:
+        res = manage_service("start", "testuser")
+        assert res["success"] is True
+        assert mock_unlink.called
+
+
+def test_ensure_user_dir_permissions_walk():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        home = os.path.join(tmpdir, "home", "testuser")
+        sub = os.path.join(home, "sub")
+        os.makedirs(sub, exist_ok=True)
+        file1 = os.path.join(sub, "f.txt")
+        with open(file1, "w") as f:
+            f.write("content")
+
+        fake_pw = pwd.struct_passwd(("testuser", "x", 1000, 1000, "Test User", home, "/bin/bash"))
+        with patch("pwd.getpwnam", return_value=fake_pw), \
+             patch("backend.service_manager.resolve_username", return_value="testuser"), \
+             patch("os.chown") as mock_chown, \
+             patch("os.chmod") as mock_chmod:
+            ensure_user_dir_permissions("testuser")
+            assert mock_chown.called
+            assert mock_chmod.called
+
+
+def test_manage_service_invalid_action():
+    res = manage_service("invalid_action", "testuser")
+    assert res["success"] is False
+    assert "Invalid action" in res["error"]
+

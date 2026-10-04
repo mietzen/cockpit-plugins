@@ -237,6 +237,14 @@ class TestNfsParser(unittest.TestCase):
         self.assertFalse(loaded["vers4_2"])
         self.assertEqual(loaded["grace_time"], 60)
 
+        # Update existing nfs.conf with [nfsd] section
+        updated_settings = dict(new_settings)
+        updated_settings["threads"] = 32
+        ok2, _ = save_nfs_global(updated_settings, nfs_conf)
+        self.assertTrue(ok2)
+        loaded2 = get_nfs_global(nfs_conf)
+        self.assertEqual(loaded2["threads"], 32)
+
 
 if __name__ == "__main__":
     unittest.main()

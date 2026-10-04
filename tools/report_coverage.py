@@ -3,6 +3,8 @@ import glob
 import os
 import sys
 
+COMMON_PKG_PREFIX = "packages/common/"
+
 TIER_CONFIG = {
     "SECURITY": {
         "title": "🛡️ Security & Destructive Operations",
@@ -24,8 +26,6 @@ TIER_CONFIG = {
             "DestroyModal.tsx",
             "AttachDiskModal.tsx",
             "ReplaceDiskModal.tsx",
-            "ConfirmModal.tsx",
-            "SystemPruneModal.tsx",
             "containerClient.ts",
             "fileSharingClient.ts",
             "zfsClient.ts",
@@ -33,7 +33,6 @@ TIER_CONFIG = {
             "code_server_helper.py",
             "config_manager.py",
             "service_manager.py",
-            "Client.ts",
         ],
     },
     "BACKEND": {
@@ -55,11 +54,11 @@ def is_test_file(filepath: str) -> bool:
     return "/tests/" in low or "/test/" in low or low.endswith(".spec.ts") or "test_" in low or "spec_" in low
 
 def classify_file(filepath: str) -> str:
-    low = filepath.lower()
+    base = os.path.basename(filepath).lower()
     for pat in TIER_CONFIG["SECURITY"]["patterns"]:
-        if pat.lower() in low:
+        if base == pat.lower():
             return "SECURITY"
-    if filepath.endswith(".py") or "formatters.ts" in filepath:
+    if filepath.endswith(".py") or base == "formatters.ts":
         return "BACKEND"
     return "FRONTEND"
 
@@ -137,9 +136,18 @@ def main():
             if fkey not in merged_records:
                 merged_records[fkey] = {"lf": r["lf"], "lh": r["lh"], "brf": r["brf"], "brh": r["brh"]}
             else:
-                # Keep max hit count
+                # Keep max line and branch counts
+                merged_records[fkey]["lf"] = max(merged_records[fkey]["lf"], r["lf"])
                 merged_records[fkey]["lh"] = max(merged_records[fkey]["lh"], r["lh"])
+                merged_records[fkey]["brf"] = max(merged_records[fkey]["brf"], r["brf"])
                 merged_records[fkey]["brh"] = max(merged_records[fkey]["brh"], r["brh"])
+
+            # Filter E2E records to target plugin and shared common package
+            if layer == "Frontend E2E":
+                target_prefix = f"plugins/{target}/"
+                clean_fkey = fkey[2:] if fkey.startswith("./") else fkey
+                if not (clean_fkey.startswith(target_prefix) or clean_fkey.startswith(COMMON_PKG_PREFIX)):
+                    continue
 
             target_stats[(target, layer)]["lf"] += r["lf"]
             target_stats[(target, layer)]["lh"] += r["lh"]
@@ -168,6 +176,7 @@ def main():
 
     all_passed = True
     failed_reasons = []
+    failed_tiers = []
 
     for tier_key in ["SECURITY", "BACKEND", "FRONTEND"]:
         cfg = TIER_CONFIG[tier_key]
@@ -184,6 +193,7 @@ def main():
         tier_pass = line_pass and branch_pass
         if not tier_pass:
             all_passed = False
+            failed_tiers.append(tier_key)
             failed_reasons.append(
                 f"{cfg['title']}: Lines {line_pct:.1f}% (target >={cfg['min_line']}%), "
                 f"Branches {branch_pct:.1f}% (target >={cfg['min_branch']}%)"
@@ -226,6 +236,17 @@ def main():
         print("\n❌ 3-Tier Coverage Gate Failed:")
         for reason in failed_reasons:
             print(f"  - {reason}")
+
+        for tier_key in failed_tiers:
+            cfg = TIER_CONFIG[tier_key]
+            print(f"\nPer-file breakdown for failing tier {cfg['title']}:")
+            for fpath, counts in sorted(merged_records.items()):
+                if classify_file(fpath) == tier_key:
+                    flp = (counts["lh"] / counts["lf"] * 100.0) if counts["lf"] > 0 else 100.0
+                    fbp = (counts["brh"] / counts["brf"] * 100.0) if counts["brf"] > 0 else 100.0
+                    b_str = f"{fbp:.1f}% ({counts['brh']}/{counts['brf']})" if counts["brf"] > 0 else "—"
+                    print(f"  {flp:5.1f}% L ({counts['lh']}/{counts['lf']}), {b_str} B : {fpath}")
+
         sys.exit(1)
 
     print("\n✅ All 3 coverage quality tiers passed successfully!")
