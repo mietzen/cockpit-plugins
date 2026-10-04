@@ -200,6 +200,11 @@ def ensure_user_dir_permissions(username: Optional[str] = None) -> None:
                 if not cfg.app_name:
                     cfg.app_name = "Code-Server"
                     changed = True
+                if cfg.auth == "none" or (cfg.auth == "password" and not cfg.password and not cfg.hashed_password):
+                    cfg.auth = "password"
+                    if not cfg.password and not cfg.hashed_password:
+                        cfg.password = secrets.token_urlsafe(PASSWORD_TOKEN_BYTES)
+                    changed = True
                 if changed:
                     write_code_server_config(cfg_file, cfg, user)
         except Exception:

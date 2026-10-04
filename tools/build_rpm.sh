@@ -313,6 +313,16 @@ COCKPIT_CONF_EOF
                     fi
                     sed -i -E "s|^cert:.*|cert: false|" "\$CFG" 2>/dev/null || true
                     sed -i -E "s|^cert-key:.*||" "\$CFG" 2>/dev/null || true
+                    if grep -qE "^auth:[[:space:]]*none" "\$CFG" 2>/dev/null; then
+                        sed -i -E "s|^auth:.*|auth: password|" "\$CFG" 2>/dev/null || true
+                    elif ! grep -q "^auth:" "\$CFG" 2>/dev/null; then
+                        echo "auth: password" >> "\$CFG"
+                    fi
+                    if ! grep -qE "^(password|hashed-password):[[:space:]]*[^[:space:]]+" "\$CFG" 2>/dev/null; then
+                        PASS_TOKEN=\$(python3 -c "import secrets; print(secrets.token_urlsafe(24))" 2>/dev/null || tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 32)
+                        sed -i -E "s|^password:.*||" "\$CFG" 2>/dev/null || true
+                        echo "password: \$PASS_TOKEN" >> "\$CFG"
+                    fi
                 fi
 
                 for p in ".config/code-server" ".local/share/code-server" ".cache/code-server"; do

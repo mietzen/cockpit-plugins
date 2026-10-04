@@ -209,11 +209,16 @@ def test_default_auth_and_pass():
         assert loaded.password is not None
         assert len(loaded.password) >= 24
 
-        persisted = parse_code_server_config(cfg_path)
-        assert persisted.password == loaded.password
+        # Verify parse_code_server_config avoids destructive writes during reading
         with open(cfg_path, "r") as f:
             content = f.read()
-            assert f"password: {loaded.password}" in content
+            assert "password:" not in content
+
+        # Persist explicitly and verify
+        assert write_code_server_config(cfg_path, loaded) is True
+        with open(cfg_path, "r") as f:
+            saved_content = f.read()
+            assert f"password: {loaded.password}" in saved_content
 
     # Configs cannot default to unauthenticated auth: none
     default_cfg = CodeServerConfig()

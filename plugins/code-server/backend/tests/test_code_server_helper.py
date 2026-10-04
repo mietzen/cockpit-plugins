@@ -2,6 +2,7 @@ import json
 import pytest
 from unittest.mock import patch, MagicMock
 from backend.code_server_helper import handle_command, main
+from backend.config_manager import CodeServerConfig
 
 
 def test_handle_status_command():
@@ -53,6 +54,25 @@ def test_handle_save_config_command():
 
     res = handle_command(["save_config", "--user", "test-user", "--data", "invalid-json{"])
     assert res["status"] == "error"
+
+
+def test_handle_save_config_preserves_creds_and_socket():
+    mock_existing = CodeServerConfig(
+        socket="/run/code-server/1000.sock",
+        socket_mode="600",
+        auth="password",
+        password="existing-secret",
+    )
+    with patch("backend.code_server_helper.parse_code_server_config", return_value=mock_existing), \
+         patch("backend.code_server_helper.write_code_server_config") as mock_write:
+        mock_write.return_value = True
+        payload = json.dumps({"cert": True})
+        res = handle_command(["save_config", "--user", "test-user", "--data", payload])
+        assert res["status"] == "ok"
+        saved_cfg = mock_write.call_args[0][1]
+        assert saved_cfg.socket == "/run/code-server/1000.sock"
+        assert saved_cfg.password == "existing-secret"
+        assert saved_cfg.cert is True
 
 
 def test_handle_install_command():

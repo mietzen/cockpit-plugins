@@ -47,6 +47,7 @@ class CodeServerConfig:
         data = asdict(self)
         data["host"] = self.host
         data["port"] = self.port
+        data["has_password"] = bool(self.password or self.hashed_password)
         return data
 
 
@@ -176,14 +177,7 @@ def parse_code_server_config(path: str, username: Optional[str] = None) -> CodeS
     if not raw_data.get("auth"):
         raw_data["auth"] = DEFAULT_AUTH
 
-    had_password = bool(raw_data.get("password") or raw_data.get("hashed_password"))
-    config = CodeServerConfig(**raw_data)
-
-    # Persist generated password if missing in existing file
-    if config.auth == "password" and not had_password and os.path.isfile(path):
-        write_code_server_config(path, config, username)
-
-    return config
+    return CodeServerConfig(**raw_data)
 
 
 def sanitize_yaml_val(val: Optional[str]) -> str:
@@ -243,11 +237,8 @@ def write_code_server_config(path: str, config: CodeServerConfig, username: Opti
         lines.append(f"auth: {clean_auth}")
         if config.app_name:
             lines.append(f"app-name: {sanitize_yaml_val(config.app_name)}")
-
-        auth_key = "".join(["pass", "word"])
-        auth_cred = getattr(config, auth_key, None)
-        if auth_cred:
-            lines.append(f"{auth_key}: {sanitize_yaml_val(auth_cred)}")
+        if config.password:
+            lines.append(f"password: {sanitize_yaml_val(config.password)}")
 
         if config.hashed_password:
             lines.append(f"hashed-password: {sanitize_yaml_val(config.hashed_password)}")
