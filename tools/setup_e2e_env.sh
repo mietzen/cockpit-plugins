@@ -77,22 +77,26 @@ Origins = https://127.0.0.1:9090 https://localhost:9090 http://127.0.0.1:9090 ht
 EOF
 
 # Pre-generate self-signed certificate to prevent missing sscg warning
-if [ ! -f /etc/cockpit/ws-certs.d/0-self-signed.cert ]; then
+if [ ! -f /etc/cockpit/ws-certs.d/0-self-signed.cert ] || [ ! -f /etc/cockpit/ws-certs.d/0-self-signed.key ]; then
     sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-        -keyout /tmp/cockpit.key \
-        -out /tmp/cockpit.crt \
+        -keyout /etc/cockpit/ws-certs.d/0-self-signed.key \
+        -out /etc/cockpit/ws-certs.d/0-self-signed.cert \
         -subj "/CN=localhost" -batch
-    sudo cat /tmp/cockpit.key /tmp/cockpit.crt | sudo tee /etc/cockpit/ws-certs.d/0-self-signed.cert >/dev/null
-    sudo chmod 600 /etc/cockpit/ws-certs.d/0-self-signed.cert
-    sudo rm -f /tmp/cockpit.key /tmp/cockpit.crt
+    sudo chmod 600 /etc/cockpit/ws-certs.d/0-self-signed.cert /etc/cockpit/ws-certs.d/0-self-signed.key
 fi
 
 # 4. Install all cockpit plugins from dist-debs
 echo "==> Installing plugin packages..."
-if ls dist-debs/*.deb 1> /dev/null 2>&1; then
-    sudo dpkg -i --force-overwrite dist-debs/*.deb || sudo apt-get install -f -y
+if ls dist-debs/cockpit-code-server*.deb 1> /dev/null 2>&1; then
+    echo "==> Downloading upstream code-server packages for E2E..."
+    python3 tools/download_upstream_packages.py --deb-dir dist-debs --rpm-dir dist-rpms || true
+fi
+ARCH=$(dpkg --print-architecture 2>/dev/null || echo "amd64")
+DEB_FILES=$(find dist-debs -name "*_${ARCH}.deb" -o -name "*_all.deb" 2>/dev/null || true)
+if [ -n "$DEB_FILES" ]; then
+    sudo dpkg -i --force-overwrite $DEB_FILES || sudo apt-get install -f -y
 else
-    echo "No .deb found, installing directly via make..."
+    echo "No matching .deb found, installing directly via make..."
     sudo make -C plugins/zfs-storage install 2>/dev/null || true
 fi
 
@@ -157,6 +161,9 @@ fi
 echo "==> Starting Cockpit service..."
 sudo systemctl daemon-reload || true
 sudo systemctl restart cockpit.socket cockpit.service || sudo systemctl restart cockpit || true
+if systemctl list-unit-files cockpit-caddy.service 1>/dev/null 2>&1; then
+    sudo systemctl restart cockpit-caddy.service || true
+fi
 
 echo "==> Waiting for Cockpit on port 9090..."
 for i in {1..15}; do
@@ -166,5 +173,11 @@ for i in {1..15}; do
     fi
     sleep 1
 done
+
+if ! curl -sk https://127.0.0.1:9090 >/dev/null 2>&1; then
+    echo "ERROR: Cockpit failed to respond on port 9090"
+    sudo systemctl status cockpit.socket cockpit.service cockpit-caddy.service || true
+    sudo journalctl -u cockpit.socket -u cockpit.service -u cockpit-caddy.service -n 50 --no-pager || true
+fi
 
 echo "E2E environment setup complete!"

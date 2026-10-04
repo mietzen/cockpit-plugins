@@ -88,12 +88,62 @@ if command -v rpmbuild >/dev/null 2>&1; then
         RPM_SUMMARY="Docker and Podman container management plugin for Cockpit"
         RPM_REQUIRES="cockpit-bridge, python3, openssl"
         RPM_DESC="Docker and Podman container management plugin for Cockpit."
+    elif [ "$PLUGIN_NAME" = "code-server" ]; then
+        RPM_SUMMARY="VS Code Server plugin for Cockpit"
+        RPM_REQUIRES="cockpit-bridge, python3, code-server"
+        RPM_DESC="VS Code Server plugin for Cockpit."
     fi
 
-    SPEC_FILE="$RPMBUILD_DIR/SPECS/${PKG_NAME}.spec"
-    cat << SPEC_EOF > "$SPEC_FILE"
+    RPM_EXTRA_FILES=""
+    if [ "${PLUGIN_NAME}" = "code-server" ]; then
+        RPM_EXTRA_FILES="%{_sysconfdir}/systemd/system/cockpit.socket.d/10-code-server.conf
+%{_sysconfdir}/systemd/system/cockpit-caddy.service
+%{_sysconfdir}/cockpit-code-server/Caddyfile
+/usr/lib/tmpfiles.d/cockpit-code-server.conf"
+    fi
+
+    if [ "$PLUGIN_NAME" = "code-server" ]; then
+        ARCH_PAIRS=("amd64:x86_64" "arm64:aarch64")
+    else
+        ARCH_PAIRS=("all:noarch")
+    fi
+
+    for pair in "${ARCH_PAIRS[@]}"; do
+        TAR_ARCH="${pair%%:*}"
+        RPM_ARCH="${pair##*:}"
+        rm -rf "$RPMBUILD_DIR"
+        mkdir -p "$RPMBUILD_DIR/BUILD" "$RPMBUILD_DIR/RPMS" "$RPMBUILD_DIR/SOURCES" "$RPMBUILD_DIR/SPECS" "$RPMBUILD_DIR/SRPMS"
+
+        CADDY_INSTALL_CMD=""
+        if [ "$PLUGIN_NAME" = "code-server" ]; then
+            CADDY_VER=$(python3 -c "import json; print(next((p['version'] for p in json.load(open('${PLUGIN_DIR}/upstream.json'))['packages'] if p['name'] == 'caddy'), '2.11.7'))" 2>/dev/null || echo "2.11.7")
+            ARCHIVE_FILE=""
+            for c_dir in "build/archives" "dist-archives" "all-archives"; do
+                if [ -f "${c_dir}/caddy_${CADDY_VER}_linux_${TAR_ARCH}.tar.gz" ]; then
+                    ARCHIVE_FILE="${c_dir}/caddy_${CADDY_VER}_linux_${TAR_ARCH}.tar.gz"
+                    break
+                fi
+            done
+            if [ -z "$ARCHIVE_FILE" ] || [ ! -f "$ARCHIVE_FILE" ]; then
+                python3 tools/download_upstream_packages.py --config "${PLUGIN_DIR}/upstream.json" --type tar.gz --archive-dir build/archives
+                ARCHIVE_FILE="build/archives/caddy_${CADDY_VER}_linux_${TAR_ARCH}.tar.gz"
+            fi
+            mkdir -p "$RPMBUILD_DIR/SOURCES"
+            tar -xzf "$ARCHIVE_FILE" -C "$RPMBUILD_DIR/SOURCES" caddy
+            chmod 755 "$RPMBUILD_DIR/SOURCES/caddy"
+            CADDY_INSTALL_CMD="cp \"${PWD}/${RPMBUILD_DIR}/SOURCES/caddy\" %{buildroot}/usr/libexec/${HELPER_DIR_NAME}/caddy"
+        fi
+
+        SPEC_BUILD_ARCH=""
+        if [ "$RPM_ARCH" = "noarch" ]; then
+            SPEC_BUILD_ARCH="BuildArch:      noarch"
+        fi
+
+        SPEC_FILE="$RPMBUILD_DIR/SPECS/${PKG_NAME}.spec"
+        cat << SPEC_EOF > "$SPEC_FILE"
 %define _buildhost localhost
 %define _build_id_links none
+%define __os_install_post %{nil}
 %define _clamp_mtime 1
 %define _build_time ${SOURCE_DATE_EPOCH}
 %define _buildtime ${SOURCE_DATE_EPOCH}
@@ -105,7 +155,7 @@ Name:           ${PKG_NAME}
 Version:        ${VERSION}
 Release:        1
 Summary:        ${RPM_SUMMARY}
-BuildArch:      noarch
+${SPEC_BUILD_ARCH}
 License:        MIT
 URL:            https://github.com/mietzen/cockpit-plugins
 Requires:       ${RPM_REQUIRES}
@@ -129,18 +179,41 @@ fi
 if [ -f "${PWD}/${PLUGIN_DIR}/manifest.json" ]; then
     cp "${PWD}/${PLUGIN_DIR}/manifest.json" %{buildroot}/usr/share/cockpit/${PLUGIN_NAME}/
 fi
+if [ -f "${PWD}/${PLUGIN_DIR}/upstream.json" ]; then
+    cp "${PWD}/${PLUGIN_DIR}/upstream.json" %{buildroot}/usr/share/cockpit/${PLUGIN_NAME}/
+fi
 if [ -d "${PWD}/${PLUGIN_DIR}/backend" ]; then
     cp -r "${PWD}/${PLUGIN_DIR}/backend/"* %{buildroot}/usr/libexec/${HELPER_DIR_NAME}/
+fi
+if [ -d "${PWD}/${PLUGIN_DIR}/packaging" ]; then
+    if [ -f "${PWD}/${PLUGIN_DIR}/packaging/systemd/10-code-server.conf" ]; then
+        mkdir -p %{buildroot}/etc/systemd/system/cockpit.socket.d
+        cp "${PWD}/${PLUGIN_DIR}/packaging/systemd/10-code-server.conf" %{buildroot}/etc/systemd/system/cockpit.socket.d/
+    fi
+    if [ -f "${PWD}/${PLUGIN_DIR}/packaging/systemd/cockpit-caddy.service" ]; then
+        mkdir -p %{buildroot}/etc/systemd/system
+        cp "${PWD}/${PLUGIN_DIR}/packaging/systemd/cockpit-caddy.service" %{buildroot}/etc/systemd/system/
+    fi
+    if [ -f "${PWD}/${PLUGIN_DIR}/packaging/caddy/Caddyfile" ]; then
+        mkdir -p %{buildroot}/etc/cockpit-code-server
+        cp "${PWD}/${PLUGIN_DIR}/packaging/caddy/Caddyfile" %{buildroot}/etc/cockpit-code-server/
+    fi
+    if [ -f "${PWD}/${PLUGIN_DIR}/packaging/tmpfiles/cockpit-code-server.conf" ]; then
+        mkdir -p %{buildroot}/usr/lib/tmpfiles.d
+        cp "${PWD}/${PLUGIN_DIR}/packaging/tmpfiles/cockpit-code-server.conf" %{buildroot}/usr/lib/tmpfiles.d/
+    fi
 fi
 if [ -d "${PWD}/packages/common/python/cockpit_common" ]; then
     mkdir -p %{buildroot}/usr/libexec/${HELPER_DIR_NAME}/cockpit_common
     cp -r "${PWD}/packages/common/python/cockpit_common/"* %{buildroot}/usr/libexec/${HELPER_DIR_NAME}/cockpit_common/
 fi
+${CADDY_INSTALL_CMD}
 rm -rf %{buildroot}/usr/libexec/${HELPER_DIR_NAME}/tests
 find %{buildroot} -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
 find %{buildroot} -name "*.pyc" -delete 2>/dev/null || true
 find %{buildroot} -name "*.pyo" -delete 2>/dev/null || true
 find %{buildroot}/usr/libexec/${HELPER_DIR_NAME} -name "*.py" -exec chmod 755 {} + 2>/dev/null || true
+find %{buildroot}/usr/libexec/${HELPER_DIR_NAME} -name "caddy" -exec chmod 755 {} + 2>/dev/null || true
 find %{buildroot} -exec touch -d "@${SOURCE_DATE_EPOCH}" {} + 2>/dev/null || true
 
 %clean
@@ -150,6 +223,140 @@ rm -rf %{buildroot}
 %defattr(-,root,root,-)
 /usr/share/cockpit/${PLUGIN_NAME}
 /usr/libexec/${HELPER_DIR_NAME}
+${RPM_EXTRA_FILES}
+
+%post
+if [ -d /usr/libexec/${HELPER_DIR_NAME} ]; then
+    chmod -R 755 /usr/libexec/${HELPER_DIR_NAME}
+fi
+if [ "${PLUGIN_NAME}" = "code-server" ]; then
+    mkdir -p /run/code-server
+    chmod 1777 /run/code-server
+    if command -v systemd-tmpfiles >/dev/null 2>&1; then
+        systemd-tmpfiles --create /usr/lib/tmpfiles.d/cockpit-code-server.conf 2>/dev/null || true
+    fi
+
+    if [ ! -f /etc/cockpit/ws-certs.d/0-self-signed.cert ] || [ ! -f /etc/cockpit/ws-certs.d/0-self-signed.key ]; then
+        if command -v remotectl >/dev/null 2>&1; then
+            remotectl certificate --ensure 2>/dev/null || true
+        fi
+        SYS_CERT=\$(find /etc/cockpit/ws-certs.d -name "*.cert" -o -name "*.crt" 2>/dev/null | sort -r | head -n 1)
+        SYS_KEY=\$(find /etc/cockpit/ws-certs.d -name "*.key" 2>/dev/null | sort -r | head -n 1)
+        if [ -n "\$SYS_CERT" ]; then
+            if [ -z "\$SYS_KEY" ]; then
+                SYS_KEY="\$SYS_CERT"
+            fi
+            ln -sf "\$SYS_CERT" /etc/cockpit/ws-certs.d/0-self-signed.cert 2>/dev/null || true
+            ln -sf "\$SYS_KEY" /etc/cockpit/ws-certs.d/0-self-signed.key 2>/dev/null || true
+            chmod 600 /etc/cockpit/ws-certs.d/0-self-signed.cert /etc/cockpit/ws-certs.d/0-self-signed.key 2>/dev/null || true
+        fi
+    fi
+
+    # Ensure cockpit.conf has reverse-proxy headers under [WebService]
+    if [ -f /etc/cockpit/cockpit.conf ]; then
+        if ! grep -q "^\\[WebService\\]" /etc/cockpit/cockpit.conf 2>/dev/null; then
+            printf "\\n[WebService]\\nProtocolHeader = X-Forwarded-Proto\\nForwardedForHeader = X-Forwarded-For\\n" >> /etc/cockpit/cockpit.conf
+        else
+            if ! grep -q "^ProtocolHeader" /etc/cockpit/cockpit.conf 2>/dev/null; then
+                sed -i -E "s|^\\[WebService\\]|[WebService]\\nProtocolHeader = X-Forwarded-Proto|" /etc/cockpit/cockpit.conf 2>/dev/null || true
+            fi
+            if ! grep -q "^ForwardedForHeader" /etc/cockpit/cockpit.conf 2>/dev/null; then
+                sed -i -E "s|^\\[WebService\\]|[WebService]\\nForwardedForHeader = X-Forwarded-For|" /etc/cockpit/cockpit.conf 2>/dev/null || true
+            fi
+        fi
+    else
+        mkdir -p /etc/cockpit
+        cat << 'COCKPIT_CONF_EOF' > /etc/cockpit/cockpit.conf
+[WebService]
+ProtocolHeader = X-Forwarded-Proto
+ForwardedForHeader = X-Forwarded-For
+COCKPIT_CONF_EOF
+    fi
+
+    if command -v systemctl >/dev/null 2>&1; then
+        if systemctl list-unit-files caddy.service >/dev/null 2>&1; then
+            if grep -q "Hello, world!" /etc/caddy/Caddyfile 2>/dev/null || grep -q "/usr/share/caddy" /etc/caddy/Caddyfile 2>/dev/null; then
+                systemctl stop caddy.service 2>/dev/null || true
+                systemctl disable caddy.service 2>/dev/null || true
+                systemctl reset-failed caddy.service 2>/dev/null || true
+            fi
+        fi
+        systemctl stop cockpit.socket 2>/dev/null || true
+        systemctl daemon-reload 2>/dev/null || true
+        systemctl start cockpit.socket 2>/dev/null || true
+        systemctl enable --now cockpit-caddy.service 2>/dev/null || systemctl restart cockpit-caddy.service 2>/dev/null || true
+    fi
+
+    TARGET_USERS=\$(awk -F: '\$3 >= 1000 && \$3 < 65534 {print \$1}' /etc/passwd 2>/dev/null || true)
+    for u in \${TARGET_USERS}; do
+        if id "\$u" >/dev/null 2>&1; then
+            U_HOME=\$(getent passwd "\$u" | cut -d: -f6)
+            UID_NUM=\$(id -u "\$u" 2>/dev/null || echo 1000)
+            if [ -n "\$U_HOME" ]; then
+                CFG_DIR="\$U_HOME/.config/code-server"
+                CFG="\$CFG_DIR/config.yaml"
+                mkdir -p "\$CFG_DIR" 2>/dev/null || true
+
+                if [ ! -f "\$CFG" ]; then
+                    printf "socket: /run/code-server/%s.sock\\nsocket-mode: 600\\nauth: none\\ncert: false\\napp-name: Code-Server\\ndisable-telemetry: true\\n" "\$UID_NUM" > "\$CFG"
+                else
+                    sed -i -E "s|^bind-addr:.*|socket: /run/code-server/\${UID_NUM}.sock\\nsocket-mode: 600|" "\$CFG" 2>/dev/null || true
+                    if grep -q "^socket:" "\$CFG" 2>/dev/null; then
+                        sed -i -E "s|^socket:.*|socket: /run/code-server/\${UID_NUM}.sock|" "\$CFG" 2>/dev/null || true
+                    else
+                        printf "socket: /run/code-server/%s.sock\\nsocket-mode: 600\\n" "\$UID_NUM" >> "\$CFG"
+                    fi
+                    sed -i -E "s|^socket-mode:.*|socket-mode: 600|" "\$CFG" 2>/dev/null || true
+                    if ! grep -q "^socket-mode:" "\$CFG" 2>/dev/null; then
+                        echo "socket-mode: 600" >> "\$CFG"
+                    fi
+                    sed -i -E "s|^cert:.*|cert: false|" "\$CFG" 2>/dev/null || true
+                    sed -i -E "s|^cert-key:.*||" "\$CFG" 2>/dev/null || true
+                fi
+
+                for p in ".config/code-server" ".local/share/code-server" ".cache/code-server"; do
+                    if [ -d "\$U_HOME/\$p" ]; then
+                        chown -R "\$u:\$u" "\$U_HOME/\$p" 2>/dev/null || true
+                        chmod -R u+rwX "\$U_HOME/\$p" 2>/dev/null || true
+                    fi
+                done
+                rm -f "/run/code-server/\${UID_NUM}.sock" 2>/dev/null || true
+            fi
+            systemctl enable "code-server@\${u}.service" 2>/dev/null || true
+            systemctl restart "code-server@\${u}.service" 2>/dev/null || true
+        fi
+    done
+    CODE_BIN=\$(command -v code-server 2>/dev/null || true)
+    if [ -n "\$CODE_BIN" ]; then
+        mkdir -p /usr/local/bin
+        cat << 'CODE_WRAPPER_EOF' > /usr/local/bin/code
+#!/bin/sh
+exec code-server "\$@"
+CODE_WRAPPER_EOF
+        chmod 755 /usr/local/bin/code
+    fi
+fi
+
+%preun
+if [ "${PLUGIN_NAME}" = "code-server" ]; then
+    if [ "\$1" -eq 0 ]; then
+        if [ -f /usr/local/bin/code ] && grep -q "exec code-server" /usr/local/bin/code 2>/dev/null; then
+            rm -f /usr/local/bin/code
+        fi
+        if command -v systemctl >/dev/null 2>&1; then
+            systemctl stop cockpit-caddy.service 2>/dev/null || true
+            systemctl disable cockpit-caddy.service 2>/dev/null || true
+        fi
+        rm -f /etc/systemd/system/cockpit.socket.d/10-code-server.conf
+        rm -f /etc/systemd/system/cockpit-caddy.service
+        rm -rf /etc/cockpit-code-server
+        rm -f /usr/lib/tmpfiles.d/cockpit-code-server.conf
+        if command -v systemctl >/dev/null 2>&1; then
+            systemctl daemon-reload 2>/dev/null || true
+            systemctl restart cockpit.socket 2>/dev/null || true
+        fi
+    fi
+fi
 
 %changelog
 * ${CHANGELOG_DATE} Nils Stein <github.nstein@mailbox.org> - ${VERSION}-1
@@ -157,25 +364,29 @@ rm -rf %{buildroot}
 
 SPEC_EOF
 
-    rpmbuild \
-        --define "_topdir ${PWD}/${RPMBUILD_DIR}" \
-        --define "_buildhost localhost" \
-        --define "_clamp_mtime 1" \
-        --define "_build_time ${SOURCE_DATE_EPOCH}" \
-        --define "_buildtime ${SOURCE_DATE_EPOCH}" \
-        --define "_source_date_epoch ${SOURCE_DATE_EPOCH}" \
-        --define "_source_date_epoch_from_changelog 0" \
-        --define "_binary_payload w9.gzdio" \
-        --define "_source_payload w9.gzdio" \
-        --define "_build_id_links none" \
-        -bb "$SPEC_FILE"
-    find "$RPMBUILD_DIR/RPMS" -name "*.rpm" -exec cp {} "$OUTPUT_DIR/" \;
-    for rpm_f in "$OUTPUT_DIR"/*.rpm; do
-        if [ -f "$rpm_f" ]; then
-            python3 tools/reproducible_rpm.py "$rpm_f" --epoch "$SOURCE_DATE_EPOCH"
-        fi
+        rpmbuild \
+            --define "_topdir ${PWD}/${RPMBUILD_DIR}" \
+            --define "_buildhost localhost" \
+            --define "_clamp_mtime 1" \
+            --define "_build_time ${SOURCE_DATE_EPOCH}" \
+            --define "_buildtime ${SOURCE_DATE_EPOCH}" \
+            --define "_source_date_epoch ${SOURCE_DATE_EPOCH}" \
+            --define "_source_date_epoch_from_changelog 0" \
+            --define "_binary_payload w9.gzdio" \
+            --define "_source_payload w9.gzdio" \
+            --define "_build_id_links none" \
+            --define "__os_install_post %{nil}" \
+            --target "${RPM_ARCH}" \
+            -bb "$SPEC_FILE"
+        find "$RPMBUILD_DIR/RPMS" -name "*.rpm" -exec cp {} "$OUTPUT_DIR/" \;
+        for rpm_f in "$RPMBUILD_DIR/RPMS"/*/*.rpm; do
+            if [ -f "$rpm_f" ]; then
+                base_name=$(basename "$rpm_f")
+                python3 tools/reproducible_rpm.py "$OUTPUT_DIR/$base_name" --epoch "$SOURCE_DATE_EPOCH"
+            fi
+        done
+        echo "Created reproducible RPM package (${RPM_ARCH}) in $OUTPUT_DIR"
     done
-    echo "Created reproducible RPM package in $OUTPUT_DIR"
 else
     echo "==> rpmbuild not found on host, creating fallback RPM staging..."
     mkdir -p "$OUTPUT_DIR"

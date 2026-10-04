@@ -72,9 +72,6 @@ fi
 
 if [ -n "$DPKG_DEB" ]; then
     echo "==> Using system $DPKG_DEB to build Debian package..."
-    STAGE_DIR="build/deb-staging/${PKG_NAME}"
-    rm -rf "$STAGE_DIR"
-    mkdir -p "$STAGE_DIR/DEBIAN"
     HELPER_DIR_NAME="cockpit-${PLUGIN_NAME}"
     if [ "$PLUGIN_NAME" = "zfs-storage" ]; then
         HELPER_DIR_NAME="cockpit-zfs"
@@ -91,19 +88,32 @@ if [ -n "$DPKG_DEB" ]; then
     elif [ "$PLUGIN_NAME" = "container-manager" ]; then
         DEB_DEPENDS="cockpit-bridge | cockpit, python3, openssl"
         DEB_DESC="Docker and Podman container management plugin for Cockpit"
+    elif [ "$PLUGIN_NAME" = "code-server" ]; then
+        DEB_DEPENDS="cockpit-bridge | cockpit, python3, code-server"
+        DEB_DESC="VS Code Server plugin for Cockpit"
     fi
 
-    mkdir -p "$STAGE_DIR/usr/share/cockpit/${PLUGIN_NAME}"
-    mkdir -p "$STAGE_DIR/usr/libexec/${HELPER_DIR_NAME}"
-    mkdir -p "$OUTPUT_DIR"
+    if [ "$PLUGIN_NAME" = "code-server" ]; then
+        ARCHS=("amd64" "arm64")
+    else
+        ARCHS=("all")
+    fi
 
-    # Control file
-    cat << CONTROL_EOF > "$STAGE_DIR/DEBIAN/control"
+    for TARGET_ARCH in "${ARCHS[@]}"; do
+        STAGE_DIR="build/deb-staging/${PKG_NAME}-${TARGET_ARCH}"
+        rm -rf "$STAGE_DIR"
+        mkdir -p "$STAGE_DIR/DEBIAN"
+        mkdir -p "$STAGE_DIR/usr/share/cockpit/${PLUGIN_NAME}"
+        mkdir -p "$STAGE_DIR/usr/libexec/${HELPER_DIR_NAME}"
+        mkdir -p "$OUTPUT_DIR"
+
+        # Control file
+        cat << CONTROL_EOF > "$STAGE_DIR/DEBIAN/control"
 Package: ${PKG_NAME}
 Version: ${VERSION}
 Section: admin
 Priority: optional
-Architecture: all
+Architecture: ${TARGET_ARCH}
 Maintainer: Nils Stein <github.nstein@mailbox.org>
 Depends: ${DEB_DEPENDS}
 Homepage: https://github.com/mietzen/cockpit-plugins
@@ -117,13 +127,137 @@ set -e
 if [ -d /usr/libexec/${HELPER_DIR_NAME} ]; then
     chmod -R 755 /usr/libexec/${HELPER_DIR_NAME}
 fi
+if [ "${PLUGIN_NAME}" = "code-server" ]; then
+    mkdir -p /run/code-server
+    chmod 1777 /run/code-server
+    if command -v systemd-tmpfiles >/dev/null 2>&1; then
+        systemd-tmpfiles --create /usr/lib/tmpfiles.d/cockpit-code-server.conf 2>/dev/null || true
+    fi
+
+    if [ ! -f /etc/cockpit/ws-certs.d/0-self-signed.cert ] || [ ! -f /etc/cockpit/ws-certs.d/0-self-signed.key ]; then
+        if command -v remotectl >/dev/null 2>&1; then
+            remotectl certificate --ensure 2>/dev/null || true
+        fi
+        SYS_CERT=\$(find /etc/cockpit/ws-certs.d -name "*.cert" -o -name "*.crt" 2>/dev/null | sort -r | head -n 1)
+        SYS_KEY=\$(find /etc/cockpit/ws-certs.d -name "*.key" 2>/dev/null | sort -r | head -n 1)
+        if [ -n "\$SYS_CERT" ]; then
+            if [ -z "\$SYS_KEY" ]; then
+                SYS_KEY="\$SYS_CERT"
+            fi
+            ln -sf "\$SYS_CERT" /etc/cockpit/ws-certs.d/0-self-signed.cert 2>/dev/null || true
+            ln -sf "\$SYS_KEY" /etc/cockpit/ws-certs.d/0-self-signed.key 2>/dev/null || true
+            chmod 600 /etc/cockpit/ws-certs.d/0-self-signed.cert /etc/cockpit/ws-certs.d/0-self-signed.key 2>/dev/null || true
+        fi
+    fi
+
+    # Ensure cockpit.conf has reverse-proxy headers under [WebService]
+    if [ -f /etc/cockpit/cockpit.conf ]; then
+        if ! grep -q "^\\[WebService\\]" /etc/cockpit/cockpit.conf 2>/dev/null; then
+            printf "\\n[WebService]\\nProtocolHeader = X-Forwarded-Proto\\nForwardedForHeader = X-Forwarded-For\\n" >> /etc/cockpit/cockpit.conf
+        else
+            if ! grep -q "^ProtocolHeader" /etc/cockpit/cockpit.conf 2>/dev/null; then
+                sed -i -E "s|^\\[WebService\\]|[WebService]\\nProtocolHeader = X-Forwarded-Proto|" /etc/cockpit/cockpit.conf 2>/dev/null || true
+            fi
+            if ! grep -q "^ForwardedForHeader" /etc/cockpit/cockpit.conf 2>/dev/null; then
+                sed -i -E "s|^\\[WebService\\]|[WebService]\\nForwardedForHeader = X-Forwarded-For|" /etc/cockpit/cockpit.conf 2>/dev/null || true
+            fi
+        fi
+    else
+        mkdir -p /etc/cockpit
+        cat << 'COCKPIT_CONF_EOF' > /etc/cockpit/cockpit.conf
+[WebService]
+ProtocolHeader = X-Forwarded-Proto
+ForwardedForHeader = X-Forwarded-For
+COCKPIT_CONF_EOF
+    fi
+
+    if command -v systemctl >/dev/null 2>&1; then
+        if systemctl list-unit-files caddy.service >/dev/null 2>&1; then
+            if grep -q "Hello, world!" /etc/caddy/Caddyfile 2>/dev/null || grep -q "/usr/share/caddy" /etc/caddy/Caddyfile 2>/dev/null; then
+                systemctl stop caddy.service 2>/dev/null || true
+                systemctl disable caddy.service 2>/dev/null || true
+                systemctl reset-failed caddy.service 2>/dev/null || true
+            fi
+        fi
+        systemctl stop cockpit.socket 2>/dev/null || true
+        systemctl daemon-reload 2>/dev/null || true
+        systemctl start cockpit.socket 2>/dev/null || true
+        systemctl enable --now cockpit-caddy.service 2>/dev/null || systemctl restart cockpit-caddy.service 2>/dev/null || true
+    fi
+
+    TARGET_USERS=\$(awk -F: '\$3 >= 1000 && \$3 < 65534 {print \$1}' /etc/passwd 2>/dev/null || true)
+    for u in \${TARGET_USERS}; do
+        if id "\$u" >/dev/null 2>&1; then
+            U_HOME=\$(getent passwd "\$u" | cut -d: -f6)
+            UID_NUM=\$(id -u "\$u" 2>/dev/null || echo 1000)
+            if [ -n "\$U_HOME" ]; then
+                CFG_DIR="\$U_HOME/.config/code-server"
+                CFG="\$CFG_DIR/config.yaml"
+                mkdir -p "\$CFG_DIR" 2>/dev/null || true
+
+                if [ ! -f "\$CFG" ]; then
+                    printf "socket: /run/code-server/%s.sock\\nsocket-mode: 600\\nauth: none\\ncert: false\\napp-name: Code-Server\\ndisable-telemetry: true\\n" "\$UID_NUM" > "\$CFG"
+                else
+                    sed -i -E "s|^bind-addr:.*|socket: /run/code-server/\${UID_NUM}.sock\\nsocket-mode: 600|" "\$CFG" 2>/dev/null || true
+                    if grep -q "^socket:" "\$CFG" 2>/dev/null; then
+                        sed -i -E "s|^socket:.*|socket: /run/code-server/\${UID_NUM}.sock|" "\$CFG" 2>/dev/null || true
+                    else
+                        printf "socket: /run/code-server/%s.sock\\nsocket-mode: 600\\n" "\$UID_NUM" >> "\$CFG"
+                    fi
+                    sed -i -E "s|^socket-mode:.*|socket-mode: 600|" "\$CFG" 2>/dev/null || true
+                    if ! grep -q "^socket-mode:" "\$CFG" 2>/dev/null; then
+                        echo "socket-mode: 600" >> "\$CFG"
+                    fi
+                    sed -i -E "s|^cert:.*|cert: false|" "\$CFG" 2>/dev/null || true
+                    sed -i -E "s|^cert-key:.*||" "\$CFG" 2>/dev/null || true
+                fi
+
+                for p in ".config/code-server" ".local/share/code-server" ".cache/code-server"; do
+                    if [ -d "\$U_HOME/\$p" ]; then
+                        chown -R "\$u:\$u" "\$U_HOME/\$p" 2>/dev/null || true
+                        chmod -R u+rwX "\$U_HOME/\$p" 2>/dev/null || true
+                    fi
+                done
+                rm -f "/run/code-server/\${UID_NUM}.sock" 2>/dev/null || true
+            fi
+            systemctl enable "code-server@\${u}.service" 2>/dev/null || true
+            systemctl restart "code-server@\${u}.service" 2>/dev/null || true
+        fi
+    done
+    CODE_BIN=\$(command -v code-server 2>/dev/null || true)
+    if [ -n "\$CODE_BIN" ]; then
+        mkdir -p /usr/local/bin
+        cat << 'CODE_WRAPPER_EOF' > /usr/local/bin/code
+#!/bin/sh
+exec code-server "\$@"
+CODE_WRAPPER_EOF
+        chmod 755 /usr/local/bin/code
+    fi
+fi
 exit 0
 POSTINST_EOF
     chmod 755 "$STAGE_DIR/DEBIAN/postinst"
 
-    cat << 'PRERM_EOF' > "$STAGE_DIR/DEBIAN/prerm"
+    cat << PRERM_EOF > "$STAGE_DIR/DEBIAN/prerm"
 #!/bin/sh
 set -e
+if [ "${PLUGIN_NAME}" = "code-server" ]; then
+    if [ -f /usr/local/bin/code ] && grep -q "exec code-server" /usr/local/bin/code 2>/dev/null; then
+        rm -f /usr/local/bin/code
+    fi
+    if command -v systemctl >/dev/null 2>&1; then
+        systemctl stop cockpit-caddy.service 2>/dev/null || true
+        systemctl disable cockpit-caddy.service 2>/dev/null || true
+    fi
+    rm -f /etc/systemd/system/cockpit.socket.d/10-code-server.conf
+    rm -f /etc/systemd/system/cockpit-caddy.service
+    rm -rf /etc/cockpit-code-server
+    rm -f /usr/lib/tmpfiles.d/cockpit-code-server.conf
+    if command -v systemctl >/dev/null 2>&1; then
+        systemctl daemon-reload 2>/dev/null || true
+        systemctl restart cockpit.socket 2>/dev/null || true
+    fi
+fi
 exit 0
 PRERM_EOF
     chmod 755 "$STAGE_DIR/DEBIAN/prerm"
@@ -135,6 +269,29 @@ PRERM_EOF
     fi
     if [ -f "${PLUGIN_DIR}/manifest.json" ]; then
         cp "${PLUGIN_DIR}/manifest.json" "$STAGE_DIR/usr/share/cockpit/${PLUGIN_NAME}/"
+    fi
+    if [ -f "${PLUGIN_DIR}/upstream.json" ]; then
+        cp "${PLUGIN_DIR}/upstream.json" "$STAGE_DIR/usr/share/cockpit/${PLUGIN_NAME}/"
+    fi
+
+    # Packaging drop-in configurations (systemd, caddy, tmpfiles)
+    if [ -d "${PLUGIN_DIR}/packaging" ]; then
+        if [ -f "${PLUGIN_DIR}/packaging/systemd/10-code-server.conf" ]; then
+            mkdir -p "$STAGE_DIR/etc/systemd/system/cockpit.socket.d"
+            cp "${PLUGIN_DIR}/packaging/systemd/10-code-server.conf" "$STAGE_DIR/etc/systemd/system/cockpit.socket.d/"
+        fi
+        if [ -f "${PLUGIN_DIR}/packaging/systemd/cockpit-caddy.service" ]; then
+            mkdir -p "$STAGE_DIR/etc/systemd/system"
+            cp "${PLUGIN_DIR}/packaging/systemd/cockpit-caddy.service" "$STAGE_DIR/etc/systemd/system/"
+        fi
+        if [ -f "${PLUGIN_DIR}/packaging/caddy/Caddyfile" ]; then
+            mkdir -p "$STAGE_DIR/etc/cockpit-code-server"
+            cp "${PLUGIN_DIR}/packaging/caddy/Caddyfile" "$STAGE_DIR/etc/cockpit-code-server/"
+        fi
+        if [ -f "${PLUGIN_DIR}/packaging/tmpfiles/cockpit-code-server.conf" ]; then
+            mkdir -p "$STAGE_DIR/usr/lib/tmpfiles.d"
+            cp "${PLUGIN_DIR}/packaging/tmpfiles/cockpit-code-server.conf" "$STAGE_DIR/usr/lib/tmpfiles.d/"
+        fi
     fi
 
     # Backend helper
@@ -154,15 +311,35 @@ PRERM_EOF
     find "$STAGE_DIR" -name "*.pyc" -delete 2>/dev/null || true
     find "$STAGE_DIR" -name "*.pyo" -delete 2>/dev/null || true
 
-    # Fix permissions and timestamps for reproducible builds
-    find "$STAGE_DIR" -type d -exec chmod 755 {} +
-    find "$STAGE_DIR/usr" -type f -exec chmod 644 {} +
-    find "$STAGE_DIR/usr/libexec/${HELPER_DIR_NAME}" -name "*.py" -exec chmod 755 {} + 2>/dev/null || true
-    find "$STAGE_DIR" -exec touch -d "@$SOURCE_DATE_EPOCH" {} + 2>/dev/null || find "$STAGE_DIR" -exec touch -t "$(date -r "$SOURCE_DATE_EPOCH" +%Y%m%d%H%M.%S 2>/dev/null || date -u -d "@$SOURCE_DATE_EPOCH" +%Y%m%d%H%M.%S)" {} + 2>/dev/null || true
+        # Bundle caddy binary for code-server
+        if [ "$PLUGIN_NAME" = "code-server" ]; then
+            CADDY_VER=$(python3 -c "import json; print(next((p['version'] for p in json.load(open('${PLUGIN_DIR}/upstream.json'))['packages'] if p['name'] == 'caddy'), '2.11.7'))" 2>/dev/null || echo "2.11.7")
+            ARCHIVE_FILE=""
+            for c_dir in "build/archives" "dist-archives" "all-archives"; do
+                if [ -f "${c_dir}/caddy_${CADDY_VER}_linux_${TARGET_ARCH}.tar.gz" ]; then
+                    ARCHIVE_FILE="${c_dir}/caddy_${CADDY_VER}_linux_${TARGET_ARCH}.tar.gz"
+                    break
+                fi
+            done
+            if [ -z "$ARCHIVE_FILE" ] || [ ! -f "$ARCHIVE_FILE" ]; then
+                python3 tools/download_upstream_packages.py --config "${PLUGIN_DIR}/upstream.json" --type tar.gz --archive-dir build/archives
+                ARCHIVE_FILE="build/archives/caddy_${CADDY_VER}_linux_${TARGET_ARCH}.tar.gz"
+            fi
+            tar -xzf "$ARCHIVE_FILE" -C "$STAGE_DIR/usr/libexec/${HELPER_DIR_NAME}" caddy
+            chmod 755 "$STAGE_DIR/usr/libexec/${HELPER_DIR_NAME}/caddy"
+        fi
 
-    DEB_FILE="${OUTPUT_DIR}/${PKG_NAME}_${VERSION}_all.deb"
-    "$DPKG_DEB" -Zgzip --uniform-compression --build --root-owner-group "$STAGE_DIR" "$DEB_FILE" 2>/dev/null || "$DPKG_DEB" -Zgzip --build --root-owner-group "$STAGE_DIR" "$DEB_FILE"
-    echo "Created Debian package: $DEB_FILE"
+        # Fix permissions and timestamps for reproducible builds
+        find "$STAGE_DIR" -type d -exec chmod 755 {} +
+        find "$STAGE_DIR/usr" -type f -exec chmod 644 {} +
+        find "$STAGE_DIR/usr/libexec/${HELPER_DIR_NAME}" -name "*.py" -exec chmod 755 {} + 2>/dev/null || true
+        find "$STAGE_DIR/usr/libexec/${HELPER_DIR_NAME}" -name "caddy" -exec chmod 755 {} + 2>/dev/null || true
+        find "$STAGE_DIR" -exec touch -d "@$SOURCE_DATE_EPOCH" {} + 2>/dev/null || find "$STAGE_DIR" -exec touch -t "$(date -r "$SOURCE_DATE_EPOCH" +%Y%m%d%H%M.%S 2>/dev/null || date -u -d "@$SOURCE_DATE_EPOCH" +%Y%m%d%H%M.%S)" {} + 2>/dev/null || true
+
+        DEB_FILE="${OUTPUT_DIR}/${PKG_NAME}_${VERSION}_${TARGET_ARCH}.deb"
+        "$DPKG_DEB" -Zgzip --uniform-compression --build --root-owner-group "$STAGE_DIR" "$DEB_FILE" 2>/dev/null || "$DPKG_DEB" -Zgzip --build --root-owner-group "$STAGE_DIR" "$DEB_FILE"
+        echo "Created Debian package: $DEB_FILE"
+    done
 else
     echo "==> dpkg-deb not found on host, using python fallback..."
     python3 tools/build_deb.py "$PLUGIN_DIR" --output-dir "$OUTPUT_DIR" --version "$VERSION"

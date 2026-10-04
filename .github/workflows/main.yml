@@ -26,7 +26,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        plugin: [zfs-storage, file-sharing, container-manager]
+        plugin: [zfs-storage, file-sharing, container-manager, code-server]
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v7
@@ -149,7 +149,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        plugin: [zfs-storage, file-sharing, container-manager]
+        plugin: [zfs-storage, file-sharing, container-manager, code-server]
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v7
@@ -395,6 +395,10 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           python3 tools/verify_release_digests.py --deb-dir all-debs --rpm-dir all-rpms --sync-assets
+
+      - name: Download Plugin Upstream Packages
+        run: |
+          python3 tools/download_upstream_packages.py --deb-dir all-debs --rpm-dir all-rpms
 
       - name: Assemble APT & RPM Repositories
         env:

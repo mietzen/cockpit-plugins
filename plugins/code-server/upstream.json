@@ -1,0 +1,35 @@
+{
+  "packages": [
+    {
+      "name": "code-server",
+      "version": "4.139.1",
+      "repo": "coder/code-server",
+      "archs": ["amd64", "arm64"],
+      "assets": [
+        {
+          "type": "deb",
+          "filename": "code-server_${version}_${arch}.deb",
+          "url": "https://github.com/coder/code-server/releases/download/v${version}/code-server_${version}_${arch}.deb"
+        },
+        {
+          "type": "rpm",
+          "filename": "code-server-${version}-${arch}.rpm",
+          "url": "https://github.com/coder/code-server/releases/download/v${version}/code-server-${version}-${arch}.rpm"
+        }
+      ]
+    },
+    {
+      "name": "caddy",
+      "version": "2.11.7",
+      "repo": "caddyserver/caddy",
+      "archs": ["amd64", "arm64"],
+      "assets": [
+        {
+          "type": "tar.gz",
+          "filename": "caddy_${version}_linux_${arch}.tar.gz",
+          "url": "https://github.com/caddyserver/caddy/releases/download/v${version}/caddy_${version}_linux_${arch}.tar.gz"
+        }
+      ]
+    }
+  ]
+}

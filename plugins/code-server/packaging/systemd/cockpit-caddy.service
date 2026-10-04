@@ -1,0 +1,16 @@
+[Unit]
+Description=Cockpit Code-Server Reverse Proxy (Caddy)
+Documentation=https://github.com/mietzen/cockpit-plugins
+After=network.target cockpit.socket
+Requires=cockpit.socket
+
+[Service]
+Type=exec
+ExecStart=/usr/libexec/cockpit-code-server/caddy run --config /etc/cockpit-code-server/Caddyfile
+KillMode=mixed
+Restart=on-failure
+RestartSec=5s
+LimitNOFILE=1048576
+
+[Install]
+WantedBy=multi-user.target

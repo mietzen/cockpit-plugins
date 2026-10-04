@@ -27,6 +27,43 @@ def create_ar_archive(output_path, files):
             if len(data) % 2 != 0:
                 ar_file.write(b"\n")
 
+def get_caddy_binary(plugin_dir, arch):
+    upstream_file = os.path.join(plugin_dir, "upstream.json")
+    version = "2.11.7"
+    if os.path.isfile(upstream_file):
+        with open(upstream_file, "r", encoding="utf-8") as f:
+            cfg = json.load(f)
+            for p in cfg.get("packages", []):
+                if p.get("name") == "caddy":
+                    version = p.get("version", version)
+
+    archive_name = f"caddy_{version}_linux_{arch}.tar.gz"
+    search_dirs = ["build/archives", "dist-archives", "all-archives"]
+    archive_path = None
+    for d in search_dirs:
+        candidate = os.path.join(d, archive_name)
+        if os.path.isfile(candidate) and os.path.getsize(candidate) > 0:
+            archive_path = candidate
+            break
+
+    if not archive_path:
+        os.makedirs("build/archives", exist_ok=True)
+        archive_path = os.path.join("build/archives", archive_name)
+        url = f"https://github.com/caddyserver/caddy/releases/download/v{version}/{archive_name}"
+        print(f"  ↓ Downloading {archive_name} from {url}...")
+        import urllib.request
+        req = urllib.request.Request(url, headers={"User-Agent": "cockpit-plugins-builder"})
+        with urllib.request.urlopen(req) as resp, open(archive_path, "wb") as out_f:
+            while chunk := resp.read(65536):
+                out_f.write(chunk)
+        print(f"  ✓ Downloaded {archive_name} ({os.path.getsize(archive_path)} bytes)")
+
+    with tarfile.open(archive_path, "r:gz") as tar:
+        caddy_f = tar.extractfile("caddy")
+        if caddy_f:
+            return caddy_f.read()
+    return None
+
 def build_deb(plugin_dir, output_dir, version="1.0.0"):
     os.makedirs(output_dir, exist_ok=True)
     plugin_name = os.path.basename(os.path.abspath(plugin_dir))
@@ -56,89 +93,207 @@ def build_deb(plugin_dir, output_dir, version="1.0.0"):
     elif plugin_name == "file-sharing":
         deb_depends = "cockpit-bridge | cockpit, python3, samba, nfs-kernel-server | nfs-common"
         description = "Advanced SMB (Samba) and NFS file sharing manager for Cockpit.\n Manage Samba shares, NFS exports, Samba users, permissions matrix,\n and live client connection monitoring with PatternFly v5 UI."
+    elif plugin_name == "container-manager":
+        deb_depends = "cockpit-bridge | cockpit, python3, openssl"
+        description = "Docker and Podman container manager for Cockpit."
+    elif plugin_name == "code-server":
+        deb_depends = "cockpit-bridge | cockpit, python3, code-server"
+        description = "VS Code Server plugin for Cockpit."
     else:
         deb_depends = "cockpit-bridge | cockpit, python3"
         description = f"Cockpit plugin {plugin_name}"
 
-    # 1. debian-binary
-    debian_binary = b"2.0\n"
-
-    # 2. control.tar.gz
-    control_content = f"""Package: {pkg_name}
-Version: {version}
-Section: admin
-Priority: optional
-Architecture: all
-Maintainer: Nils Stein <github.nstein@mailbox.org>
-Depends: {deb_depends}
-Homepage: https://github.com/mietzen/cockpit-plugins
-Description: {description}
-"""
     postinst_content = f"""#!/bin/sh
 set -e
 if [ -d /usr/libexec/{helper_dir_name} ]; then
     chmod -R 755 /usr/libexec/{helper_dir_name}
 fi
-exit 0
 """
+    if plugin_name == "code-server":
+        postinst_content += """mkdir -p /run/code-server
+chmod 1777 /run/code-server
+if command -v systemd-tmpfiles >/dev/null 2>&1; then
+    systemd-tmpfiles --create /usr/lib/tmpfiles.d/cockpit-code-server.conf 2>/dev/null || true
+fi
+
+if [ ! -f /etc/cockpit/ws-certs.d/0-self-signed.cert ] || [ ! -f /etc/cockpit/ws-certs.d/0-self-signed.key ]; then
+    if command -v remotectl >/dev/null 2>&1; then
+        remotectl certificate --ensure 2>/dev/null || true
+    fi
+    SYS_CERT=$(find /etc/cockpit/ws-certs.d -name "*.cert" -o -name "*.crt" 2>/dev/null | sort -r | head -n 1)
+    if [ -n "$SYS_CERT" ]; then
+        if [ -z "$SYS_KEY" ]; then
+            SYS_KEY="$SYS_CERT"
+        fi
+        ln -sf "$SYS_CERT" /etc/cockpit/ws-certs.d/0-self-signed.cert 2>/dev/null || true
+        ln -sf "$SYS_KEY" /etc/cockpit/ws-certs.d/0-self-signed.key 2>/dev/null || true
+        chmod 600 /etc/cockpit/ws-certs.d/0-self-signed.cert /etc/cockpit/ws-certs.d/0-self-signed.key 2>/dev/null || true
+    fi
+fi
+
+# Ensure cockpit.conf has reverse-proxy headers under [WebService]
+if [ -f /etc/cockpit/cockpit.conf ]; then
+    if ! grep -q "^\\[WebService\\]" /etc/cockpit/cockpit.conf 2>/dev/null; then
+        printf "\\n[WebService]\\nProtocolHeader = X-Forwarded-Proto\\nForwardedForHeader = X-Forwarded-For\\n" >> /etc/cockpit/cockpit.conf
+    else
+        if ! grep -q "^ProtocolHeader" /etc/cockpit/cockpit.conf 2>/dev/null; then
+            sed -i -E "s|^\\[WebService\\]|[WebService]\\nProtocolHeader = X-Forwarded-Proto|" /etc/cockpit/cockpit.conf 2>/dev/null || true
+        fi
+        if ! grep -q "^ForwardedForHeader" /etc/cockpit/cockpit.conf 2>/dev/null; then
+            sed -i -E "s|^\\[WebService\\]|[WebService]\\nForwardedForHeader = X-Forwarded-For|" /etc/cockpit/cockpit.conf 2>/dev/null || true
+        fi
+    fi
+else
+    mkdir -p /etc/cockpit
+    cat << 'COCKPIT_CONF_EOF' > /etc/cockpit/cockpit.conf
+[WebService]
+ProtocolHeader = X-Forwarded-Proto
+ForwardedForHeader = X-Forwarded-For
+COCKPIT_CONF_EOF
+fi
+
+if command -v systemctl >/dev/null 2>&1; then
+    if systemctl is-active caddy.service >/dev/null 2>&1; then
+        if grep -q "Hello, world!" /etc/caddy/Caddyfile 2>/dev/null || grep -q "/usr/share/caddy" /etc/caddy/Caddyfile 2>/dev/null; then
+            systemctl stop caddy.service 2>/dev/null || true
+            systemctl disable caddy.service 2>/dev/null || true
+        fi
+    fi
+    systemctl stop cockpit.socket 2>/dev/null || true
+    systemctl daemon-reload 2>/dev/null || true
+    systemctl start cockpit.socket 2>/dev/null || true
+    systemctl enable --now cockpit-caddy.service 2>/dev/null || systemctl restart cockpit-caddy.service 2>/dev/null || true
+fi
+
+TARGET_USERS=$(awk -F: '$3 >= 1000 && $3 < 65534 {print $1}' /etc/passwd 2>/dev/null || true)
+for u in ${TARGET_USERS}; do
+    if id "$u" >/dev/null 2>&1; then
+        U_HOME=$(getent passwd "$u" | cut -d: -f6)
+        UID_NUM=$(id -u "$u" 2>/dev/null || echo 1000)
+        if [ -n "$U_HOME" ]; then
+            CFG_DIR="$U_HOME/.config/code-server"
+            CFG="$CFG_DIR/config.yaml"
+            mkdir -p "$CFG_DIR" 2>/dev/null || true
+
+            if [ ! -f "$CFG" ]; then
+                printf "socket: /run/code-server/%s.sock\\nsocket-mode: 600\\nauth: none\\ncert: false\\napp-name: Code-Server\\ndisable-telemetry: true\\n" "$UID_NUM" > "$CFG"
+            else
+                sed -i -E "s|^bind-addr:.*|socket: /run/code-server/${UID_NUM}.sock\\nsocket-mode: 600|" "$CFG" 2>/dev/null || true
+                if grep -q "^socket:" "$CFG" 2>/dev/null; then
+                    sed -i -E "s|^socket:.*|socket: /run/code-server/${UID_NUM}.sock|" "$CFG" 2>/dev/null || true
+                else
+                    printf "socket: /run/code-server/%s.sock\\nsocket-mode: 600\\n" "$UID_NUM" >> "$CFG"
+                fi
+                sed -i -E "s|^socket-mode:.*|socket-mode: 600|" "$CFG" 2>/dev/null || true
+                if ! grep -q "^socket-mode:" "$CFG" 2>/dev/null; then
+                    echo "socket-mode: 600" >> "$CFG"
+                fi
+                sed -i -E "s|^cert:.*|cert: false|" "$CFG" 2>/dev/null || true
+                sed -i -E "s|^cert-key:.*||" "$CFG" 2>/dev/null || true
+            fi
+
+            for p in ".config/code-server" ".local/share/code-server" ".cache/code-server"; do
+                if [ -d "$U_HOME/$p" ]; then
+                    chown -R "$u:$u" "$U_HOME/$p" 2>/dev/null || true
+                    chmod -R u+rwX "$U_HOME/$p" 2>/dev/null || true
+                fi
+            done
+            rm -f "/run/code-server/${UID_NUM}.sock" 2>/dev/null || true
+        fi
+        systemctl enable "code-server@${u}.service" 2>/dev/null || true
+        systemctl restart "code-server@${u}.service" 2>/dev/null || true
+    fi
+done
+CODE_BIN=$(command -v code-server 2>/dev/null || true)
+if [ -n "$CODE_BIN" ]; then
+    mkdir -p /usr/local/bin
+    cat << 'CODE_WRAPPER_EOF' > /usr/local/bin/code
+#!/bin/sh
+exec code-server "$@"
+CODE_WRAPPER_EOF
+    chmod 755 /usr/local/bin/code
+fi
+"""
+    postinst_content += "exit 0\n"
+
     prerm_content = """#!/bin/sh
 set -e
-exit 0
 """
+    if plugin_name == "code-server":
+        prerm_content += """if [ -f /usr/local/bin/code ] && grep -q "exec code-server" /usr/local/bin/code 2>/dev/null; then
+    rm -f /usr/local/bin/code
+fi
+if command -v systemctl >/dev/null 2>&1; then
+    systemctl stop cockpit-caddy.service 2>/dev/null || true
+    systemctl disable cockpit-caddy.service 2>/dev/null || true
+fi
+rm -f /etc/systemd/system/cockpit.socket.d/10-code-server.conf
+rm -f /etc/systemd/system/cockpit-caddy.service
+rm -rf /etc/cockpit-code-server
+rm -f /usr/lib/tmpfiles.d/cockpit-code-server.conf
+if command -v systemctl >/dev/null 2>&1; then
+    systemctl daemon-reload 2>/dev/null || true
+    systemctl restart cockpit.socket 2>/dev/null || true
+fi
+"""
+    prerm_content += "exit 0\n"
 
-    # 2. control.tar.gz
-    control_tar_io = io.BytesIO()
-    with gzip.GzipFile(fileobj=control_tar_io, mode="wb", mtime=0) as gz:
-        with tarfile.open(fileobj=gz, mode="w", format=tarfile.USTAR_FORMAT) as tar:
-            root_ti = tarfile.TarInfo(name="./")
-            root_ti.type = tarfile.DIRTYPE
-            root_ti.mode = 0o755
-            root_ti.uid = 0
-            root_ti.gid = 0
-            root_ti.mtime = 0
-            tar.addfile(root_ti)
+    target_archs = ["amd64", "arm64"] if plugin_name == "code-server" else ["all"]
+    created_debs = []
 
-            def add_control_file(name, content, mode=0o644):
-                data = content.encode("utf-8") if isinstance(content, str) else content
-                ti = tarfile.TarInfo(name=f"./{name}")
-                ti.size = len(data)
-                ti.mode = mode
-                ti.uid = 0
-                ti.gid = 0
-                ti.uname = "root"
-                ti.gname = "root"
-                ti.mtime = 0
-                tar.addfile(ti, io.BytesIO(data))
+    for target_arch in target_archs:
+        # 1. debian-binary
+        debian_binary = b"2.0\n"
 
-            add_control_file("control", control_content, 0o644)
-            add_control_file("postinst", postinst_content, 0o755)
-            add_control_file("prerm", prerm_content, 0o755)
-
-    control_tar_bytes = control_tar_io.getvalue()
-
-    # 3. data.tar.gz
-    data_tar_io = io.BytesIO()
-    with gzip.GzipFile(fileobj=data_tar_io, mode="wb", mtime=0) as gz:
-        with tarfile.open(fileobj=gz, mode="w", format=tarfile.USTAR_FORMAT) as tar:
-            added_dirs = set()
-
-            def ensure_dirs(dir_path):
-                parts = os.path.normpath(dir_path).split(os.sep)
-                cur = "."
-                if cur not in added_dirs:
-                    ti = tarfile.TarInfo(name=cur + "/")
-                    ti.type = tarfile.DIRTYPE
-                    ti.mode = 0o755
+        # 2. control.tar.gz
+        control_content = f"""Package: {pkg_name}
+Version: {version}
+Section: admin
+Priority: optional
+Architecture: {target_arch}
+Maintainer: Nils Stein <github.nstein@mailbox.org>
+Depends: {deb_depends}
+Homepage: https://github.com/mietzen/cockpit-plugins
+Description: {description}
+"""
+        control_tar_io = io.BytesIO()
+        with gzip.GzipFile(fileobj=control_tar_io, mode="wb", mtime=0) as gz:
+            with tarfile.open(fileobj=gz, mode="w", format=tarfile.USTAR_FORMAT) as tar:
+                root_ti = tarfile.TarInfo(name="./")
+                root_ti.type = tarfile.DIRTYPE
+                root_ti.mode = 0o755
+                root_ti.uid = 0
+                root_ti.gid = 0
+                root_ti.mtime = 0
+                tar.addfile(root_ti)
+    
+                def add_control_file(name, content, mode=0o644):
+                    data = content.encode("utf-8") if isinstance(content, str) else content
+                    ti = tarfile.TarInfo(name=f"./{name}")
+                    ti.size = len(data)
+                    ti.mode = mode
                     ti.uid = 0
                     ti.gid = 0
+                    ti.uname = "root"
+                    ti.gname = "root"
                     ti.mtime = 0
-                    tar.addfile(ti)
-                    added_dirs.add(cur)
-
-                for p in parts:
-                    if not p or p == ".":
-                        continue
-                    cur = f"{cur}/{p}"
+                    tar.addfile(ti, io.BytesIO(data))
+    
+                add_control_file("control", control_content, 0o644)
+                add_control_file("postinst", postinst_content, 0o755)
+                add_control_file("prerm", prerm_content, 0o755)
+    
+        control_tar_bytes = control_tar_io.getvalue()
+    
+        # 3. data.tar.gz
+        data_tar_io = io.BytesIO()
+        with gzip.GzipFile(fileobj=data_tar_io, mode="wb", mtime=0) as gz:
+            with tarfile.open(fileobj=gz, mode="w", format=tarfile.USTAR_FORMAT) as tar:
+                added_dirs = set()
+    
+                def ensure_dirs(dir_path):
+                    parts = os.path.normpath(dir_path).split(os.sep)
+                    cur = "."
                     if cur not in added_dirs:
                         ti = tarfile.TarInfo(name=cur + "/")
                         ti.type = tarfile.DIRTYPE
@@ -148,85 +303,134 @@ exit 0
                         ti.mtime = 0
                         tar.addfile(ti)
                         added_dirs.add(cur)
-
-            def add_file_to_tar(file_path, arcname, is_exec=False):
-                ensure_dirs(os.path.dirname(arcname))
-                stat_res = os.stat(file_path)
-                ti = tarfile.TarInfo(name=f"./{arcname}")
-                ti.size = stat_res.st_size
-                ti.uid = 0
-                ti.gid = 0
-                ti.uname = "root"
-                ti.gname = "root"
-                ti.mtime = 0
-                ti.mode = 0o755 if is_exec or arcname.endswith(".py") or arcname.endswith(".sh") else 0o644
-                with open(file_path, "rb") as f:
-                    tar.addfile(ti, f)
-
-            # Add frontend files to /usr/share/cockpit/<plugin_name>/
-            share_target = f"usr/share/cockpit/{plugin_name}"
-            manifest_file = os.path.join(plugin_dir, "manifest.json")
-            if os.path.exists(manifest_file):
-                add_file_to_tar(manifest_file, f"{share_target}/manifest.json")
-
-            for root, dirs, files in os.walk(dist_dir):
-                dirs.sort()
-                files.sort()
-                rel_dir = os.path.relpath(root, dist_dir)
-                target_dir = share_target if rel_dir == "." else f"{share_target}/{rel_dir}"
-                for f in files:
-                    if f.startswith("backend") or f == "manifest.json":
-                        continue
-                    file_path = os.path.join(root, f)
-                    arcname = f"{target_dir}/{f}"
-                    add_file_to_tar(file_path, arcname)
-
-            # Add backend files to /usr/libexec/<helper_dir_name>/
-            libexec_target = f"usr/libexec/{helper_dir_name}"
-            if os.path.exists(backend_dir):
-                for root, dirs, files in os.walk(backend_dir):
-                    dirs[:] = [d for d in dirs if d != "__pycache__" and d != "tests"]
+    
+                    for p in parts:
+                        if not p or p == ".":
+                            continue
+                        cur = f"{cur}/{p}"
+                        if cur not in added_dirs:
+                            ti = tarfile.TarInfo(name=cur + "/")
+                            ti.type = tarfile.DIRTYPE
+                            ti.mode = 0o755
+                            ti.uid = 0
+                            ti.gid = 0
+                            ti.mtime = 0
+                            tar.addfile(ti)
+                            added_dirs.add(cur)
+    
+                def add_file_to_tar(file_path, arcname, is_exec=False):
+                    ensure_dirs(os.path.dirname(arcname))
+                    stat_res = os.stat(file_path)
+                    ti = tarfile.TarInfo(name=f"./{arcname}")
+                    ti.size = stat_res.st_size
+                    ti.uid = 0
+                    ti.gid = 0
+                    ti.uname = "root"
+                    ti.gname = "root"
+                    ti.mtime = 0
+                    ti.mode = 0o755 if is_exec or arcname.endswith(".py") or arcname.endswith(".sh") else 0o644
+                    with open(file_path, "rb") as f:
+                        tar.addfile(ti, f)
+    
+                # Add frontend files to /usr/share/cockpit/<plugin_name>/
+                share_target = f"usr/share/cockpit/{plugin_name}"
+                manifest_file = os.path.join(plugin_dir, "manifest.json")
+                if os.path.exists(manifest_file):
+                    add_file_to_tar(manifest_file, f"{share_target}/manifest.json")
+    
+                upstream_file = os.path.join(plugin_dir, "upstream.json")
+                if os.path.exists(upstream_file):
+                    add_file_to_tar(upstream_file, f"{share_target}/upstream.json")
+    
+                for root, dirs, files in os.walk(dist_dir):
                     dirs.sort()
                     files.sort()
-                    rel_dir = os.path.relpath(root, backend_dir)
-                    target_dir = libexec_target if rel_dir == "." else f"{libexec_target}/{rel_dir}"
+                    rel_dir = os.path.relpath(root, dist_dir)
+                    target_dir = share_target if rel_dir == "." else f"{share_target}/{rel_dir}"
                     for f in files:
-                        if f.startswith(".") or f.endswith(".pyc") or f.endswith(".pyo"):
+                        if f.startswith("backend") or f == "manifest.json":
                             continue
                         file_path = os.path.join(root, f)
                         arcname = f"{target_dir}/{f}"
-                        add_file_to_tar(file_path, arcname, is_exec=f.endswith(".py"))
+                        add_file_to_tar(file_path, arcname)
+    
+                # Add backend files to /usr/libexec/<helper_dir_name>/
+                libexec_target = f"usr/libexec/{helper_dir_name}"
+                if os.path.exists(backend_dir):
+                    for root, dirs, files in os.walk(backend_dir):
+                        dirs[:] = [d for d in dirs if d != "__pycache__" and d != "tests"]
+                        dirs.sort()
+                        files.sort()
+                        rel_dir = os.path.relpath(root, backend_dir)
+                        target_dir = libexec_target if rel_dir == "." else f"{libexec_target}/{rel_dir}"
+                        for f in files:
+                            if f.startswith(".") or f.endswith(".pyc") or f.endswith(".pyo"):
+                                continue
+                            file_path = os.path.join(root, f)
+                            arcname = f"{target_dir}/{f}"
+                            add_file_to_tar(file_path, arcname, is_exec=f.endswith(".py"))
+    
+                # Add shared cockpit_common python library per-helper
+                common_py_dir = "packages/common/python/cockpit_common"
+                if os.path.exists(common_py_dir):
+                    target_base = f"usr/libexec/{helper_dir_name}/cockpit_common"
+                    for root, dirs, files in os.walk(common_py_dir):
+                        dirs[:] = [d for d in dirs if d != "__pycache__" and d != "tests"]
+                        dirs.sort()
+                        files.sort()
+                        rel_dir = os.path.relpath(root, common_py_dir)
+                        target_dir = target_base if rel_dir == "." else f"{target_base}/{rel_dir}"
+                        for f in files:
+                            if f.startswith(".") or f.endswith(".pyc") or f.endswith(".pyo"):
+                                continue
+                            file_path = os.path.join(root, f)
+                            arcname = f"{target_dir}/{f}"
+                            add_file_to_tar(file_path, arcname, is_exec=f.endswith(".py"))
+    
+                # Add drop-in configurations (systemd, caddy, tmpfiles)
+                packaging_dir = os.path.join(plugin_dir, "packaging")
+                if os.path.exists(packaging_dir):
+                    sysd_conf = os.path.join(packaging_dir, "systemd", "10-code-server.conf")
+                    if os.path.isfile(sysd_conf):
+                        add_file_to_tar(sysd_conf, "etc/systemd/system/cockpit.socket.d/10-code-server.conf")
+                    caddy_service = os.path.join(packaging_dir, "systemd", "cockpit-caddy.service")
+                    if os.path.isfile(caddy_service):
+                        add_file_to_tar(caddy_service, "etc/systemd/system/cockpit-caddy.service")
+                    caddyfile = os.path.join(packaging_dir, "caddy", "Caddyfile")
+                    if os.path.isfile(caddyfile):
+                        add_file_to_tar(caddyfile, "etc/cockpit-code-server/Caddyfile")
+                    tmpf_conf = os.path.join(packaging_dir, "tmpfiles", "cockpit-code-server.conf")
+                    if os.path.isfile(tmpf_conf):
+                        add_file_to_tar(tmpf_conf, "usr/lib/tmpfiles.d/cockpit-code-server.conf")
+    
+                if plugin_name == "code-server":
+                    caddy_bytes = get_caddy_binary(plugin_dir, target_arch)
+                    if caddy_bytes:
+                        ti = tarfile.TarInfo(name=f"{libexec_target}/caddy")
+                        ti.size = len(caddy_bytes)
+                        ti.uid = 0
+                        ti.gid = 0
+                        ti.uname = "root"
+                        ti.gname = "root"
+                        ti.mtime = 0
+                        ti.mode = 0o755
+                        tar.addfile(ti, io.BytesIO(caddy_bytes))
+    
+        data_tar_bytes = data_tar_io.getvalue()
 
-            # Add shared cockpit_common python library per-helper
-            common_py_dir = "packages/common/python/cockpit_common"
-            if os.path.exists(common_py_dir):
-                target_base = f"usr/libexec/{helper_dir_name}/cockpit_common"
-                for root, dirs, files in os.walk(common_py_dir):
-                    dirs[:] = [d for d in dirs if d != "__pycache__" and d != "tests"]
-                    dirs.sort()
-                    files.sort()
-                    rel_dir = os.path.relpath(root, common_py_dir)
-                    target_dir = target_base if rel_dir == "." else f"{target_base}/{rel_dir}"
-                    for f in files:
-                        if f.startswith(".") or f.endswith(".pyc") or f.endswith(".pyo"):
-                            continue
-                        file_path = os.path.join(root, f)
-                        arcname = f"{target_dir}/{f}"
-                        add_file_to_tar(file_path, arcname, is_exec=f.endswith(".py"))
+        deb_filename = f"{pkg_name}_{version}_{target_arch}.deb"
+        deb_path = os.path.join(output_dir, deb_filename)
 
-    data_tar_bytes = data_tar_io.getvalue()
+        create_ar_archive(deb_path, [
+            ("debian-binary", debian_binary),
+            ("control.tar.gz", control_tar_bytes),
+            ("data.tar.gz", data_tar_bytes)
+        ])
 
-    deb_filename = f"{pkg_name}_{version}_all.deb"
-    deb_path = os.path.join(output_dir, deb_filename)
+        print(f"Created Debian package: {deb_path} ({os.path.getsize(deb_path)} bytes)")
+        created_debs.append(deb_path)
 
-    create_ar_archive(deb_path, [
-        ("debian-binary", debian_binary),
-        ("control.tar.gz", control_tar_bytes),
-        ("data.tar.gz", data_tar_bytes)
-    ])
-
-    print(f"Created Debian package: {deb_path} ({os.path.getsize(deb_path)} bytes)")
-    return deb_path
+    return created_debs
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Build Debian package for Cockpit plugin")
