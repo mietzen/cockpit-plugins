@@ -58,6 +58,18 @@ class TestTlsGeneration(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             generate_ca(self.test_dir)
 
+    def test_invalid_sans(self):
+        ca_cert, ca_key = generate_ca(self.test_dir)
+        invalid_sans_cases = [
+            ["example.com\nIP:1.2.3.4"],
+            ["example.com/evil"],
+            ["test;rm -rf /"],
+            ["bad san with space"],
+        ]
+        for invalid_sans in invalid_sans_cases:
+            with self.assertRaises(ValueError):
+                generate_server_cert(self.test_dir, ca_cert, ca_key, invalid_sans)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -107,9 +107,15 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   useEffect(() => {
     loadStatus();
+    if (activeEngine === 'podman') {
+      setActiveTab(0);
+    }
   }, [activeEngine]);
 
   const handleSetup = async () => {
+    if (activeEngine === 'podman' || tlsStatus?.supported === false) {
+      return;
+    }
     setIsSettingUp(true);
     setError(null);
     try {
@@ -264,6 +270,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   const isEnabled = tlsStatus?.enabled || false;
   const isPodman = activeEngine === 'podman';
+  const isTlsSupported = !isPodman && tlsStatus?.supported !== false;
 
   const effectiveHost = tlsStatus?.hostname || hostIp;
   const effectiveUser = tlsStatus?.user || currentUser || 'user';
@@ -404,6 +411,17 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   Securely expose the {activeEngine === 'docker' ? 'Docker' : 'Podman'} daemon over TCP using PKI Certificate Authority (CA), server certificate with Subject Alternative Names (SANs), and client certificates.
                 </p>
 
+                {!isTlsSupported && (
+                  <Alert
+                    variant="info"
+                    isInline
+                    title="Podman Remote Access uses SSH"
+                    style={{ marginBottom: '1.25rem' }}
+                  >
+                    Podman remote access uses SSH connections (<code>podman system connection add ...</code>). Podman system service does not support native TCP mutual TLS authentication. TCP listener configuration is disabled for Podman.
+                  </Alert>
+                )}
+
                 {isEnabled ? (
                   <div style={{ marginBottom: '1.5rem' }}>
                     <Flex spaceItems={{ default: 'spaceItemsSm' }}>
@@ -441,6 +459,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                       borderRadius: '6px',
                       border: '1px solid var(--pf-v5-global--BorderColor--100, #30363d)',
                       marginBottom: '1.5rem',
+                      opacity: !isTlsSupported ? 0.6 : 1,
                     }}
                   >
                     <Title headingLevel="h4" size="md" style={{ marginBottom: '0.75rem' }}>
@@ -455,7 +474,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                           value={port}
                           onChange={(_e, val) => setPort(Number(val))}
                           style={{ maxWidth: '150px' }}
-                          isDisabled={isSettingUp}
+                          isDisabled={isSettingUp || !isTlsSupported}
                         />
                       </FormGroup>
 
@@ -468,7 +487,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                           value={sansInput}
                           onChange={(_e, val) => setSansInput(val)}
                           placeholder="192.168.40.142, docker.internal, localhost"
-                          isDisabled={isSettingUp}
+                          isDisabled={isSettingUp || !isTlsSupported}
                         />
                         <FormHelperText>
                           <HelperText>
@@ -484,7 +503,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                         icon={isSettingUp ? undefined : <LockIcon />}
                         onClick={handleSetup}
                         isLoading={isSettingUp}
-                        isDisabled={isSettingUp}
+                        isDisabled={isSettingUp || !isTlsSupported}
                         style={{ width: 'fit-content' }}
                       >
                         Generate Certificates &amp; Enable Remote TCP
@@ -536,38 +555,40 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     </div>
                   </Tab>
 
-                  <Tab eventKey={1} title={<TabTitleText>TCP + Mutual TLS Context</TabTitleText>}>
-                    <div style={{ padding: '1rem 0' }}>
-                      <p style={{ fontSize: '0.9rem', marginBottom: '0.75rem' }}>
-                        Connect directly via TCP port {port} using the downloaded client certificate bundle:
-                      </p>
-                      <div style={{ position: 'relative' }}>
-                        <pre
-                          style={{
-                            padding: '1rem',
-                            backgroundColor: 'var(--pf-v5-global--BackgroundColor--200, #161b22)',
-                            color: 'var(--pf-v5-global--Color--100, #c9d1d9)',
-                            border: '1px solid var(--pf-v5-global--BorderColor--100, #30363d)',
-                            borderRadius: '6px',
-                            fontFamily: 'monospace',
-                            fontSize: '0.85rem',
-                            overflowX: 'auto',
-                          }}
-                        >
-                          <code>{tcpTlsContextCode}</code>
-                        </pre>
-                        <Tooltip content="Copy command">
-                          <Button
-                            variant="plain"
-                            icon={copiedKey === 'tcp' ? <CheckIcon style={{ color: '#3fb950' }} /> : <CopyIcon />}
-                            onClick={() => copyToClipboard(tcpTlsContextCode, 'tcp')}
-                            aria-label="Copy code"
-                            style={{ position: 'absolute', top: '8px', right: '8px' }}
-                          />
-                        </Tooltip>
+                  {!isPodman && (
+                    <Tab eventKey={1} title={<TabTitleText>TCP + Mutual TLS Context</TabTitleText>}>
+                      <div style={{ padding: '1rem 0' }}>
+                        <p style={{ fontSize: '0.9rem', marginBottom: '0.75rem' }}>
+                          Connect directly via TCP port {port} using the downloaded client certificate bundle:
+                        </p>
+                        <div style={{ position: 'relative' }}>
+                          <pre
+                            style={{
+                              padding: '1rem',
+                              backgroundColor: 'var(--pf-v5-global--BackgroundColor--200, #161b22)',
+                              color: 'var(--pf-v5-global--Color--100, #c9d1d9)',
+                              border: '1px solid var(--pf-v5-global--BorderColor--100, #30363d)',
+                              borderRadius: '6px',
+                              fontFamily: 'monospace',
+                              fontSize: '0.85rem',
+                              overflowX: 'auto',
+                            }}
+                          >
+                            <code>{tcpTlsContextCode}</code>
+                          </pre>
+                          <Tooltip content="Copy command">
+                            <Button
+                              variant="plain"
+                              icon={copiedKey === 'tcp' ? <CheckIcon style={{ color: '#3fb950' }} /> : <CopyIcon />}
+                              onClick={() => copyToClipboard(tcpTlsContextCode, 'tcp')}
+                              aria-label="Copy code"
+                              style={{ position: 'absolute', top: '8px', right: '8px' }}
+                            />
+                          </Tooltip>
+                        </div>
                       </div>
-                    </div>
-                  </Tab>
+                    </Tab>
+                  )}
 
                   {!isPodman && (
                     <Tab eventKey={2} title={<TabTitleText>Environment Variables</TabTitleText>}>

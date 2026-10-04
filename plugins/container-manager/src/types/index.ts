@@ -84,6 +84,7 @@ export interface TlsStatus {
   service: string;
   hostname?: string;
   user?: string;
+  supported?: boolean;
 }
 
 export interface ClientCertBundle {

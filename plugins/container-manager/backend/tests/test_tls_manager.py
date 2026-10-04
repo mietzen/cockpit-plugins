@@ -103,12 +103,21 @@ class TestTlsManager(unittest.TestCase):
         self.assertEqual(res["status"], "error")
         self.assertIn("Failed to restart", res["error"])
 
-    @patch("tls_manager.check_openssl", return_value=True)
-    @patch("tls_manager.generate_pki_bundle")
-    @patch("tls_manager.run_cmd", return_value=(0, "", ""))
-    def test_setup_tls_podman(self, mock_run, mock_pki, _mock_ssl):
+    def test_setup_tls_podman(self):
         res = setup_tls(engine="podman", port=2376)
-        self.assertEqual(res["status"], "success")
+        self.assertEqual(res["status"], "error")
+        self.assertIn("Podman system service does not support native TCP mutual TLS", res["error"])
+        self.assertFalse(os.path.exists(tls_manager.PODMAN_DROPIN_FILE))
+
+    def test_setup_tls_invalid_port(self):
+        for invalid_port in [0, -1, 70000]:
+            res = setup_tls(engine="docker", port=invalid_port)
+            self.assertEqual(res["status"], "error")
+            self.assertIn("port", res["error"].lower())
+
+    def test_get_tls_status_podman(self):
+        status = get_tls_status("podman")
+        self.assertFalse(status["supported"])
 
     @patch("tls_manager.run_cmd", return_value=(0, "", ""))
     def test_disable_tls(self, mock_run):

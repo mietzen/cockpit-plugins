@@ -97,6 +97,20 @@ class TestContainerHelperCLI(unittest.TestCase):
         res = container_helper.cmd_setup_tls(MagicMock(engine="docker", port=2376, sans="10.0.0.1,host.local"))
         self.assertEqual(res["status"], "success")
 
+    def test_setup_tls_invalid_port(self):
+        res = container_helper.cmd_setup_tls(MagicMock(engine="docker", port=70000, sans=None))
+        self.assertEqual(res["status"], "error")
+        self.assertIn("port", res["error"].lower())
+
+    def test_port_type_validation(self):
+        self.assertEqual(container_helper._port_type("2376"), 2376)
+        with self.assertRaises(Exception):
+            container_helper._port_type("not-a-number")
+        with self.assertRaises(Exception):
+            container_helper._port_type("0")
+        with self.assertRaises(Exception):
+            container_helper._port_type("70000")
+
     @patch("container_helper.disable_tls", return_value={"status": "success"})
     def test_disable_tls(self, mock_dis):
         res = container_helper.cmd_disable_tls(MagicMock(engine="docker"))
