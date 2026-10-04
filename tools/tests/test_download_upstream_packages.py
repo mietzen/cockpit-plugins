@@ -15,37 +15,48 @@ class TestDownloadUpstreamPackages(unittest.TestCase):
         self.assertTrue(len(configs) > 0)
         self.assertTrue(any("code-server" in c for c in configs))
 
-    def test_build_asset_list_interpolation(self):
+    def test_build_asset_list_interpolation_and_arch(self):
         sample_config = {
             "packages": [
                 {
-                    "name": "my-tool",
-                    "version": "1.2.3",
+                    "name": "caddy",
+                    "version": "2.11.7",
+                    "archs": ["amd64", "arm64"],
                     "assets": [
                         {
-                            "type": "deb",
-                            "filename": "my-tool_${version}_amd64.deb",
-                            "url": "https://example.com/v${version}/my-tool_${version}_amd64.deb",
-                        },
-                        {
-                            "type": "rpm",
-                            "filename": "my-tool-${version}-amd64.rpm",
-                            "url": "https://example.com/v${version}/my-tool-${version}-amd64.rpm",
-                        },
+                            "type": "tar.gz",
+                            "filename": "caddy_${version}_linux_${arch}.tar.gz",
+                            "url": "https://example.com/v${version}/caddy_${version}_linux_${arch}.tar.gz",
+                        }
                     ],
                 }
             ]
         }
         assets = dup.build_asset_list(sample_config)
         self.assertEqual(len(assets), 2)
-        deb_type, deb_url, deb_file = assets[0]
-        self.assertEqual(deb_type, dup.AssetType.DEB)
-        self.assertEqual(deb_file, "my-tool_1.2.3_amd64.deb")
-        self.assertEqual(deb_url, "https://example.com/v1.2.3/my-tool_1.2.3_amd64.deb")
+
+        type1, url1, file1 = assets[0]
+        self.assertEqual(type1, "tar.gz")
+        self.assertEqual(file1, "caddy_2.11.7_linux_amd64.tar.gz")
+        self.assertEqual(url1, "https://example.com/v2.11.7/caddy_2.11.7_linux_amd64.tar.gz")
+
+        type2, url2, file2 = assets[1]
+        self.assertEqual(type2, "tar.gz")
+        self.assertEqual(file2, "caddy_2.11.7_linux_arm64.tar.gz")
 
         # Test CLI version override
-        overridden = dup.build_asset_list(sample_config, {"my-tool": "2.0.0"})
-        self.assertEqual(overridden[0][2], "my-tool_2.0.0_amd64.deb")
+        overridden = dup.build_asset_list(sample_config, {"caddy": "3.0.0"})
+        self.assertEqual(overridden[0][2], "caddy_3.0.0_linux_amd64.tar.gz")
+
+    def test_get_target_dir(self):
+        deb_dir = "/tmp/debs"
+        rpm_dir = "/tmp/rpms"
+        archive_dir = "/tmp/archives"
+
+        self.assertEqual(dup.get_target_dir("deb", deb_dir, rpm_dir, archive_dir), deb_dir)
+        self.assertEqual(dup.get_target_dir("rpm", deb_dir, rpm_dir, archive_dir), rpm_dir)
+        self.assertEqual(dup.get_target_dir("tar.gz", deb_dir, rpm_dir, archive_dir), archive_dir)
+        self.assertEqual(dup.get_target_dir("binary", deb_dir, rpm_dir, archive_dir), archive_dir)
 
     def test_parse_overrides(self):
         raw = ["tool-a=1.0.0", "tool-b=2.5.1", "invalid_entry"]
@@ -59,8 +70,8 @@ class TestDownloadUpstreamPackages(unittest.TestCase):
 
         with patch.object(dup.urllib.request, "urlopen", return_value=mock_resp), \
              tempfile.TemporaryDirectory() as tmpdir:
-            dest_file = os.path.join(tmpdir, "test.deb")
-            dup.download_file("https://example.com/test.deb", dest_file)
+            dest_file = os.path.join(tmpdir, "test.tar.gz")
+            dup.download_file("https://example.com/test.tar.gz", dest_file)
             self.assertTrue(os.path.exists(dest_file))
             with open(dest_file, "rb") as f:
                 self.assertEqual(f.read(), b"chunk1chunk2")
@@ -74,13 +85,16 @@ class TestDownloadUpstreamPackages(unittest.TestCase):
              tempfile.TemporaryDirectory() as tmpdir:
             deb_dir = os.path.join(tmpdir, "debs")
             rpm_dir = os.path.join(tmpdir, "rpms")
+            archive_dir = os.path.join(tmpdir, "archives")
 
             assets = [
-                (dup.AssetType.DEB, "https://example.com/a.deb", "a.deb"),
-                (dup.AssetType.RPM, "https://example.com/b.rpm", "b.rpm"),
+                ("deb", "https://example.com/a.deb", "a.deb"),
+                ("rpm", "https://example.com/b.rpm", "b.rpm"),
+                ("tar.gz", "https://example.com/c.tar.gz", "c.tar.gz"),
             ]
-            dup.sync_assets(assets, deb_dir, rpm_dir)
-            self.assertEqual(mock_download.call_count, 2)
+            dup.sync_assets(assets, deb_dir, rpm_dir, archive_dir)
+            self.assertEqual(mock_download.call_count, 3)
+            self.assertTrue(os.path.isfile(os.path.join(archive_dir, "c.tar.gz")))
 
 
 if __name__ == "__main__":

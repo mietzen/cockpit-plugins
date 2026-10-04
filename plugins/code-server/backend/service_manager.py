@@ -269,7 +269,7 @@ def read_pinned_version(pkg_name: str, fallback: str) -> str:
 
 
 CODE_SERVER_UPSTREAM_VERSION = read_pinned_version("code-server", "4.139.1")
-CADDY_UPSTREAM_VERSION = read_pinned_version("caddy", "2.8.4")
+CADDY_UPSTREAM_VERSION = read_pinned_version("caddy", "2.11.7")
 
 
 def install_code_server(

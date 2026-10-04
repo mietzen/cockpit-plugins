@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import argparse
-import enum
 import glob
 import json
 import os
@@ -11,19 +10,15 @@ from typing import Any, Dict, List, Optional, Tuple
 BUFFER_SIZE = 65536
 DEFAULT_DEB_DIR = "all-debs"
 DEFAULT_RPM_DIR = "all-rpms"
+DEFAULT_ARCHIVE_DIR = "all-archives"
+DEFAULT_ARCHS = ["amd64", "arm64"]
 UPSTREAM_GLOB = "plugins/*/upstream.json"
-
-
-class AssetType(enum.Enum):
-    DEB = "deb"
-    RPM = "rpm"
 
 
 def find_configs(root_dir: str = ".") -> List[str]:
     # Discover all plugin upstream configurations
     pattern = os.path.join(root_dir, UPSTREAM_GLOB)
-    configs = sorted(glob.glob(pattern))
-    return configs
+    return sorted(glob.glob(pattern))
 
 
 def load_config(config_path: str) -> Dict[str, Any]:
@@ -35,9 +30,9 @@ def load_config(config_path: str) -> Dict[str, Any]:
 def build_asset_list(
     package_config: Dict[str, Any],
     version_overrides: Optional[Dict[str, str]] = None,
-) -> List[Tuple[AssetType, str, str]]:
-    # Resolve asset URLs and target filenames using configured version
-    results: List[Tuple[AssetType, str, str]] = []
+) -> List[Tuple[str, str, str]]:
+    # Resolve asset URLs and target filenames using configured version and arch
+    results: List[Tuple[str, str, str]] = []
     overrides = version_overrides or {}
 
     for pkg in package_config.get("packages", []):
@@ -46,19 +41,23 @@ def build_asset_list(
         if not version:
             continue
 
-        for asset in pkg.get("assets", []):
-            asset_type_str = asset.get("type", "").lower()
-            try:
-                asset_type = AssetType(asset_type_str)
-            except ValueError:
-                continue
+        pkg_archs = pkg.get("archs", DEFAULT_ARCHS)
 
+        for asset in pkg.get("assets", []):
+            asset_type = asset.get("type", "generic").lower()
             raw_url = asset.get("url", "")
             raw_filename = asset.get("filename", "")
-            url = raw_url.replace("${version}", version)
-            filename = raw_filename.replace("${version}", version)
+            target_archs = asset.get("archs", pkg_archs)
 
-            results.append((asset_type, url, filename))
+            if "${arch}" in raw_url or "${arch}" in raw_filename:
+                for arch in target_archs:
+                    url = raw_url.replace("${version}", version).replace("${arch}", arch)
+                    filename = raw_filename.replace("${version}", version).replace("${arch}", arch)
+                    results.append((asset_type, url, filename))
+            else:
+                url = raw_url.replace("${version}", version)
+                filename = raw_filename.replace("${version}", version)
+                results.append((asset_type, url, filename))
 
     return results
 
@@ -75,17 +74,30 @@ def download_file(url: str, dest_path: str) -> None:
     os.replace(tmp_path, dest_path)
 
 
-def sync_assets(
-    assets: List[Tuple[AssetType, str, str]],
+def get_target_dir(
+    asset_type: str,
     deb_dir: str,
     rpm_dir: str,
-) -> None:
-    # Download pending upstream deb and rpm packages
-    os.makedirs(deb_dir, exist_ok=True)
-    os.makedirs(rpm_dir, exist_ok=True)
+    archive_dir: str,
+) -> str:
+    # Map generic asset type to target directory
+    if asset_type == "deb":
+        return deb_dir
+    if asset_type == "rpm":
+        return rpm_dir
+    return archive_dir
 
+
+def sync_assets(
+    assets: List[Tuple[str, str, str]],
+    deb_dir: str,
+    rpm_dir: str,
+    archive_dir: str = DEFAULT_ARCHIVE_DIR,
+) -> None:
+    # Download pending upstream deb, rpm, and archive assets
     for asset_type, url, filename in assets:
-        target_dir = deb_dir if asset_type == AssetType.DEB else rpm_dir
+        target_dir = get_target_dir(asset_type, deb_dir, rpm_dir, archive_dir)
+        os.makedirs(target_dir, exist_ok=True)
         dest_path = os.path.join(target_dir, filename)
 
         if os.path.isfile(dest_path) and os.path.getsize(dest_path) > 0:
@@ -112,6 +124,7 @@ def main() -> None:
     parser.add_argument("--config", action="append", help="Path to upstream.json (defaults to plugins/*/upstream.json)")
     parser.add_argument("--deb-dir", default=DEFAULT_DEB_DIR, help="Target directory for .deb packages")
     parser.add_argument("--rpm-dir", default=DEFAULT_RPM_DIR, help="Target directory for .rpm packages")
+    parser.add_argument("--archive-dir", default=DEFAULT_ARCHIVE_DIR, help="Target directory for generic archives")
     parser.add_argument("--override", action="append", default=[], help="Version override (e.g. caddy=2.9.0)")
     args = parser.parse_args()
 
@@ -130,7 +143,7 @@ def main() -> None:
         print(f"==> Processing upstream packages from {config_path}...")
         cfg = load_config(config_path)
         assets = build_asset_list(cfg, overrides)
-        sync_assets(assets, args.deb_dir, args.rpm_dir)
+        sync_assets(assets, args.deb_dir, args.rpm_dir, args.archive_dir)
 
     print("==> All upstream packages synchronized successfully.")
 
