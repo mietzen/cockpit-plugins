@@ -1,3 +1,4 @@
+import io
 import json
 import os
 import sys
@@ -318,6 +319,40 @@ Account Flags:        [UD         ]
             mock_print.assert_called_once()
             res = json.loads(mock_print.call_args[0][0])
             self.assertEqual(res["status"], "success")
+
+    # Verify create_smb_user reads password via stdin when omitted from argv
+    @patch("sys.argv", ["file_sharing_helper.py", "create_smb_user", "--username", "testuser"])
+    @patch("sys.stdin", io.StringIO("secret\n"))
+    @patch("file_sharing_helper.run_cmd", return_value=(0, "", ""))
+    def test_create_smb_user_stdin(self, mock_cmd):
+        with patch("builtins.print") as mock_print:
+            file_sharing_helper.main()
+            mock_print.assert_called_once()
+            res = json.loads(mock_print.call_args[0][0])
+            self.assertEqual(res["status"], "success")
+            mock_cmd.assert_called_once_with(["smbpasswd", "-a", "-s", "testuser"], input_data="secret\nsecret\n")
+
+    # Verify set_smb_user_password reads password via stdin when omitted from argv
+    @patch("sys.argv", ["file_sharing_helper.py", "set_smb_user_password", "--username", "testuser"])
+    @patch("sys.stdin", io.StringIO("secret\n"))
+    @patch("file_sharing_helper.run_cmd", return_value=(0, "", ""))
+    def test_set_smb_password_stdin(self, mock_cmd):
+        with patch("builtins.print") as mock_print:
+            file_sharing_helper.main()
+            mock_print.assert_called_once()
+            res = json.loads(mock_print.call_args[0][0])
+            self.assertEqual(res["status"], "success")
+            mock_cmd.assert_called_once_with(["smbpasswd", "-s", "testuser"], input_data="secret\nsecret\n")
+
+    # Verify create_smb_user fails when no password is provided in argv or stdin
+    @patch("sys.argv", ["file_sharing_helper.py", "create_smb_user", "--username", "testuser"])
+    @patch("sys.stdin", io.StringIO(""))
+    def test_create_smb_user_no_pass(self):
+        with patch("builtins.print") as mock_print, self.assertRaises(SystemExit):
+            file_sharing_helper.main()
+        res = json.loads(mock_print.call_args[0][0])
+        self.assertEqual(res["status"], "error")
+        self.assertIn("Password is required", res["message"])
 
     @patch("sys.argv", ["file_sharing_helper.py", "set_smb_user_state", "--username", "testuser", "--enable"])
     @patch("file_sharing_helper.run_cmd", return_value=(0, "", ""))

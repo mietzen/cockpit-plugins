@@ -420,11 +420,11 @@ def main():
     # User Actions
     p_create_user = subparsers.add_parser("create_smb_user")
     p_create_user.add_argument("--username", required=True)
-    p_create_user.add_argument("--password", required=True)
+    p_create_user.add_argument("--password", required=False, default=None)
 
     p_passwd_user = subparsers.add_parser("set_smb_user_password")
     p_passwd_user.add_argument("--username", required=True)
-    p_passwd_user.add_argument("--password", required=True)
+    p_passwd_user.add_argument("--password", required=False, default=None)
 
     p_state_user = subparsers.add_parser("set_smb_user_state")
     p_state_user.add_argument("--username", required=True)
@@ -536,7 +536,16 @@ def main():
             print(json.dumps({"status": "success", "message": msg}))
 
         elif args.action == "create_smb_user" or args.action == "set_smb_user_password":
-            input_pass = f"{args.password}\n{args.password}\n"
+            password = args.password
+            if not password:
+                if not sys.stdin.isatty():
+                    password = sys.stdin.readline().rstrip("\r\n")
+
+            if not password:
+                print(json.dumps({"status": "error", "message": "Password is required via stdin or --password"}))
+                sys.exit(1)
+
+            input_pass = f"{password}\n{password}\n"
             flags = ["-a", "-s"] if args.action == "create_smb_user" else ["-s"]
             rc, out, err = run_cmd(["smbpasswd"] + flags + [args.username], input_data=input_pass)
             if rc != 0:
