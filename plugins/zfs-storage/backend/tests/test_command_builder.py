@@ -150,6 +150,10 @@ class TestCommandBuilder(unittest.TestCase):
         cmd = self.builder.build_pool_attach("tank", existing_device="/dev/sdb", new_device="/dev/sdc")
         self.assertEqual(cmd, ["zpool", "attach", "tank", "/dev/sdb", "/dev/sdc"])
 
+    def test_pool_attach_force(self):
+        cmd = self.builder.build_pool_attach("tank", "/dev/sdb", "/dev/sdc", force=True)
+        self.assertEqual(cmd, ["zpool", "attach", "-f", "tank", "/dev/sdb", "/dev/sdc"])
+
     def test_build_pool_detach(self):
         cmd = self.builder.build_pool_detach("tank", device="/dev/sdc")
         self.assertEqual(cmd, ["zpool", "detach", "tank", "/dev/sdc"])
@@ -157,6 +161,10 @@ class TestCommandBuilder(unittest.TestCase):
     def test_build_pool_replace(self):
         cmd = self.builder.build_pool_replace("tank", old_device="/dev/sdb", new_device="/dev/sdd")
         self.assertEqual(cmd, ["zpool", "replace", "tank", "/dev/sdb", "/dev/sdd"])
+
+    def test_pool_replace_force(self):
+        cmd = self.builder.build_pool_replace("tank", "/dev/sdb", "/dev/sdc", force=True)
+        self.assertEqual(cmd, ["zpool", "replace", "-f", "tank", "/dev/sdb", "/dev/sdc"])
 
     def test_build_pool_set_property(self):
         cmd = self.builder.build_pool_set_property("tank", prop="autoexpand", value="on")

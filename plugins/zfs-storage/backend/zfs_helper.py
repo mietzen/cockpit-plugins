@@ -538,7 +538,14 @@ class ZfsService:
         cmd = self.builder.build_snapshot_clone(snapshot_path, clone_path=clone_path, properties=properties)
         return self._exec(cmd)
 
-    def disk_action(self, action: str, pool: str, device: str, new_device: Optional[str] = None) -> Dict[str, Any]:
+    def disk_action(
+        self,
+        action: str,
+        pool: str,
+        device: str,
+        new_device: Optional[str] = None,
+        force: bool = False,
+    ) -> Dict[str, Any]:
         pool_name = validate_name(pool, "pool_name")
         dev = validate_name(device, "device")
         new_dev = validate_name(new_device, "new_device") if new_device else None
@@ -550,9 +557,9 @@ class ZfsService:
         elif action == "detach":
             cmd = self.builder.build_pool_detach(pool_name, dev)
         elif action == "attach" and new_dev:
-            cmd = self.builder.build_pool_attach(pool_name, dev, new_dev)
+            cmd = self.builder.build_pool_attach(pool_name, dev, new_dev, force=force)
         elif action == "replace" and new_dev:
-            cmd = self.builder.build_pool_replace(pool_name, dev, new_dev)
+            cmd = self.builder.build_pool_replace(pool_name, dev, new_dev, force=force)
         else:
             raise ValueError(f"Unknown or invalid disk action: '{action}'")
 
@@ -655,8 +662,9 @@ def main():
             act = sys.argv[2]
             pool = sys.argv[3]
             device = sys.argv[4]
-            new_device = sys.argv[5] if len(sys.argv) > 5 else None
-            res = svc.disk_action(act, pool, device, new_device)
+            new_device = sys.argv[5] if len(sys.argv) > 5 and sys.argv[5] else None
+            force = sys.argv[6].lower() == "true" if len(sys.argv) > 6 else False
+            res = svc.disk_action(act, pool, device, new_device, force=force)
         elif action == "probe-sharing-services":
             smb_rc = subprocess.run(["systemctl", "is-active", "smbd"], capture_output=True).returncode
             nfs_rc = subprocess.run(["systemctl", "is-active", "nfs-server"], capture_output=True).returncode

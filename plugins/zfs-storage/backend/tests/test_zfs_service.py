@@ -214,6 +214,20 @@ class TestZfsServiceActions(unittest.TestCase):
         mock_run.assert_called_once_with(["zpool", "attach", "tank", "/dev/sdb", "/dev/sdc"])
 
     @patch("backend.zfs_helper.run_cmd")
+    def test_disk_action_attach_force(self, mock_run):
+        mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
+        res = self.svc.disk_action("attach", "tank", "/dev/sdb", "/dev/sdc", force=True)
+        self.assertTrue(res["success"])
+        mock_run.assert_called_once_with(["zpool", "attach", "-f", "tank", "/dev/sdb", "/dev/sdc"])
+
+    @patch("backend.zfs_helper.run_cmd")
+    def test_disk_action_replace_force(self, mock_run):
+        mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
+        res = self.svc.disk_action("replace", "tank", "/dev/sdb", "/dev/sdc", force=True)
+        self.assertTrue(res["success"])
+        mock_run.assert_called_once_with(["zpool", "replace", "-f", "tank", "/dev/sdb", "/dev/sdc"])
+
+    @patch("backend.zfs_helper.run_cmd")
     @patch("os.path.exists", return_value=True)
     def test_get_system_info(self, mock_exists, mock_run):
         mock_run.return_value = MagicMock(returncode=0, stdout="zfs-2.2.4\n", stderr="")
@@ -624,6 +638,17 @@ class TestZfsServiceActions(unittest.TestCase):
             mock_print.assert_called_once()
             res = json.loads(mock_print.call_args[0][0])
             self.assertTrue(res["success"])
+
+    @patch("backend.zfs_helper.run_cmd")
+    @patch("sys.argv", ["zfs_helper.py", "disk-action", "attach", "tank", "/dev/sdb", "/dev/sdc", "true"])
+    def test_cli_disk_attach_force(self, mock_run):
+        mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
+        with patch("builtins.print") as mock_print:
+            main()
+            mock_print.assert_called_once()
+            res = json.loads(mock_print.call_args[0][0])
+            self.assertTrue(res["success"])
+            mock_run.assert_called_once_with(["zpool", "attach", "-f", "tank", "/dev/sdb", "/dev/sdc"])
 
     @patch("backend.zfs_helper.run_cmd")
     @patch("sys.argv", ["zfs_helper.py", "disk-action", "replace", "tank", "/dev/sdb", "/dev/sdc"])

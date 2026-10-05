@@ -43,3 +43,13 @@ def test_edit_props_contract():
     modal_content = EDIT_MODAL_TSX.read_text(encoding="utf-8")
     assert "inheritProperties?: string[];" in modal_content
     assert "inheritProperties: []" in modal_content
+
+
+def test_disk_action_force_forward():
+    content = APP_TSX.read_text(encoding="utf-8")
+    attach_snippet = get_modal_snippet(content, "AttachDiskModal")
+    replace_snippet = get_modal_snippet(content, "ReplaceDiskModal")
+
+    assert 'zfsApi.diskAction("attach", args.poolName, args.existingDevice, args.newDevice, args.force)' in attach_snippet
+    assert 'zfsApi.diskAction("replace", args.poolName, args.oldDevice, args.newDevice, args.force)' in replace_snippet
+
