@@ -25,6 +25,7 @@ try:
         manage_service,
         install_code_server,
         ensure_user_dir_permissions,
+        get_or_create_user_token,
     )
 except ImportError:
     from config_manager import (
@@ -42,6 +43,7 @@ except ImportError:
         manage_service,
         install_code_server,
         ensure_user_dir_permissions,
+        get_or_create_user_token,
     )
 
 
@@ -76,6 +78,7 @@ def handle_command(args: List[str]) -> Dict[str, Any]:
         ensure_user_dir_permissions(parsed.user)
         user = resolve_username(parsed.user)
         uid = get_user_uid(parsed.user)
+        token = get_or_create_user_token(parsed.user)
         binary = get_binary_info()
         service = get_service_status(parsed.user)
         if service.get("active") and not service.get("socket_ready"):
@@ -90,6 +93,7 @@ def handle_command(args: List[str]) -> Dict[str, Any]:
             "status": "ok",
             "user": user,
             "uid": uid,
+            "token": token,
             "binary": binary,
             "service": service,
             "config": cfg_dict,

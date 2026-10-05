@@ -14,6 +14,7 @@ from backend.service_manager import (
     install_code_server,
     CODE_SERVER_UPSTREAM_VERSION,
     read_pinned_version,
+    get_or_create_user_token,
 )
 
 
@@ -312,3 +313,54 @@ def test_user_sock_dir_perms():
     assert dirs_created.get("/run/code-server") == 0o755
     assert dirs_created.get("/run/code-server/1001") == 0o700
     assert chown_calls.get("/run/code-server/1001") == (1001, 1001)
+
+
+def test_get_or_create_token(tmp_path):
+    fake_pw = pwd.struct_passwd(("alice", "x", 1001, 1002, "Alice", "/home/alice", "/bin/bash"))
+    chown_calls = []
+
+    def mock_chown(path, uid, gid):
+        chown_calls.append((str(path), uid, gid))
+
+    base_dir = tmp_path / "run_code_server"
+    with patch("pwd.getpwnam", return_value=fake_pw), \
+         patch("backend.service_manager.resolve_username", return_value="alice"), \
+         patch("backend.service_manager.get_user_uid", return_value=1001), \
+         patch("backend.service_manager.RUN_CODE_SERVER_BASE_DIR", str(base_dir)), \
+         patch("os.chown", side_effect=mock_chown):
+
+        token1 = get_or_create_user_token("alice")
+        assert token1 and len(token1) >= 32
+
+        user_dir = base_dir / "1001"
+        tokens_dir = user_dir / "tokens"
+        token_file = user_dir / "token"
+        token_sym_file = tokens_dir / token1
+
+        # Check directory mode (0700)
+        assert oct(tokens_dir.stat().st_mode & 0o777) == "0o700"
+
+        # Check token file mode (0600) and content
+        assert oct(token_file.stat().st_mode & 0o777) == "0o600"
+        assert token_file.read_text().strip() == token1
+
+        # Check tokens/<token> file mode (0600)
+        assert oct(token_sym_file.stat().st_mode & 0o777) == "0o600"
+
+        # Verify chown calls targeted 1001:1002
+        assert (str(tokens_dir), 1001, 1002) in chown_calls
+        assert (str(token_file), 1001, 1002) in chown_calls
+        assert (str(token_sym_file), 1001, 1002) in chown_calls
+
+        # Call again: token stability
+        token2 = get_or_create_user_token("alice")
+        assert token2 == token1
+
+        # Delete file in tokens dir, verify recreated on next call
+        token_sym_file.unlink()
+        assert not token_sym_file.exists()
+
+        token3 = get_or_create_user_token("alice")
+        assert token3 == token1
+        assert token_sym_file.exists()
+
