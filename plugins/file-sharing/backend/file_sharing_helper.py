@@ -539,7 +539,7 @@ def main():
             password = args.password
             if not password:
                 if not sys.stdin.isatty():
-                    password = sys.stdin.read().rstrip("\r\n")
+                    password = sys.stdin.readline().rstrip("\r\n")
 
             if not password:
                 print(json.dumps({"status": "error", "message": "Password is required via stdin or --password"}))

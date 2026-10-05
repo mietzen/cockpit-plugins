@@ -30,7 +30,7 @@ async function execHelper(args: string[], inputData?: string): Promise<any> {
   return new Promise((resolve, reject) => {
     const proc = window.cockpit.spawn([HELPER_PATH, ...args], { superuser: 'require' });
     if (inputData !== undefined) {
-      proc.input(inputData, true);
+      proc.input(inputData);
     }
 
     proc.then((output: string) => {
