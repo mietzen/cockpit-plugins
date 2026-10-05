@@ -13,6 +13,7 @@ from backend.service_manager import (
     ensure_user_dir_permissions,
     install_code_server,
     CODE_SERVER_UPSTREAM_VERSION,
+    read_pinned_version,
 )
 
 
@@ -275,3 +276,14 @@ def test_manage_service_invalid_action():
     assert res["success"] is False
     assert "Invalid action" in res["error"]
 
+
+def test_read_pinned_version():
+    fallback = "0.0.0"
+
+    cs_ver = read_pinned_version("code-server", fallback=fallback)
+    assert cs_ver != fallback
+    assert cs_ver == "4.139.1"
+
+    caddy_ver = read_pinned_version("caddy", fallback=fallback)
+    assert caddy_ver != fallback
+    assert caddy_ver == "2.11.7"
