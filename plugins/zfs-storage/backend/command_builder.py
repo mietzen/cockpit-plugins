@@ -183,14 +183,22 @@ class CommandBuilder:
             cmd.append(device)
         return cmd
 
-    def build_pool_attach(self, name: str, existing_device: str, new_device: str) -> List[str]:
-        return ["zpool", "attach", name, existing_device, new_device]
+    def build_pool_attach(self, name: str, existing_device: str, new_device: str, force: bool = False) -> List[str]:
+        cmd = ["zpool", "attach"]
+        if force:
+            cmd.append("-f")
+        cmd.extend([name, existing_device, new_device])
+        return cmd
 
     def build_pool_detach(self, name: str, device: str) -> List[str]:
         return ["zpool", "detach", name, device]
 
-    def build_pool_replace(self, name: str, old_device: str, new_device: str) -> List[str]:
-        return ["zpool", "replace", name, old_device, new_device]
+    def build_pool_replace(self, name: str, old_device: str, new_device: str, force: bool = False) -> List[str]:
+        cmd = ["zpool", "replace"]
+        if force:
+            cmd.append("-f")
+        cmd.extend([name, old_device, new_device])
+        return cmd
 
     def build_pool_offline(self, name: str, device: str) -> List[str]:
         return ["zpool", "offline", name, device]

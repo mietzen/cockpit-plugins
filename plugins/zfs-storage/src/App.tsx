@@ -817,7 +817,7 @@ export const App: React.FC = () => {
           onClose={() => setActiveModal(null)}
           onSubmit={async (args) => {
             await runAction(
-              zfsApi.diskAction("attach", args.poolName, args.existingDevice, args.newDevice),
+              zfsApi.diskAction("attach", args.poolName, args.existingDevice, args.newDevice, args.force),
               `Attached ${args.newDevice} to ${args.existingDevice}`
             );
             setActiveModal(null);
@@ -834,7 +834,7 @@ export const App: React.FC = () => {
           onClose={() => setActiveModal(null)}
           onSubmit={async (args) => {
             await runAction(
-              zfsApi.diskAction("replace", args.poolName, args.oldDevice, args.newDevice),
+              zfsApi.diskAction("replace", args.poolName, args.oldDevice, args.newDevice, args.force),
               `Replaced ${args.oldDevice} with ${args.newDevice}`
             );
             setActiveModal(null);

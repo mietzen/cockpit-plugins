@@ -150,8 +150,14 @@ export class ZfsApiClient {
     return this.runHelper("snapshot-clone", JSON.stringify(payload));
   }
 
-  public async diskAction(action: string, pool: string, device: string, newDevice?: string): Promise<CommandResult> {
-    return this.runHelper("disk-action", action, pool, device, ...(newDevice ? [newDevice] : []));
+  public async diskAction(
+    action: string,
+    pool: string,
+    device: string,
+    newDevice?: string,
+    force: boolean = false
+  ): Promise<CommandResult> {
+    return this.runHelper("disk-action", action, pool, device, newDevice || "", String(force));
   }
 
   public async probeSharingServices(): Promise<{ smb: boolean; nfs: boolean }> {
