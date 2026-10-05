@@ -31,6 +31,8 @@ except ImportError:
 class VDevConfig:
     type: VDevType
     devices: List[str] = field(default_factory=list)
+    draid_data: Optional[int] = None
+    draid_spares: Optional[int] = None
 
 
 class CommandBuilder:
@@ -87,6 +89,14 @@ class CommandBuilder:
                 cmd.extend(vdev.devices)
             elif vdev.type == VDevType.RAIDZ3:
                 cmd.append("raidz3")
+                cmd.extend(vdev.devices)
+            elif vdev.type in (VDevType.DRAID1, VDevType.DRAID2, VDevType.DRAID3):
+                clause = vdev.type.value
+                if vdev.draid_data is not None or vdev.draid_spares is not None:
+                    data_suffix = f":{vdev.draid_data}d" if vdev.draid_data else ""
+                    spare_suffix = f":{vdev.draid_spares}s" if vdev.draid_spares else ""
+                    clause = f"{vdev.type.value}{data_suffix}{spare_suffix}"
+                cmd.append(clause)
                 cmd.extend(vdev.devices)
             elif vdev.type == VDevType.LOG:
                 cmd.append("log")
