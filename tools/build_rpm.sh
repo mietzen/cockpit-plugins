@@ -231,7 +231,7 @@ if [ -d /usr/libexec/${HELPER_DIR_NAME} ]; then
 fi
 if [ "${PLUGIN_NAME}" = "code-server" ]; then
     mkdir -p /run/code-server
-    chmod 1777 /run/code-server
+    chmod 0755 /run/code-server
     if command -v systemd-tmpfiles >/dev/null 2>&1; then
         systemd-tmpfiles --create /usr/lib/tmpfiles.d/cockpit-code-server.conf 2>/dev/null || true
     fi
@@ -296,6 +296,10 @@ COCKPIT_CONF_EOF
         if id "\$u" >/dev/null 2>&1; then
             U_HOME=\$(getent passwd "\$u" | cut -d: -f6)
             UID_NUM=\$(id -u "\$u" 2>/dev/null || echo 1000)
+            GID_NUM=\$(id -g "\$u" 2>/dev/null || echo 1000)
+            mkdir -p "/run/code-server/\${UID_NUM}"
+            chown "\${UID_NUM}:\${GID_NUM}" "/run/code-server/\${UID_NUM}" 2>/dev/null || true
+            chmod 0700 "/run/code-server/\${UID_NUM}" 2>/dev/null || true
             if [ -n "\$U_HOME" ]; then
                 CFG_DIR="\$U_HOME/.config/code-server"
                 CFG="\$CFG_DIR/config.yaml"
@@ -303,13 +307,13 @@ COCKPIT_CONF_EOF
 
                 if [ ! -f "\$CFG" ]; then
                     PASS_TOKEN=\$(python3 -c "import secrets; print(secrets.token_urlsafe(24))" 2>/dev/null || tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 32)
-                    printf "socket: /run/code-server/%s.sock\\nsocket-mode: 600\\nauth: password\\npassword: %s\\ncert: false\\napp-name: Code-Server\\ndisable-telemetry: true\\n" "\$UID_NUM" "\$PASS_TOKEN" > "\$CFG"
+                    printf "socket: /run/code-server/%s/code-server.sock\\nsocket-mode: 600\\nauth: password\\npassword: %s\\ncert: false\\napp-name: Code-Server\\ndisable-telemetry: true\\n" "\$UID_NUM" "\$PASS_TOKEN" > "\$CFG"
                 else
-                    sed -i -E "s|^bind-addr:.*|socket: /run/code-server/\${UID_NUM}.sock\\nsocket-mode: 600|" "\$CFG" 2>/dev/null || true
+                    sed -i -E "s|^bind-addr:.*|socket: /run/code-server/\${UID_NUM}/code-server.sock\\nsocket-mode: 600|" "\$CFG" 2>/dev/null || true
                     if grep -q "^socket:" "\$CFG" 2>/dev/null; then
-                        sed -i -E "s|^socket:.*|socket: /run/code-server/\${UID_NUM}.sock|" "\$CFG" 2>/dev/null || true
+                        sed -i -E "s|^socket:.*|socket: /run/code-server/\${UID_NUM}/code-server.sock|" "\$CFG" 2>/dev/null || true
                     else
-                        printf "socket: /run/code-server/%s.sock\\nsocket-mode: 600\\n" "\$UID_NUM" >> "\$CFG"
+                        printf "socket: /run/code-server/%s/code-server.sock\\nsocket-mode: 600\\n" "\$UID_NUM" >> "\$CFG"
                     fi
                     sed -i -E "s|^socket-mode:.*|socket-mode: 600|" "\$CFG" 2>/dev/null || true
                     if ! grep -q "^socket-mode:" "\$CFG" 2>/dev/null; then
@@ -335,7 +339,7 @@ COCKPIT_CONF_EOF
                         chmod -R u+rwX "\$U_HOME/\$p" 2>/dev/null || true
                     fi
                 done
-                rm -f "/run/code-server/\${UID_NUM}.sock" 2>/dev/null || true
+                rm -f "/run/code-server/\${UID_NUM}.sock" "/run/code-server/\${UID_NUM}/code-server.sock" 2>/dev/null || true
             fi
             systemctl enable "code-server@\${u}.service" 2>/dev/null || true
             systemctl restart "code-server@\${u}.service" 2>/dev/null || true

@@ -100,9 +100,9 @@ def get_user_uid(username: Optional[str] = None) -> int:
 def get_default_socket_path_for_user(username: Optional[str] = None) -> str:
     user = resolve_username(username)
     if user == "root":
-        return "/run/code-server/0.sock"
+        return "/run/code-server/0/code-server.sock"
     uid = get_user_uid(username)
-    return f"/run/code-server/{uid}.sock"
+    return f"/run/code-server/{uid}/code-server.sock"
 
 
 def get_default_port_for_user(username: Optional[str] = None) -> int:

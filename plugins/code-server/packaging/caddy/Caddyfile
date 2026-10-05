@@ -9,7 +9,7 @@
 	@code_server path_regexp cs ^/code-server/(?P<uid>[0-9]+)(?P<rest>/.*)?$
 	handle @code_server {
 		rewrite {re.cs.rest}
-		reverse_proxy unix//run/code-server/{re.cs.uid}.sock
+		reverse_proxy unix//run/code-server/{re.cs.uid}/code-server.sock
 	}
 
 	handle {

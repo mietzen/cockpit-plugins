@@ -148,10 +148,18 @@ def ensure_user_dir_permissions(username: Optional[str] = None) -> None:
                 except Exception:
                     pass
 
-        # Ensure /run/code-server exists with sticky 1777 permissions for user sockets
+        # Ensure /run/code-server exists with 0755 root permissions
         try:
-            os.makedirs("/run/code-server", mode=0o1777, exist_ok=True)
-            os.chmod("/run/code-server", 0o1777)
+            os.makedirs("/run/code-server", mode=0o755, exist_ok=True)
+            os.chmod("/run/code-server", 0o755)
+        except Exception:
+            pass
+
+        user_run_dir = f"/run/code-server/{pw.pw_uid}"
+        try:
+            os.makedirs(user_run_dir, mode=0o700, exist_ok=True)
+            os.chown(user_run_dir, uid, gid)
+            os.chmod(user_run_dir, 0o700)
         except Exception:
             pass
 
@@ -230,7 +238,7 @@ def manage_service(action: str, username: Optional[str] = None) -> Dict[str, Any
         try:
             import pwd
             pw = pwd.getpwnam(user)
-            sock_path = f"/run/code-server/{pw.pw_uid}.sock"
+            sock_path = f"/run/code-server/{pw.pw_uid}/code-server.sock"
             if os.path.exists(sock_path):
                 try:
                     os.unlink(sock_path)
