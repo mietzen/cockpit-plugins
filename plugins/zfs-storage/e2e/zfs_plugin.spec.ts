@@ -1036,7 +1036,7 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     await page.waitForTimeout(200);
     const rollbackBtn = frame.locator("[role='dialog'] button:has-text('Rollback Snapshot'), .pf-v6-c-modal-box button:has-text('Rollback Snapshot')").first();
     if (await rollbackBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
-      await rollbackBtn.click({ timeout: 1000 }).catch(() => {});
+      await rollbackBtn.click({ timeout: 1000 });
     }
     const cancelRollback = frame.locator("[role='dialog'] button:has-text('Cancel'), .pf-v6-c-modal-box button:has-text('Cancel')").first();
     if (await cancelRollback.isVisible({ timeout: 1000 }).catch(() => false)) {
@@ -1057,7 +1057,7 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     }
     const cloneBtn = frame.locator("[role='dialog'] button:has-text('Clone Snapshot'), .pf-v6-c-modal-box button:has-text('Clone Snapshot')").first();
     if (await cloneBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
-      await cloneBtn.click({ timeout: 1000 }).catch(() => {});
+      await cloneBtn.click({ timeout: 1000 });
     }
     const cancelClone = frame.locator("[role='dialog'] button:has-text('Cancel'), .pf-v6-c-modal-box button:has-text('Cancel')").first();
     if (await cancelClone.isVisible({ timeout: 1000 }).catch(() => false)) {
@@ -1171,7 +1171,7 @@ test.describe.serial("Cockpit ZFS Storage Plugin E2E Test Suite", () => {
     await page.waitForTimeout(200);
     const savePropBtn = frame.locator("[role='dialog'] button:has-text('Save changes'), .pf-v6-c-modal-box button:has-text('Save changes'), [role='dialog'] button:has-text('Save Changes'), .pf-v6-c-modal-box button:has-text('Save Changes')").first();
     if (await savePropBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
-      await savePropBtn.click({ timeout: 1000 }).catch(() => {});
+      await savePropBtn.click({ timeout: 1000 });
     }
     const cancelEditProp = frame.locator("[role='dialog'] button:has-text('Cancel'), .pf-v6-c-modal-box button:has-text('Cancel')").first();
     if (await cancelEditProp.isVisible({ timeout: 1000 }).catch(() => false)) {

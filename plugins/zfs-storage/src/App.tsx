@@ -677,12 +677,14 @@ export const App: React.FC = () => {
         isOpen={activeModal?.type === "edit-properties"}
         dataset={activeModal?.type === "edit-properties" ? activeModal.dataset : null}
         onClose={() => setActiveModal(null)}
-        onSubmit={async ({ dataset, properties, inheritProperties }) => {
+        onSubmit={async ({ dataset, properties, inheritProperties = [] }) => {
           for (const [k, v] of Object.entries(properties)) {
             await zfsApi.setDatasetProperty(dataset.name, k, v);
           }
-          for (const prop of inheritProperties) {
-            await zfsApi.inheritDatasetProperty(dataset.name, prop);
+          if (inheritProperties && Array.isArray(inheritProperties)) {
+            for (const prop of inheritProperties) {
+              await zfsApi.inheritDatasetProperty(dataset.name, prop);
+            }
           }
           addAlert("success", "Dataset properties updated");
           await loadData();
@@ -723,8 +725,8 @@ export const App: React.FC = () => {
         onClose={() => setActiveModal(null)}
         onSubmit={async (args) => {
           await runAction(
-            zfsApi.rollbackSnapshot(args.snapshot.name, args.destroyIntermediate),
-            `Dataset rolled back to @${args.snapshot.snapshot_name}`
+            zfsApi.rollbackSnapshot(args.snapshotName, args.destroyMoreRecent),
+            `Dataset rolled back to ${args.snapshotName}`
           );
           setActiveModal(null);
         }}
@@ -737,9 +739,8 @@ export const App: React.FC = () => {
         onSubmit={async (args) => {
           await runAction(
             zfsApi.cloneSnapshot({
-              snapshot: args.snapshot.name,
+              snapshot: args.snapshotName,
               clone_path: args.clonePath,
-              properties: args.compression !== "off" ? { compression: args.compression } : undefined,
             }),
             `Clone ${args.clonePath} created successfully`
           );
