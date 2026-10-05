@@ -1,0 +1,76 @@
+"""Tests for package maintainer scripts."""
+
+import subprocess
+from pathlib import Path
+
+import pytest
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+CERTS_DIR_NAME = "ws-certs.d"
+CERT_FILE_NAME = "0-self-signed.cert"
+KEY_FILE_NAME = "0-self-signed.key"
+DUMMY_CERT_DATA = "MOCK_CERTIFICATE_CONTENT\n"
+TARGET_DIR_PATTERN = "/etc/cockpit/ws-certs.d"
+START_MARKER = "if [ ! -f /etc/cockpit/ws-certs.d/0-self-signed.cert ]"
+
+SCRIPT_PATHS = (
+    REPO_ROOT / "tools" / "build_deb.sh",
+    REPO_ROOT / "tools" / "build_deb.py",
+    REPO_ROOT / "tools" / "build_rpm.sh",
+)
+
+
+def extract_cert_snippet(file_path: Path) -> str:
+    """Extract cert symlink block from maintainer script."""
+    content = file_path.read_text(encoding="utf-8")
+    start_pos = content.find(START_MARKER)
+    if start_pos == -1:
+        raise ValueError(f"Marker not found in {file_path}")
+
+    lines = content[start_pos:].splitlines()
+    snippet_lines = []
+    depth = 0
+
+    for line in lines:
+        stripped = line.strip()
+        words = stripped.split()
+        if "if" in words and (words[0] == "if" or (len(words) > 1 and words[1] == "if")):
+            depth += 1
+        if "fi" in words and words[-1] == "fi":
+            depth -= 1
+        snippet_lines.append(line)
+        if depth == 0:
+            break
+
+    snippet = "\n".join(snippet_lines)
+    return snippet.replace(r"\$", "$")
+
+
+@pytest.mark.parametrize("script_path", SCRIPT_PATHS, ids=lambda p: p.name)
+def test_cert_symlink_safety(tmp_path: Path, script_path: Path):
+    """Verify maintainer script creates no self-referential symlink."""
+    mock_certs_dir = tmp_path / CERTS_DIR_NAME
+    mock_certs_dir.mkdir(parents=True, exist_ok=True)
+
+    cert_file = mock_certs_dir / CERT_FILE_NAME
+    cert_file.write_text(DUMMY_CERT_DATA, encoding="utf-8")
+
+    key_file = mock_certs_dir / KEY_FILE_NAME
+    assert not key_file.exists()
+
+    # Extract shell logic and point to mock directory
+    raw_snippet = extract_cert_snippet(script_path)
+    mock_script = raw_snippet.replace(TARGET_DIR_PATTERN, str(mock_certs_dir))
+
+    # Run extracted shell snippet in bash
+    subprocess.run(["bash", "-c", mock_script], check=True)
+
+    # Cert must remain an intact regular file
+    assert cert_file.is_file()
+    assert not cert_file.is_symlink()
+    assert cert_file.read_text(encoding="utf-8") == DUMMY_CERT_DATA
+
+    # Key must be symlink pointing to cert
+    assert key_file.is_symlink()
+    assert key_file.resolve() == cert_file.resolve()
+    assert key_file.read_text(encoding="utf-8") == DUMMY_CERT_DATA
