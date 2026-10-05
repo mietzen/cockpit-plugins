@@ -1,4 +1,6 @@
+import io
 import os
+import tarfile
 import tempfile
 import unittest
 from unittest.mock import MagicMock, patch
@@ -27,6 +29,28 @@ except ModuleNotFoundError:
         import_gpg_key_if_present,
         generate_rpm_repo,
     )
+
+
+def _create_dummy_deb(path: str, name: str, version: str, arch: str, desc: str = "Cockpit plugin"):
+    # Generate minimal valid deb ar-archive with control.tar.gz
+    ctrl_text = f"Package: {name}\nVersion: {version}\nArchitecture: {arch}\nDescription: {desc}\n"
+    ctrl_io = io.BytesIO()
+    with tarfile.open(fileobj=ctrl_io, mode="w:gz") as tar:
+        data = ctrl_text.encode("utf-8")
+        ti = tarfile.TarInfo("control")
+        ti.size = len(data)
+        tar.addfile(ti, io.BytesIO(data))
+    ctrl_bytes = ctrl_io.getvalue()
+
+    with open(path, "wb") as f:
+        f.write(b"!<arch>\n")
+        deb_bin = b"2.0\n"
+        f.write(f"{'debian-binary':<16}{'0':<12}{'0':<6}{'0':<6}{'100644':<8}{len(deb_bin):<10}`\n".encode("ascii"))
+        f.write(deb_bin)
+        f.write(f"{'control.tar.gz':<16}{'0':<12}{'0':<6}{'0':<6}{'100644':<8}{len(ctrl_bytes):<10}`\n".encode("ascii"))
+        f.write(ctrl_bytes)
+        if len(ctrl_bytes) % 2 != 0:
+            f.write(b"\n")
 
 
 class TestGenerateRepo(unittest.TestCase):
@@ -158,6 +182,95 @@ class TestGenerateRepo(unittest.TestCase):
             self.assertIn("cockpit-container-manager", content)
             self.assertIn("cockpit-code-server", content)
             self.assertIn("dnf install -y $TARGET_PLUGINS", content)
+
+    def test_table_has_arch_column(self):
+        # Verify Architecture column header and arch badge in generated index.html
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            deb_dir = os.path.join(tmp_dir, "debs")
+            out_dir = os.path.join(tmp_dir, "out")
+            os.makedirs(deb_dir, exist_ok=True)
+
+            deb_path = os.path.join(deb_dir, "cockpit-zfs-storage_1.0.0_all.deb")
+            _create_dummy_deb(deb_path, "cockpit-zfs-storage", "1.0.0", "all")
+
+            generate_apt_repo(deb_dir, out_dir)
+
+            index_path = os.path.join(out_dir, "index.html")
+            self.assertTrue(os.path.exists(index_path))
+            with open(index_path, "r", encoding="utf-8") as f:
+                content = f.read()
+
+            self.assertTrue(
+                "<th>Arch</th>" in content or "<th>Architecture</th>" in content,
+                "Expected Arch or Architecture column header in table",
+            )
+            self.assertIn('<span class="arch-badge">all</span>', content)
+
+    def test_rpm_arch_matching(self):
+        # Verify amd64 and arm64 packages link to their respective RPM counterparts
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            deb_dir = os.path.join(tmp_dir, "debs")
+            rpm_dir = os.path.join(tmp_dir, "rpms")
+            out_dir = os.path.join(tmp_dir, "out")
+            os.makedirs(deb_dir, exist_ok=True)
+            os.makedirs(rpm_dir, exist_ok=True)
+
+            deb_amd64 = os.path.join(deb_dir, "cockpit-code-server_1.0.0_amd64.deb")
+            deb_arm64 = os.path.join(deb_dir, "cockpit-code-server_1.0.0_arm64.deb")
+            _create_dummy_deb(deb_amd64, "cockpit-code-server", "1.0.0", "amd64")
+            _create_dummy_deb(deb_arm64, "cockpit-code-server", "1.0.0", "arm64")
+
+            rpm_x86 = os.path.join(rpm_dir, "cockpit-code-server-1.0.0-1.x86_64.rpm")
+            rpm_arm = os.path.join(rpm_dir, "cockpit-code-server-1.0.0-1.aarch64.rpm")
+            with open(rpm_x86, "wb") as f:
+                f.write(b"rpm_x86_data")
+            with open(rpm_arm, "wb") as f:
+                f.write(b"rpm_arm_data")
+
+            generate_apt_repo(deb_dir, out_dir, rpm_dir=rpm_dir)
+
+            index_path = os.path.join(out_dir, "index.html")
+            self.assertTrue(os.path.exists(index_path))
+            with open(index_path, "r", encoding="utf-8") as f:
+                content = f.read()
+
+            self.assertIn("cockpit-code-server-1.0.0-1.x86_64.rpm", content)
+            self.assertIn("cockpit-code-server-1.0.0-1.aarch64.rpm", content)
+
+            rows = content.split("<tr>")
+            for row in rows:
+                if 'class="arch-badge">amd64<' in row:
+                    self.assertIn("x86_64.rpm", row)
+                    self.assertNotIn("aarch64.rpm", row)
+                if 'class="arch-badge">arm64<' in row:
+                    self.assertIn("aarch64.rpm", row)
+                    self.assertNotIn("x86_64.rpm", row)
+
+    def test_plugin_sorting(self):
+        # Verify cockpit-* plugins are sorted before third-party packages
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            deb_dir = os.path.join(tmp_dir, "debs")
+            out_dir = os.path.join(tmp_dir, "out")
+            os.makedirs(deb_dir, exist_ok=True)
+
+            deb_third_party = os.path.join(deb_dir, "aaa-dependency_4.0.0_amd64.deb")
+            deb_plugin = os.path.join(deb_dir, "cockpit-zfs-storage_1.0.0_all.deb")
+            _create_dummy_deb(deb_third_party, "aaa-dependency", "4.0.0", "amd64")
+            _create_dummy_deb(deb_plugin, "cockpit-zfs-storage", "1.0.0", "all")
+
+            generate_apt_repo(deb_dir, out_dir)
+
+            index_path = os.path.join(out_dir, "index.html")
+            self.assertTrue(os.path.exists(index_path))
+            with open(index_path, "r", encoding="utf-8") as f:
+                content = f.read()
+
+            tbody = content[content.find("<tbody>"):content.find("</tbody>")]
+            idx_plugin = tbody.find("cockpit-zfs-storage")
+            idx_third_party = tbody.find("aaa-dependency")
+            self.assertNotEqual(idx_plugin, -1)
+            self.assertNotEqual(idx_third_party, -1)
+            self.assertLess(idx_plugin, idx_third_party)
 
 
 if __name__ == "__main__":

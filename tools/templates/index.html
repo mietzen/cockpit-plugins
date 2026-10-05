@@ -181,6 +181,17 @@
             border-bottom: none;
             padding-bottom: 0;
         }
+        .arch-badge {
+            display: inline-block;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 0.8rem;
+            padding: 2px 8px;
+            border-radius: 12px;
+            background-color: var(--code-bg);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
         .footer {
             text-align: center;
             color: var(--text-secondary);
@@ -258,6 +269,7 @@ sudo dnf install cockpit-zfs-storage</code></pre>
                     <tr>
                         <th>Package</th>
                         <th style="text-align: center;">Version</th>
+                        <th>Arch</th>
                         <th>Description</th>
                         <th>Direct Downloads</th>
                         <th>SHA256</th>

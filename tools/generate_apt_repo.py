@@ -50,6 +50,24 @@ def parse_rpm_pkg_name(filename: str) -> str:
         return parts[0]
     return base
 
+
+DEB_TO_RPM_ARCH = {
+    "amd64": "x86_64",
+    "arm64": "aarch64",
+    "all": "noarch",
+}
+
+
+def parse_rpm_arch(filename: str) -> str:
+    # Extract architecture from rpm filename
+    lower = filename.lower()
+    if "aarch64" in lower or "arm64" in lower:
+        return "aarch64"
+    if "x86_64" in lower or "amd64" in lower:
+        return "x86_64"
+    return "noarch"
+
+
 def parse_deb_control(deb_path):
     """Extract control file content from .deb archive."""
     try:
@@ -323,7 +341,7 @@ echo "==> Installation complete! Access Cockpit at https://<server-ip>:9090."
         f.write(install_sh_content)
     os.chmod(os.path.join(output_dir, "install.sh"), 0o755)
 
-    # Check for RPM packages and build map
+    # Check for RPM packages and build map keyed by (package_name, rpm_arch)
     rpm_map = {}
     if rpm_dir and os.path.exists(rpm_dir):
         for rpm_f in sorted(os.listdir(rpm_dir)):
@@ -333,15 +351,28 @@ echo "==> Installation complete! Access Cockpit at https://<server-ip>:9090."
                     rpm_bytes = rf.read()
                 rpm_sha256 = hashlib.sha256(rpm_bytes).hexdigest()
                 pkg_key = parse_rpm_pkg_name(rpm_f)
-                rpm_map[pkg_key] = {
+                rpm_arch = parse_rpm_arch(rpm_f)
+                rpm_map[(pkg_key, rpm_arch)] = {
                     "filename": f"rpm/{rpm_f}",
                     "size": format_size_mib(len(rpm_bytes)),
                     "sha256": rpm_sha256,
                 }
 
+    # Sort Cockpit plugins first, then by package name, then by architecture
+    packages_summary.sort(
+        key=lambda p: (
+            0 if p["name"].startswith("cockpit-") else 1,
+            p["name"],
+            p["arch"],
+        )
+    )
+
     # Generate modern HTML index for GitHub Pages
     def format_row(p):
-        rpm_info = rpm_map.get(p["name"])
+        target_rpm_arch = DEB_TO_RPM_ARCH.get(p["arch"], p["arch"])
+        rpm_info = rpm_map.get((p["name"], target_rpm_arch))
+        if not rpm_info:
+            rpm_info = rpm_map.get((p["name"], "noarch"))
         
         # Deb download & SHA
         deb_download = f'<div class="download-item"><a href="{p["filename"]}" class="download-link">.deb</a> <span class="pkg-size">({p["size"]})</span></div>'
@@ -371,6 +402,7 @@ echo "==> Installation complete! Access Cockpit at https://<server-ip>:9090."
         return f"""<tr>
             <td><strong><code>{p['name']}</code></strong></td>
             <td style="text-align: center;"><code>{p['version']}</code></td>
+            <td><span class="arch-badge">{p['arch']}</span></td>
             <td>{p['description']}</td>
             <td><div class="download-cell">{deb_download}{rpm_download}</div></td>
             <td><div class="sha-cell">{deb_sha_block}{rpm_sha_block}</div></td>
