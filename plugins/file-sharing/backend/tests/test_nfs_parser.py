@@ -2,6 +2,7 @@ import tempfile
 import os
 import shutil
 import unittest
+from unittest.mock import patch
 from backend.nfs_parser import NfsParser
 
 SAMPLE_EXPORTS = """
@@ -244,6 +245,30 @@ class TestNfsParser(unittest.TestCase):
         self.assertTrue(ok2)
         loaded2 = get_nfs_global(nfs_conf)
         self.assertEqual(loaded2["threads"], 32)
+
+    @patch("backend.nfs_parser.atomic_write")
+    @patch("backend.nfs_parser.file_lock")
+    def test_save_export_lock(self, mock_lock, mock_write):
+        # Assert save_export uses lock and atomic write
+        ok, _ = self.parser.save_export("/tank/atomic", [{"host": "*"}])
+        self.assertTrue(ok)
+        mock_lock.assert_called_once_with(self.cockpit_file)
+        mock_write.assert_called_once()
+        self.assertEqual(mock_write.call_args[0][0], self.cockpit_file)
+        self.assertFalse(os.path.exists(f"{self.cockpit_file}.tmp"))
+
+    @patch("backend.nfs_parser.atomic_write")
+    @patch("backend.nfs_parser.file_lock")
+    def test_delete_export_lock(self, mock_lock, mock_write):
+        # Assert delete_export uses lock and atomic write
+        with open(self.cockpit_file, "w") as f:
+            f.write("/tank/to_del *(rw)\n")
+        ok, _ = self.parser.delete_export("/tank/to_del")
+        self.assertTrue(ok)
+        mock_lock.assert_called_once_with(self.cockpit_file)
+        mock_write.assert_called_once()
+        self.assertEqual(mock_write.call_args[0][0], self.cockpit_file)
+        self.assertFalse(os.path.exists(f"{self.cockpit_file}.tmp"))
 
 
 if __name__ == "__main__":

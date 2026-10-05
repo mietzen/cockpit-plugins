@@ -1,6 +1,7 @@
 import tempfile
 import os
 import unittest
+from unittest.mock import patch
 from backend.smb_parser import SmbParser
 
 SAMPLE_SMB_CONF = """
@@ -252,6 +253,40 @@ class TestSmbParser(unittest.TestCase):
         data = self.parser.parse()
         share_names = [s["name"] for s in data["shares"]]
         self.assertNotIn("injected_sec", share_names)
+
+    @patch("backend.smb_parser.atomic_write")
+    @patch("backend.smb_parser.file_lock")
+    def test_save_share_lock(self, mock_lock, mock_write):
+        # Assert save_share uses lock and atomic write
+        payload = {"name": "test_atomic", "path": "/srv/test"}
+        ok, _ = self.parser.save_share(payload)
+        self.assertTrue(ok)
+        mock_lock.assert_called_once_with(self.tmp.name)
+        mock_write.assert_called_once()
+        self.assertEqual(mock_write.call_args[0][0], self.tmp.name)
+        self.assertFalse(os.path.exists(f"{self.tmp.name}.tmp"))
+
+    @patch("backend.smb_parser.atomic_write")
+    @patch("backend.smb_parser.file_lock")
+    def test_delete_share_lock(self, mock_lock, mock_write):
+        # Assert delete_share uses lock and atomic write
+        ok, _ = self.parser.delete_share("public")
+        self.assertTrue(ok)
+        mock_lock.assert_called_once_with(self.tmp.name)
+        mock_write.assert_called_once()
+        self.assertEqual(mock_write.call_args[0][0], self.tmp.name)
+        self.assertFalse(os.path.exists(f"{self.tmp.name}.tmp"))
+
+    @patch("backend.smb_parser.atomic_write")
+    @patch("backend.smb_parser.file_lock")
+    def test_save_global_lock(self, mock_lock, mock_write):
+        # Assert save_global uses lock and atomic write
+        ok, _ = self.parser.save_global({"workgroup": "NEWGRP"})
+        self.assertTrue(ok)
+        mock_lock.assert_called_once_with(self.tmp.name)
+        mock_write.assert_called_once()
+        self.assertEqual(mock_write.call_args[0][0], self.tmp.name)
+        self.assertFalse(os.path.exists(f"{self.tmp.name}.tmp"))
 
 
 if __name__ == "__main__":

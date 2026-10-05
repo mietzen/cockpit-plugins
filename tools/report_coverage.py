@@ -33,6 +33,7 @@ TIER_CONFIG = {
             "code_server_helper.py",
             "config_manager.py",
             "service_manager.py",
+            "files.py",
         ],
     },
     "BACKEND": {
