@@ -6,8 +6,14 @@
 :9090 {
 	tls /etc/cockpit/ws-certs.d/0-self-signed.cert /etc/cockpit/ws-certs.d/0-self-signed.key
 
+	@code_server_no_slash path_regexp cs_ns ^/code-server/(?P<uid>[0-9]+)$
+	redir @code_server_no_slash /code-server/{re.cs_ns.uid}/ 308
+
 	@code_server path_regexp cs ^/code-server/(?P<uid>[0-9]+)(?P<rest>/.*)?$
 	handle @code_server {
+		forward_auth unix//run/cockpit/cockpit.sock {
+			uri /cockpit/login
+		}
 		rewrite {re.cs.rest}
 		reverse_proxy unix//run/code-server/{re.cs.uid}/code-server.sock
 	}

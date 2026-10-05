@@ -115,8 +115,8 @@ def test_cert_symlink_safety(tmp_path: Path):
 def test_tmpfiles_perms():
     conf_path = REPO_ROOT / "plugins" / "code-server" / "packaging" / "tmpfiles" / "cockpit-code-server.conf"
     content = conf_path.read_text(encoding="utf-8")
-    assert "1777" not in content
-    assert "0755" in content or "755" in content
+    assert "1777" in content
+    assert "0755" not in content
 
 
 SOCKET_CONF_PATH = (

@@ -9,7 +9,7 @@ fi
 # Configure code-server plugin environment and certificates
 if [ "@@PLUGIN_NAME@@" = "code-server" ]; then
     mkdir -p /run/code-server
-    chmod 0755 /run/code-server
+    chmod 1777 /run/code-server
     if command -v systemd-tmpfiles >/dev/null 2>&1; then
         systemd-tmpfiles --create /usr/lib/tmpfiles.d/cockpit-code-server.conf 2>/dev/null || true
     fi
