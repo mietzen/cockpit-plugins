@@ -73,29 +73,54 @@ async function run() {
   if (!frame) throw new Error("Could not find code-server iframe");
 
   console.log("VS Code Server plugin loaded inside iframe.");
-  await frame.waitForSelector("h1:has-text('VS Code Server')", { timeout: 15000 });
+  await frame.waitForSelector("iframe[title='Code-Server'], button[aria-label='Open in New Tab']", { timeout: 20000 });
+
+  const innerFrameEl = await frame.$("iframe[title='Code-Server']");
+  if (innerFrameEl) {
+    const innerFrame = await innerFrameEl.contentFrame();
+    if (innerFrame) {
+      console.log("Waiting for VS Code Workbench inside iframe...");
+      await innerFrame.waitForSelector(".monaco-workbench, .part.workbench, body", { timeout: 20000 }).catch(() => {});
+    }
+  }
+
+  async function setTheme(isDark) {
+    await page.evaluate((dark) => {
+      const html = document.documentElement;
+      if (dark) {
+        html.classList.add("pf-v6-theme-dark", "pf-v5-theme-dark", "theme-dark");
+        html.classList.remove("theme-light", "pf-m-light");
+      } else {
+        html.classList.add("theme-light", "pf-m-light");
+        html.classList.remove("pf-v6-theme-dark", "pf-v5-theme-dark", "theme-dark");
+      }
+      localStorage.setItem("shell:style", dark ? "dark" : "light");
+      window.dispatchEvent(new CustomEvent("cockpit-style", { detail: { style: dark ? "dark" : "light" } }));
+    }, isDark);
+
+    await frame.evaluate((dark) => {
+      const html = document.documentElement;
+      if (dark) {
+        html.classList.add("pf-v6-theme-dark", "pf-v5-theme-dark", "theme-dark");
+        html.classList.remove("theme-light", "pf-m-light");
+      } else {
+        html.classList.add("theme-light", "pf-m-light");
+        html.classList.remove("pf-v6-theme-dark", "pf-v5-theme-dark", "theme-dark");
+      }
+    }, isDark);
+
+    await page.waitForTimeout(1000);
+  }
 
   // Light theme screenshot
+  await setTheme(false);
   await page.screenshot({ path: path.join(OUTPUT_DIR, "cs-01-overview-light.png") });
   console.log("Saved cs-01-overview-light.png");
 
   // Dark theme screenshot
-  await page.evaluate(() => {
-    document.documentElement.classList.add("pf-v5-theme-dark");
-    document.documentElement.classList.remove("pf-v5-theme-light");
-  });
-  await page.waitForTimeout(500);
+  await setTheme(true);
   await page.screenshot({ path: path.join(OUTPUT_DIR, "cs-01-overview-dark.png") });
   console.log("Saved cs-01-overview-dark.png");
-
-  // Open settings modal
-  const settingsBtn = frame.locator("button[aria-label='Code Server settings']").first();
-  if (await settingsBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
-    await settingsBtn.click({ force: true });
-    await frame.waitForSelector("[role='dialog']:has-text('VS Code Server Configuration')", { timeout: 5000 });
-    await page.screenshot({ path: path.join(OUTPUT_DIR, "cs-02-settings-dark.png") });
-    console.log("Saved cs-02-settings-dark.png");
-  }
 
   await browser.close();
   console.log("All code-server screenshots captured successfully.");
