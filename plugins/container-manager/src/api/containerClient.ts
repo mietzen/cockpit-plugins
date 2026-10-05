@@ -334,12 +334,16 @@ export const containerApi = {
     if (!window.cockpit) {
       return null;
     }
+
     const safeEngine = engine === 'auto' || engine === 'none' || !engine ? 'docker' : engine;
-    const parts = cmd.trim().split(/\s+/);
-    return window.cockpit.spawn([safeEngine, 'exec', '-i', '-t', containerId, ...parts], {
-      pty: true,
-      superuser: 'require',
-    });
+
+    return window.cockpit.spawn(
+      [HELPER_PATH, 'terminal', '--engine', safeEngine, '--container', containerId, '--command', cmd],
+      {
+        pty: true,
+        superuser: 'require',
+      }
+    );
   },
 
   spawnLogs(
@@ -351,12 +355,25 @@ export const containerApi = {
     if (!window.cockpit) {
       return null;
     }
+
     const safeEngine = engine === 'auto' || engine === 'none' || !engine ? 'docker' : engine;
-    const args = [safeEngine, 'logs', '-f', '--tail', String(tail)];
+
+    const args = [
+      HELPER_PATH,
+      'logs',
+      '--engine',
+      safeEngine,
+      '--container',
+      containerId,
+      '--tail',
+      String(tail),
+    ];
+
     if (timestamps) {
-      args.push('-t');
+      args.push('--timestamps');
     }
-    args.push(containerId);
+
     return window.cockpit.spawn(args, { superuser: 'require', err: 'out' });
   },
 };
+

@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 import argparse
+import getpass
 import json
 import os
-import sys
-import getpass
+import re
+import shlex
 import socket
+import sys
 from typing import Any, Dict
 
 # Ensure local libexec directory and parent paths are resolvable
@@ -17,6 +19,10 @@ from tls_manager import disable_tls, get_client_bundle, get_tls_status, setup_tl
 
 MIN_PORT = 1
 MAX_PORT = 65535
+DEFAULT_LOG_TAIL = 200
+DEFAULT_SHELL_CMD = "/bin/sh"
+ALLOWED_ENGINES = ("docker", "podman")
+CONTAINER_ID_REGEX = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_.-]*$")
 
 
 # Resolve short hostname and effective user for SSH/context commands
@@ -127,6 +133,49 @@ def cmd_get_client_bundle(args: argparse.Namespace) -> Dict[str, Any]:
     return get_client_bundle(engine=engine)
 
 
+def cmd_terminal(args: argparse.Namespace) -> None:
+    # Validate target container engine
+    if args.engine not in ALLOWED_ENGINES:
+        raise ValueError(f"Invalid engine: {args.engine}")
+
+    # Validate container identifier to prevent command injection
+    if not args.container or not CONTAINER_ID_REGEX.match(args.container):
+        raise ValueError(f"Invalid container ID: {args.container}")
+
+    # Parse shell command tokens safely
+    raw_cmd = args.command if args.command else DEFAULT_SHELL_CMD
+    parts = shlex.split(raw_cmd)
+
+    # Replace current process with container exec session
+    exec_args = [args.engine, "exec", "-i", "-t", args.container, *parts]
+    os.execvp(args.engine, exec_args)
+
+
+def cmd_logs(args: argparse.Namespace) -> None:
+    # Validate target container engine
+    if args.engine not in ALLOWED_ENGINES:
+        raise ValueError(f"Invalid engine: {args.engine}")
+
+    # Validate container identifier to prevent command injection
+    if not args.container or not CONTAINER_ID_REGEX.match(args.container):
+        raise ValueError(f"Invalid container ID: {args.container}")
+
+    # Validate tail line count
+    tail_count = int(args.tail)
+    if tail_count < 0:
+        raise ValueError(f"Invalid tail value: {args.tail}")
+
+    # Build streaming log command arguments
+    log_args = [args.engine, "logs", "-f", "--tail", str(tail_count)]
+    if args.timestamps:
+        log_args.append("-t")
+
+    log_args.append(args.container)
+
+    # Replace current process with container logs stream
+    os.execvp(args.engine, log_args)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Cockpit Container Manager Backend Helper")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -135,6 +184,21 @@ def main() -> None:
     p_overview = subparsers.add_parser("get_overview")
     p_overview.add_argument("--engine", default="auto", choices=["auto", "docker", "podman"])
     p_overview.set_defaults(func=cmd_get_overview)
+
+    # terminal
+    p_terminal = subparsers.add_parser("terminal")
+    p_terminal.add_argument("--engine", default="docker", choices=ALLOWED_ENGINES)
+    p_terminal.add_argument("--container", required=True, help="Container ID or name")
+    p_terminal.add_argument("--command", default=DEFAULT_SHELL_CMD, help="Command to run")
+    p_terminal.set_defaults(func=cmd_terminal)
+
+    # logs
+    p_logs = subparsers.add_parser("logs")
+    p_logs.add_argument("--engine", default="docker", choices=ALLOWED_ENGINES)
+    p_logs.add_argument("--container", required=True, help="Container ID or name")
+    p_logs.add_argument("--tail", type=int, default=DEFAULT_LOG_TAIL, help="Lines from log tail")
+    p_logs.add_argument("--timestamps", action="store_true", help="Show timestamps")
+    p_logs.set_defaults(func=cmd_logs)
 
     # inspect_entity
     p_inspect = subparsers.add_parser("inspect_entity")
