@@ -12,6 +12,8 @@ from datetime import datetime, timezone, timedelta
 
 import re
 
+DEFAULT_PLUGINS = "cockpit-zfs-storage cockpit-file-sharing cockpit-container-manager cockpit-code-server"
+
 def get_hashes(data):
     return {
         "md5": hashlib.md5(data).hexdigest(),
@@ -271,6 +273,9 @@ SHA256:
         print("Note: No GPG signing key provided. Repository will be served without GPG signatures.")
 
     # Write one-line install script install.sh
+    unique_pkgs = list(dict.fromkeys(p["name"] for p in parsed_packages if p.get("name")))
+    all_plugins_str = " ".join(unique_pkgs) if unique_pkgs else DEFAULT_PLUGINS
+
     install_sh_content = f"""#!/usr/bin/env bash
 set -e
 
@@ -303,11 +308,16 @@ Trusted: yes
 EOF
 fi
 
-echo "==> Updating package cache and installing cockpit-zfs-storage..."
-apt-get update -qq
-apt-get install -y cockpit-zfs-storage
+TARGET_PLUGINS="$*"
+if [ -z "$TARGET_PLUGINS" ]; then
+    TARGET_PLUGINS="{all_plugins_str}"
+fi
 
-echo "==> Installation complete! Access Cockpit at https://<server-ip>:9090 and select 'ZFS storage'."
+echo "==> Updating package cache and installing $TARGET_PLUGINS..."
+apt-get update -qq
+apt-get install -y $TARGET_PLUGINS
+
+echo "==> Installation complete! Access Cockpit at https://<server-ip>:9090."
 """
     with open(os.path.join(output_dir, "install.sh"), "w", encoding="utf-8") as f:
         f.write(install_sh_content)

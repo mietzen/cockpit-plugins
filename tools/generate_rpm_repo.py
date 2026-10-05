@@ -8,6 +8,8 @@ import gzip
 import hashlib
 from datetime import datetime, timezone
 
+DEFAULT_PLUGINS = "cockpit-zfs-storage cockpit-file-sharing cockpit-container-manager cockpit-code-server"
+
 def get_hashes(data: bytes):
     return {
         "md5": hashlib.md5(data).hexdigest(),
@@ -165,6 +167,9 @@ def generate_rpm_repo(rpm_dir: str, output_dir: str, owner: str = "mietzen", rep
                 print(f"Warning: Failed to sign repomd.xml: {e}")
 
     # Generate install-rpm.sh
+    unique_pkgs = list(dict.fromkeys(p["name"] for p in packages_summary if p.get("name")))
+    all_plugins_str = " ".join(unique_pkgs) if unique_pkgs else DEFAULT_PLUGINS
+
     install_rpm_content = f"""#!/usr/bin/env bash
 set -e
 
@@ -184,8 +189,13 @@ gpgkey=https://{owner}.github.io/{repo}/key.gpg
 sslverify=1
 EOF
 
-echo "==> Installing cockpit-zfs-storage..."
-dnf install -y cockpit-zfs-storage || yum install -y cockpit-zfs-storage
+TARGET_PLUGINS="$*"
+if [ -z "$TARGET_PLUGINS" ]; then
+    TARGET_PLUGINS="{all_plugins_str}"
+fi
+
+echo "==> Installing $TARGET_PLUGINS..."
+dnf install -y $TARGET_PLUGINS || yum install -y $TARGET_PLUGINS
 
 echo "==> Installation complete! Access Cockpit at https://<server-ip>:9090."
 """
