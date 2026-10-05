@@ -532,7 +532,7 @@ class TestEngineAdapter(unittest.TestCase):
     def test_get_volume_size_unit(self):
         import tempfile
         import os
-        from engine_adapter import get_volume_size
+        from engine_adapter import _VOLUME_CACHE, MAX_VOLUME_ENTRIES, get_volume_size
 
         # Non-existent path
         self.assertEqual(get_volume_size("/non/existent/path/123"), "")
@@ -550,24 +550,74 @@ class TestEngineAdapter(unittest.TestCase):
             self.assertEqual(get_volume_size(tmpdir), "0 B")
 
             # 2 KB file
+            _VOLUME_CACHE.clear()
             fpath = os.path.join(tmpdir, "file.bin")
             with open(fpath, "wb") as f:
                 f.write(b"a" * 2048)
             self.assertEqual(get_volume_size(tmpdir), "2.0 KB")
 
             # 2 MB file
+            _VOLUME_CACHE.clear()
             with open(fpath, "wb") as f:
                 f.write(b"a" * (2 * 1024 * 1024))
             self.assertEqual(get_volume_size(tmpdir), "2.0 MB")
 
             # 1.5 GB simulated via mock
+            _VOLUME_CACHE.clear()
             with patch("os.walk", return_value=[(tmpdir, [], ["big.bin"])]):
                 with patch("os.path.getsize", return_value=int(1.5 * 1024 * 1024 * 1024)):
                     self.assertEqual(get_volume_size(tmpdir), "1.50 GB")
 
             # Exception handling
+            _VOLUME_CACHE.clear()
             with patch("os.walk", side_effect=PermissionError("denied")):
                 self.assertEqual(get_volume_size(tmpdir), "")
+
+    def test_vol_size_limit_entries(self):
+        # Verify scanning stops at MAX_VOLUME_ENTRIES without hanging
+        from engine_adapter import MAX_VOLUME_ENTRIES, get_volume_size
+
+        entries_yielded = 0
+
+        def gen_walk(_top):
+            nonlocal entries_yielded
+            for i in range(1000):
+                entries_yielded += 1
+                yield ("/fake", [], [f"file_{i}.txt"])
+
+        with patch("os.path.exists", return_value=True):
+            with patch("os.path.isfile", return_value=False):
+                with patch("os.walk", side_effect=gen_walk):
+                    with patch("os.path.islink", return_value=False):
+                        with patch("os.path.getsize", return_value=100):
+                            res = get_volume_size("/fake", use_cache=False)
+
+                            self.assertTrue(res.endswith("+"))
+                            self.assertLessEqual(entries_yielded, MAX_VOLUME_ENTRIES + 1)
+
+    def test_vol_size_caching(self):
+        # Verify subsequent calls return cached size without rescanning
+        from engine_adapter import get_volume_size
+
+        walk_calls = 0
+
+        def counting_walk(_top):
+            nonlocal walk_calls
+            walk_calls += 1
+            yield ("/fake_cache", [], ["data.bin"])
+
+        with patch("os.path.exists", return_value=True):
+            with patch("os.path.isfile", return_value=False):
+                with patch("os.walk", side_effect=counting_walk):
+                    with patch("os.path.islink", return_value=False):
+                        with patch("os.path.getsize", return_value=1024):
+                            res1 = get_volume_size("/fake_cache", use_cache=True)
+                            self.assertEqual(res1, "1.0 KB")
+                            self.assertEqual(walk_calls, 1)
+
+                            res2 = get_volume_size("/fake_cache", use_cache=True)
+                            self.assertEqual(res2, "1.0 KB")
+                            self.assertEqual(walk_calls, 1)
 
 
 if __name__ == "__main__":
