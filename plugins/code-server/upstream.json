@@ -2,9 +2,12 @@
   "packages": [
     {
       "name": "code-server",
-      "version": "4.139.1",
+      "version": "4.140.0",
       "repo": "coder/code-server",
-      "archs": ["amd64", "arm64"],
+      "archs": [
+        "amd64",
+        "arm64"
+      ],
       "assets": [
         {
           "type": "deb",
@@ -22,7 +25,10 @@
       "name": "caddy",
       "version": "2.11.7",
       "repo": "caddyserver/caddy",
-      "archs": ["amd64", "arm64"],
+      "archs": [
+        "amd64",
+        "arm64"
+      ],
       "assets": [
         {
           "type": "tar.gz",
