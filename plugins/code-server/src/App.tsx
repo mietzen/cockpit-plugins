@@ -46,6 +46,10 @@ export const App: React.FC = () => {
         await codeServerApi.serviceAction("start");
         data = await codeServerApi.getStatus();
       }
+      if (data.token) {
+        const uid = data.uid ?? 1000;
+        document.cookie = `cs_token=${encodeURIComponent(data.token)}; path=/code-server/${uid}/; SameSite=Lax; Secure`;
+      }
       setStatus(data);
     } catch (err: any) {
       addAlert("danger", "Failed to load VS Code Server status", err.message || String(err));

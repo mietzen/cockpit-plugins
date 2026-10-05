@@ -14,10 +14,22 @@
 		forward_auth unix//run/cockpit/cockpit.sock {
 			uri /cockpit/login
 		}
-		rewrite {re.cs.rest}
-		reverse_proxy unix//run/code-server/{re.cs.uid}/code-server.sock unix//run/code-server/{re.cs.uid}.sock {
-			lb_policy first
-			lb_try_duration 1s
+		@valid_token {
+			file {
+				root /run/code-server/{re.cs.uid}/tokens
+				try_files {http.request.cookie.cs_token} {http.request.uri.query.token}
+			}
+		}
+		handle @valid_token {
+			header ?token=* Set-Cookie "cs_token={http.request.uri.query.token}; Path=/code-server/{re.cs.uid}/; SameSite=Lax; Secure"
+			rewrite {re.cs.rest}
+			reverse_proxy unix//run/code-server/{re.cs.uid}/code-server.sock unix//run/code-server/{re.cs.uid}.sock {
+				lb_policy first
+				lb_try_duration 1s
+			}
+		}
+		handle {
+			respond "Forbidden: Invalid or missing token" 403
 		}
 	}
 

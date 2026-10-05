@@ -30,6 +30,23 @@ def test_handle_status_command():
         assert "password" not in res["config"]
 
 
+def test_status_includes_token():
+    with patch("backend.code_server_helper.get_binary_info", return_value={"installed": True, "version": "4.139.1", "path": "/usr/bin/code-server"}), \
+         patch("backend.code_server_helper.get_service_status", return_value={"active": True, "state": "active", "enabled": True, "pid": 1234, "unit": "code-server@test-user.service", "socket_ready": True}), \
+         patch("backend.code_server_helper.get_or_create_user_token", return_value="secret-token-xyz") as mock_token, \
+         patch("backend.code_server_helper.parse_code_server_config") as mock_cfg:
+
+        mock_obj = MagicMock()
+        mock_obj.to_dict.return_value = {"port": 8080, "auth": "none", "auth_configured": False}
+        mock_cfg.return_value = mock_obj
+
+        res = handle_command(["status", "--user", "test-user"])
+        assert res["status"] == "ok"
+        assert res["token"] == "secret-token-xyz"
+        mock_token.assert_called_once_with("test-user")
+
+
+
 def test_status_restarts_socket():
     mock_inactive = {
         "active": True,

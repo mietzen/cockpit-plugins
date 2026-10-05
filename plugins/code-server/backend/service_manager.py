@@ -1,6 +1,7 @@
 import json
 import os
 import platform
+import pwd
 import secrets
 import shutil
 import subprocess
@@ -9,6 +10,10 @@ from typing import Dict, Any, Optional
 
 ALLOWED_ACTIONS = {"start", "stop", "restart", "enable", "disable", "reload"}
 PASSWORD_TOKEN_BYTES = 24
+RUN_CODE_SERVER_BASE_DIR = "/run/code-server"
+TOKEN_DIR_MODE = 0o700
+TOKEN_FILE_MODE = 0o600
+TOKEN_BYTES = 32
 
 
 def get_binary_info() -> Dict[str, Any]:
@@ -46,9 +51,98 @@ def get_binary_info() -> Dict[str, Any]:
         "path": binary_path,
     }
 try:
-    from .config_manager import resolve_username, get_default_socket_path_for_user
+    from .config_manager import (
+        resolve_username,
+        get_default_socket_path_for_user,
+        get_user_uid,
+    )
 except ImportError:
-    from config_manager import resolve_username, get_default_socket_path_for_user
+    from config_manager import (
+        resolve_username,
+        get_default_socket_path_for_user,
+        get_user_uid,
+    )
+
+
+def get_or_create_user_token(username: Optional[str] = None) -> str:
+    # Resolve user, uid, and gid for token paths
+    user = resolve_username(username)
+    uid = get_user_uid(username)
+    gid = uid
+    try:
+        pw = pwd.getpwnam(user)
+        uid = pw.pw_uid
+        gid = pw.pw_gid
+    except Exception:
+        pass
+
+    user_run_dir = os.path.join(RUN_CODE_SERVER_BASE_DIR, str(uid))
+    tokens_dir = os.path.join(user_run_dir, "tokens")
+    token_file = os.path.join(user_run_dir, "token")
+
+    # Ensure tokens directory exists with restricted user access
+    try:
+        os.makedirs(tokens_dir, mode=TOKEN_DIR_MODE, exist_ok=True)
+        os.chmod(tokens_dir, TOKEN_DIR_MODE)
+        os.chown(tokens_dir, uid, gid)
+    except Exception:
+        pass
+
+    # Read existing token if present and non-empty
+    token = None
+    if os.path.isfile(token_file):
+        try:
+            with open(token_file, "r", encoding="utf-8") as f:
+                candidate = f.read().strip()
+            if candidate:
+                token = candidate
+        except Exception:
+            pass
+
+    if token:
+        # Ensure validation file exists in tokens directory
+        token_entry = os.path.join(tokens_dir, token)
+        if not os.path.exists(token_entry):
+            try:
+                with open(token_entry, "w", encoding="utf-8") as f:
+                    f.write(token)
+                os.chmod(token_entry, TOKEN_FILE_MODE)
+                os.chown(token_entry, uid, gid)
+            except Exception:
+                pass
+
+        return token
+
+    # Generate new cryptographically secure token
+    token = secrets.token_urlsafe(TOKEN_BYTES)
+
+    try:
+        with open(token_file, "w", encoding="utf-8") as f:
+            f.write(token)
+        os.chmod(token_file, TOKEN_FILE_MODE)
+        os.chown(token_file, uid, gid)
+    except Exception:
+        pass
+
+    # Clean old tokens from directory before writing active token
+    try:
+        for entry in os.listdir(tokens_dir):
+            epath = os.path.join(tokens_dir, entry)
+            if os.path.isfile(epath) or os.path.islink(epath):
+                os.unlink(epath)
+    except Exception:
+        pass
+
+    token_entry = os.path.join(tokens_dir, token)
+    try:
+        with open(token_entry, "w", encoding="utf-8") as f:
+            f.write(token)
+        os.chmod(token_entry, TOKEN_FILE_MODE)
+        os.chown(token_entry, uid, gid)
+    except Exception:
+        pass
+
+    return token
 
 
 def get_service_unit_name(username: Optional[str] = None) -> str:

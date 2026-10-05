@@ -25,6 +25,16 @@ REVERSE_PROXY_FALLBACK = (
     "reverse_proxy unix//run/code-server/{re.cs.uid}/code-server.sock unix//run/code-server/{re.cs.uid}.sock"
 )
 EXPECTED_TMPFILES_PERM = "1777"
+VALID_TOKEN_MATCHER = "@valid_token"
+TOKENS_ROOT_DIR = "root /run/code-server/{re.cs.uid}/tokens"
+TRY_FILES_DIRECTIVE = (
+    "try_files {http.request.cookie.cs_token} {http.request.uri.query.token}"
+)
+FORBIDDEN_RESPONSE = 'respond "Forbidden: Invalid or missing token" 403'
+SET_COOKIE_HEADER = (
+    'header ?token=* Set-Cookie "cs_token={http.request.uri.query.token}; '
+    'Path=/code-server/{re.cs.uid}/; SameSite=Lax; Secure"'
+)
 
 
 def test_caddy_forward_auth():
@@ -67,3 +77,15 @@ def test_caddy_socket_fallback():
     content = CADDYFILE_PATH.read_text(encoding="utf-8")
 
     assert REVERSE_PROXY_FALLBACK in content
+
+
+def test_caddy_token_validation():
+    """Verify code-server route enforces token auth via cookies and query param."""
+    content = CADDYFILE_PATH.read_text(encoding="utf-8")
+
+    assert VALID_TOKEN_MATCHER in content
+    assert TOKENS_ROOT_DIR in content
+    assert TRY_FILES_DIRECTIVE in content
+    assert FORBIDDEN_RESPONSE in content
+    assert SET_COOKIE_HEADER in content
+

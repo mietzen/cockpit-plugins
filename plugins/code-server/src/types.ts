@@ -29,6 +29,7 @@ export interface CodeServerStatus {
   status: "ok" | "error";
   user?: string;
   uid?: number;
+  token?: string;
   binary: BinaryInfo;
   service: ServiceInfo;
   config: CodeServerConfigData;
@@ -43,8 +44,17 @@ export interface CommandResult {
   output?: string;
 }
 
-export const getCodeServerUrl = (uid?: number | string | null): string => {
+export const getCodeServerUrl = (
+  uid?: number | string | null,
+  token?: string | null,
+): string => {
   const effectiveUid = uid ?? 1000;
-  return `/code-server/${effectiveUid}/`;
+  const baseUrl = `/code-server/${effectiveUid}/`;
+
+  if (token) {
+    return `${baseUrl}?token=${encodeURIComponent(token)}`;
+  }
+
+  return baseUrl;
 };
 
