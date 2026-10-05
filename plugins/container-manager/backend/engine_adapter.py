@@ -2,6 +2,7 @@ import json
 import os
 import shutil
 import sys
+import time
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -121,36 +122,75 @@ def normalize_image_ref(ref: str) -> set:
     return results
 
 
-def get_volume_size(mountpoint: str) -> str:
-    """Calculates disk usage for a local volume mountpoint."""
+MAX_VOLUME_ENTRIES = 200
+MAX_VOLUME_SCAN_SEC = 0.25
+VOLUME_CACHE_TTL_SEC = 60.0
+
+_VOLUME_CACHE: Dict[str, Tuple[float, str]] = {}
+
+
+def _format_vol_size(total: int, truncated: bool) -> str:
+    """Formats byte total into unit string, appending plus if truncated."""
+    suffix = "+" if truncated else ""
+
+    if total <= 0:
+        return f"0 B{suffix}"
+
+    if total < 1024:
+        return f"{total} B{suffix}"
+
+    if total < 1024 * 1024:
+        return f"{total / 1024:.1f} KB{suffix}"
+
+    if total < 1024 * 1024 * 1024:
+        return f"{total / (1024 * 1024):.1f} MB{suffix}"
+
+    return f"{total / (1024 * 1024 * 1024):.2f} GB{suffix}"
+
+
+def get_volume_size(mountpoint: str, use_cache: bool = True) -> str:
+    """Calculates disk usage for a local volume mountpoint with bounds and caching."""
     if not mountpoint or not os.path.exists(mountpoint):
         return ""
 
+    # Return cached size if still valid
+    if use_cache and mountpoint in _VOLUME_CACHE:
+        cached_time, cached_val = _VOLUME_CACHE[mountpoint]
+        if time.monotonic() - cached_time < VOLUME_CACHE_TTL_SEC:
+            return cached_val
+
     total = 0
+    truncated = False
+    count = 0
+    start_time = time.monotonic()
+
     try:
         if os.path.isfile(mountpoint):
             total = os.path.getsize(mountpoint)
         else:
             for root, _, files in os.walk(mountpoint):
                 for f in files:
+                    count += 1
+                    if count > MAX_VOLUME_ENTRIES or (time.monotonic() - start_time) > MAX_VOLUME_SCAN_SEC:
+                        truncated = True
+                        break
+
                     fp = os.path.join(root, f)
                     try:
                         if not os.path.islink(fp):
                             total += os.path.getsize(fp)
                     except OSError:
                         pass
+
+                if truncated:
+                    break
     except Exception:
         return ""
 
-    if total <= 0:
-        return "0 B"
-    if total < 1024:
-        return f"{total} B"
-    if total < 1024 * 1024:
-        return f"{total / 1024:.1f} KB"
-    if total < 1024 * 1024 * 1024:
-        return f"{total / (1024 * 1024):.1f} MB"
-    return f"{total / (1024 * 1024 * 1024):.2f} GB"
+    formatted = _format_vol_size(total, truncated)
+    _VOLUME_CACHE[mountpoint] = (time.monotonic(), formatted)
+
+    return formatted
 
 
 def extract_compose_metadata(raw_labels: Any) -> Tuple[Dict[str, str], str, str]:
