@@ -154,7 +154,7 @@ class CommandBuilder:
             cmd.extend(["-R", altroot])
         if import_all or not name:
             cmd.append("-a")
-        elif name:
+        else:
             cmd.append(name)
         return cmd
 

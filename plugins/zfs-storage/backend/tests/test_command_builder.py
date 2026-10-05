@@ -120,7 +120,7 @@ class TestCommandBuilder(unittest.TestCase):
         self.assertIn("tank", cmd)
         self.assertNotIn("-a", cmd)
 
-    def test_build_pool_import_default(self):
+    def test_build_pool_import_none(self):
         # Verify missing pool name defaults to -a to execute import instead of scan.
         cmd = self.builder.build_pool_import()
         self.assertIn("-a", cmd)
