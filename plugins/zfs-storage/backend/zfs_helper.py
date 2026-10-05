@@ -40,6 +40,7 @@ from sanoid_manager import (
 )
 
 SANOID_CONF_PATH = "/etc/sanoid/sanoid.conf"
+FILE_SHARING_HELPER = "/usr/libexec/cockpit-file-sharing/file_sharing_helper.py"
 SAFE_NAME_RE = re.compile(r"^[a-zA-Z0-9_\-\.\:\/\@\#\%\=\+]+$")
 
 
@@ -514,6 +515,40 @@ class ZfsService:
         cmd = self.builder.build_dataset_inherit(ds_path, prop=prop)
         return self._exec(cmd)
 
+    # Configure SMB and NFS shares via cockpit-file-sharing helper.
+    def share_dataset(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        path = payload.get("path")
+        if not path:
+            return {"status": "error", "message": "Dataset path is required"}
+
+        helper = FILE_SHARING_HELPER
+        if not os.path.exists(helper):
+            return {"status": "error", "message": "File sharing helper is not installed"}
+
+        smb = bool(payload.get("smb", False))
+        nfs = bool(payload.get("nfs", False))
+
+        if smb:
+            share_name = path.split("/")[-1] or "share"
+            smb_data = json.dumps({
+                "name": share_name,
+                "path": path,
+                "comment": f"ZFS share {path}",
+                "read_only": False,
+                "browseable": True,
+                "guest_ok": False,
+            })
+            run_cmd([sys.executable or "python3", helper, "save_smb_share", "--data", smb_data])
+
+        if nfs:
+            nfs_data = json.dumps({
+                "path": path,
+                "clients": [{"host": "*", "read_only": False, "sync": True, "root_squash": True, "no_subtree_check": True}],
+            })
+            run_cmd([sys.executable or "python3", helper, "save_nfs_export", "--data", nfs_data])
+
+        return {"status": "success", "message": "Dataset shared"}
+
     def snapshot_create(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         path = validate_name(payload["path"], "dataset_path")
         snap_name = validate_name(payload["name"], "snapshot_name")
@@ -639,6 +674,9 @@ def main():
         elif action == "dataset-inherit-property":
             path, prop = sys.argv[2], sys.argv[3]
             res = svc.dataset_inherit_property(path, prop)
+        elif action == "dataset-share":
+            payload = json.loads(sys.argv[2])
+            res = svc.share_dataset(payload)
         elif action == "snapshots-list":
             path = sys.argv[2] if len(sys.argv) > 2 else None
             res = svc.get_snapshots(path)

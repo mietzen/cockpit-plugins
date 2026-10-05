@@ -845,6 +845,38 @@ class TestZfsServiceActions(unittest.TestCase):
             res = json.loads(mock_print.call_args[0][0])
             self.assertTrue(res["success"])
 
+    # Test backend share_dataset delegation to file_sharing_helper.
+    @patch("backend.zfs_helper.run_cmd")
+    @patch("os.path.exists")
+    def test_share_dataset_service(self, mock_exists, mock_run):
+        # Missing path error
+        res_missing = self.svc.share_dataset({})
+        self.assertEqual(res_missing["status"], "error")
+        self.assertIn("Dataset path is required", res_missing["message"])
+
+        # Helper not installed error
+        mock_exists.return_value = False
+        res_no_helper = self.svc.share_dataset({"path": "tank/share"})
+        self.assertEqual(res_no_helper["status"], "error")
+        self.assertIn("File sharing helper is not installed", res_no_helper["message"])
+
+        # Helper installed, SMB and NFS sharing
+        mock_exists.return_value = True
+        mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
+
+        res_success = self.svc.share_dataset({"path": "tank/share", "smb": True, "nfs": True})
+        self.assertEqual(res_success["status"], "success")
+        self.assertEqual(res_success["message"], "Dataset shared")
+
+        self.assertEqual(mock_run.call_count, 2)
+        smb_call = mock_run.call_args_list[0][0][0]
+        nfs_call = mock_run.call_args_list[1][0][0]
+
+        self.assertIn("save_smb_share", smb_call)
+        self.assertIn("save_nfs_export", nfs_call)
+        self.assertIn("/usr/libexec/cockpit-file-sharing/file_sharing_helper.py", smb_call)
+        self.assertIn("/usr/libexec/cockpit-file-sharing/file_sharing_helper.py", nfs_call)
+
 
 if __name__ == "__main__":
     unittest.main()
