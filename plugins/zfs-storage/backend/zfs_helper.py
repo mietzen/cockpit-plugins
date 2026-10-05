@@ -196,7 +196,7 @@ class ZfsService:
                 pool["logs"] = status_data.get("logs", [])
                 pool["spares"] = status_data.get("spares", [])
                 pool["special"] = status_data.get("special", [])
-                pool["dedup"] = status_data.get("dedup", [])
+                pool["dedup_vdevs"] = status_data.get("dedup", [])
 
         return pools
 
@@ -298,7 +298,7 @@ class ZfsService:
             map_vdevs(pool.get("logs", []))
             map_vdevs(pool.get("spares", []))
             map_vdevs(pool.get("special", []))
-            map_vdevs(pool.get("dedup", []))
+            map_vdevs(pool.get("dedup_vdevs", []))
 
         def get_system_mount(device_info: Dict[str, Any]) -> Optional[str]:
             mountpoint = device_info.get("mountpoint")
