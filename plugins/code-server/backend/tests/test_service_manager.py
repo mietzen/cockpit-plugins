@@ -132,7 +132,7 @@ def test_ensure_user_dir_permissions_success():
                 content = f.read()
                 assert "auth: password" in content
                 assert "password:" in content
-                assert "socket: /run/code-server/1000.sock" in content
+                assert "socket: /run/code-server/1000/code-server.sock" in content
 
 
 def test_ensure_user_dir_new_cfg():
@@ -161,7 +161,7 @@ def test_ensure_user_dir_migrate():
         os.makedirs(cfg_dir, exist_ok=True)
         cfg_file = os.path.join(cfg_dir, "config.yaml")
         with open(cfg_file, "w") as f:
-            f.write("socket: /run/code-server/1000.sock\nauth: none\n")
+            f.write("socket: /run/code-server/1000/code-server.sock\nauth: none\n")
 
         fake_pw = pwd.struct_passwd(("testuser", "x", 1000, 1000, "Test User", fake_home, "/bin/bash"))
         with patch("pwd.getpwnam", return_value=fake_pw), \
@@ -182,7 +182,7 @@ def test_ensure_dir_keep_pass():
         os.makedirs(cfg_dir, exist_ok=True)
         cfg_file = os.path.join(cfg_dir, "config.yaml")
         with open(cfg_file, "w") as f:
-            f.write("socket: /run/code-server/1000.sock\nauth: password\npassword: keep-this-secret\n")
+            f.write("socket: /run/code-server/1000/code-server.sock\nauth: password\npassword: keep-this-secret\n")
 
         fake_pw = pwd.struct_passwd(("testuser", "x", 1000, 1000, "Test User", fake_home, "/bin/bash"))
         with patch("pwd.getpwnam", return_value=fake_pw), \
@@ -287,3 +287,31 @@ def test_read_pinned_version():
     caddy_ver = read_pinned_version("caddy", fallback=fallback)
     assert caddy_ver != fallback
     assert caddy_ver == "2.11.7"
+
+
+def test_user_sock_dir_perms():
+    fake_pw = pwd.struct_passwd(("alice", "x", 1001, 1001, "Alice", "/home/alice", "/bin/bash"))
+    dirs_created = {}
+    chown_calls = {}
+
+    def mock_makedirs(path, mode=0o777, exist_ok=False):
+        dirs_created[path] = mode
+
+    def mock_chmod(path, mode):
+        dirs_created[path] = mode
+
+    def mock_chown(path, uid, gid):
+        chown_calls[path] = (uid, gid)
+
+    with patch("pwd.getpwnam", return_value=fake_pw), \
+         patch("backend.service_manager.resolve_username", return_value="alice"), \
+         patch("os.makedirs", side_effect=mock_makedirs), \
+         patch("os.chmod", side_effect=mock_chmod), \
+         patch("os.chown", side_effect=mock_chown), \
+         patch("os.path.isdir", return_value=True), \
+         patch("builtins.open", MagicMock()):
+        ensure_user_dir_permissions("alice")
+
+    assert dirs_created.get("/run/code-server") == 0o755
+    assert dirs_created.get("/run/code-server/1001") == 0o700
+    assert chown_calls.get("/run/code-server/1001") == (1001, 1001)

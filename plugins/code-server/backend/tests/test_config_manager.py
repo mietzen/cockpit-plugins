@@ -13,13 +13,14 @@ from backend.config_manager import (
     DEFAULT_AUTH,
     get_default_port_for_user,
     get_default_bind_addr_for_user,
+    get_default_socket_path_for_user,
 )
 
 
 def test_parse_default_config_when_file_not_found():
     with patch.dict(os.environ, {"USER": "root", "LOGNAME": "root"}, clear=True):
         cfg = parse_code_server_config("/non/existent/path/config.yaml", username="root")
-        assert cfg.socket == "/run/code-server/0.sock"
+        assert cfg.socket == "/run/code-server/0/code-server.sock"
         assert cfg.socket_mode == "600"
         assert cfg.auth == "password"
         assert cfg.password is not None
@@ -162,12 +163,12 @@ def test_write_code_server_config_failure():
 
 def test_parse_socket_config():
     with tempfile.NamedTemporaryFile("w", delete=False, suffix=".yaml") as f:
-        f.write("socket: /run/code-server/1001.sock\nsocket-mode: 666\nauth: none\n")
+        f.write("socket: /run/code-server/1001/code-server.sock\nsocket-mode: 666\nauth: none\n")
         tmp_path = f.name
 
     try:
         cfg = parse_code_server_config(tmp_path)
-        assert cfg.socket == "/run/code-server/1001.sock"
+        assert cfg.socket == "/run/code-server/1001/code-server.sock"
         assert cfg.socket_mode == "666"
         assert cfg.auth == "none"
     finally:
@@ -178,14 +179,14 @@ def test_write_socket_config():
     with tempfile.TemporaryDirectory() as tmpdir:
         cfg_path = os.path.join(tmpdir, "config.yaml")
         cfg = CodeServerConfig(
-            socket="/run/code-server/1000.sock",
+            socket="/run/code-server/1000/code-server.sock",
             socket_mode="666",
             auth="none",
         )
         assert write_code_server_config(cfg_path, cfg) is True
 
         parsed = parse_code_server_config(cfg_path)
-        assert parsed.socket == "/run/code-server/1000.sock"
+        assert parsed.socket == "/run/code-server/1000/code-server.sock"
         assert parsed.socket_mode == "666"
 
 
@@ -285,5 +286,13 @@ def test_write_code_server_config_exception_cleanup():
         cfg_path = os.path.join(tmpdir, "config.yaml")
         with patch("os.chmod", side_effect=OSError("chmod failed")):
             assert write_code_server_config(cfg_path, CodeServerConfig()) is False
+
+
+def test_sock_path_isolated():
+    fake_pw = pwd.struct_passwd(("alice", "x", 1002, 1002, "Alice", "/home/alice", "/bin/bash"))
+    with patch("pwd.getpwnam", return_value=fake_pw):
+        assert get_default_socket_path_for_user("alice") == "/run/code-server/1002/code-server.sock"
+    with patch.dict(os.environ, {"USER": "root", "LOGNAME": "root"}, clear=True):
+        assert get_default_socket_path_for_user("root") == "/run/code-server/0/code-server.sock"
 
 

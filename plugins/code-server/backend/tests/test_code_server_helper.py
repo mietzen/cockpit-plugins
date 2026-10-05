@@ -61,7 +61,7 @@ def test_handle_save_config_command():
 
 def test_save_config_keeps_creds():
     mock_existing = CodeServerConfig(
-        socket="/run/code-server/1000.sock",
+        socket="/run/code-server/1000/code-server.sock",
         socket_mode="600",
         auth="password",
         password="existing-secret",
@@ -73,7 +73,7 @@ def test_save_config_keeps_creds():
         res = handle_command(["save_config", "--user", "test-user", "--data", payload])
         assert res["status"] == "ok"
         saved_cfg = mock_write.call_args[0][1]
-        assert saved_cfg.socket == "/run/code-server/1000.sock"
+        assert saved_cfg.socket == "/run/code-server/1000/code-server.sock"
         assert saved_cfg.password == "existing-secret"
         assert saved_cfg.cert is True
 
