@@ -109,6 +109,23 @@ class TestCommandBuilder(unittest.TestCase):
         cmd = self.builder.build_pool_import(name="tank", force=True)
         self.assertEqual(cmd, ["zpool", "import", "-d", "/dev/disk/by-id", "-f", "tank"])
 
+    def test_build_pool_import_all(self):
+        # Verify import_all flag appends -a to import all discovered pools.
+        cmd = self.builder.build_pool_import(import_all=True)
+        self.assertIn("-a", cmd)
+
+    def test_build_pool_import_named(self):
+        # Verify named pool import targets specific pool without -a flag.
+        cmd = self.builder.build_pool_import(name="tank")
+        self.assertIn("tank", cmd)
+        self.assertNotIn("-a", cmd)
+
+    def test_build_pool_import_default(self):
+        # Verify missing pool name defaults to -a to execute import instead of scan.
+        cmd = self.builder.build_pool_import()
+        self.assertIn("-a", cmd)
+
+
     def test_build_pool_scrub_start(self):
         cmd = self.builder.build_pool_scrub("tank", action=ScrubAction.START)
         self.assertEqual(cmd, ["zpool", "scrub", "tank"])
@@ -224,7 +241,7 @@ class TestCommandBuilder(unittest.TestCase):
         # Pool destroy & export with force
         self.assertEqual(self.builder.build_pool_destroy("tank", force=False), ["zpool", "destroy", "tank"])
         self.assertEqual(self.builder.build_pool_export("tank", force=True), ["zpool", "export", "-f", "tank"])
-        self.assertEqual(self.builder.build_pool_import(name=None, force=False, altroot=None, directory=""), ["zpool", "import"])
+        self.assertEqual(self.builder.build_pool_import(name=None, force=False, altroot=None, directory=""), ["zpool", "import", "-a"])
 
         # Dataset operations
         self.assertEqual(self.builder.build_dataset_create("tank/d", properties={"compression": "lz4"}), ["zfs", "create", "-o", "compression=lz4", "tank/d"])

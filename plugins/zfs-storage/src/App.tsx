@@ -423,13 +423,13 @@ export const App: React.FC = () => {
           onSelectPool={handleSelectPool}
           onCreatePool={() => setActiveModal({ type: "create-pool" })}
           onImportPool={() => {
-            const cmd = ["zpool", "import", "-d", "/dev/disk/by-id", "-f"];
+            const cmd = ["zpool", "import", "-d", "/dev/disk/by-id", "-f", "-a"];
             setActiveModal({
               type: "preview",
               title: "Import ZFS Pools",
               command: cmd,
               description: "Scan available disks and import discovered ZFS pools.",
-              onConfirm: () => runAction(zfsApi.importPool({ force: true }), "Import scan executed"),
+              onConfirm: () => runAction(zfsApi.importPool({ force: true, import_all: true }), "Pool import executed"),
             });
           }}
           onViewArcDetails={() => setActiveModal({ type: "arc-details" })}
@@ -447,13 +447,13 @@ export const App: React.FC = () => {
             setActiveModal({ type: "create-pool" });
           }}
           onImportPool={() => {
-            const cmd = ["zpool", "import", "-d", "/dev/disk/by-id", "-f"];
+            const cmd = ["zpool", "import", "-d", "/dev/disk/by-id", "-f", "-a"];
             setActiveModal({
               type: "preview",
               title: "Import ZFS Pools",
               command: cmd,
               description: "Scan available disks and import discovered ZFS pools.",
-              onConfirm: () => runAction(zfsApi.importPool({ force: true }), "Import scan executed"),
+              onConfirm: () => runAction(zfsApi.importPool({ force: true, import_all: true }), "Pool import executed"),
             });
           }}
           onDestroyPool={(p) => setActiveModal({ type: "destroy", itemType: "pool", itemName: p.name })}

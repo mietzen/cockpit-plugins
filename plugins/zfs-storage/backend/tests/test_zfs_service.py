@@ -365,6 +365,17 @@ class TestZfsServiceActions(unittest.TestCase):
         self.assertTrue(self.svc.pool_set_property("tank", "autotrim", "on")["success"])
 
     @patch("backend.zfs_helper.run_cmd")
+    def test_pool_import_all(self, mock_run):
+        # Verify pool_import without pool name executes import with -a flag.
+        mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
+        res = self.svc.pool_import({})
+        self.assertTrue(res["success"])
+        mock_run.assert_called_once()
+        cmd = mock_run.call_args[0][0]
+        self.assertIn("-a", cmd)
+
+
+    @patch("backend.zfs_helper.run_cmd")
     def test_snapshot_actions(self, mock_run):
         mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
         self.assertTrue(self.svc.snapshot_create({"path": "tank/data", "name": "s1", "recursive": True})["success"])
