@@ -181,34 +181,7 @@ export class ZfsApiClient {
   }
 
   public async shareDataset(params: { path: string; smb: boolean; nfs: boolean }): Promise<void> {
-    if (!this.hasCockpit()) return;
-    const cockpit = (window as any).cockpit;
-    const helper = "/usr/libexec/cockpit-file-sharing/file_sharing_helper.py";
-
-    try {
-      if (params.smb) {
-        const shareName = params.path.split("/").pop() || "share";
-        const smbData = JSON.stringify({
-          name: shareName,
-          path: params.path,
-          comment: `ZFS share ${params.path}`,
-          read_only: false,
-          browseable: true,
-          guest_ok: false,
-        });
-        await cockpit.spawn(["python3", helper, "save_smb_share", "--data", smbData], { superuser: "require", err: "message" });
-      }
-
-      if (params.nfs) {
-        const nfsData = JSON.stringify({
-          path: params.path,
-          clients: [{ host: "*", read_only: false, sync: true, root_squash: true, no_subtree_check: true }],
-        });
-        await cockpit.spawn(["python3", helper, "save_nfs_export", "--data", nfsData], { superuser: "require", err: "message" });
-      }
-    } catch {
-      // Gracefully handle if file sharing plugin helper is unavailable
-    }
+    await this.runHelper("dataset-share", JSON.stringify(params));
   }
 }
 

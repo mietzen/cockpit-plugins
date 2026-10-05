@@ -4,6 +4,7 @@ import re
 REPO_ROOT = Path(__file__).resolve().parents[2]
 APP_TSX = REPO_ROOT / "plugins/zfs-storage/src/App.tsx"
 EDIT_MODAL_TSX = REPO_ROOT / "plugins/zfs-storage/src/components/Modals/EditPropertiesModal.tsx"
+ZFS_CLIENT_TS = REPO_ROOT / "plugins/zfs-storage/src/api/zfsClient.ts"
 
 
 def get_modal_snippet(content: str, modal_tag: str) -> str:
@@ -52,4 +53,20 @@ def test_disk_action_force_forward():
 
     assert 'zfsApi.diskAction("attach", args.poolName, args.existingDevice, args.newDevice, args.force)' in attach_snippet
     assert 'zfsApi.diskAction("replace", args.poolName, args.oldDevice, args.newDevice, args.force)' in replace_snippet
+
+
+# Enforce dashboard route returns ['dashboard'] to avoid resetting Cockpit shell.
+def test_dashboard_not_empty_array():
+    content = APP_TSX.read_text(encoding="utf-8")
+    assert 'return ["dashboard"];' in content
+    assert 'navigateTo(["dashboard"]);' in content
+    assert 'navigateTo([]);' not in content
+    assert 'if (r.view === "dashboard") {\n    return [];' not in content
+
+
+# Enforce zero cross-plugin spawn from frontend client layer.
+def test_no_cross_plugin_spawn():
+    content = ZFS_CLIENT_TS.read_text(encoding="utf-8")
+    assert "/usr/libexec/cockpit-file-sharing/file_sharing_helper.py" not in content
+    assert "cockpit-file-sharing" not in content
 

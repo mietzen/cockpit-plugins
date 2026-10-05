@@ -119,7 +119,7 @@ const parseRoute = (segments: string[]): AppRoute => {
 
 const formatSegments = (r: AppRoute): string[] => {
   if (r.view === "dashboard") {
-    return [];
+    return ["dashboard"];
   }
   if (r.view === "pool-details" && r.poolName) {
     return ["pools", r.poolName, r.subTab || "topology"];
@@ -376,7 +376,7 @@ export const App: React.FC = () => {
           if (v === "pools") {
             navigateTo(["pools"]);
           } else if (v === "dashboard") {
-            navigateTo([]);
+            navigateTo(["dashboard"]);
           } else {
             navigateTo([v]);
           }
