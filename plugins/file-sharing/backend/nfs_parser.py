@@ -10,6 +10,8 @@ import os
 import re
 from typing import Any, Dict, List, Optional, Tuple
 
+from cockpit_common.files import atomic_write, file_lock
+
 DEFAULT_BEGIN_MARKER = "# <-- BEGIN ANSIBLE MANAGED * CONFIG -->"
 DEFAULT_END_MARKER = "# <-- END ANSIBLE MANAGED * CONFIG -->"
 
@@ -158,88 +160,86 @@ class NfsParser:
             if exp["path"] == export_path and exp.get("is_managed"):
                 return False, f"Export '{export_path}' is managed by Ansible ({exp.get('managed_by')}) and is read-only"
 
-        os.makedirs(self.exports_d_dir, exist_ok=True)
-        content = ""
-        if os.path.exists(self.cockpit_exports_file):
-            with open(self.cockpit_exports_file, "r", encoding="utf-8", errors="replace") as f:
-                content = f.read()
+        with file_lock(self.cockpit_exports_file):
+            os.makedirs(self.exports_d_dir, exist_ok=True)
+            content = ""
+            if os.path.exists(self.cockpit_exports_file):
+                with open(self.cockpit_exports_file, "r", encoding="utf-8", errors="replace") as f:
+                    content = f.read()
 
-        client_entries = []
-        for c in clients:
-            host = c.get("host", "*").strip() or "*"
-            if not SAFE_HOST_REGEX.match(host):
-                return False, f"Invalid NFS client host: {host}"
+            client_entries = []
+            for c in clients:
+                host = c.get("host", "*").strip() or "*"
+                if not SAFE_HOST_REGEX.match(host):
+                    return False, f"Invalid NFS client host: {host}"
 
-            for id_key in ("anonuid", "anongid"):
-                if id_key in c and c[id_key] is not None and c[id_key] != "":
-                    val = c[id_key]
-                    if isinstance(val, int) and not isinstance(val, bool):
-                        if val < 0:
+                for id_key in ("anonuid", "anongid"):
+                    if id_key in c and c[id_key] is not None and c[id_key] != "":
+                        val = c[id_key]
+                        if isinstance(val, int) and not isinstance(val, bool):
+                            if val < 0:
+                                return False, f"Invalid {id_key}: must be a non-negative integer"
+                        elif isinstance(val, str) and val.isdigit():
+                            pass
+                        else:
                             return False, f"Invalid {id_key}: must be a non-negative integer"
-                    elif isinstance(val, str) and val.isdigit():
-                        pass
-                    else:
-                        return False, f"Invalid {id_key}: must be a non-negative integer"
 
-            opts = c.get("options", [])
-            if opts:
-                sanitized_opts = []
-                for opt in opts:
-                    opt_str = str(opt).strip()
-                    if not opt_str or not SAFE_OPTION_REGEX.match(opt_str):
-                        return False, f"Invalid NFS export option: {opt}"
-                    sanitized_opts.append(opt_str)
-                opts = sanitized_opts
-            else:
-                opts = []
-                opts.append("ro" if c.get("read_only", False) else "rw")
-                opts.append("sync" if c.get("sync", True) else "async")
-                opts.append("no_subtree_check" if c.get("no_subtree_check", True) else "subtree_check")
-                if c.get("root_squash", True):
-                    opts.append("root_squash")
+                opts = c.get("options", [])
+                if opts:
+                    sanitized_opts = []
+                    for opt in opts:
+                        opt_str = str(opt).strip()
+                        if not opt_str or not SAFE_OPTION_REGEX.match(opt_str):
+                            return False, f"Invalid NFS export option: {opt}"
+                        sanitized_opts.append(opt_str)
+                    opts = sanitized_opts
                 else:
-                    opts.append("no_root_squash")
-                if c.get("all_squash", False):
-                    opts.append("all_squash")
-                if c.get("anonuid") is not None and c.get("anonuid") != "":
-                    opts.append(f"anonuid={c['anonuid']}")
-                if c.get("anongid") is not None and c.get("anongid") != "":
-                    opts.append(f"anongid={c['anongid']}")
+                    opts = []
+                    opts.append("ro" if c.get("read_only", False) else "rw")
+                    opts.append("sync" if c.get("sync", True) else "async")
+                    opts.append("no_subtree_check" if c.get("no_subtree_check", True) else "subtree_check")
+                    if c.get("root_squash", True):
+                        opts.append("root_squash")
+                    else:
+                        opts.append("no_root_squash")
+                    if c.get("all_squash", False):
+                        opts.append("all_squash")
+                    if c.get("anonuid") is not None and c.get("anonuid") != "":
+                        opts.append(f"anonuid={c['anonuid']}")
+                    if c.get("anongid") is not None and c.get("anongid") != "":
+                        opts.append(f"anongid={c['anongid']}")
 
-            client_entries.append(f"{host}({','.join(opts)})")
+                client_entries.append(f"{host}({','.join(opts)})")
 
-        formatted_path = f'"{export_path}"' if " " in export_path else export_path
-        export_line = f"{formatted_path} {' '.join(client_entries)}"
+            formatted_path = f'"{export_path}"' if " " in export_path else export_path
+            export_line = f"{formatted_path} {' '.join(client_entries)}"
 
-        lines = content.splitlines()
-        found = False
-        new_lines = []
+            lines = content.splitlines()
+            found = False
+            new_lines = []
 
-        target_prefixes = (
-            export_path + " ",
-            export_path + "\t",
-            f'"{export_path}" ',
-            f'"{export_path}"\t',
-        )
-        target_exact = (export_path, f'"{export_path}"')
+            target_prefixes = (
+                export_path + " ",
+                export_path + "\t",
+                f'"{export_path}" ',
+                f'"{export_path}"\t',
+            )
+            target_exact = (export_path, f'"{export_path}"')
 
-        for line in lines:
-            stripped = line.strip()
-            if stripped.startswith(target_prefixes) or stripped in target_exact:
+            for line in lines:
+                stripped = line.strip()
+                if stripped.startswith(target_prefixes) or stripped in target_exact:
+                    new_lines.append(export_line)
+                    found = True
+                else:
+                    new_lines.append(line)
+
+            if not found:
                 new_lines.append(export_line)
-                found = True
-            else:
-                new_lines.append(line)
 
-        if not found:
-            new_lines.append(export_line)
-
-        final_content = "\n".join(new_lines).strip() + "\n"
-        tmp_path = f"{self.cockpit_exports_file}.tmp"
-        with open(tmp_path, "w", encoding="utf-8") as f:
-            f.write(final_content)
-        os.replace(tmp_path, self.cockpit_exports_file)
-        return True, f"NFS export for '{export_path}' saved successfully"
+            final_content = "\n".join(new_lines).strip() + "\n"
+            atomic_write(self.cockpit_exports_file, final_content)
+            return True, f"NFS export for '{export_path}' saved successfully"
 
     def delete_export(self, export_path: str) -> Tuple[bool, str]:
         """Deletes an export from /etc/exports.d/cockpit.exports."""
@@ -248,34 +248,32 @@ class NfsParser:
             if exp["path"] == export_path and exp.get("is_managed"):
                 return False, f"Export '{export_path}' is managed by Ansible ({exp.get('managed_by')}) and cannot be deleted"
 
-        if not os.path.exists(self.cockpit_exports_file):
-            return False, f"Export file '{self.cockpit_exports_file}' does not exist"
+        with file_lock(self.cockpit_exports_file):
+            if not os.path.exists(self.cockpit_exports_file):
+                return False, f"Export file '{self.cockpit_exports_file}' does not exist"
 
-        with open(self.cockpit_exports_file, "r", encoding="utf-8", errors="replace") as f:
-            content = f.read()
+            with open(self.cockpit_exports_file, "r", encoding="utf-8", errors="replace") as f:
+                content = f.read()
 
-        lines = content.splitlines()
-        target_prefixes = (
-            export_path + " ",
-            export_path + "\t",
-            f'"{export_path}" ',
-            f'"{export_path}"\t',
-        )
-        target_exact = (export_path, f'"{export_path}"')
-        new_lines = [
-            l for l in lines
-            if not (l.strip().startswith(target_prefixes) or l.strip() in target_exact)
-        ]
+            lines = content.splitlines()
+            target_prefixes = (
+                export_path + " ",
+                export_path + "\t",
+                f'"{export_path}" ',
+                f'"{export_path}"\t',
+            )
+            target_exact = (export_path, f'"{export_path}"')
+            new_lines = [
+                l for l in lines
+                if not (l.strip().startswith(target_prefixes) or l.strip() in target_exact)
+            ]
 
-        if len(new_lines) == len(lines):
-            return False, f"Export '{export_path}' not found in '{self.cockpit_exports_file}'"
+            if len(new_lines) == len(lines):
+                return False, f"Export '{export_path}' not found in '{self.cockpit_exports_file}'"
 
-        final_content = "\n".join(new_lines).strip() + "\n"
-        tmp_path = f"{self.cockpit_exports_file}.tmp"
-        with open(tmp_path, "w", encoding="utf-8") as f:
-            f.write(final_content)
-        os.replace(tmp_path, self.cockpit_exports_file)
-        return True, f"NFS export '{export_path}' deleted successfully"
+            final_content = "\n".join(new_lines).strip() + "\n"
+            atomic_write(self.cockpit_exports_file, final_content)
+            return True, f"NFS export '{export_path}' deleted successfully"
 
 
 def parse_nfs_conf(content: str) -> Dict[str, Dict[str, str]]:
@@ -336,69 +334,66 @@ def get_nfs_global(config_path: str = "/etc/nfs.conf") -> Dict[str, Any]:
 
 def save_nfs_global(settings: Dict[str, Any], config_path: str = "/etc/nfs.conf") -> Tuple[bool, str]:
     """Saves global NFS server configuration to /etc/nfs.conf under [nfsd]."""
-    content = ""
-    if os.path.exists(config_path):
-        try:
-            with open(config_path, "r", encoding="utf-8", errors="replace") as f:
-                content = f.read()
-        except Exception:
-            pass
+    with file_lock(config_path):
+        content = ""
+        if os.path.exists(config_path):
+            try:
+                with open(config_path, "r", encoding="utf-8", errors="replace") as f:
+                    content = f.read()
+            except Exception:
+                pass
 
-    lines = content.splitlines()
-    in_nfsd = False
-    nfsd_found = False
-    new_lines = []
+        lines = content.splitlines()
+        in_nfsd = False
+        nfsd_found = False
+        new_lines = []
 
-    for line in lines:
-        stripped = line.strip()
-        if stripped.startswith("[") and stripped.endswith("]"):
-            sec = stripped[1:-1].strip().lower()
-            if sec == "nfsd":
-                in_nfsd = True
-                nfsd_found = True
-                new_lines.append("[nfsd]")
-                continue
-            else:
-                if in_nfsd:
-                    in_nfsd = False
-                new_lines.append(line)
-                continue
-
-        if in_nfsd:
-            # Skip old nfsd parameters we manage
-            if "=" in stripped:
-                k = stripped.split("=", 1)[0].strip().lower()
-                if k in ("threads", "vers3", "vers4", "vers4.0", "vers4.1", "vers4.2", "grace-time", "lease-time", "port"):
+        for line in lines:
+            stripped = line.strip()
+            if stripped.startswith("[") and stripped.endswith("]"):
+                sec = stripped[1:-1].strip().lower()
+                if sec == "nfsd":
+                    in_nfsd = True
+                    nfsd_found = True
+                    new_lines.append("[nfsd]")
                     continue
-            new_lines.append(line)
+                else:
+                    if in_nfsd:
+                        in_nfsd = False
+                    new_lines.append(line)
+                    continue
+
+            if in_nfsd:
+                # Skip old nfsd parameters we manage
+                if "=" in stripped:
+                    k = stripped.split("=", 1)[0].strip().lower()
+                    if k in ("threads", "vers3", "vers4", "vers4.0", "vers4.1", "vers4.2", "grace-time", "lease-time", "port"):
+                        continue
+                new_lines.append(line)
+            else:
+                new_lines.append(line)
+
+        nfsd_params = [
+            f"threads = {settings.get('threads', 8)}",
+            f"vers3 = {'y' if settings.get('vers3', True) else 'n'}",
+            f"vers4 = {'y' if settings.get('vers4', True) else 'n'}",
+            f"vers4.1 = {'y' if settings.get('vers4_1', True) else 'n'}",
+            f"vers4.2 = {'y' if settings.get('vers4_2', True) else 'n'}",
+            f"grace-time = {settings.get('grace_time', 90)}",
+            f"lease-time = {settings.get('lease_time', 90)}",
+            f"port = {settings.get('port', 2049)}",
+        ]
+
+        if not nfsd_found:
+            new_lines.append("\n[nfsd]")
+            for p in nfsd_params:
+                new_lines.append(f" {p}")
         else:
-            new_lines.append(line)
+            # Insert params right after [nfsd]
+            idx = new_lines.index("[nfsd]") + 1
+            for i, p in enumerate(nfsd_params):
+                new_lines.insert(idx + i, f" {p}")
 
-    nfsd_params = [
-        f"threads = {settings.get('threads', 8)}",
-        f"vers3 = {'y' if settings.get('vers3', True) else 'n'}",
-        f"vers4 = {'y' if settings.get('vers4', True) else 'n'}",
-        f"vers4.1 = {'y' if settings.get('vers4_1', True) else 'n'}",
-        f"vers4.2 = {'y' if settings.get('vers4_2', True) else 'n'}",
-        f"grace-time = {settings.get('grace_time', 90)}",
-        f"lease-time = {settings.get('lease_time', 90)}",
-        f"port = {settings.get('port', 2049)}",
-    ]
-
-    if not nfsd_found:
-        new_lines.append("\n[nfsd]")
-        for p in nfsd_params:
-            new_lines.append(f" {p}")
-    else:
-        # Insert params right after [nfsd]
-        idx = new_lines.index("[nfsd]") + 1
-        for i, p in enumerate(nfsd_params):
-            new_lines.insert(idx + i, f" {p}")
-
-    final_content = "\n".join(new_lines).strip() + "\n"
-    tmp_path = f"{config_path}.tmp"
-    os.makedirs(os.path.dirname(config_path) or ".", exist_ok=True)
-    with open(tmp_path, "w", encoding="utf-8") as f:
-        f.write(final_content)
-    os.replace(tmp_path, config_path)
-    return True, "Global NFS settings saved successfully"
+        final_content = "\n".join(new_lines).strip() + "\n"
+        atomic_write(config_path, final_content)
+        return True, "Global NFS settings saved successfully"

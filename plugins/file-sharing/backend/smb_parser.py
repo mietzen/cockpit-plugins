@@ -8,6 +8,8 @@ import os
 import re
 from typing import Any, Dict, List, Optional, Tuple
 
+from cockpit_common.files import atomic_write, file_lock
+
 DEFAULT_BEGIN_MARKER = "# <-- BEGIN ANSIBLE MANAGED * CONFIG -->"
 DEFAULT_END_MARKER = "# <-- END ANSIBLE MANAGED * CONFIG -->"
 RESERVED_SECTIONS = ("global",)
@@ -201,90 +203,87 @@ class SmbParser:
         if share_name.lower() in RESERVED_SECTIONS or not SAFE_SHARE_NAME_REGEX.match(share_name):
             return False, f"Invalid share name '{share_name}'"
 
-        content = ""
-        if os.path.exists(self.config_path):
-            with open(self.config_path, "r", encoding="utf-8", errors="replace") as f:
-                content = f.read()
+        with file_lock(self.config_path):
+            content = ""
+            if os.path.exists(self.config_path):
+                with open(self.config_path, "r", encoding="utf-8", errors="replace") as f:
+                    content = f.read()
 
-        parsed = self.parse(content)
-        # Check if attempting to overwrite an Ansible-managed share
-        for existing in parsed["shares"]:
-            if existing["name"].lower() == share_name.lower() and existing.get("is_managed"):
-                return False, f"Share '[{share_name}]' is managed by Ansible ({existing.get('managed_by')}) and is read-only"
+            parsed = self.parse(content)
+            # Check if attempting to overwrite an Ansible-managed share
+            for existing in parsed["shares"]:
+                if existing["name"].lower() == share_name.lower() and existing.get("is_managed"):
+                    return False, f"Share '[{share_name}]' is managed by Ansible ({existing.get('managed_by')}) and is read-only"
 
-        # Sanitize parameters to prevent newline injection
-        sanitized = {
-            k: sanitize_param(v) if isinstance(v, str) else v
-            for k, v in share_data.items()
-        }
+            # Sanitize parameters to prevent newline injection
+            sanitized = {
+                k: sanitize_param(v) if isinstance(v, str) else v
+                for k, v in share_data.items()
+            }
 
-        # Build share block string
-        def bool_str(val: Any) -> str:
-            return "yes" if val in (True, "yes", "true", "1", 1) else "no"
+            # Build share block string
+            def bool_str(val: Any) -> str:
+                return "yes" if val in (True, "yes", "true", "1", 1) else "no"
 
-        params = [
-            f"   path = {sanitized.get('path', '')}",
-        ]
-        if sanitized.get("comment"):
-            params.append(f"   comment = {sanitized['comment']}")
-        params.append(f"   read only = {bool_str(sanitized.get('read_only', True))}")
-        params.append(f"   browseable = {bool_str(sanitized.get('browseable', True))}")
-        params.append(f"   guest ok = {bool_str(sanitized.get('guest_ok', False))}")
+            params = [
+                f"   path = {sanitized.get('path', '')}",
+            ]
+            if sanitized.get("comment"):
+                params.append(f"   comment = {sanitized['comment']}")
+            params.append(f"   read only = {bool_str(sanitized.get('read_only', True))}")
+            params.append(f"   browseable = {bool_str(sanitized.get('browseable', True))}")
+            params.append(f"   guest ok = {bool_str(sanitized.get('guest_ok', False))}")
 
-        if sanitized.get("valid_users"):
-            params.append(f"   valid users = {sanitized['valid_users']}")
-        if sanitized.get("write_list"):
-            params.append(f"   write list = {sanitized['write_list']}")
-        if sanitized.get("read_list"):
-            params.append(f"   read list = {sanitized['read_list']}")
-        if sanitized.get("invalid_users"):
-            params.append(f"   invalid users = {sanitized['invalid_users']}")
-        if sanitized.get("force_user"):
-            params.append(f"   force user = {sanitized['force_user']}")
-        if sanitized.get("force_group"):
-            params.append(f"   force group = {sanitized['force_group']}")
-        if sanitized.get("create_mask"):
-            params.append(f"   create mask = {sanitized['create_mask']}")
-        if sanitized.get("directory_mask"):
-            params.append(f"   directory mask = {sanitized['directory_mask']}")
-        if sanitized.get("vfs_objects"):
-            params.append(f"   vfs objects = {sanitized['vfs_objects']}")
-        elif sanitized.get("fruit_time_machine"):
-            params.append("   vfs objects = catia fruit streams_xattr")
+            if sanitized.get("valid_users"):
+                params.append(f"   valid users = {sanitized['valid_users']}")
+            if sanitized.get("write_list"):
+                params.append(f"   write list = {sanitized['write_list']}")
+            if sanitized.get("read_list"):
+                params.append(f"   read list = {sanitized['read_list']}")
+            if sanitized.get("invalid_users"):
+                params.append(f"   invalid users = {sanitized['invalid_users']}")
+            if sanitized.get("force_user"):
+                params.append(f"   force user = {sanitized['force_user']}")
+            if sanitized.get("force_group"):
+                params.append(f"   force group = {sanitized['force_group']}")
+            if sanitized.get("create_mask"):
+                params.append(f"   create mask = {sanitized['create_mask']}")
+            if sanitized.get("directory_mask"):
+                params.append(f"   directory mask = {sanitized['directory_mask']}")
+            if sanitized.get("vfs_objects"):
+                params.append(f"   vfs objects = {sanitized['vfs_objects']}")
+            elif sanitized.get("fruit_time_machine"):
+                params.append("   vfs objects = catia fruit streams_xattr")
 
-        if sanitized.get("fruit_time_machine"):
-            params.append("   fruit:time machine = yes")
+            if sanitized.get("fruit_time_machine"):
+                params.append("   fruit:time machine = yes")
 
-        new_block = f"[{share_name}]\n" + "\n".join(params) + "\n"
+            new_block = f"[{share_name}]\n" + "\n".join(params) + "\n"
 
-        # Replace existing or append
-        lines = content.splitlines()
-        section_start = -1
-        section_end = len(lines)
+            # Replace existing or append
+            lines = content.splitlines()
+            section_start = -1
+            section_end = len(lines)
 
-        for i, line in enumerate(lines):
-            m = re.match(r"^\s*\[([^\]]+)\]\s*$", line)
-            if m:
-                if m.group(1).strip().lower() == share_name.lower():
-                    section_start = i
-                elif section_start != -1:
-                    section_end = i
-                    break
+            for i, line in enumerate(lines):
+                m = re.match(r"^\s*\[([^\]]+)\]\s*$", line)
+                if m:
+                    if m.group(1).strip().lower() == share_name.lower():
+                        section_start = i
+                    elif section_start != -1:
+                        section_end = i
+                        break
 
-        if section_start != -1:
-            # Replace existing section
-            new_lines = lines[:section_start] + [new_block.strip()] + lines[section_end:]
-            final_content = "\n".join(new_lines).strip() + "\n"
-        else:
-            # Append new section
-            final_content = content.rstrip() + "\n\n" + new_block
+            if section_start != -1:
+                # Replace existing section
+                new_lines = lines[:section_start] + [new_block.strip()] + lines[section_end:]
+                final_content = "\n".join(new_lines).strip() + "\n"
+            else:
+                # Append new section
+                final_content = content.rstrip() + "\n\n" + new_block
 
-        # Atomic write
-        tmp_path = f"{self.config_path}.tmp"
-        with open(tmp_path, "w", encoding="utf-8") as f:
-            f.write(final_content)
-        os.replace(tmp_path, self.config_path)
-        return True, f"Share '[{share_name}]' saved successfully"
+            atomic_write(self.config_path, final_content)
+            return True, f"Share '[{share_name}]' saved successfully"
 
     def delete_share(self, share_name: str) -> Tuple[bool, str]:
         cleaned_name = share_name.strip()
@@ -292,89 +291,85 @@ class SmbParser:
         if cleaned_name.lower() in RESERVED_SECTIONS:
             return False, f"Cannot delete reserved section '{cleaned_name}'"
 
-        if not os.path.exists(self.config_path):
-            return False, "smb.conf does not exist"
+        with file_lock(self.config_path):
+            if not os.path.exists(self.config_path):
+                return False, "smb.conf does not exist"
 
-        with open(self.config_path, "r", encoding="utf-8", errors="replace") as f:
-            content = f.read()
-
-        parsed = self.parse(content)
-        for existing in parsed["shares"]:
-            if existing["name"].lower() == share_name.lower() and existing.get("is_managed"):
-                return False, f"Share '[{share_name}]' is managed by Ansible ({existing.get('managed_by')}) and cannot be deleted"
-
-        lines = content.splitlines()
-        section_start = -1
-        section_end = len(lines)
-
-        for i, line in enumerate(lines):
-            m = re.match(r"^\s*\[([^\]]+)\]\s*$", line)
-            if m:
-                if m.group(1).strip().lower() == share_name.lower():
-                    section_start = i
-                elif section_start != -1:
-                    section_end = i
-                    break
-
-        if section_start == -1:
-            return False, f"Share '[{share_name}]' not found"
-
-        new_lines = lines[:section_start] + lines[section_end:]
-        final_content = "\n".join(new_lines).strip() + "\n"
-
-        tmp_path = f"{self.config_path}.tmp"
-        with open(tmp_path, "w", encoding="utf-8") as f:
-            f.write(final_content)
-        os.replace(tmp_path, self.config_path)
-        return True, f"Share '[{share_name}]' deleted successfully"
-
-    def save_global(self, global_data: Dict[str, str]) -> Tuple[bool, str]:
-        """Updates parameters in the [global] section."""
-        content = ""
-        if os.path.exists(self.config_path):
             with open(self.config_path, "r", encoding="utf-8", errors="replace") as f:
                 content = f.read()
 
-        lines = content.splitlines()
-        global_start = -1
-        global_end = len(lines)
+            parsed = self.parse(content)
+            for existing in parsed["shares"]:
+                if existing["name"].lower() == share_name.lower() and existing.get("is_managed"):
+                    return False, f"Share '[{share_name}]' is managed by Ansible ({existing.get('managed_by')}) and cannot be deleted"
 
-        for i, line in enumerate(lines):
-            m = re.match(r"^\s*\[([^\]]+)\]\s*$", line)
-            if m:
-                if m.group(1).strip().lower() == "global":
-                    global_start = i
-                elif global_start != -1:
-                    global_end = i
-                    break
+            lines = content.splitlines()
+            section_start = -1
+            section_end = len(lines)
 
-        # Extract current global params
-        current_global = {}
-        if global_start != -1:
-            for l in lines[global_start + 1 : global_end]:
-                if "=" in l and not l.strip().startswith(("#", ";")):
-                    k, v = l.split("=", 1)
-                    current_global[k.strip().lower()] = v.strip()
+            for i, line in enumerate(lines):
+                m = re.match(r"^\s*\[([^\]]+)\]\s*$", line)
+                if m:
+                    if m.group(1).strip().lower() == share_name.lower():
+                        section_start = i
+                    elif section_start != -1:
+                        section_end = i
+                        break
 
-        # Update with sanitized values
-        for k, v in global_data.items():
-            if v is not None and v != "":
-                clean_k = sanitize_param(k).lower()
-                clean_v = sanitize_param(v)
-                current_global[clean_k] = clean_v
+            if section_start == -1:
+                return False, f"Share '[{share_name}]' not found"
 
-        global_block_lines = ["[global]"]
-        for k, v in current_global.items():
-            global_block_lines.append(f"   {k} = {v}")
+            new_lines = lines[:section_start] + lines[section_end:]
+            final_content = "\n".join(new_lines).strip() + "\n"
 
-        if global_start != -1:
-            new_lines = lines[:global_start] + global_block_lines + lines[global_end:]
-        else:
-            new_lines = global_block_lines + [""] + lines
+            atomic_write(self.config_path, final_content)
+            return True, f"Share '[{share_name}]' deleted successfully"
 
-        final_content = "\n".join(new_lines).strip() + "\n"
-        tmp_path = f"{self.config_path}.tmp"
-        with open(tmp_path, "w", encoding="utf-8") as f:
-            f.write(final_content)
-        os.replace(tmp_path, self.config_path)
-        return True, "Global configuration updated successfully"
+    def save_global(self, global_data: Dict[str, str]) -> Tuple[bool, str]:
+        """Updates parameters in the [global] section."""
+        with file_lock(self.config_path):
+            content = ""
+            if os.path.exists(self.config_path):
+                with open(self.config_path, "r", encoding="utf-8", errors="replace") as f:
+                    content = f.read()
+
+            lines = content.splitlines()
+            global_start = -1
+            global_end = len(lines)
+
+            for i, line in enumerate(lines):
+                m = re.match(r"^\s*\[([^\]]+)\]\s*$", line)
+                if m:
+                    if m.group(1).strip().lower() == "global":
+                        global_start = i
+                    elif global_start != -1:
+                        global_end = i
+                        break
+
+            # Extract current global params
+            current_global = {}
+            if global_start != -1:
+                for l in lines[global_start + 1 : global_end]:
+                    if "=" in l and not l.strip().startswith(("#", ";")):
+                        k, v = l.split("=", 1)
+                        current_global[k.strip().lower()] = v.strip()
+
+            # Update with sanitized values
+            for k, v in global_data.items():
+                if v is not None and v != "":
+                    clean_k = sanitize_param(k).lower()
+                    clean_v = sanitize_param(v)
+                    current_global[clean_k] = clean_v
+
+            global_block_lines = ["[global]"]
+            for k, v in current_global.items():
+                global_block_lines.append(f"   {k} = {v}")
+
+            if global_start != -1:
+                new_lines = lines[:global_start] + global_block_lines + lines[global_end:]
+            else:
+                new_lines = global_block_lines + [""] + lines
+
+            final_content = "\n".join(new_lines).strip() + "\n"
+            atomic_write(self.config_path, final_content)
+            return True, "Global configuration updated successfully"
