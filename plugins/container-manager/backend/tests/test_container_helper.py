@@ -121,6 +121,71 @@ class TestContainerHelperCLI(unittest.TestCase):
         res = container_helper.cmd_get_client_bundle(MagicMock(engine="docker"))
         self.assertEqual(res["status"], "success")
 
+    @patch("container_helper.os.execvp")
+    def test_cmd_terminal_exec(self, mock_execvp):
+        # Verify terminal command replaces process with docker exec session
+        args = MagicMock(engine="docker", container="c123", command="/bin/sh")
+        container_helper.cmd_terminal(args)
+        mock_execvp.assert_called_once_with("docker", ["docker", "exec", "-i", "-t", "c123", "/bin/sh"])
+
+    def test_cmd_terminal_invalid_id(self):
+        # Verify invalid container IDs are rejected before execution
+        args = MagicMock(engine="docker", container="c123; rm -rf /", command="/bin/sh")
+        with self.assertRaises(ValueError):
+            container_helper.cmd_terminal(args)
+
+    @patch("container_helper.os.execvp")
+    def test_cmd_logs_exec(self, mock_execvp):
+        # Verify logs command streams container output via execvp
+        args = MagicMock(engine="docker", container="c123", tail=200, timestamps=False)
+        container_helper.cmd_logs(args)
+        mock_execvp.assert_called_once_with("docker", ["docker", "logs", "-f", "--tail", "200", "c123"])
+
+    def test_cmd_terminal_bad_engine(self):
+        # Verify unsupported engines are rejected in terminal
+        args = MagicMock(engine="unsupported", container="c123", command="/bin/sh")
+        with self.assertRaises(ValueError):
+            container_helper.cmd_terminal(args)
+
+    def test_cmd_logs_bad_engine(self):
+        # Verify unsupported engines are rejected in logs
+        args = MagicMock(engine="unsupported", container="c123", tail=200, timestamps=False)
+        with self.assertRaises(ValueError):
+            container_helper.cmd_logs(args)
+
+    def test_cmd_logs_invalid_id(self):
+        # Verify invalid container IDs are rejected in logs
+        args = MagicMock(engine="docker", container="c123; evil", tail=200, timestamps=False)
+        with self.assertRaises(ValueError):
+            container_helper.cmd_logs(args)
+
+    def test_cmd_logs_bad_tail(self):
+        # Verify negative tail values are rejected
+        args = MagicMock(engine="docker", container="c123", tail=-1, timestamps=False)
+        with self.assertRaises(ValueError):
+            container_helper.cmd_logs(args)
+
+    @patch("container_helper.os.execvp")
+    def test_cmd_logs_timestamps(self, mock_execvp):
+        # Verify timestamp flag is forwarded to log arguments
+        args = MagicMock(engine="docker", container="c123", tail=200, timestamps=True)
+        container_helper.cmd_logs(args)
+        mock_execvp.assert_called_once_with("docker", ["docker", "logs", "-f", "--tail", "200", "-t", "c123"])
+
+    @patch("container_helper.cmd_terminal", return_value=None)
+    def test_main_terminal(self, mock_cmd):
+        with patch.object(sys, "argv", ["container_helper.py", "terminal", "--container", "c1"]):
+            with patch("builtins.print"):
+                container_helper.main()
+                mock_cmd.assert_called_once()
+
+    @patch("container_helper.cmd_logs", return_value=None)
+    def test_main_logs(self, mock_cmd):
+        with patch.object(sys, "argv", ["container_helper.py", "logs", "--container", "c1", "--timestamps"]):
+            with patch("builtins.print"):
+                container_helper.main()
+                mock_cmd.assert_called_once()
+
     @patch("container_helper.cmd_get_overview", return_value={"status": "success"})
     def test_main_overview(self, mock_cmd):
         with patch.object(sys, "argv", ["container_helper.py", "get_overview", "--engine", "docker"]):
