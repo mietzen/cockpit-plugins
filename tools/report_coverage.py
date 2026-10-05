@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
+import argparse
 import glob
 import os
 import sys
+from typing import Dict, Tuple
 
 COMMON_PKG_PREFIX = "packages/common/"
+
 
 TIER_CONFIG = {
     "SECURITY": {
@@ -98,8 +101,18 @@ def parse_lcov_records(file_path: str):
                     records.append(curr)
     return records
 
+def parse_args():
+    parser = argparse.ArgumentParser(description="Generate 3-tier coverage summary.")
+    parser.add_argument("coverage_dir", nargs="?", default=".", help="Directory containing LCOV coverage files")
+    parser.add_argument("--min-coverage", type=float, default=None, help="Minimum overall line coverage percentage")
+    parser.add_argument("--fail-under", type=float, default=None, help="Alias for --min-coverage")
+    return parser.parse_args()
+
+
 def main():
-    coverage_dir = sys.argv[1] if len(sys.argv) > 1 and not sys.argv[1].startswith("--") else "."
+    args = parse_args()
+    coverage_dir = args.coverage_dir
+    min_coverage = args.min_coverage if args.min_coverage is not None else args.fail_under
     
     # 1. Collect all LCOV files
     lcov_files = sorted(
@@ -118,7 +131,7 @@ def main():
             
     # Deduplicate file records across target runs
     merged_records = {}
-    target_stats = {}
+    target_file_records: Dict[Tuple[str, str], Dict[str, Dict[str, int]]] = {}
 
     for lf in unique_lcov:
         recs = parse_lcov_records(lf)
@@ -129,8 +142,9 @@ def main():
             target = fname.replace(".lcov", "").replace(".info", "").replace("coverage-", "").replace("e2e-", "").replace("python-", "")
 
         layer = "Python Unit" if "python" in lf else "Frontend E2E"
-        if (target, layer) not in target_stats:
-            target_stats[(target, layer)] = {"lf": 0, "lh": 0, "brf": 0, "brh": 0}
+        target_key = (target, layer)
+        if target_key not in target_file_records:
+            target_file_records[target_key] = {}
 
         for r in recs:
             fkey = r["file"]
@@ -150,10 +164,39 @@ def main():
                 if not (clean_fkey.startswith(target_prefix) or clean_fkey.startswith(COMMON_PKG_PREFIX)):
                     continue
 
-            target_stats[(target, layer)]["lf"] += r["lf"]
-            target_stats[(target, layer)]["lh"] += r["lh"]
-            target_stats[(target, layer)]["brf"] += r["brf"]
-            target_stats[(target, layer)]["brh"] += r["brh"]
+            # Deduplicate per target and layer
+            if fkey not in target_file_records[target_key]:
+                target_file_records[target_key][fkey] = {
+                    "lf": r["lf"],
+                    "lh": r["lh"],
+                    "brf": r["brf"],
+                    "brh": r["brh"],
+                }
+            else:
+                target_file_records[target_key][fkey]["lf"] = max(
+                    target_file_records[target_key][fkey]["lf"], r["lf"]
+                )
+                target_file_records[target_key][fkey]["lh"] = max(
+                    target_file_records[target_key][fkey]["lh"], r["lh"]
+                )
+                target_file_records[target_key][fkey]["brf"] = max(
+                    target_file_records[target_key][fkey]["brf"], r["brf"]
+                )
+                target_file_records[target_key][fkey]["brh"] = max(
+                    target_file_records[target_key][fkey]["brh"], r["brh"]
+                )
+
+    # Aggregate target_stats by summing values across deduplicated target_file_records
+    target_stats = {}
+    for target_key, file_records in target_file_records.items():
+        stats = {"lf": 0, "lh": 0, "brf": 0, "brh": 0}
+        for rec in file_records.values():
+            stats["lf"] += rec["lf"]
+            stats["lh"] += rec["lh"]
+            stats["brf"] += rec["brf"]
+            stats["brh"] += rec["brh"]
+        target_stats[target_key] = stats
+
 
     # Tier statistics aggregation
     tier_stats = {
@@ -207,6 +250,17 @@ def main():
         md_output.append(
             f"| **{cfg['title']}** | {line_display} | {br_display} | ≥ {cfg['min_line']:.0f}% | ≥ {cfg['min_branch']:.0f}% | {status_emoji} |"
         )
+
+    # Evaluate optional overall line coverage threshold
+    if min_coverage is not None:
+        total_lf = sum(r["lf"] for r in merged_records.values())
+        total_lh = sum(r["lh"] for r in merged_records.values())
+        overall_line_pct = (total_lh / total_lf * 100.0) if total_lf > 0 else 100.0
+        if overall_line_pct < min_coverage:
+            all_passed = False
+            failed_reasons.append(
+                f"Overall Line Coverage: {overall_line_pct:.1f}% (minimum required >={min_coverage:.1f}%)"
+            )
 
     md_output.append("\n### 📦 Target & Layer Breakdown\n")
     md_output.append("| Layer | Target | Lines | Branches |")
