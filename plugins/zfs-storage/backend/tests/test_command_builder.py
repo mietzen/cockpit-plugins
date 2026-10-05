@@ -47,6 +47,29 @@ class TestCommandBuilder(unittest.TestCase):
         ]
         self.assertEqual(cmd, expected)
 
+    # Verify DRAID pool creation commands without custom parameters.
+    def test_pool_create_draid(self):
+        vdevs = [VDevConfig(type=VDevType.DRAID1, devices=["/dev/sda", "/dev/sdb", "/dev/sdc"])]
+
+        cmd = self.builder.build_pool_create(name="tank", vdevs=vdevs)
+
+        self.assertEqual(cmd[-4:], ["draid1", "/dev/sda", "/dev/sdb", "/dev/sdc"])
+
+    # Verify DRAID pool creation formatting with data and spare parameters.
+    def test_pool_create_draid_params(self):
+        vdevs = [
+            VDevConfig(
+                type=VDevType.DRAID2,
+                devices=["/dev/sda", "/dev/sdb", "/dev/sdc", "/dev/sdd"],
+                draid_data=4,
+                draid_spares=1,
+            )
+        ]
+
+        cmd = self.builder.build_pool_create(name="tank", vdevs=vdevs)
+
+        self.assertIn("draid2:4d:1s", cmd)
+
     def test_build_pool_destroy(self):
         cmd = self.builder.build_pool_destroy("tank", force=True)
         self.assertEqual(cmd, ["zpool", "destroy", "-f", "tank"])

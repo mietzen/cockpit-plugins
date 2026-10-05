@@ -44,6 +44,22 @@ class TestZfsServiceActions(unittest.TestCase):
             ["zpool", "create", "-f", "-o", "ashift=12", "-O", "compression=lz4", "tank", "mirror", "/dev/sdb", "/dev/sdc"]
         )
 
+    # Verify pool creation with DRAID vdev payload.
+    @patch("backend.zfs_helper.run_cmd")
+    def test_pool_create_draid(self, mock_run):
+        mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
+        payload = {
+            "name": "tank",
+            "vdevs": [{"type": "draid1", "devices": ["/dev/sdb", "/dev/sdc", "/dev/sdd"]}],
+        }
+
+        res = self.svc.pool_create(payload)
+
+        self.assertTrue(res["success"])
+        mock_run.assert_called_once_with(
+            ["zpool", "create", "tank", "draid1", "/dev/sdb", "/dev/sdc", "/dev/sdd"]
+        )
+
     @patch("backend.zfs_helper.run_cmd")
     def test_dataset_create_action(self, mock_run):
         mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")

@@ -378,7 +378,16 @@ class ZfsService:
             raw_type = v.get("type", "data")
             v_type = VDevType(raw_type) if raw_type in [e.value for e in VDevType] else VDevType.DATA
             devices = [validate_name(d, "device") for d in v.get("devices", [])]
-            vdevs.append(VDevConfig(type=v_type, devices=devices))
+            draid_data = int(v["draid_data"]) if v.get("draid_data") is not None else None
+            draid_spares = int(v["draid_spares"]) if v.get("draid_spares") is not None else None
+            vdevs.append(
+                VDevConfig(
+                    type=v_type,
+                    devices=devices,
+                    draid_data=draid_data,
+                    draid_spares=draid_spares,
+                )
+            )
         
         ashift_val = payload.get("ashift")
         ashift = AshiftType(int(ashift_val)) if ashift_val else AshiftType.ASHIFT_AUTO
