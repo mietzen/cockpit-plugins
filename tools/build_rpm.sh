@@ -291,60 +291,6 @@ COCKPIT_CONF_EOF
         systemctl enable --now cockpit-caddy.service 2>/dev/null || systemctl restart cockpit-caddy.service 2>/dev/null || true
     fi
 
-    TARGET_USERS=\$(awk -F: '\$3 >= 1000 && \$3 < 65534 {print \$1}' /etc/passwd 2>/dev/null || true)
-    for u in \${TARGET_USERS}; do
-        if id "\$u" >/dev/null 2>&1; then
-            U_HOME=\$(getent passwd "\$u" | cut -d: -f6)
-            UID_NUM=\$(id -u "\$u" 2>/dev/null || echo 1000)
-            GID_NUM=\$(id -g "\$u" 2>/dev/null || echo 1000)
-            mkdir -p "/run/code-server/\${UID_NUM}"
-            chown "\${UID_NUM}:\${GID_NUM}" "/run/code-server/\${UID_NUM}" 2>/dev/null || true
-            chmod 0700 "/run/code-server/\${UID_NUM}" 2>/dev/null || true
-            if [ -n "\$U_HOME" ]; then
-                CFG_DIR="\$U_HOME/.config/code-server"
-                CFG="\$CFG_DIR/config.yaml"
-                mkdir -p "\$CFG_DIR" 2>/dev/null || true
-
-                if [ ! -f "\$CFG" ]; then
-                    PASS_TOKEN=\$(python3 -c "import secrets; print(secrets.token_urlsafe(24))" 2>/dev/null || tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 32)
-                    printf "socket: /run/code-server/%s/code-server.sock\\nsocket-mode: 600\\nauth: password\\npassword: %s\\ncert: false\\napp-name: Code-Server\\ndisable-telemetry: true\\n" "\$UID_NUM" "\$PASS_TOKEN" > "\$CFG"
-                else
-                    sed -i -E "s|^bind-addr:.*|socket: /run/code-server/\${UID_NUM}/code-server.sock\\nsocket-mode: 600|" "\$CFG" 2>/dev/null || true
-                    if grep -q "^socket:" "\$CFG" 2>/dev/null; then
-                        sed -i -E "s|^socket:.*|socket: /run/code-server/\${UID_NUM}/code-server.sock|" "\$CFG" 2>/dev/null || true
-                    else
-                        printf "socket: /run/code-server/%s/code-server.sock\\nsocket-mode: 600\\n" "\$UID_NUM" >> "\$CFG"
-                    fi
-                    sed -i -E "s|^socket-mode:.*|socket-mode: 600|" "\$CFG" 2>/dev/null || true
-                    if ! grep -q "^socket-mode:" "\$CFG" 2>/dev/null; then
-                        echo "socket-mode: 600" >> "\$CFG"
-                    fi
-                    sed -i -E "s|^cert:.*|cert: false|" "\$CFG" 2>/dev/null || true
-                    sed -i -E "s|^cert-key:.*||" "\$CFG" 2>/dev/null || true
-                    if grep -qE "^auth:[[:space:]]*none" "\$CFG" 2>/dev/null; then
-                        sed -i -E "s|^auth:.*|auth: password|" "\$CFG" 2>/dev/null || true
-                    elif ! grep -q "^auth:" "\$CFG" 2>/dev/null; then
-                        echo "auth: password" >> "\$CFG"
-                    fi
-                    if ! grep -qE "^(password|hashed-password):[[:space:]]*[^[:space:]]+" "\$CFG" 2>/dev/null; then
-                        PASS_TOKEN=\$(python3 -c "import secrets; print(secrets.token_urlsafe(24))" 2>/dev/null || tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 32)
-                        sed -i -E "s|^password:.*||" "\$CFG" 2>/dev/null || true
-                        echo "password: \$PASS_TOKEN" >> "\$CFG"
-                    fi
-                fi
-
-                for p in ".config/code-server" ".local/share/code-server" ".cache/code-server"; do
-                    if [ -d "\$U_HOME/\$p" ]; then
-                        chown -R "\$u:\$u" "\$U_HOME/\$p" 2>/dev/null || true
-                        chmod -R u+rwX "\$U_HOME/\$p" 2>/dev/null || true
-                    fi
-                done
-                rm -f "/run/code-server/\${UID_NUM}.sock" "/run/code-server/\${UID_NUM}/code-server.sock" 2>/dev/null || true
-            fi
-            systemctl enable "code-server@\${u}.service" 2>/dev/null || true
-            systemctl restart "code-server@\${u}.service" 2>/dev/null || true
-        fi
-    done
     CODE_BIN=\$(command -v code-server 2>/dev/null || true)
     if [ -n "\$CODE_BIN" ]; then
         mkdir -p /usr/local/bin
@@ -363,6 +309,7 @@ if [ "${PLUGIN_NAME}" = "code-server" ]; then
             rm -f /usr/local/bin/code
         fi
         if command -v systemctl >/dev/null 2>&1; then
+            systemctl stop 'code-server@*.service' 2>/dev/null || true
             systemctl stop cockpit-caddy.service 2>/dev/null || true
             systemctl disable cockpit-caddy.service 2>/dev/null || true
         fi
@@ -370,6 +317,7 @@ if [ "${PLUGIN_NAME}" = "code-server" ]; then
         rm -f /etc/systemd/system/cockpit-caddy.service
         rm -rf /etc/cockpit-code-server
         rm -f /usr/lib/tmpfiles.d/cockpit-code-server.conf
+        rm -rf /run/code-server
         if command -v systemctl >/dev/null 2>&1; then
             systemctl daemon-reload 2>/dev/null || true
             systemctl restart cockpit.socket 2>/dev/null || true

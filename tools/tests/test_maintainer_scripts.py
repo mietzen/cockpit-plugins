@@ -98,3 +98,20 @@ def test_cockpit_socket_fallback():
     assert FALLBACK_PORT_ENTRY in content
     assert UNIX_SOCKET_ENTRY in content
 
+
+STOP_SERVICE_CMD = "systemctl stop 'code-server@*.service'"
+FORBIDDEN_MUTATION_PATTERNS = (
+    "/etc/passwd",
+    "TARGET_USERS",
+    "CFG_DIR",
+    "U_HOME",
+)
+
+
+@pytest.mark.parametrize("script_path", SCRIPT_PATHS, ids=lambda p: p.name)
+def test_no_home_mutation(script_path: Path):
+    """Verify maintainer script does not scan or mutate user homes."""
+    content = script_path.read_text(encoding="utf-8")
+    for pattern in FORBIDDEN_MUTATION_PATTERNS:
+        assert pattern not in content
+    assert STOP_SERVICE_CMD in content
