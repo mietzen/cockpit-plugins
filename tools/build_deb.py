@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import os
 import sys
+import subprocess
 import tarfile
 import gzip
 import io
@@ -9,6 +10,11 @@ import hashlib
 import json
 import shutil
 import argparse
+
+DEFAULT_EPOCH = 0
+ENV_SOURCE_DATE_EPOCH = "SOURCE_DATE_EPOCH"
+ENV_GIT_TAG = "GIT_TAG"
+
 
 def create_ar_archive(output_path, files):
     """Create a standard Unix ar archive (.deb file)."""
@@ -64,9 +70,59 @@ def get_caddy_binary(plugin_dir, arch):
             return caddy_f.read()
     return None
 
+def get_source_date_epoch(plugin_dir: str, version: str) -> int:
+    """Resolve reproducible build epoch from env, git tags, or commit log."""
+    env_epoch = os.environ.get(ENV_SOURCE_DATE_EPOCH)
+    if env_epoch:
+        try:
+            return int(env_epoch)
+        except ValueError:
+            pass
+
+    plugin_name = os.path.basename(os.path.abspath(plugin_dir))
+    git_tag = os.environ.get(ENV_GIT_TAG)
+
+    candidate_refs = []
+    if git_tag:
+        candidate_refs.append(f"refs/tags/{git_tag}")
+    candidate_refs.append(f"refs/tags/{plugin_name}-v{version}")
+    candidate_refs.append(f"refs/tags/v{version}")
+
+    for ref in candidate_refs:
+        try:
+            res = subprocess.run(
+                ["git", "log", "-1", "--pretty=%ct", ref, "--", plugin_dir],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            val = res.stdout.strip()
+            if val and val.isdigit():
+                return int(val)
+        except Exception:
+            continue
+
+    try:
+        res = subprocess.run(
+            ["git", "log", "-1", "--pretty=%ct", plugin_dir],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        val = res.stdout.strip()
+        if val and val.isdigit():
+            return int(val)
+    except Exception:
+        pass
+
+    return DEFAULT_EPOCH
+
+
 def build_deb(plugin_dir, output_dir, version="1.0.0"):
     os.makedirs(output_dir, exist_ok=True)
     plugin_name = os.path.basename(os.path.abspath(plugin_dir))
+    epoch = get_source_date_epoch(plugin_dir, version)
+
     
     # Read manifest if available
     manifest_path = os.path.join(plugin_dir, "manifest.json")
@@ -225,14 +281,14 @@ Homepage: https://github.com/mietzen/cockpit-plugins
 Description: {description}
 """
         control_tar_io = io.BytesIO()
-        with gzip.GzipFile(fileobj=control_tar_io, mode="wb", mtime=0) as gz:
+        with gzip.GzipFile(fileobj=control_tar_io, mode="wb", mtime=epoch) as gz:
             with tarfile.open(fileobj=gz, mode="w", format=tarfile.USTAR_FORMAT) as tar:
                 root_ti = tarfile.TarInfo(name="./")
                 root_ti.type = tarfile.DIRTYPE
                 root_ti.mode = 0o755
                 root_ti.uid = 0
                 root_ti.gid = 0
-                root_ti.mtime = 0
+                root_ti.mtime = epoch
                 tar.addfile(root_ti)
     
                 def add_control_file(name, content, mode=0o644):
@@ -244,7 +300,7 @@ Description: {description}
                     ti.gid = 0
                     ti.uname = "root"
                     ti.gname = "root"
-                    ti.mtime = 0
+                    ti.mtime = epoch
                     tar.addfile(ti, io.BytesIO(data))
     
                 add_control_file("control", control_content, 0o644)
@@ -255,7 +311,7 @@ Description: {description}
     
         # 3. data.tar.gz
         data_tar_io = io.BytesIO()
-        with gzip.GzipFile(fileobj=data_tar_io, mode="wb", mtime=0) as gz:
+        with gzip.GzipFile(fileobj=data_tar_io, mode="wb", mtime=epoch) as gz:
             with tarfile.open(fileobj=gz, mode="w", format=tarfile.USTAR_FORMAT) as tar:
                 added_dirs = set()
     
@@ -268,7 +324,7 @@ Description: {description}
                         ti.mode = 0o755
                         ti.uid = 0
                         ti.gid = 0
-                        ti.mtime = 0
+                        ti.mtime = epoch
                         tar.addfile(ti)
                         added_dirs.add(cur)
     
@@ -282,7 +338,7 @@ Description: {description}
                             ti.mode = 0o755
                             ti.uid = 0
                             ti.gid = 0
-                            ti.mtime = 0
+                            ti.mtime = epoch
                             tar.addfile(ti)
                             added_dirs.add(cur)
     
@@ -295,7 +351,7 @@ Description: {description}
                     ti.gid = 0
                     ti.uname = "root"
                     ti.gname = "root"
-                    ti.mtime = 0
+                    ti.mtime = epoch
                     ti.mode = 0o755 if is_exec or arcname.endswith(".py") or arcname.endswith(".sh") else 0o644
                     with open(file_path, "rb") as f:
                         tar.addfile(ti, f)
@@ -380,7 +436,7 @@ Description: {description}
                         ti.gid = 0
                         ti.uname = "root"
                         ti.gname = "root"
-                        ti.mtime = 0
+                        ti.mtime = epoch
                         ti.mode = 0o755
                         tar.addfile(ti, io.BytesIO(caddy_bytes))
     
