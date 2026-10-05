@@ -144,8 +144,12 @@ if [ "${PLUGIN_NAME}" = "code-server" ]; then
             if [ -z "\$SYS_KEY" ]; then
                 SYS_KEY="\$SYS_CERT"
             fi
-            ln -sf "\$SYS_CERT" /etc/cockpit/ws-certs.d/0-self-signed.cert 2>/dev/null || true
-            ln -sf "\$SYS_KEY" /etc/cockpit/ws-certs.d/0-self-signed.key 2>/dev/null || true
+            if [ -n "\$SYS_CERT" ] && [ "\$SYS_CERT" != "/etc/cockpit/ws-certs.d/0-self-signed.cert" ]; then
+                ln -sf "\$SYS_CERT" /etc/cockpit/ws-certs.d/0-self-signed.cert 2>/dev/null || true
+            fi
+            if [ -n "\$SYS_KEY" ] && [ "\$SYS_KEY" != "/etc/cockpit/ws-certs.d/0-self-signed.key" ]; then
+                ln -sf "\$SYS_KEY" /etc/cockpit/ws-certs.d/0-self-signed.key 2>/dev/null || true
+            fi
             chmod 600 /etc/cockpit/ws-certs.d/0-self-signed.cert /etc/cockpit/ws-certs.d/0-self-signed.key 2>/dev/null || true
         fi
     fi
