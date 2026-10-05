@@ -39,6 +39,21 @@ def parse_rpm_version(filename: str) -> str:
     return "1.0.0"
 
 
+def import_gpg_key_if_present() -> bool:
+    # Read private key from environment and import into GPG keyring
+    gpg_key_env = os.environ.get("GPG_PRIVATE_KEY", "").strip()
+    if not gpg_key_env:
+        return False
+
+    try:
+        import_cmd = ["gpg", "--batch", "--yes", "--import"]
+        subprocess.run(import_cmd, input=gpg_key_env.encode(), capture_output=True, check=True)
+        return True
+    except Exception as e:
+        print(f"Warning: Failed to import GPG_PRIVATE_KEY: {e}")
+        return False
+
+
 def generate_rpm_repo(rpm_dir: str, output_dir: str, owner: str = "mietzen", repo: str = "cockpit-plugins"):
     os.makedirs(output_dir, exist_ok=True)
     repodata_dir = os.path.join(output_dir, "repodata")
@@ -112,20 +127,42 @@ def generate_rpm_repo(rpm_dir: str, output_dir: str, owner: str = "mietzen", rep
         with open(os.path.join(repodata_dir, "repomd.xml"), "w", encoding="utf-8") as f:
             f.write(repomd_xml)
 
-    # GPG signing of repomd.xml
-    repomd_file = os.path.join(repodata_dir, "repomd.xml")
-    if os.path.exists(repomd_file):
-        try:
-            p_keys = subprocess.run(["gpg", "--list-secret-keys", "--with-colons"], capture_output=True, text=True)
-            if p_keys.returncode == 0 and "sec:" in p_keys.stdout:
+    # GPG signing of repomd.xml and public key export
+    gpg_imported = import_gpg_key_if_present()
+
+    gpg_has_keys = False
+    try:
+        p_keys = subprocess.run(["gpg", "--list-secret-keys", "--with-colons"], capture_output=True, text=True)
+        if p_keys.returncode == 0 and "sec:" in p_keys.stdout:
+            gpg_has_keys = True
+    except Exception:
+        pass
+
+    if gpg_has_keys or gpg_imported:
+        # Export armored public key to key.gpg if not already present
+        key_path = os.path.join(output_dir, "key.gpg")
+        if not os.path.exists(key_path):
+            try:
+                p_export = subprocess.run(["gpg", "--armor", "--export"], capture_output=True)
+                if p_export.returncode == 0 and p_export.stdout:
+                    with open(key_path, "wb") as f:
+                        f.write(p_export.stdout)
+                    print("Created key.gpg (armored)")
+            except Exception as e:
+                print(f"Warning: Failed to export public key: {e}")
+
+        # Sign repomd.xml to produce repomd.xml.asc
+        repomd_file = os.path.join(repodata_dir, "repomd.xml")
+        if os.path.exists(repomd_file):
+            try:
                 sign_cmd = ["gpg", "--batch", "--yes", "-abs", "--digest-algo", "SHA256", "-o", f"{repomd_file}.asc", repomd_file]
                 passphrase = os.environ.get("GPG_PASSPHRASE", "").strip()
                 if passphrase:
                     sign_cmd.extend(["--pinentry-mode", "loopback", "--passphrase", passphrase])
                 subprocess.run(sign_cmd, check=True)
                 print("Created repomd.xml.asc")
-        except Exception as e:
-            print(f"Warning: Failed to sign repomd.xml: {e}")
+            except Exception as e:
+                print(f"Warning: Failed to sign repomd.xml: {e}")
 
     # Generate install-rpm.sh
     install_rpm_content = f"""#!/usr/bin/env bash

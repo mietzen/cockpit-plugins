@@ -1,10 +1,14 @@
+import os
+import tempfile
 import unittest
+from unittest.mock import MagicMock, patch
+
 try:
     from generate_apt_repo import format_size_mib, sanitize_description, parse_rpm_pkg_name
-    from generate_rpm_repo import parse_rpm_arch
+    from generate_rpm_repo import parse_rpm_arch, import_gpg_key_if_present, generate_rpm_repo
 except ModuleNotFoundError:
     from tools.generate_apt_repo import format_size_mib, sanitize_description, parse_rpm_pkg_name
-    from tools.generate_rpm_repo import parse_rpm_arch
+    from tools.generate_rpm_repo import parse_rpm_arch, import_gpg_key_if_present, generate_rpm_repo
 
 
 class TestGenerateRepo(unittest.TestCase):
@@ -44,6 +48,56 @@ class TestGenerateRepo(unittest.TestCase):
         self.assertEqual(parse_rpm_arch("cockpit-zfs-storage-1.0.0-1.noarch.rpm"), "noarch")
         self.assertEqual(parse_rpm_arch("code-server-4.139.1-amd64.rpm"), "x86_64")
         self.assertEqual(parse_rpm_arch("code-server-4.139.1-arm64.rpm"), "aarch64")
+
+    @patch("subprocess.run")
+    @patch.dict("os.environ", {"GPG_PRIVATE_KEY": "FAKE_KEY"})
+    def test_rpm_gpg_import_present(self, mock_run):
+        # Verify key import invocation when private key environment variable is present
+        result = import_gpg_key_if_present()
+
+        self.assertTrue(result)
+        mock_run.assert_called_once_with(
+            ["gpg", "--batch", "--yes", "--import"],
+            input=b"FAKE_KEY",
+            capture_output=True,
+            check=True,
+        )
+
+    @patch.dict("os.environ", {}, clear=True)
+    def test_rpm_gpg_import_absent(self):
+        # Verify no-op and False returned when private key is absent
+        result = import_gpg_key_if_present()
+
+        self.assertFalse(result)
+
+    @patch("subprocess.run")
+    @patch("shutil.which", return_value=None)
+    def test_rpm_repo_gpg_export(self, mock_which, mock_run):
+        # Verify armored key export and repomd signing during repo generation
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            rpm_dir = os.path.join(tmp_dir, "rpms")
+            out_dir = os.path.join(tmp_dir, "out")
+            os.makedirs(rpm_dir, exist_ok=True)
+
+            mock_export = MagicMock(returncode=0, stdout=b"ARMORED_KEY")
+            mock_keys = MagicMock(returncode=0, stdout="sec:rsa2048:...")
+            mock_sign = MagicMock(returncode=0)
+
+            def mock_side_effect(cmd, **kwargs):
+                if "--export" in cmd:
+                    return mock_export
+                if "--list-secret-keys" in cmd:
+                    return mock_keys
+                return mock_sign
+
+            mock_run.side_effect = mock_side_effect
+
+            generate_rpm_repo(rpm_dir, out_dir)
+
+            key_file = os.path.join(out_dir, "key.gpg")
+            self.assertTrue(os.path.exists(key_file))
+            with open(key_file, "rb") as f:
+                self.assertEqual(f.read(), b"ARMORED_KEY")
 
 
 if __name__ == "__main__":
