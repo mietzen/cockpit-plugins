@@ -6,7 +6,7 @@
   - `plugins/zfs-storage/`: OpenZFS storage manager (`cockpit-zfs-storage`, v1.2.0).
   - `plugins/file-sharing/`: SMB & NFS manager (`cockpit-file-sharing`, v1.2.0).
   - `plugins/container-manager/`: Docker & Podman manager (`cockpit-container-manager`, v1.2.0).
-  - `plugins/code-server/`: VS Code Server manager (`cockpit-code-server`, v1.1.0).
+  - `plugins/code-server/`: VS Code Server manager (`cockpit-code-server`, v1.1.1).
 - `tools/`: Packaging and repository automation (`build_deb.sh`, `build_rpm.sh`, `generate_apt_repo.py`, `generate_rpm_repo.py`).
 - `.agents/skills/`: Discovered agent skill definitions.
 
