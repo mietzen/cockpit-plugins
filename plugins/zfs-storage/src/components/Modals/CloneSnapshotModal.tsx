@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Modal,
   ModalVariant,
@@ -33,6 +33,14 @@ export const CloneSnapshotModal: React.FC<CloneSnapshotModalProps> = ({
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (snapshot) {
+      setClonePath(`${snapshot.dataset}-clone`);
+      setError(null);
+      setLoading(false);
+    }
+  }, [snapshot, isOpen]);
 
   if (!isOpen || !snapshot) {
     return null;
@@ -89,9 +97,10 @@ export const CloneSnapshotModal: React.FC<CloneSnapshotModalProps> = ({
           <TextInput id="cl-src" value={snapshot.name} isReadOnly />
         </FormGroup>
 
-        <FormGroup label="Target Clone Path" isRequired fieldId="cl-target">
+        <FormGroup label="Target Clone Path" isRequired fieldId="clone-path">
           <TextInput
-            id="cl-target"
+            id="clone-path"
+            aria-label="Clone target path"
             value={clonePath}
             onChange={(_event, val) => setClonePath(val)}
             placeholder="e.g. pool/dataset-clone"

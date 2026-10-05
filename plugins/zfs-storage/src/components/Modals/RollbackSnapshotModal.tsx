@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Modal,
   ModalVariant,
@@ -32,6 +32,13 @@ export const RollbackSnapshotModal: React.FC<RollbackSnapshotModalProps> = ({
   const [destroyMoreRecent, setDestroyMoreRecent] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      setError(null);
+      setLoading(false);
+    }
+  }, [isOpen, snapshot]);
 
   if (!isOpen || !snapshot) {
     return null;

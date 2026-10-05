@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Modal,
   ModalVariant,
@@ -40,6 +40,19 @@ export const EditPropertiesModal: React.FC<EditPropertiesModalProps> = ({
   const [sync, setSync] = useState(dataset?.sync || "standard");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (dataset) {
+      setCompression(dataset.compression || "lz4");
+      setQuota(dataset.quota ? String(dataset.quota) : "");
+      setReservation(dataset.reservation ? String(dataset.reservation) : "");
+      setRecordsize(dataset.recordsize ? `${dataset.recordsize / 1024}k` : "128k");
+      setAtime(dataset.atime ?? true);
+      setSync(dataset.sync || "standard");
+      setError(null);
+      setLoading(false);
+    }
+  }, [dataset, isOpen]);
 
   if (!isOpen || !dataset) {
     return null;
