@@ -654,9 +654,9 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
 
     // Test Generate Certificates & Enable Remote TCP button if TCP not yet enabled
     const setupBtn = frame.locator('button:has-text("Generate Certificates & Enable Remote TCP")').first();
-    if (await setupBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+    if (await setupBtn.isVisible({ timeout: 3000 }).catch(() => false) && await setupBtn.isEnabled().catch(() => false)) {
       const sansInput = frame.locator('input#sans-input').first();
-      if (await sansInput.count() > 0) {
+      if (await sansInput.count() > 0 && await sansInput.isEnabled().catch(() => false)) {
         await sansInput.fill('127.0.0.1, localhost');
       }
       await setupBtn.click();
