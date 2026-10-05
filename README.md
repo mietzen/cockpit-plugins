@@ -9,7 +9,7 @@ A collection of plugins and extensions for Cockpit server administration.
 | [ZFS Storage](#zfs-storage) | `cockpit-zfs-storage` | `1.2.0` | Complete OpenZFS storage manager with pool creation wizards, dataset/zvol trees, snapshots, scrubs, trims, and SMART health monitoring. | Stable |
 | [File Sharing](#file-sharing) | `cockpit-file-sharing` | `1.2.0` | Comprehensive SMB (Samba) and NFS file sharing manager with user passdb management, effective permission matrix, and Ansible lock integration. | Stable |
 | [Container Manager](#container-manager) | `cockpit-container-manager` | `1.2.0` | Docker and Podman manager with Compose stack hierarchy, image pull/build, persistent volumes, networks, and live logs. | Stable |
-| [VS Code Server](#vs-code-server) | `cockpit-code-server` | `1.0.0` | Integrated VS Code Server (coder/code-server) environment with service controls and standalone browser tab integration. | Stable |
+| [VS Code Server](#vs-code-server) | `cockpit-code-server` | `1.1.0` | Integrated VS Code Server (coder/code-server) environment with service controls and standalone browser tab integration. | Stable |
 
 ## Installation
 
@@ -37,7 +37,7 @@ EOF
 
 # 3. Update and install
 sudo apt update
-sudo apt install cockpit-zfs-storage cockpit-file-sharing cockpit-container-manager
+sudo apt install cockpit-zfs-storage cockpit-file-sharing cockpit-container-manager cockpit-code-server
 ```
 
 ### .rpm (DNF/YUM)
@@ -61,7 +61,7 @@ repo_gpgcheck=1
 gpgkey=https://mietzen.github.io/cockpit-plugins/key.gpg
 EOF
 
-sudo dnf install -y cockpit-zfs-storage cockpit-file-sharing cockpit-container-manager
+sudo dnf install -y cockpit-zfs-storage cockpit-file-sharing cockpit-container-manager cockpit-code-server
 ```
 
 ## Plugins
@@ -302,10 +302,10 @@ Integrated browser-based code editing environment powered by `coder/code-server`
 - **Service Management**:
   - Start, Stop, and Restart controls for `code-server@$USER.service`.
   - Service status, PID tracking, and uptime metrics.
-- **Configuration & Security**:
-  - Host and Port bind address editor (`127.0.0.1` / `0.0.0.0`).
-  - Authentication toggle (`password` or `none`) with custom password management.
-  - Self-signed SSL/TLS certificate toggle and telemetry controls.
+- **Reverse Proxy & Single Sign-On**:
+  - Reverse proxy integration via Caddy with Cockpit session validation (`forward_auth`).
+  - Isolated UNIX domain sockets per user (`/run/code-server/<uid>/code-server.sock`).
+  - Automated single sign-on leveraging the authenticated Cockpit session.
 
 #### Screenshots
 
@@ -313,11 +313,6 @@ Integrated browser-based code editing environment powered by `coder/code-server`
 | Light Theme | Dark Theme |
 | :---: | :---: |
 | ![Overview Light](docs/screenshots/cs-01-overview-light.png) | ![Overview Dark](docs/screenshots/cs-01-overview-dark.png) |
-
-##### Configuration Modal
-| Dark Theme |
-| :---: |
-| ![Settings Modal](docs/screenshots/cs-02-settings-dark.png) |
 
 ## Building From Source
 
