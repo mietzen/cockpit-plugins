@@ -33,11 +33,11 @@ def compute_sha256(file_path: str) -> str:
 
 def parse_pkg_info(filename: str) -> Tuple[str, str]:
     """Parse plugin name and version from package filename."""
-    deb_match = re.match(r"^cockpit-(.+)_([0-9]+\.[0-9]+\.[0-9]+.*)_all\.deb$", filename)
+    deb_match = re.match(r"^cockpit-(.+)_([0-9]+\.[0-9]+\.[0-9]+[a-zA-Z0-9.~+-]*)_([a-zA-Z0-9_]+)\.deb$", filename)
     if deb_match:
         return deb_match.group(1), deb_match.group(2)
 
-    rpm_match = re.match(r"^cockpit-(.+)-([0-9]+\.[0-9]+\.[0-9]+.*)-[0-9]+\.noarch\.rpm$", filename)
+    rpm_match = re.match(r"^cockpit-(.+)-([0-9]+\.[0-9]+\.[0-9]+[a-zA-Z0-9.~+-]*)-[0-9]+\.([a-zA-Z0-9_]+)\.rpm$", filename)
     if rpm_match:
         return rpm_match.group(1), rpm_match.group(2)
 

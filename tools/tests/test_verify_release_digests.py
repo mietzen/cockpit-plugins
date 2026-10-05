@@ -26,10 +26,28 @@ class TestVerifyReleaseDigests(unittest.TestCase):
         self.assertEqual(pkg, "file-sharing")
         self.assertEqual(ver, "0.2.1")
 
+        # Arch-specific deb parsing
+        pkg, ver = vrd.parse_pkg_info("cockpit-code-server_1.0.0_amd64.deb")
+        self.assertEqual(pkg, "code-server")
+        self.assertEqual(ver, "1.0.0")
+
+        pkg, ver = vrd.parse_pkg_info("cockpit-code-server_1.0.0_arm64.deb")
+        self.assertEqual(pkg, "code-server")
+        self.assertEqual(ver, "1.0.0")
+
         # RPM parsing
         pkg, ver = vrd.parse_pkg_info("cockpit-container-manager-0.2.1-1.noarch.rpm")
         self.assertEqual(pkg, "container-manager")
         self.assertEqual(ver, "0.2.1")
+
+        # Arch-specific rpm parsing
+        pkg, ver = vrd.parse_pkg_info("cockpit-code-server-1.0.0-1.x86_64.rpm")
+        self.assertEqual(pkg, "code-server")
+        self.assertEqual(ver, "1.0.0")
+
+        pkg, ver = vrd.parse_pkg_info("cockpit-code-server-1.0.0-1.aarch64.rpm")
+        self.assertEqual(pkg, "code-server")
+        self.assertEqual(ver, "1.0.0")
 
         # Invalid
         pkg, ver = vrd.parse_pkg_info("invalid-file.txt")
