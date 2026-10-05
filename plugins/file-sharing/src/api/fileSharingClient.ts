@@ -22,24 +22,27 @@ const DEFAULT_OVERVIEW: FileSharingOverview = {
   zfs_mounts: [],
 };
 
-async function execHelper(args: string[]): Promise<any> {
+async function execHelper(args: string[], inputData?: string): Promise<any> {
   if (!window.cockpit) {
     return { status: 'success' };
   }
 
   return new Promise((resolve, reject) => {
-    window.cockpit.spawn([HELPER_PATH, ...args], { superuser: 'require' })
-      .then((output: string) => {
-        try {
-          const res = JSON.parse(output);
-          resolve(res);
-        } catch {
-          resolve({ status: 'success', output });
-        }
-      })
-      .catch((err: any) => {
-        reject(new Error(err.message || String(err)));
-      });
+    const proc = window.cockpit.spawn([HELPER_PATH, ...args], { superuser: 'require' });
+    if (inputData !== undefined) {
+      proc.input(inputData, true);
+    }
+
+    proc.then((output: string) => {
+      try {
+        const res = JSON.parse(output);
+        resolve(res);
+      } catch {
+        resolve({ status: 'success', output });
+      }
+    }).catch((err: any) => {
+      reject(new Error(err.message || String(err)));
+    });
   });
 }
 
@@ -91,15 +94,15 @@ export const fileSharingApi = {
     }
   },
 
-  async createSmbUser(username: string, password: string):Promise<void> {
-    const res = await execHelper(['create_smb_user', '--username', username, '--password', password]);
+  async createSmbUser(username: string, password: string): Promise<void> {
+    const res = await execHelper(['create_smb_user', '--username', username], password + '\n');
     if (res.status === 'error') {
       throw new Error(res.message);
     }
   },
 
   async setSmbUserPassword(username: string, password: string): Promise<void> {
-    const res = await execHelper(['set_smb_user_password', '--username', username, '--password', password]);
+    const res = await execHelper(['set_smb_user_password', '--username', username], password + '\n');
     if (res.status === 'error') {
       throw new Error(res.message);
     }
