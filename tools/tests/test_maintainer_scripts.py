@@ -81,3 +81,20 @@ def test_tmpfiles_perms():
     content = conf_path.read_text(encoding="utf-8")
     assert "1777" not in content
     assert "0755" in content or "755" in content
+
+
+SOCKET_CONF_PATH = (
+    REPO_ROOT / "plugins" / "code-server" / "packaging" / "systemd" / "10-code-server.conf"
+)
+FALLBACK_PORT_ENTRY = "ListenStream=127.0.0.1:9091"
+UNIX_SOCKET_ENTRY = "ListenStream=/run/cockpit/cockpit.sock"
+
+
+def test_cockpit_socket_fallback():
+    """Verify cockpit.socket drop-in configures fallback localhost port."""
+    content = SOCKET_CONF_PATH.read_text(encoding="utf-8")
+
+    # Ensure standalone localhost access is preserved if Caddy fails
+    assert FALLBACK_PORT_ENTRY in content
+    assert UNIX_SOCKET_ENTRY in content
+
