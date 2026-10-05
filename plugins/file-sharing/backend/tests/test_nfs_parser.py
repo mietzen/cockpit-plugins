@@ -270,6 +270,19 @@ class TestNfsParser(unittest.TestCase):
         self.assertEqual(mock_write.call_args[0][0], self.cockpit_file)
         self.assertFalse(os.path.exists(f"{self.cockpit_file}.tmp"))
 
+    @patch("backend.nfs_parser.atomic_write")
+    @patch("backend.nfs_parser.file_lock")
+    def test_save_nfs_global_lock(self, mock_lock, mock_write):
+        # Assert save_nfs_global uses lock and atomic write
+        from backend.nfs_parser import save_nfs_global
+        nfs_conf = os.path.join(self.tmp_dir, "nfs.conf")
+        ok, _ = save_nfs_global({"threads": 4}, config_path=nfs_conf)
+        self.assertTrue(ok)
+        mock_lock.assert_called_once_with(nfs_conf)
+        mock_write.assert_called_once()
+        self.assertEqual(mock_write.call_args[0][0], nfs_conf)
+        self.assertFalse(os.path.exists(f"{nfs_conf}.tmp"))
+
 
 if __name__ == "__main__":
     unittest.main()

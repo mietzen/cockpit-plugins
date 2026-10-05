@@ -334,69 +334,66 @@ def get_nfs_global(config_path: str = "/etc/nfs.conf") -> Dict[str, Any]:
 
 def save_nfs_global(settings: Dict[str, Any], config_path: str = "/etc/nfs.conf") -> Tuple[bool, str]:
     """Saves global NFS server configuration to /etc/nfs.conf under [nfsd]."""
-    content = ""
-    if os.path.exists(config_path):
-        try:
-            with open(config_path, "r", encoding="utf-8", errors="replace") as f:
-                content = f.read()
-        except Exception:
-            pass
+    with file_lock(config_path):
+        content = ""
+        if os.path.exists(config_path):
+            try:
+                with open(config_path, "r", encoding="utf-8", errors="replace") as f:
+                    content = f.read()
+            except Exception:
+                pass
 
-    lines = content.splitlines()
-    in_nfsd = False
-    nfsd_found = False
-    new_lines = []
+        lines = content.splitlines()
+        in_nfsd = False
+        nfsd_found = False
+        new_lines = []
 
-    for line in lines:
-        stripped = line.strip()
-        if stripped.startswith("[") and stripped.endswith("]"):
-            sec = stripped[1:-1].strip().lower()
-            if sec == "nfsd":
-                in_nfsd = True
-                nfsd_found = True
-                new_lines.append("[nfsd]")
-                continue
-            else:
-                if in_nfsd:
-                    in_nfsd = False
-                new_lines.append(line)
-                continue
-
-        if in_nfsd:
-            # Skip old nfsd parameters we manage
-            if "=" in stripped:
-                k = stripped.split("=", 1)[0].strip().lower()
-                if k in ("threads", "vers3", "vers4", "vers4.0", "vers4.1", "vers4.2", "grace-time", "lease-time", "port"):
+        for line in lines:
+            stripped = line.strip()
+            if stripped.startswith("[") and stripped.endswith("]"):
+                sec = stripped[1:-1].strip().lower()
+                if sec == "nfsd":
+                    in_nfsd = True
+                    nfsd_found = True
+                    new_lines.append("[nfsd]")
                     continue
-            new_lines.append(line)
+                else:
+                    if in_nfsd:
+                        in_nfsd = False
+                    new_lines.append(line)
+                    continue
+
+            if in_nfsd:
+                # Skip old nfsd parameters we manage
+                if "=" in stripped:
+                    k = stripped.split("=", 1)[0].strip().lower()
+                    if k in ("threads", "vers3", "vers4", "vers4.0", "vers4.1", "vers4.2", "grace-time", "lease-time", "port"):
+                        continue
+                new_lines.append(line)
+            else:
+                new_lines.append(line)
+
+        nfsd_params = [
+            f"threads = {settings.get('threads', 8)}",
+            f"vers3 = {'y' if settings.get('vers3', True) else 'n'}",
+            f"vers4 = {'y' if settings.get('vers4', True) else 'n'}",
+            f"vers4.1 = {'y' if settings.get('vers4_1', True) else 'n'}",
+            f"vers4.2 = {'y' if settings.get('vers4_2', True) else 'n'}",
+            f"grace-time = {settings.get('grace_time', 90)}",
+            f"lease-time = {settings.get('lease_time', 90)}",
+            f"port = {settings.get('port', 2049)}",
+        ]
+
+        if not nfsd_found:
+            new_lines.append("\n[nfsd]")
+            for p in nfsd_params:
+                new_lines.append(f" {p}")
         else:
-            new_lines.append(line)
+            # Insert params right after [nfsd]
+            idx = new_lines.index("[nfsd]") + 1
+            for i, p in enumerate(nfsd_params):
+                new_lines.insert(idx + i, f" {p}")
 
-    nfsd_params = [
-        f"threads = {settings.get('threads', 8)}",
-        f"vers3 = {'y' if settings.get('vers3', True) else 'n'}",
-        f"vers4 = {'y' if settings.get('vers4', True) else 'n'}",
-        f"vers4.1 = {'y' if settings.get('vers4_1', True) else 'n'}",
-        f"vers4.2 = {'y' if settings.get('vers4_2', True) else 'n'}",
-        f"grace-time = {settings.get('grace_time', 90)}",
-        f"lease-time = {settings.get('lease_time', 90)}",
-        f"port = {settings.get('port', 2049)}",
-    ]
-
-    if not nfsd_found:
-        new_lines.append("\n[nfsd]")
-        for p in nfsd_params:
-            new_lines.append(f" {p}")
-    else:
-        # Insert params right after [nfsd]
-        idx = new_lines.index("[nfsd]") + 1
-        for i, p in enumerate(nfsd_params):
-            new_lines.insert(idx + i, f" {p}")
-
-    final_content = "\n".join(new_lines).strip() + "\n"
-    tmp_path = f"{config_path}.tmp"
-    os.makedirs(os.path.dirname(config_path) or ".", exist_ok=True)
-    with open(tmp_path, "w", encoding="utf-8") as f:
-        f.write(final_content)
-    os.replace(tmp_path, config_path)
-    return True, "Global NFS settings saved successfully"
+        final_content = "\n".join(new_lines).strip() + "\n"
+        atomic_write(config_path, final_content)
+        return True, "Global NFS settings saved successfully"
