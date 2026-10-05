@@ -33,6 +33,7 @@ class VDevConfig:
     devices: List[str] = field(default_factory=list)
     draid_data: Optional[int] = None
     draid_spares: Optional[int] = None
+    is_mirror: bool = False
 
 
 class CommandBuilder:
@@ -100,6 +101,8 @@ class CommandBuilder:
                 cmd.extend(vdev.devices)
             elif vdev.type == VDevType.LOG:
                 cmd.append("log")
+                if vdev.is_mirror:
+                    cmd.append("mirror")
                 cmd.extend(vdev.devices)
             elif vdev.type == VDevType.CACHE:
                 cmd.append("cache")
@@ -109,9 +112,13 @@ class CommandBuilder:
                 cmd.extend(vdev.devices)
             elif vdev.type == VDevType.SPECIAL:
                 cmd.append("special")
+                if vdev.is_mirror:
+                    cmd.append("mirror")
                 cmd.extend(vdev.devices)
             elif vdev.type == VDevType.DEDUP:
                 cmd.append("dedup")
+                if vdev.is_mirror:
+                    cmd.append("mirror")
                 cmd.extend(vdev.devices)
 
         return cmd

@@ -60,6 +60,37 @@ class TestZfsServiceActions(unittest.TestCase):
             ["zpool", "create", "tank", "draid1", "/dev/sdb", "/dev/sdc", "/dev/sdd"]
         )
 
+    # Verify pool creation with mirrored special and log vdevs.
+    @patch("backend.zfs_helper.run_cmd")
+    def test_pool_create_mirror_vdev(self, mock_run):
+        mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
+        payload = {
+            "name": "tank",
+            "vdevs": [
+                {
+                    "type": "special",
+                    "devices": ["/dev/sdb", "/dev/sdc"],
+                    "is_mirror": True,
+                },
+                {
+                    "type": "log",
+                    "devices": ["/dev/sdd", "/dev/sde"],
+                    "layout": "mirror",
+                },
+            ],
+        }
+
+        res = self.svc.pool_create(payload)
+
+        self.assertTrue(res["success"])
+        cmd = mock_run.call_args[0][0]
+        self.assertIn("special", cmd)
+        special_idx = cmd.index("special")
+        self.assertEqual(cmd[special_idx : special_idx + 4], ["special", "mirror", "/dev/sdb", "/dev/sdc"])
+        self.assertIn("log", cmd)
+        log_idx = cmd.index("log")
+        self.assertEqual(cmd[log_idx : log_idx + 4], ["log", "mirror", "/dev/sdd", "/dev/sde"])
+
     @patch("backend.zfs_helper.run_cmd")
     def test_dataset_create_action(self, mock_run):
         mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")

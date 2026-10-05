@@ -380,12 +380,14 @@ class ZfsService:
             devices = [validate_name(d, "device") for d in v.get("devices", [])]
             draid_data = int(v["draid_data"]) if v.get("draid_data") is not None else None
             draid_spares = int(v["draid_spares"]) if v.get("draid_spares") is not None else None
+            is_mirror = bool(v.get("is_mirror", False) or v.get("layout") == "mirror")
             vdevs.append(
                 VDevConfig(
                     type=v_type,
                     devices=devices,
                     draid_data=draid_data,
                     draid_spares=draid_spares,
+                    is_mirror=is_mirror,
                 )
             )
         

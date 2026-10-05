@@ -47,6 +47,33 @@ class TestCommandBuilder(unittest.TestCase):
         ]
         self.assertEqual(cmd, expected)
 
+    # Verify mirrored special, log, and dedup vdev command formatting.
+    def test_mirrored_special_and_log(self):
+        special_vdev = VDevConfig(
+            type=VDevType.SPECIAL,
+            devices=["/dev/sdb", "/dev/sdc"],
+            is_mirror=True,
+        )
+        log_vdev = VDevConfig(
+            type=VDevType.LOG,
+            devices=["/dev/sdd", "/dev/sde"],
+            is_mirror=True,
+        )
+        dedup_vdev = VDevConfig(
+            type=VDevType.DEDUP,
+            devices=["/dev/sdf", "/dev/sdg"],
+            is_mirror=True,
+        )
+
+        cmd = self.builder.build_pool_create(
+            name="tank",
+            vdevs=[special_vdev, log_vdev, dedup_vdev],
+        )
+
+        self.assertEqual(cmd[3:7], ["special", "mirror", "/dev/sdb", "/dev/sdc"])
+        self.assertEqual(cmd[7:11], ["log", "mirror", "/dev/sdd", "/dev/sde"])
+        self.assertEqual(cmd[11:15], ["dedup", "mirror", "/dev/sdf", "/dev/sdg"])
+
     # Verify DRAID pool creation commands without custom parameters.
     def test_pool_create_draid(self):
         vdevs = [VDevConfig(type=VDevType.DRAID1, devices=["/dev/sda", "/dev/sdb", "/dev/sdc"])]
