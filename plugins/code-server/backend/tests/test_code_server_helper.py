@@ -7,7 +7,7 @@ from backend.config_manager import CodeServerConfig
 
 def test_handle_status_command():
     with patch("backend.code_server_helper.get_binary_info", return_value={"installed": True, "version": "4.139.1", "path": "/usr/bin/code-server"}), \
-         patch("backend.code_server_helper.get_service_status", return_value={"active": True, "state": "active", "enabled": True, "pid": 1234, "unit": "code-server@test-user.service"}), \
+         patch("backend.code_server_helper.get_service_status", return_value={"active": True, "state": "active", "enabled": True, "pid": 1234, "unit": "code-server@test-user.service", "socket_ready": True}), \
          patch("backend.code_server_helper.parse_code_server_config") as mock_cfg:
 
         mock_obj = MagicMock()
@@ -28,6 +28,35 @@ def test_handle_status_command():
         assert res["config"]["port"] == 8080
         assert res["auth_configured"] is True
         assert "password" not in res["config"]
+
+
+def test_status_restarts_socket():
+    mock_inactive = {
+        "active": True,
+        "state": "active",
+        "enabled": True,
+        "pid": 1234,
+        "unit": "code-server@test-user.service",
+        "socket_ready": False,
+    }
+    mock_ready = dict(mock_inactive, socket_ready=True)
+
+    with patch("backend.code_server_helper.ensure_user_dir_permissions") as mock_perm, \
+         patch("backend.code_server_helper.get_binary_info", return_value={"installed": True, "version": "4.139.1", "path": "/usr/bin/code-server"}), \
+         patch("backend.code_server_helper.get_service_status", side_effect=[mock_inactive, mock_ready]) as mock_status, \
+         patch("backend.code_server_helper.manage_service", return_value={"success": True}) as mock_manage, \
+         patch("backend.code_server_helper.parse_code_server_config") as mock_cfg:
+
+        mock_obj = MagicMock()
+        mock_obj.to_dict.return_value = {"port": 8080, "auth": "none", "auth_configured": False}
+        mock_cfg.return_value = mock_obj
+
+        res = handle_command(["status", "--user", "test-user"])
+        assert res["status"] == "ok"
+        mock_perm.assert_called_once_with("test-user")
+        mock_manage.assert_called_once_with("restart", "test-user")
+        assert mock_status.call_count == 2
+        assert res["service"]["socket_ready"] is True
 
 
 def test_handle_service_action_command_success_and_failure():

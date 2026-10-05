@@ -21,6 +21,9 @@ REDIRECT_CODE_SERVER = "redir @code_server_no_slash /code-server/{re.cs_ns.uid}/
 REVERSE_PROXY_TARGET = (
     "reverse_proxy unix//run/code-server/{re.cs.uid}/code-server.sock"
 )
+REVERSE_PROXY_FALLBACK = (
+    "reverse_proxy unix//run/code-server/{re.cs.uid}/code-server.sock unix//run/code-server/{re.cs.uid}.sock"
+)
 EXPECTED_TMPFILES_PERM = "1777"
 
 
@@ -57,3 +60,10 @@ def test_tmpfiles_permission():
     content = TMPFILES_PATH.read_text(encoding="utf-8")
 
     assert EXPECTED_TMPFILES_PERM in content
+
+
+def test_caddy_socket_fallback():
+    """Verify code-server reverse proxy includes fallback socket."""
+    content = CADDYFILE_PATH.read_text(encoding="utf-8")
+
+    assert REVERSE_PROXY_FALLBACK in content

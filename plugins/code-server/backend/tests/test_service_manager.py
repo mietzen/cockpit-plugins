@@ -130,8 +130,7 @@ def test_ensure_user_dir_permissions_success():
 
             with open(os.path.join(cfg_dir, "config.yaml"), "r") as f:
                 content = f.read()
-                assert "auth: password" in content
-                assert "password:" in content
+                assert "auth: none" in content
                 assert "socket: /run/code-server/1000/code-server.sock" in content
 
 
@@ -148,8 +147,7 @@ def test_ensure_user_dir_new_cfg():
             assert os.path.isfile(cfg_file)
             with open(cfg_file, "r") as f:
                 content = f.read()
-                assert "auth: password" in content
-                assert "password:" in content
+                assert "auth: none" in content
 
 
 def test_ensure_user_dir_migrate():
@@ -169,11 +167,10 @@ def test_ensure_user_dir_migrate():
             ensure_user_dir_permissions("testuser")
             with open(cfg_file, "r") as f:
                 content = f.read()
-                assert "auth: password" in content
-                assert "password:" in content
+                assert "auth: none" in content
 
 
-def test_ensure_dir_keep_pass():
+def test_ensure_dir_auth_none():
     import pwd
     import tempfile
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -190,7 +187,7 @@ def test_ensure_dir_keep_pass():
             ensure_user_dir_permissions("testuser")
             with open(cfg_file, "r") as f:
                 content = f.read()
-                assert "password: keep-this-secret" in content
+                assert "auth: none" in content
 
 
 def test_install_code_server_deb_success():

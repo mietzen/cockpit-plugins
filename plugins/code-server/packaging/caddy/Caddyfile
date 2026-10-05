@@ -15,7 +15,10 @@
 			uri /cockpit/login
 		}
 		rewrite {re.cs.rest}
-		reverse_proxy unix//run/code-server/{re.cs.uid}/code-server.sock
+		reverse_proxy unix//run/code-server/{re.cs.uid}/code-server.sock unix//run/code-server/{re.cs.uid}.sock {
+			lb_policy first
+			lb_try_duration 1s
+		}
 	}
 
 	handle {
