@@ -21,6 +21,7 @@ interface EditPropertiesModalProps {
   onSubmit: (args: {
     dataset: ZDataset;
     properties: Record<string, string>;
+    inheritProperties?: string[];
     commands: string[][];
   }) => Promise<void>;
 }
@@ -84,7 +85,12 @@ export const EditPropertiesModal: React.FC<EditPropertiesModalProps> = ({
         atime: atime ? "on" : "off",
         sync,
       };
-      await onSubmit({ dataset, properties: props, commands: cmds });
+      await onSubmit({
+        dataset,
+        properties: props,
+        inheritProperties: [],
+        commands: cmds,
+      });
       setLoading(false);
       onClose();
     } catch (err: any) {
