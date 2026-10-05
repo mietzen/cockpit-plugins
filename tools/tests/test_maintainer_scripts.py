@@ -19,6 +19,43 @@ SCRIPT_PATHS = (
     REPO_ROOT / "tools" / "build_rpm.sh",
 )
 
+TEMPLATES_DIR = REPO_ROOT / "tools" / "templates"
+POSTINST_TEMPLATE = TEMPLATES_DIR / "postinst.sh"
+PRERM_TEMPLATE = TEMPLATES_DIR / "prerm.sh"
+
+HELPER_DIR_PLACEHOLDER = "@@HELPER_DIR_NAME@@"
+PLUGIN_NAME_PLACEHOLDER = "@@PLUGIN_NAME@@"
+
+
+def test_maintainer_templates():
+    """Verify maintainer script templates exist and are used by builders."""
+    assert POSTINST_TEMPLATE.is_file()
+    assert PRERM_TEMPLATE.is_file()
+
+    postinst = POSTINST_TEMPLATE.read_text(encoding="utf-8")
+    prerm = PRERM_TEMPLATE.read_text(encoding="utf-8")
+
+    assert HELPER_DIR_PLACEHOLDER in postinst
+    assert PLUGIN_NAME_PLACEHOLDER in postinst
+    assert "chmod -R 755 /usr/libexec/" in postinst
+    assert "code-server" in postinst
+    assert "ws-certs.d" in postinst
+    assert "ProtocolHeader = X-Forwarded-Proto" in postinst
+    assert "cockpit-caddy.service" in postinst
+    assert "/usr/local/bin/code" in postinst
+
+    assert PLUGIN_NAME_PLACEHOLDER in prerm
+    assert "code-server" in prerm
+    assert "rm -f /usr/local/bin/code" in prerm
+    assert "systemctl stop 'code-server@*.service'" in prerm
+    assert "cockpit-caddy.service" in prerm
+    assert "cockpit.socket.d/10-code-server.conf" in prerm
+
+    for builder in SCRIPT_PATHS:
+        content = builder.read_text(encoding="utf-8")
+        assert "postinst.sh" in content
+        assert "prerm.sh" in content
+
 
 def extract_cert_snippet(file_path: Path) -> str:
     """Extract cert symlink block from maintainer script."""
@@ -46,8 +83,7 @@ def extract_cert_snippet(file_path: Path) -> str:
     return snippet.replace(r"\$", "$")
 
 
-@pytest.mark.parametrize("script_path", SCRIPT_PATHS, ids=lambda p: p.name)
-def test_cert_symlink_safety(tmp_path: Path, script_path: Path):
+def test_cert_symlink_safety(tmp_path: Path):
     """Verify maintainer script creates no self-referential symlink."""
     mock_certs_dir = tmp_path / CERTS_DIR_NAME
     mock_certs_dir.mkdir(parents=True, exist_ok=True)
@@ -59,7 +95,7 @@ def test_cert_symlink_safety(tmp_path: Path, script_path: Path):
     assert not key_file.exists()
 
     # Extract shell logic and point to mock directory
-    raw_snippet = extract_cert_snippet(script_path)
+    raw_snippet = extract_cert_snippet(POSTINST_TEMPLATE)
     mock_script = raw_snippet.replace(TARGET_DIR_PATTERN, str(mock_certs_dir))
 
     # Run extracted shell snippet in bash
@@ -108,10 +144,11 @@ FORBIDDEN_MUTATION_PATTERNS = (
 )
 
 
-@pytest.mark.parametrize("script_path", SCRIPT_PATHS, ids=lambda p: p.name)
-def test_no_home_mutation(script_path: Path):
+def test_no_home_mutation():
     """Verify maintainer script does not scan or mutate user homes."""
-    content = script_path.read_text(encoding="utf-8")
-    for pattern in FORBIDDEN_MUTATION_PATTERNS:
-        assert pattern not in content
-    assert STOP_SERVICE_CMD in content
+    for script_path in (POSTINST_TEMPLATE, PRERM_TEMPLATE, *SCRIPT_PATHS):
+        content = script_path.read_text(encoding="utf-8")
+        for pattern in FORBIDDEN_MUTATION_PATTERNS:
+            assert pattern not in content
+
+    assert STOP_SERVICE_CMD in PRERM_TEMPLATE.read_text(encoding="utf-8")
