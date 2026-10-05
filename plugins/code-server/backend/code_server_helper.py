@@ -24,6 +24,7 @@ try:
         get_service_status,
         manage_service,
         install_code_server,
+        ensure_user_dir_permissions,
     )
 except ImportError:
     from config_manager import (
@@ -40,6 +41,7 @@ except ImportError:
         get_service_status,
         manage_service,
         install_code_server,
+        ensure_user_dir_permissions,
     )
 
 
@@ -71,10 +73,15 @@ def handle_command(args: List[str]) -> Dict[str, Any]:
         return {"status": "error", "error": "Invalid arguments"}
 
     if parsed.action == "status":
+        ensure_user_dir_permissions(parsed.user)
         user = resolve_username(parsed.user)
         uid = get_user_uid(parsed.user)
         binary = get_binary_info()
         service = get_service_status(parsed.user)
+        if service.get("active") and not service.get("socket_ready"):
+            manage_service("restart", parsed.user)
+            service = get_service_status(parsed.user)
+
         cfg_path = get_user_config_path(parsed.user)
         config = parse_code_server_config(cfg_path, parsed.user)
         cfg_dict = config.to_dict()

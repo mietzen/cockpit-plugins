@@ -22,8 +22,7 @@ def test_parse_default_config_when_file_not_found():
         cfg = parse_code_server_config("/non/existent/path/config.yaml", username="root")
         assert cfg.socket == "/run/code-server/0/code-server.sock"
         assert cfg.socket_mode == "600"
-        assert cfg.auth == "password"
-        assert cfg.password is not None
+        assert cfg.auth == "none"
         assert cfg.cert is False
 
     cfg_user = parse_code_server_config("/non/existent/path/config.yaml")
@@ -190,16 +189,28 @@ def test_write_socket_config():
         assert parsed.socket_mode == "666"
 
 
-def test_default_auth_and_pass():
-    # Assert DEFAULT_AUTH is "password" (never "none")
-    assert DEFAULT_AUTH == "password"
-    assert DEFAULT_AUTH != "none"
+def test_default_auth():
+    # Assert DEFAULT_AUTH is "none" (not "password")
+    assert DEFAULT_AUTH == "none"
+    assert DEFAULT_AUTH != "password"
 
-    # Verify generated and loaded config without password generates and persists random password
+    # Default CodeServerConfig auth is none
+    default_cfg = CodeServerConfig()
+    assert default_cfg.auth == "none"
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        empty_cfg_path = os.path.join(tmpdir, "empty_config.yaml")
+        with open(empty_cfg_path, "w") as f:
+            f.write("bind-addr: 127.0.0.1:8080\n")
+
+        parsed_empty = parse_code_server_config(empty_cfg_path)
+        assert parsed_empty.auth == "none"
+
+    # Verify generated and loaded config when auth is password generates and persists random password
     with tempfile.TemporaryDirectory() as tmpdir:
         cfg_path = os.path.join(tmpdir, "config.yaml")
 
-        cfg = CodeServerConfig()
+        cfg = CodeServerConfig(auth="password")
         assert cfg.auth == "password"
         assert cfg.password is not None
         assert len(cfg.password) >= 24
@@ -222,20 +233,6 @@ def test_default_auth_and_pass():
         with open(cfg_path, "r") as f:
             saved_content = f.read()
             assert f"password: {loaded.password}" in saved_content
-
-    # Configs cannot default to unauthenticated auth: none
-    default_cfg = CodeServerConfig()
-    assert default_cfg.auth != "none"
-
-    with tempfile.TemporaryDirectory() as tmpdir:
-        empty_cfg_path = os.path.join(tmpdir, "empty_config.yaml")
-        with open(empty_cfg_path, "w") as f:
-            f.write("bind-addr: 127.0.0.1:8080\n")
-
-        parsed_empty = parse_code_server_config(empty_cfg_path)
-        assert parsed_empty.auth != "none"
-        assert parsed_empty.auth == "password"
-        assert parsed_empty.password is not None
 
 
 def test_default_port_and_bind_addr():

@@ -46,9 +46,9 @@ def get_binary_info() -> Dict[str, Any]:
         "path": binary_path,
     }
 try:
-    from .config_manager import resolve_username
+    from .config_manager import resolve_username, get_default_socket_path_for_user
 except ImportError:
-    from config_manager import resolve_username
+    from config_manager import resolve_username, get_default_socket_path_for_user
 
 
 def get_service_unit_name(username: Optional[str] = None) -> str:
@@ -68,6 +68,8 @@ def get_service_status(username: Optional[str] = None) -> Dict[str, Any]:
         "pid": None,
         "started_at": None,
     }
+    sock_path = get_default_socket_path_for_user(username)
+    status["socket_ready"] = os.path.exists(sock_path)
 
     try:
         proc = subprocess.run(
@@ -191,8 +193,7 @@ def ensure_user_dir_permissions(username: Optional[str] = None) -> None:
                 init_cfg = CodeServerConfig(
                     socket=default_sock,
                     socket_mode="600",
-                    auth=AUTH_PASSWORD,
-                    password=secrets.token_urlsafe(PASSWORD_TOKEN_BYTES),
+                    auth=AUTH_NONE,
                     cert=False,
                     app_name="Code-Server",
                     disable_telemetry=True,
@@ -213,10 +214,8 @@ def ensure_user_dir_permissions(username: Optional[str] = None) -> None:
                 if not cfg.app_name:
                     cfg.app_name = "Code-Server"
                     changed = True
-                if cfg.auth == AUTH_NONE or (cfg.auth == AUTH_PASSWORD and not cfg.password and not cfg.hashed_password):
-                    cfg.auth = AUTH_PASSWORD
-                    if not cfg.password and not cfg.hashed_password:
-                        cfg.password = secrets.token_urlsafe(PASSWORD_TOKEN_BYTES)
+                if cfg.socket and "/run/code-server" in cfg.socket and cfg.auth != AUTH_NONE:
+                    cfg.auth = AUTH_NONE
                     changed = True
                 if changed:
                     write_code_server_config(cfg_file, cfg, user)
