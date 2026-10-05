@@ -86,7 +86,7 @@ export class ZfsApiClient {
     return this.runHelper("pool-export", poolName);
   }
 
-  public async importPool(payload: { name?: string; force?: boolean; altroot?: string } = {}): Promise<CommandResult> {
+  public async importPool(payload: { name?: string; force?: boolean; altroot?: string; import_all?: boolean } = {}): Promise<CommandResult> {
     return this.runHelper("pool-import", JSON.stringify(payload));
   }
 

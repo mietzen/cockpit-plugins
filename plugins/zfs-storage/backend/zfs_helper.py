@@ -428,6 +428,7 @@ class ZfsService:
             force=payload.get("force", True),
             altroot=payload.get("altroot"),
             directory=payload.get("directory", "/dev/disk/by-id"),
+            import_all=payload.get("import_all", not bool(name)),
         )
         return self._exec(cmd)
 

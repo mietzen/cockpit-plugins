@@ -143,6 +143,7 @@ class CommandBuilder:
         force: bool = True,
         altroot: Optional[str] = None,
         directory: str = "/dev/disk/by-id",
+        import_all: bool = False,
     ) -> List[str]:
         cmd = ["zpool", "import"]
         if directory:
@@ -151,7 +152,9 @@ class CommandBuilder:
             cmd.append("-f")
         if altroot:
             cmd.extend(["-R", altroot])
-        if name:
+        if import_all or not name:
+            cmd.append("-a")
+        else:
             cmd.append(name)
         return cmd
 
