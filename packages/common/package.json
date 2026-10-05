@@ -1,6 +1,6 @@
 {
   "name": "@cockpit-plugins/common",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Shared frontend and theme utilities for Cockpit plugins",
   "main": "src/index.ts",
   "types": "src/index.ts",
