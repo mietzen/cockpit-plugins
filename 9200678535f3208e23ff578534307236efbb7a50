@@ -1,0 +1,4 @@
+Topic: pf6-visual-fidelity
+Decision: Clamp navbar to 47px and reset tab item padding in PF6
+Rationale: Restore visual parity with baseline designs
+Context: Issue #134, PR #135
