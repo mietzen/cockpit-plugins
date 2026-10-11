@@ -168,6 +168,31 @@ h6 {
   padding: 0 1.25rem !important;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
   margin: 0 !important;
+  height: 47px !important;
+  min-height: 47px !important;
+  max-height: 47px !important;
+}
+.cockpit-top-nav-bar .pf-v5-c-tabs,
+.cockpit-top-nav-bar .pf-v6-c-tabs,
+.cockpit-top-nav-bar .pf-v5-c-tabs__list,
+.cockpit-top-nav-bar .pf-v6-c-tabs__list {
+  height: 45px !important;
+  min-height: 45px !important;
+  max-height: 45px !important;
+}
+.cockpit-top-nav-bar .pf-v5-c-tabs__item,
+.cockpit-top-nav-bar .pf-v6-c-tabs__item {
+  height: 45px !important;
+  min-height: 45px !important;
+  max-height: 45px !important;
+  padding: 0 !important;
+  padding-block: 0 !important;
+  padding-inline: 0 !important;
+}
+.cockpit-top-nav-bar .pf-v5-l-flex,
+.cockpit-top-nav-bar .pf-v6-l-flex {
+  height: 45px !important;
+  align-items: center !important;
 }
 .pf-v5-c-tabs,
 .pf-v6-c-tabs,
