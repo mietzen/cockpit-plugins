@@ -1,0 +1,4 @@
+Topic: pf6-migration-code-server
+Decision: Migrate code-server and shared ConfirmModal to PatternFly 6 composable modals and tokens
+Rationale: Completes 5-phase PatternFly 6 migration across all monorepo plugins, fully eliminating PF5
+Context: Issue #122, PR #127, Parent Issue #56
