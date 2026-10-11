@@ -1,0 +1,4 @@
+Topic: pf6-visual-fidelity
+Decision: Enforce 1.5rem horizontal page padding and 600 card title weight in PF6
+Rationale: PF6 logical properties evaluated to 0px causing edge touching; card titles defaulted to 400
+Context: Issue #132, PR #133
