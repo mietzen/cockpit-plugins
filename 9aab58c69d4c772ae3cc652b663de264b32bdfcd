@@ -1,0 +1,4 @@
+Topic: pf6-visual-fidelity
+Decision: Use inset box-shadow on active tab link and disable PF6 animated list line
+Rationale: Restores exact 3px indicator line across themes without relying on link pseudo-elements suppressed in PF6
+Context: Issue #129
