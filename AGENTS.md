@@ -45,4 +45,14 @@ Every issue must follow this exact sequence:
 
 ### Checkpoints & Decision Logging
 - **Frequent Checkpoints**: Commit frequently with concise commit messages for incremental checkpoints during development.
-- **Git Notes**: Document significant architectural, security, or user decisions using `git notes` (`git notes add -m "<decision>" <commit>`). Push notes via `git push origin refs/notes/*`.
+- **Decision Tracking (`git notes`)**:
+  - **Purpose**: Enable subagents and parent agents to look up historical decisions after context compaction without filling the context window.
+  - **Structure**: Always attach structured key-value notes to relevant commits:
+    ```
+    Topic: <subsystem-or-feature>
+    Decision: <concise-decision>
+    Rationale: <why-chosen>
+    Context: <issue-#-or-user-instruction>
+    ```
+  - **Selective Querying**: Never ingest all notes at once. Retrieve selectively using `git log --grep="Topic: <keyword>" --show-notes -n 3` or `git notes show <commit-sha>`.
+  - **Sync**: Push notes to remote using `git push origin refs/notes/*`.
