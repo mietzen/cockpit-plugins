@@ -6,10 +6,10 @@ A collection of plugins and extensions for Cockpit server administration.
 
 | Plugin | Package Name | Version | Description | Status |
 | :--- | :--- | :--- | :--- | :--- |
-| [ZFS Storage](#zfs-storage) | `cockpit-zfs-storage` | `1.3.0` | Complete OpenZFS storage manager with pool creation wizards, dataset/zvol trees, snapshots, scrubs, trims, and SMART health monitoring. | Stable |
-| [File Sharing](#file-sharing) | `cockpit-file-sharing` | `1.3.0` | Comprehensive SMB (Samba) and NFS file sharing manager with user passdb management, effective permission matrix, and Ansible lock integration. | Stable |
-| [Container Manager](#container-manager) | `cockpit-container-manager` | `1.3.0` | Docker and Podman manager with Compose stack hierarchy, image pull/build, persistent volumes, networks, and live logs. | Stable |
-| [VS Code Server](#vs-code-server) | `cockpit-code-server` | `1.3.0` | Integrated VS Code Server (coder/code-server) environment with service controls and standalone browser tab integration. | Stable |
+| [ZFS Storage](#zfs-storage) | `cockpit-zfs-storage` | `1.3.1` | Complete OpenZFS storage manager with pool creation wizards, dataset/zvol trees, snapshots, scrubs, trims, and SMART health monitoring. | Stable |
+| [File Sharing](#file-sharing) | `cockpit-file-sharing` | `1.3.1` | Comprehensive SMB (Samba) and NFS file sharing manager with user passdb management, effective permission matrix, and Ansible lock integration. | Stable |
+| [Container Manager](#container-manager) | `cockpit-container-manager` | `1.3.1` | Docker and Podman manager with Compose stack hierarchy, image pull/build, persistent volumes, networks, and live logs. | Stable |
+| [VS Code Server](#vs-code-server) | `cockpit-code-server` | `1.3.1` | Integrated VS Code Server (coder/code-server) environment with service controls and standalone browser tab integration. | Stable |
 
 ## Installation
 
