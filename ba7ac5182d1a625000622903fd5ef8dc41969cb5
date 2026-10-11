@@ -1,0 +1,4 @@
+Topic: e2e-coverage-and-gate
+Decision: Scope brace-expansion override to minimatch<10 and fail gate on empty frontend tier
+Rationale: Prevents nyc crash due to missing expand() in minimatch@10 and eliminates vacuous 100% 0/0 coverage passes
+Context: Issue #116, PR #117
