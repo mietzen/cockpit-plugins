@@ -1,0 +1,4 @@
+Topic: pf6-visual-fidelity
+Decision: Enforce 1.5rem inline padding on page sections and 600 font-weight on card titles
+Rationale: PF6 defaults evaluate inline padding to 0px and card titles to 400 weight, breaking visual layout
+Context: Issue #132
