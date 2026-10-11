@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   PageSection,
   Card,
@@ -67,7 +67,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     columnIndex,
   });
 
-  const sortedDisks = React.useMemo(() => {
+  const sortedDisks = useMemo(() => {
     if (diskSortIndex === null) {
       return disks;
     }
@@ -111,12 +111,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   return (
     <>
       {/* Top Header */}
-      <PageSection variant="light" style={{ paddingBottom: "1rem" }}>
+      <PageSection style={{ paddingBottom: "1rem" }}>
         <Flex justifyContent={{ default: "justifyContentSpaceBetween" }} alignItems={{ default: "alignItemsCenter" }}>
           <FlexItem>
-            <Title headingLevel="h1" size="2xl" style={{ fontWeight: 600, margin: 0, lineHeight: 1.2 }}>
-              ZFS Storage
-            </Title>
+            <Flex alignItems={{ default: "alignItemsCenter" }}>
+              <FlexItem>
+                <Title headingLevel="h1" size="2xl" style={{ fontWeight: 600, margin: 0, lineHeight: 1.2 }}>
+                  ZFS Storage
+                </Title>
+              </FlexItem>
+              <FlexItem>
+                <span style={{ color: "var(--zfs-text-secondary)", marginLeft: "0.5rem" }}>
+                  {systemInfo?.version ? systemInfo.version.split("\n")[0] : "OpenZFS"}
+                </span>
+              </FlexItem>
+            </Flex>
           </FlexItem>
           <FlexItem>
             <Flex alignItems={{ default: "alignItemsCenter" }} gap={{ default: "gapSm" }}>
@@ -203,7 +212,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <Card
               isFullHeight
               isPlain
-              isHoverable
+              isClickable
               onClick={onViewArcDetails}
               style={{ border: "1px solid var(--zfs-card-border)", cursor: "pointer" }}
             >
@@ -274,7 +283,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             return (
               <GridItem key={pool.name} span={12} md={6}>
                 <Card
-                  isHoverable
+                  isClickable
                   isPlain
                   onClick={() => onSelectPool(pool.name)}
                   style={{
@@ -431,4 +440,3 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     </>
   );
 };
-

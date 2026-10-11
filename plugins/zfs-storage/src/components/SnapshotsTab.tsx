@@ -15,8 +15,6 @@ import {
   CardBody,
   Badge,
   EmptyState,
-  EmptyStateHeader,
-  EmptyStateIcon,
   EmptyStateBody,
   EmptyStateFooter,
   EmptyStateActions,
@@ -181,20 +179,6 @@ export const SnapshotsTab: React.FC<SnapshotsTabProps> = ({
 
   const selectedObjects = poolSnaps.filter((s) => selectedSnaps.includes(s.name));
 
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      (window as any).__snapshotsTabHandlers = {
-        toggleCollapse: toggleDatasetCollapse,
-        expandAll: handleExpandAll,
-        collapseAll: handleCollapseAll,
-        selectAll: handleSelectAll,
-        selectGroup: handleSelectGroup,
-        selectRow: handleSelectRow,
-        toggleDropdown: toggleDropdown,
-      };
-    }
-  });
-
   const sortGroupSnapshots = (snaps: ZSnapshot[]) => {
     if (snapSortIndex === null) {
       return snaps;
@@ -218,6 +202,20 @@ export const SnapshotsTab: React.FC<SnapshotsTabProps> = ({
       return snapSortDirection === 'asc' ? String(aVal).localeCompare(String(bVal)) : String(bVal).localeCompare(String(aVal));
     });
   };
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      (window as any).__snapshotsTabHandlers = {
+        toggleCollapse: toggleDatasetCollapse,
+        expandAll: handleExpandAll,
+        collapseAll: handleCollapseAll,
+        selectAll: handleSelectAll,
+        selectGroup: handleSelectGroup,
+        selectRow: handleSelectRow,
+        toggleDropdown: toggleDropdown,
+      };
+    }
+  });
 
   return (
     <div>
@@ -259,12 +257,11 @@ export const SnapshotsTab: React.FC<SnapshotsTabProps> = ({
 
       {poolSnaps.length === 0 ? (
         isLoading ? null : (
-          <EmptyState>
-            <EmptyStateHeader
-              titleText="No snapshots taken"
-              icon={<EmptyStateIcon icon={CameraIcon} />}
-              headingLevel="h4"
-            />
+          <EmptyState
+            titleText="No snapshots taken"
+            icon={CameraIcon}
+            headingLevel="h4"
+          >
             <EmptyStateBody>
               Snapshots are point-in-time read-only copies of your datasets. They take no initial space until data blocks change.
             </EmptyStateBody>
@@ -335,7 +332,7 @@ export const SnapshotsTab: React.FC<SnapshotsTabProps> = ({
                   style={{
                     overflow: "hidden",
                     border: isFocused
-                      ? "2px solid var(--zfs-tab-active-color)"
+                       ? "2px solid var(--zfs-tab-active-color)"
                       : "1px solid var(--zfs-card-border)",
                     boxShadow: isFocused ? "0 0 12px rgba(0, 102, 204, 0.25)" : "none",
                     transition: "border-color 0.3s ease, box-shadow 0.3s ease",
@@ -436,7 +433,6 @@ export const SnapshotsTab: React.FC<SnapshotsTabProps> = ({
                                   : "-"}
                               </Td>
                               <Td isActionCell>
-
                                 <Dropdown
                                   popperProps={{ position: "right", preventOverflow: true, appendTo: () => document.body }}
                                   isOpen={openDropdown === snap.name}

@@ -101,7 +101,7 @@ export const PoolDetailsView: React.FC<PoolDetailsViewProps> = ({
 
   return (
     <>
-      <PageSection variant="light" style={{ paddingBottom: 0 }}>
+      <PageSection style={{ paddingBottom: 0 }}>
         <Breadcrumb style={{ marginBottom: "0.75rem" }}>
           <BreadcrumbItem>
             <Button variant="link" isInline icon={<ArrowLeftIcon />} onClick={onBack}>

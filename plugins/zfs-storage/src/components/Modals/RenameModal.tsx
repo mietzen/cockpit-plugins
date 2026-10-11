@@ -2,12 +2,13 @@ import React, { useState, useEffect } from "react";
 import {
   Modal,
   ModalVariant,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
   Form,
   FormGroup,
   TextInput,
   Button,
-  Flex,
-  FlexItem,
   Alert,
 } from "@patternfly/react-core";
 
@@ -83,10 +84,41 @@ export const RenameModal: React.FC<RenameModalProps> = ({
   return (
     <Modal
       variant={ModalVariant.small}
-      title={titleText}
       isOpen={isOpen}
       onClose={onClose}
-      actions={[
+      appendTo={() => document.body}
+    >
+      <ModalHeader title={titleText} />
+      <ModalBody>
+        <Form onSubmit={handleSubmit}>
+          {error && (
+            <Alert variant="danger" isInline title="Failed to rename" style={{ marginBottom: "1rem" }}>
+              {error}
+            </Alert>
+          )}
+          <FormGroup label="Current path" fieldId="rename-current">
+            <TextInput id="rename-current" value={currentName} readOnly />
+          </FormGroup>
+          <FormGroup
+            label={itemType === "snapshot" ? "New snapshot name" : "New name"}
+            fieldId="rename-new"
+            isRequired
+          >
+            <TextInput
+              id="rename-new"
+              value={newName}
+              onChange={(_event, val) => setNewName(val)}
+              autoFocus
+            />
+          </FormGroup>
+          {isHierarchical && (
+            <div style={{ fontSize: "0.85rem", color: "var(--zfs-text-secondary)", marginTop: "-0.5rem" }}>
+              Full target: <code>{computedTargetPath}</code>
+            </div>
+          )}
+        </Form>
+      </ModalBody>
+      <ModalFooter>
         <Button
           key="confirm"
           variant="primary"
@@ -95,39 +127,11 @@ export const RenameModal: React.FC<RenameModalProps> = ({
           isDisabled={loading || !newName.trim() || isUnchanged}
         >
           Rename
-        </Button>,
+        </Button>
         <Button key="cancel" variant="secondary" onClick={onClose} isDisabled={loading}>
           Cancel
-        </Button>,
-      ]}
-    >
-      <Form onSubmit={handleSubmit}>
-        {error && (
-          <Alert variant="danger" isInline title="Failed to rename" style={{ marginBottom: "1rem" }}>
-            {error}
-          </Alert>
-        )}
-        <FormGroup label="Current path" fieldId="rename-current">
-          <TextInput id="rename-current" value={currentName} isReadOnly />
-        </FormGroup>
-        <FormGroup
-          label={itemType === "snapshot" ? "New snapshot name" : "New name"}
-          fieldId="rename-new"
-          isRequired
-        >
-          <TextInput
-            id="rename-new"
-            value={newName}
-            onChange={(_event, val) => setNewName(val)}
-            autoFocus
-          />
-        </FormGroup>
-        {isHierarchical && (
-          <div style={{ fontSize: "0.85rem", color: "var(--zfs-text-secondary)", marginTop: "-0.5rem" }}>
-            Full target: <code>{computedTargetPath}</code>
-          </div>
-        )}
-      </Form>
+        </Button>
+      </ModalFooter>
     </Modal>
   );
 };

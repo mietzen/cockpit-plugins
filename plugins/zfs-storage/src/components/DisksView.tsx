@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   PageSection,
   Title,
@@ -80,7 +80,7 @@ export const DisksView: React.FC<DisksViewProps> = ({
       d.model.toLowerCase().includes(searchValue.toLowerCase())
   );
 
-  const sortedDisks = React.useMemo(() => {
+  const sortedDisks = useMemo(() => {
     if (sortIndex === null) {
       return filteredDisks;
     }
@@ -118,7 +118,7 @@ export const DisksView: React.FC<DisksViewProps> = ({
 
   return (
     <>
-      <PageSection variant="light" style={{ paddingBottom: "1rem" }}>
+      <PageSection style={{ paddingBottom: "1rem" }}>
         <Flex justifyContent={{ default: "justifyContentSpaceBetween" }} alignItems={{ default: "alignItemsCenter" }}>
           <FlexItem>
             <Title headingLevel="h1" size="2xl" style={{ fontWeight: 600 }}>
@@ -217,7 +217,6 @@ export const DisksView: React.FC<DisksViewProps> = ({
                     )}
                   </Td>
                   <Td isActionCell>
-
                     <Dropdown
                       popperProps={{ position: "right", preventOverflow: true, appendTo: () => document.body }}
                       isOpen={openDropdown === disk.name}

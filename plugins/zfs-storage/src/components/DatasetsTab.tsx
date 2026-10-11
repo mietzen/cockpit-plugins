@@ -11,8 +11,6 @@ import {
   MenuToggleElement,
   Title,
   EmptyState,
-  EmptyStateHeader,
-  EmptyStateIcon,
   EmptyStateBody,
   EmptyStateFooter,
   EmptyStateActions,
@@ -91,12 +89,11 @@ export const DatasetsTab: React.FC<DatasetsTabProps> = ({
 
       {poolDatasets.length === 0 ? (
         isLoading ? null : (
-          <EmptyState>
-            <EmptyStateHeader
-              titleText="No datasets found"
-              icon={<EmptyStateIcon icon={FolderIcon} />}
-              headingLevel="h4"
-            />
+          <EmptyState
+            titleText="No datasets found"
+            icon={FolderIcon}
+            headingLevel="h4"
+          >
             <EmptyStateBody>
               No datasets or volumes have been created under pool {poolName}.
             </EmptyStateBody>

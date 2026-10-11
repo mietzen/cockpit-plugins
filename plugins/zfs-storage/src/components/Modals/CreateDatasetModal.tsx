@@ -2,6 +2,9 @@ import React, { useState, useEffect } from "react";
 import {
   Modal,
   ModalVariant,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
   Form,
   FormGroup,
   TextInput,
@@ -128,10 +131,143 @@ export const CreateDatasetModal: React.FC<CreateDatasetModalProps> = ({
   return (
     <Modal
       variant={ModalVariant.medium}
-      title="Create ZFS Filesystem Dataset"
       isOpen={isOpen}
       onClose={onClose}
-      actions={[
+      appendTo={() => document.body}
+    >
+      <ModalHeader title="Create ZFS Filesystem Dataset" />
+      <ModalBody>
+        <Form style={{ maxWidth: "550px" }}>
+          <FormGroup label="Parent Path" fieldId="ds-parent">
+            <TextInput id="ds-parent" value={parentPath} readOnlyVariant="default" />
+          </FormGroup>
+
+          <FormGroup label="Dataset Name" isRequired fieldId="ds-name">
+            <TextInput
+              id="ds-name"
+              value={name}
+              onChange={(_event, val) => setName(val)}
+              placeholder="e.g. data, logs, media"
+              autoFocus
+            />
+          </FormGroup>
+
+          <FormGroup label="Compression" fieldId="ds-comp">
+            <FormSelect
+              id="ds-comp"
+              value={compression}
+              onChange={(_event, val) => setCompression(val)}
+            >
+              <FormSelectOption value="lz4" label="lz4 (Fast, recommended)" />
+              <FormSelectOption value="zstd" label="zstd (High ratio)" />
+              <FormSelectOption value="gzip" label="gzip" />
+              <FormSelectOption value="off" label="off" />
+            </FormSelect>
+          </FormGroup>
+
+          {(services.smb || services.nfs) && (
+            <FormGroup label="File Sharing Options" fieldId="ds-sharing">
+              {services.smb && (
+                <Checkbox
+                  id="ds-share-smb"
+                  label="Share via SMB (Samba)"
+                  isChecked={shareSmb}
+                  onChange={(_event, checked) => setShareSmb(checked)}
+                />
+              )}
+              {services.nfs && (
+                <Checkbox
+                  id="ds-share-nfs"
+                  label="Share via NFS"
+                  isChecked={shareNfs}
+                  onChange={(_event, checked) => setShareNfs(checked)}
+                  style={{ marginTop: services.smb ? 6 : 0 }}
+                />
+              )}
+            </FormGroup>
+          )}
+
+          <ExpandableSection
+            toggleText={isAdvancedOpen ? "Hide Advanced Options" : "Show Advanced Options (Quota, Recordsize, Dedup)"}
+            onToggle={(_event, isExpanded) => setIsAdvancedOpen(isExpanded)}
+            isExpanded={isAdvancedOpen}
+          >
+            <FormGroup label="Deduplication" fieldId="ds-dedup" style={{ marginTop: "0.75rem" }}>
+              <FormSelect
+                id="ds-dedup"
+                value={dedup}
+                onChange={(_event, val) => setDedup(val)}
+              >
+                <FormSelectOption value="off" label="off (Recommended)" />
+                <FormSelectOption value="on" label="on" />
+                <FormSelectOption value="verify" label="verify" />
+              </FormSelect>
+            </FormGroup>
+
+            <FormGroup label="Quota (Limit Space)" fieldId="ds-quota" style={{ marginTop: "0.75rem" }}>
+              <TextInput
+                id="ds-quota"
+                value={quota}
+                onChange={(_event, val) => setQuota(val)}
+                placeholder="e.g. 50G, 1T, none"
+              />
+            </FormGroup>
+
+            <FormGroup label="Recordsize (Block Size)" fieldId="ds-recsize" style={{ marginTop: "0.75rem" }}>
+              <FormSelect
+                id="ds-recsize"
+                value={recordsize}
+                onChange={(_event, val) => setRecordsize(val)}
+              >
+                <FormSelectOption value="128k" label="128 KiB (Default)" />
+                <FormSelectOption value="1M" label="1 MiB (Large files &amp; media)" />
+                <FormSelectOption value="64k" label="64 KiB" />
+                <FormSelectOption value="16k" label="16 KiB (Databases)" />
+                <FormSelectOption value="4k" label="4 KiB" />
+              </FormSelect>
+            </FormGroup>
+
+            <FormGroup label="Custom Mountpoint" fieldId="ds-mount" style={{ marginTop: "0.75rem" }}>
+              <TextInput
+                id="ds-mount"
+                value={mountpoint}
+                onChange={(_event, val) => setMountpoint(val)}
+                placeholder="Default is inherited from parent"
+              />
+            </FormGroup>
+
+            <FormGroup label="Sync (Write Behavior)" fieldId="ds-sync" style={{ marginTop: "0.75rem" }}>
+              <FormSelect
+                id="ds-sync"
+                value={sync}
+                onChange={(_event, val) => setSync(val)}
+              >
+                <FormSelectOption value="standard" label="standard (Default)" />
+                <FormSelectOption value="always" label="always (Safest)" />
+                <FormSelectOption value="disabled" label="disabled (Fastest, risk of data loss)" />
+              </FormSelect>
+            </FormGroup>
+
+            <FormGroup fieldId="ds-atime" style={{ marginTop: "0.75rem" }}>
+              <Checkbox
+                id="ds-atime"
+                label="Enable atime (update access time on read)"
+                isChecked={atime}
+                onChange={(_event, checked) => setAtime(checked)}
+              />
+            </FormGroup>
+          </ExpandableSection>
+
+          <CommandBox command={buildCommand()} />
+
+          {error && (
+            <Alert variant="danger" title="Error" style={{ marginTop: "1rem" }}>
+              {error}
+            </Alert>
+          )}
+        </Form>
+      </ModalBody>
+      <ModalFooter>
         <Button
           key="create"
           variant="primary"
@@ -140,129 +276,11 @@ export const CreateDatasetModal: React.FC<CreateDatasetModalProps> = ({
           isLoading={loading}
         >
           Create Dataset
-        </Button>,
+        </Button>
         <Button key="cancel" variant="secondary" onClick={onClose} isDisabled={loading}>
           Cancel
-        </Button>,
-      ]}
-    >
-      <Form style={{ maxWidth: "550px" }}>
-        <FormGroup label="Parent Path" fieldId="ds-parent">
-          <TextInput id="ds-parent" value={parentPath} isReadOnly />
-        </FormGroup>
-
-        <FormGroup label="Dataset Name" isRequired fieldId="ds-name">
-          <TextInput
-            id="ds-name"
-            value={name}
-            onChange={(_event, val) => setName(val)}
-            placeholder="e.g. data, logs, media"
-            autoFocus
-          />
-        </FormGroup>
-
-        <FormGroup label="Compression" fieldId="ds-comp">
-          <FormSelect
-            id="ds-comp"
-            value={compression}
-            onChange={(_event, val) => setCompression(val)}
-          >
-            <FormSelectOption value="lz4" label="lz4 (Fast, recommended)" />
-            <FormSelectOption value="zstd" label="zstd (High ratio)" />
-            <FormSelectOption value="gzip" label="gzip" />
-            <FormSelectOption value="off" label="off" />
-          </FormSelect>
-        </FormGroup>
-
-        {(services.smb || services.nfs) && (
-          <FormGroup label="File Sharing Options" fieldId="ds-sharing">
-            {services.smb && (
-              <Checkbox
-                id="ds-share-smb"
-                label="Share via SMB (Samba)"
-                isChecked={shareSmb}
-                onChange={(_event, checked) => setShareSmb(checked)}
-              />
-            )}
-            {services.nfs && (
-              <Checkbox
-                id="ds-share-nfs"
-                label="Share via NFS"
-                isChecked={shareNfs}
-                onChange={(_event, checked) => setShareNfs(checked)}
-                style={{ marginTop: services.smb ? 6 : 0 }}
-              />
-            )}
-          </FormGroup>
-        )}
-
-        <ExpandableSection
-          toggleText={isAdvancedOpen ? "Hide Advanced Options" : "Show Advanced Options (Quota, Recordsize, Dedup)"}
-          onToggle={(_event, isExpanded) => setIsAdvancedOpen(isExpanded)}
-          isExpanded={isAdvancedOpen}
-        >
-          <FormGroup label="Deduplication" fieldId="ds-dedup" style={{ marginTop: "0.75rem" }}>
-            <FormSelect
-              id="ds-dedup"
-              value={dedup}
-              onChange={(_event, val) => setDedup(val)}
-            >
-              <FormSelectOption value="off" label="off (Recommended)" />
-              <FormSelectOption value="on" label="on" />
-              <FormSelectOption value="verify" label="verify" />
-            </FormSelect>
-          </FormGroup>
-
-          <FormGroup label="Quota (Limit Space)" fieldId="ds-quota" style={{ marginTop: "0.75rem" }}>
-            <TextInput
-              id="ds-quota"
-              value={quota}
-              onChange={(_event, val) => setQuota(val)}
-              placeholder="e.g. 50G, 1T, none"
-            />
-          </FormGroup>
-
-          <FormGroup label="Recordsize (Block Size)" fieldId="ds-recsize" style={{ marginTop: "0.75rem" }}>
-            <FormSelect
-              id="ds-recsize"
-              value={recordsize}
-              onChange={(_event, val) => setRecordsize(val)}
-            >
-              <FormSelectOption value="128k" label="128 KiB (Default)" />
-              <FormSelectOption value="1M" label="1 MiB (Large files &amp; media)" />
-              <FormSelectOption value="64k" label="64 KiB" />
-              <FormSelectOption value="16k" label="16 KiB (Databases)" />
-              <FormSelectOption value="4k" label="4 KiB" />
-            </FormSelect>
-          </FormGroup>
-
-          <FormGroup label="Custom Mountpoint" fieldId="ds-mount" style={{ marginTop: "0.75rem" }}>
-            <TextInput
-              id="ds-mount"
-              value={mountpoint}
-              onChange={(_event, val) => setMountpoint(val)}
-              placeholder="Default is inherited from parent"
-            />
-          </FormGroup>
-
-          <FormGroup fieldId="ds-atime" style={{ marginTop: "0.75rem" }}>
-            <Checkbox
-              id="ds-atime"
-              label="Enable atime (update access time on read)"
-              isChecked={atime}
-              onChange={(_event, checked) => setAtime(checked)}
-            />
-          </FormGroup>
-        </ExpandableSection>
-
-        <CommandBox command={buildCommand()} />
-
-        {error && (
-          <Alert variant="danger" title="Error" style={{ marginTop: "1rem" }}>
-            {error}
-          </Alert>
-        )}
-      </Form>
+        </Button>
+      </ModalFooter>
     </Modal>
   );
 };

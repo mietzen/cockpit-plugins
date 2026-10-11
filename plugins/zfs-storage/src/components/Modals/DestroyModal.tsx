@@ -2,6 +2,9 @@ import React, { useState } from "react";
 import {
   Modal,
   ModalVariant,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
   Form,
   FormGroup,
   TextInput,
@@ -88,24 +91,15 @@ export const DestroyModal: React.FC<DestroyModalProps> = ({
   return (
     <Modal
       variant={ModalVariant.small}
-      title={`Destroy ZFS ${itemType.toUpperCase()}: ${itemName}`}
       isOpen={isOpen}
       onClose={onClose}
-      actions={[
-        <Button
-          key="destroy"
-          variant="danger"
-          onClick={handleDestroy}
-          isDisabled={!isConfirmed || loading}
-          isLoading={loading}
-        >
-          Permanently Destroy
-        </Button>,
-        <Button key="cancel" variant="link" onClick={onClose} isDisabled={loading}>
-          Cancel
-        </Button>,
-      ]}
+      appendTo={() => document.body}
     >
+      <ModalHeader
+        title={`Destroy ZFS ${itemType.toUpperCase()}: ${itemName}`}
+        titleIconVariant="danger"
+      />
+      <ModalBody>
       <Alert
         variant="danger"
         isInline
@@ -167,6 +161,21 @@ export const DestroyModal: React.FC<DestroyModalProps> = ({
           </Alert>
         )}
       </Form>
+      </ModalBody>
+      <ModalFooter>
+        <Button
+          key="destroy"
+          variant="danger"
+          onClick={handleDestroy}
+          isDisabled={!isConfirmed || loading}
+          isLoading={loading}
+        >
+          Permanently Destroy
+        </Button>
+        <Button key="cancel" variant="link" onClick={onClose} isDisabled={loading}>
+          Cancel
+        </Button>
+      </ModalFooter>
     </Modal>
   );
 };

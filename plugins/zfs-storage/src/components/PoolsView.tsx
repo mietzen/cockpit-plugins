@@ -1,12 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   PageSection,
   Title,
   Button,
   Flex,
   FlexItem,
-  Progress,
-  ProgressMeasureLocation,
   Label,
   Dropdown,
   DropdownItem,
@@ -15,8 +13,6 @@ import {
   MenuToggleElement,
   SearchInput,
   EmptyState,
-  EmptyStateHeader,
-  EmptyStateIcon,
   EmptyStateBody,
   EmptyStateFooter,
   EmptyStateActions,
@@ -91,7 +87,7 @@ export const PoolsView: React.FC<PoolsViewProps> = ({
     p.name.toLowerCase().includes(searchValue.toLowerCase())
   );
 
-  const sortedPools = React.useMemo(() => {
+  const sortedPools = useMemo(() => {
     if (sortIndex === null) {
       return filteredPools;
     }
@@ -126,7 +122,7 @@ export const PoolsView: React.FC<PoolsViewProps> = ({
 
   return (
     <>
-      <PageSection variant="light" style={{ paddingBottom: "1rem" }}>
+      <PageSection style={{ paddingBottom: "1rem" }}>
         <Flex justifyContent={{ default: "justifyContentSpaceBetween" }} alignItems={{ default: "alignItemsCenter" }}>
           <FlexItem>
             <Title headingLevel="h1" size="2xl" style={{ fontWeight: 600, margin: 0, lineHeight: 1.2 }}>
@@ -153,12 +149,11 @@ export const PoolsView: React.FC<PoolsViewProps> = ({
       <PageSection style={{ paddingTop: "1.5rem" }}>
         {pools.length === 0 ? (
           isLoading ? null : (
-            <EmptyState>
-              <EmptyStateHeader
-                titleText="No ZFS storage pools configured"
-                icon={<EmptyStateIcon icon={DatabaseIcon} />}
-                headingLevel="h4"
-              />
+            <EmptyState
+              titleText="No ZFS storage pools configured"
+              icon={DatabaseIcon}
+              headingLevel="h4"
+            >
               <EmptyStateBody>
                 You don't have any OpenZFS storage pools active on this system. Create a new pool using available host disks or import an existing pool.
               </EmptyStateBody>
@@ -196,7 +191,7 @@ export const PoolsView: React.FC<PoolsViewProps> = ({
                     <Th width={10} sort={getSortParams(4)}>Fragmentation</Th>
                     <Th width={10} sort={getSortParams(5)}>Deduplication</Th>
                     <Th width={15} sort={getSortParams(6)}>Maintenance</Th>
-                    <Th width={5} screenReaderText="Actions" />
+                    <Th screenReaderText="Actions" />
                   </Tr>
                 </Thead>
                 <Tbody>
@@ -233,7 +228,7 @@ export const PoolsView: React.FC<PoolsViewProps> = ({
                         </Td>
                         <Td dataLabel="Free">{formatBytes(pool.free)}</Td>
                         <Td dataLabel="Fragmentation">{pool.frag}%</Td>
-                        <Td dataLabel="Deduplication">{typeof pool.dedup === 'number' ? `${pool.dedup.toFixed(2)}x` : '1.00x'}</Td>
+                        <Td dataLabel="Deduplication">{pool.dedup}x</Td>
                         <Td dataLabel="Maintenance">
                           {pool.scan?.function === "scrub" ? (
                             isScrubbing ? (
@@ -246,7 +241,6 @@ export const PoolsView: React.FC<PoolsViewProps> = ({
                           )}
                         </Td>
                         <Td isActionCell>
-
                           <Dropdown
                             popperProps={{ position: "right", preventOverflow: true, appendTo: () => document.body }}
                             isOpen={openDropdown === pool.name}

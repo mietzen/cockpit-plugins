@@ -2,6 +2,9 @@ import React, { useState, useEffect } from "react";
 import {
   Modal,
   ModalVariant,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
   Form,
   FormGroup,
   TextInput,
@@ -167,30 +170,17 @@ export const SanoidScheduleModal: React.FC<SanoidScheduleModalProps> = ({
   return (
     <Modal
       variant={ModalVariant.medium}
-      title={isEditing ? `Edit Snapshot Policy: ${policy.dataset}` : "Configure Snapshot Policy"}
       isOpen={isOpen}
       onClose={onClose}
       appendTo={() => document.body}
-      actions={[
-        <Button
-          key="save"
-          variant="primary"
-          onClick={handleSave}
-          isDisabled={loading || !dataset.trim()}
-          isLoading={loading}
-        >
-          {isEditing ? "Save Policy" : "Create Policy"}
-        </Button>,
-        <Button key="cancel" variant="secondary" onClick={onClose} isDisabled={loading}>
-          Cancel
-        </Button>,
-      ]}
     >
-      <Form style={{ maxWidth: "600px" }}>
-        <FormGroup label="Dataset / Target Path" isRequired fieldId="sanoid-dataset">
-          {isEditing ? (
-            <TextInput id="sanoid-dataset" value={dataset} isReadOnly />
-          ) : datasetOptions.length > 0 ? (
+      <ModalHeader title={isEditing ? `Edit Snapshot Policy: ${policy.dataset}` : "Configure Snapshot Policy"} />
+      <ModalBody>
+        <Form style={{ maxWidth: "600px" }}>
+          <FormGroup label="Dataset / Target Path" isRequired fieldId="sanoid-dataset">
+            {isEditing ? (
+              <TextInput id="sanoid-dataset" value={dataset} readOnly />
+            ) : datasetOptions.length > 0 ? (
             <FormSelect
               id="sanoid-dataset"
               value={dataset}
@@ -329,6 +319,21 @@ export const SanoidScheduleModal: React.FC<SanoidScheduleModalProps> = ({
           </Alert>
         )}
       </Form>
+      </ModalBody>
+      <ModalFooter>
+        <Button
+          key="save"
+          variant="primary"
+          onClick={handleSave}
+          isDisabled={loading || !dataset.trim()}
+          isLoading={loading}
+        >
+          {isEditing ? "Save Policy" : "Create Policy"}
+        </Button>
+        <Button key="cancel" variant="secondary" onClick={onClose} isDisabled={loading}>
+          Cancel
+        </Button>
+      </ModalFooter>
     </Modal>
   );
 };
