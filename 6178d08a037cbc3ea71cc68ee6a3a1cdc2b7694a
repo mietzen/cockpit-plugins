@@ -1,0 +1,4 @@
+Topic: pf6-migration-file-sharing
+Decision: Migrate file-sharing to PatternFly 6 composable modals and tokens
+Rationale: Modernizes plugin to PF6, eliminates EoL PF5 dependency, and maintains zero-flicker routing
+Context: Issue #120, PR #125
