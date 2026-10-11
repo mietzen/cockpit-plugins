@@ -226,22 +226,29 @@ def main():
         cfg = TIER_CONFIG[tier_key]
         stats = tier_stats[tier_key]
         
-        line_pct = (stats["lh"] / stats["lf"] * 100.0) if stats["lf"] > 0 else 100.0
-        line_pass = line_pct >= cfg["min_line"]
-
-        # If branches tracked, enforce branch gate; if not present (0 branches), evaluate as pass
         has_branches = stats["brf"] > 0
         branch_pct = (stats["brh"] / stats["brf"] * 100.0) if has_branches else 100.0
-        branch_pass = branch_pct >= cfg["min_branch"] if has_branches else True
+        line_pct = (stats["lh"] / stats["lf"] * 100.0) if stats["lf"] > 0 else 0.0
 
-        tier_pass = line_pass and branch_pass
-        if not tier_pass:
+        if tier_key == "FRONTEND" and stats["lf"] == 0:
+            tier_pass = False
             all_passed = False
             failed_tiers.append(tier_key)
             failed_reasons.append(
-                f"{cfg['title']}: Lines {line_pct:.1f}% (target >={cfg['min_line']}%), "
-                f"Branches {branch_pct:.1f}% (target >={cfg['min_branch']}%)"
+                f"{cfg['title']}: No coverage data found (0 lines recorded)"
             )
+        else:
+            line_pct_val = (stats["lh"] / stats["lf"] * 100.0) if stats["lf"] > 0 else 100.0
+            line_pass = line_pct_val >= cfg["min_line"]
+            branch_pass = branch_pct >= cfg["min_branch"] if has_branches else True
+            tier_pass = line_pass and branch_pass
+            if not tier_pass:
+                all_passed = False
+                failed_tiers.append(tier_key)
+                failed_reasons.append(
+                    f"{cfg['title']}: Lines {line_pct:.1f}% (target >={cfg['min_line']}%), "
+                    f"Branches {branch_pct:.1f}% (target >={cfg['min_branch']}%)"
+                )
 
         status_emoji = "✅" if tier_pass else "❌"
         br_display = f"**{branch_pct:.1f}%** ({stats['brh']}/{stats['brf']})" if has_branches else "N/A"
