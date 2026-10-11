@@ -10,8 +10,6 @@ import {
   Label,
   SearchInput,
   EmptyState,
-  EmptyStateHeader,
-  EmptyStateIcon,
   EmptyStateBody,
   EmptyStateFooter,
   EmptyStateActions,
@@ -25,12 +23,14 @@ import {
   MenuToggleElement,
   Modal,
   ModalVariant,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
   Form,
   FormGroup,
   TextInput,
   FormSelect,
   FormSelectOption,
-  Checkbox,
   Alert,
   Tooltip,
 } from "@patternfly/react-core";
@@ -44,7 +44,6 @@ import {
   KeyIcon,
   TrashIcon,
   UserIcon,
-  PencilAltIcon,
 } from "@patternfly/react-icons";
 import { SmbUser, SmbGroup, UserAccessMatrixItem } from "../types";
 
@@ -221,8 +220,6 @@ export const UsersTab: React.FC<UsersTabProps> = ({
     }
   });
 
-  const allAvailableUsers = Array.from(new Set([...unixUsers, ...users.map((u) => u.username)])).sort();
-
   const filteredUsers = users.filter((u) =>
     u.username.toLowerCase().includes(searchValue.toLowerCase()) ||
     (u.full_name && u.full_name.toLowerCase().includes(searchValue.toLowerCase())) ||
@@ -272,7 +269,9 @@ export const UsersTab: React.FC<UsersTabProps> = ({
         aVal = a.name;
         bVal = b.name;
       } else if (groupSortIndex === 1) {
-        return groupSortDirection === 'asc' ? a.gid - b.gid : b.gid - a.gid;
+        const aGid = a.gid ?? 0;
+        const bGid = b.gid ?? 0;
+        return groupSortDirection === 'asc' ? aGid - bGid : bGid - aGid;
       } else if (groupSortIndex === 2) {
         aVal = a.members.join(', ');
         bVal = b.members.join(', ');
@@ -291,7 +290,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({
 
   return (
     <>
-      <PageSection variant="light" style={{ paddingBottom: "1rem" }}>
+      <PageSection style={{ paddingBottom: "1rem" }}>
         <Flex justifyContent={{ default: "justifyContentSpaceBetween" }} alignItems={{ default: "alignItemsCenter" }}>
           <FlexItem>
             <Title headingLevel="h1" size="2xl" style={{ fontWeight: 600, margin: 0, lineHeight: 1.2 }}>
@@ -332,12 +331,11 @@ export const UsersTab: React.FC<UsersTabProps> = ({
 
         <div style={{ display: activeSubTab === "users" ? "block" : "none" }}>
           {users.length === 0 ? (
-            <EmptyState>
-              <EmptyStateHeader
-                titleText="No Samba users configured"
-                icon={<EmptyStateIcon icon={UsersIcon} />}
-                headingLevel="h4"
-              />
+            <EmptyState
+              titleText="No Samba users configured"
+              icon={UsersIcon}
+              headingLevel="h4"
+            >
               <EmptyStateBody>
                 Add system Unix users to the Samba passdb to allow authenticated access.
               </EmptyStateBody>
@@ -366,7 +364,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({
                     {sortedUsers.map((u) => (
                       <Tr key={u.username}>
                         <Td data-label="Username">
-                          <strong><UserIcon style={{ marginRight: 8, color: "var(--pf-v5-global--primary-color--100)" }} />{u.username}</strong>
+                          <strong><UserIcon style={{ marginRight: 8, color: "var(--pf-t--global--icon--color--brand--default, var(--pf-v5-global--primary-color--100))" }} />{u.username}</strong>
                         </Td>
                         <Td data-label="Full name">{u.full_name || "—"}</Td>
                         <Td data-label="Status">
@@ -423,7 +421,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({
                                   setSelectedUser(u.username);
                                   setIsDeleteModalOpen(true);
                                 }}
-                                style={{ color: "var(--pf-v5-global--danger-color--100)" }}
+                                style={{ color: "var(--pf-t--global--color--status--danger--default, var(--pf-v5-global--danger-color--100))" }}
                               >
                                 Delete Samba user
                               </DropdownItem>
@@ -441,12 +439,11 @@ export const UsersTab: React.FC<UsersTabProps> = ({
 
         <div style={{ display: activeSubTab === "groups" ? "block" : "none" }}>
           {groups.length === 0 ? (
-            <EmptyState>
-              <EmptyStateHeader
-                titleText="No SMB groups referenced in smb.conf"
-                icon={<EmptyStateIcon icon={UsersIcon} />}
-                headingLevel="h4"
-              />
+            <EmptyState
+              titleText="No SMB groups referenced in smb.conf"
+              icon={UsersIcon}
+              headingLevel="h4"
+            >
               <EmptyStateBody>
                 No user groups are currently referenced in /etc/samba/smb.conf share or global permissions.
               </EmptyStateBody>
@@ -466,7 +463,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({
                     {sortedGroups.map((grp) => (
                       <Tr key={grp.name}>
                         <Td data-label="Group Name">
-                          <strong><UsersIcon style={{ marginRight: 8, color: "var(--pf-v5-global--primary-color--100)" }} />{grp.name}</strong>
+                          <strong><UsersIcon style={{ marginRight: 8, color: "var(--pf-t--global--icon--color--brand--default, var(--pf-v5-global--primary-color--100))" }} />{grp.name}</strong>
                         </Td>
                         <Td data-label="GID">{grp.gid == null ? "—" : grp.gid}</Td>
                         <Td data-label="Members">
@@ -541,10 +538,60 @@ export const UsersTab: React.FC<UsersTabProps> = ({
       {/* Add User Modal */}
       <Modal
         variant={ModalVariant.small}
-        title="Add Samba User"
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
-        actions={[
+        appendTo={() => document.body}
+      >
+        <ModalHeader title="Add Samba User" />
+        <ModalBody>
+          <Form>
+            <FormGroup label="System Unix User" isRequired fieldId="add-username">
+              {unixUsers.length > 0 ? (
+                <FormSelect
+                  id="add-username"
+                  value={username}
+                  onChange={(_event, val) => setUsername(val)}
+                >
+                  {unixUsers.map((u) => (
+                    <FormSelectOption key={u} value={u} label={u} />
+                  ))}
+                </FormSelect>
+              ) : (
+                <TextInput
+                  id="add-username"
+                  value={username}
+                  onChange={(_event, val) => setUsername(val)}
+                  placeholder="e.g. test-user"
+                />
+              )}
+            </FormGroup>
+
+            <FormGroup label="Samba Password" isRequired fieldId="add-password">
+              <TextInput
+                id="add-password"
+                type="password"
+                value={password}
+                onChange={(_event, val) => setPassword(val)}
+              />
+            </FormGroup>
+
+            <FormGroup label="Confirm Password" isRequired fieldId="add-confirm-password">
+              <TextInput
+                id="add-confirm-password"
+                type="password"
+                value={confirmPassword}
+                onChange={(_event, val) => setConfirmPassword(val)}
+              />
+            </FormGroup>
+
+            {error && (
+              <Alert variant="danger" title="Error" style={{ marginTop: "1rem" }}>
+                {error}
+              </Alert>
+            )}
+          </Form>
+        </ModalBody>
+        <ModalFooter>
           <Button
             key="save"
             variant="primary"
@@ -553,67 +600,50 @@ export const UsersTab: React.FC<UsersTabProps> = ({
             isLoading={loading}
           >
             Add SMB User
-          </Button>,
+          </Button>
           <Button key="cancel" variant="secondary" onClick={() => setIsAddModalOpen(false)} isDisabled={loading}>
             Cancel
-          </Button>,
-        ]}
-      >
-        <Form>
-          <FormGroup label="System Unix User" isRequired fieldId="add-username">
-            {unixUsers.length > 0 ? (
-              <FormSelect
-                id="add-username"
-                value={username}
-                onChange={(_event, val) => setUsername(val)}
-              >
-                {unixUsers.map((u) => (
-                  <FormSelectOption key={u} value={u} label={u} />
-                ))}
-              </FormSelect>
-            ) : (
-              <TextInput
-                id="add-username"
-                value={username}
-                onChange={(_event, val) => setUsername(val)}
-                placeholder="e.g. test-user"
-              />
-            )}
-          </FormGroup>
-
-          <FormGroup label="Samba Password" isRequired fieldId="add-password">
-            <TextInput
-              id="add-password"
-              type="password"
-              value={password}
-              onChange={(_event, val) => setPassword(val)}
-            />
-          </FormGroup>
-
-          <FormGroup label="Confirm Password" isRequired fieldId="add-confirm-password">
-            <TextInput
-              id="add-confirm-password"
-              type="password"
-              value={confirmPassword}
-              onChange={(_event, val) => setConfirmPassword(val)}
-            />
-          </FormGroup>
-
-          {error && (
-            <Alert variant="danger" title="Error" style={{ marginTop: "1rem" }}>
-              {error}
-            </Alert>
-          )}
-        </Form>
+          </Button>
+        </ModalFooter>
       </Modal>
 
       {/* Set Password Modal */}
       <Modal
         variant={ModalVariant.small}
-        title={`Set Password for ${selectedUser}`}
         isOpen={isPasswdModalOpen}
         onClose={() => setIsPasswdModalOpen(false)}
-        actions={[
+        appendTo={() => document.body}
+      >
+        <ModalHeader title={`Set Password for ${selectedUser}`} />
+        <ModalBody>
+          <Form>
+            <FormGroup label="New Password" isRequired fieldId="set-password">
+              <TextInput
+                id="set-password"
+                type="password"
+                value={password}
+                onChange={(_event, val) => setPassword(val)}
+                autoFocus
+              />
+            </FormGroup>
+
+            <FormGroup label="Confirm New Password" isRequired fieldId="set-confirm-password">
+              <TextInput
+                id="set-confirm-password"
+                type="password"
+                value={confirmPassword}
+                onChange={(_event, val) => setConfirmPassword(val)}
+              />
+            </FormGroup>
+
+            {error && (
+              <Alert variant="danger" title="Error" style={{ marginTop: "1rem" }}>
+                {error}
+              </Alert>
+            )}
+          </Form>
+        </ModalBody>
+        <ModalFooter>
           <Button
             key="save"
             variant="primary"
@@ -622,57 +652,33 @@ export const UsersTab: React.FC<UsersTabProps> = ({
             isLoading={loading}
           >
             Update password
-          </Button>,
+          </Button>
           <Button key="cancel" variant="secondary" onClick={() => setIsPasswdModalOpen(false)} isDisabled={loading}>
             Cancel
-          </Button>,
-        ]}
-      >
-        <Form>
-          <FormGroup label="New Password" isRequired fieldId="set-password">
-            <TextInput
-              id="set-password"
-              type="password"
-              value={password}
-              onChange={(_event, val) => setPassword(val)}
-              autoFocus
-            />
-          </FormGroup>
-
-          <FormGroup label="Confirm New Password" isRequired fieldId="set-confirm-password">
-            <TextInput
-              id="set-confirm-password"
-              type="password"
-              value={confirmPassword}
-              onChange={(_event, val) => setConfirmPassword(val)}
-            />
-          </FormGroup>
-
-          {error && (
-            <Alert variant="danger" title="Error" style={{ marginTop: "1rem" }}>
-              {error}
-            </Alert>
-          )}
-        </Form>
+          </Button>
+        </ModalFooter>
       </Modal>
 
       {/* Delete User Modal */}
       <Modal
         variant={ModalVariant.small}
-        title="Delete Samba User"
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
-        actions={[
+        appendTo={() => document.body}
+      >
+        <ModalHeader title="Delete Samba User" />
+        <ModalBody>
+          Are you sure you want to remove <strong>{selectedUser}</strong> from the Samba passdb?
+          The system Unix account will remain untouched.
+        </ModalBody>
+        <ModalFooter>
           <Button key="delete" variant="danger" onClick={handleDelete} isLoading={loading}>
             Delete Samba user
-          </Button>,
+          </Button>
           <Button key="cancel" variant="secondary" onClick={() => setIsDeleteModalOpen(false)}>
             Cancel
-          </Button>,
-        ]}
-      >
-        Are you sure you want to remove <strong>{selectedUser}</strong> from the Samba passdb?
-        The system Unix account will remain untouched.
+          </Button>
+        </ModalFooter>
       </Modal>
     </>
   );

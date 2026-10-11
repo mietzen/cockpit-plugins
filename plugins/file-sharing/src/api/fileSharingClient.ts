@@ -1,4 +1,4 @@
-import { FileSharingOverview, SmbShare, NfsExport, SmbGlobal, NfsGlobal } from '../types';
+import { FileSharingOverview, SmbShare, SmbGlobal, NfsGlobal } from '../types';
 
 declare global {
   interface Window {

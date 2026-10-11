@@ -10,8 +10,6 @@ import {
   Label,
   SearchInput,
   EmptyState,
-  EmptyStateHeader,
-  EmptyStateIcon,
   EmptyStateBody,
   EmptyStateFooter,
   EmptyStateActions,
@@ -25,6 +23,9 @@ import {
   MenuToggleElement,
   Modal,
   ModalVariant,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
   Form,
   FormGroup,
   TextInput,
@@ -239,7 +240,7 @@ export const NfsExportsTab: React.FC<NfsExportsTabProps> = ({
 
   return (
     <>
-      <PageSection variant="light" style={{ paddingBottom: "1rem" }}>
+      <PageSection style={{ paddingBottom: "1rem" }}>
         <Flex justifyContent={{ default: "justifyContentSpaceBetween" }} alignItems={{ default: "alignItemsCenter" }}>
           <FlexItem>
             <Title headingLevel="h1" size="2xl" style={{ fontWeight: 600, margin: 0, lineHeight: 1.2 }}>
@@ -279,12 +280,11 @@ export const NfsExportsTab: React.FC<NfsExportsTabProps> = ({
 
         {activeSubTab === "exports" ? (
           exports.length === 0 ? (
-            <EmptyState>
-              <EmptyStateHeader
-                titleText="No NFS exports configured"
-                icon={<EmptyStateIcon icon={GlobeIcon} />}
-                headingLevel="h4"
-              />
+            <EmptyState
+              titleText="No NFS exports configured"
+              icon={GlobeIcon}
+              headingLevel="h4"
+            >
               <EmptyStateBody>
                 Export filesystems and ZFS datasets to network clients using NFS.
               </EmptyStateBody>
@@ -329,7 +329,7 @@ export const NfsExportsTab: React.FC<NfsExportsTabProps> = ({
                           </Flex>
                         </Td>
                         <Td data-label="Allowed clients">
-                          <Flex wrap={{ default: "wrap" }} gap={{ default: "gapSm" }}>
+                          <Flex flexWrap={{ default: "wrap" }} gap={{ default: "gapSm" }}>
                             {exp.clients.map((c, i) => (
                               <FlexItem key={i}>
                                 <Label color={c.read_only ? "blue" : "green"}>
@@ -389,7 +389,7 @@ export const NfsExportsTab: React.FC<NfsExportsTabProps> = ({
                                     setDeletingPath(exp.path);
                                     setIsDeleteModalOpen(true);
                                   }}
-                                  style={{ color: "var(--pf-v5-global--danger-color--100)" }}
+                                  style={{ color: "var(--pf-t--global--color--status--danger--default, var(--pf-v5-global--danger-color--100))" }}
                                 >
                                   Delete export
                                 </DropdownItem>
@@ -457,25 +457,13 @@ export const NfsExportsTab: React.FC<NfsExportsTabProps> = ({
       {/* Create / Edit Export Modal */}
       <Modal
         variant={ModalVariant.medium}
-        title={editingExport ? `Edit NFS Export for ${editingExport.path}` : "Create NFS Export"}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        actions={[
-          <Button
-            key="save"
-            variant="primary"
-            onClick={handleSave}
-            isDisabled={loading || !path.trim()}
-            isLoading={loading}
-          >
-            {editingExport ? "Save changes" : "Create export"}
-          </Button>,
-          <Button key="cancel" variant="secondary" onClick={() => setIsModalOpen(false)} isDisabled={loading}>
-            Cancel
-          </Button>,
-        ]}
+        appendTo={() => document.body}
       >
-        <Form>
+        <ModalHeader title={editingExport ? `Edit NFS Export for ${editingExport.path}` : "Create NFS Export"} />
+        <ModalBody>
+          <Form>
           <FormGroup label="Export Path" isRequired fieldId="nfs-path">
             <TextInput
               id="nfs-path"
@@ -552,25 +540,43 @@ export const NfsExportsTab: React.FC<NfsExportsTabProps> = ({
             </Alert>
           )}
         </Form>
-      </Modal>
+      </ModalBody>
+      <ModalFooter>
+        <Button
+          key="save"
+          variant="primary"
+          onClick={handleSave}
+          isDisabled={loading || !path.trim()}
+          isLoading={loading}
+        >
+          {editingExport ? "Save changes" : "Create export"}
+        </Button>
+        <Button key="cancel" variant="secondary" onClick={() => setIsModalOpen(false)} isDisabled={loading}>
+          Cancel
+        </Button>
+      </ModalFooter>
+    </Modal>
 
       {/* Delete Confirmation Modal */}
       <Modal
         variant={ModalVariant.small}
-        title="Delete NFS Export"
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
-        actions={[
+        appendTo={() => document.body}
+      >
+        <ModalHeader title="Delete NFS Export" />
+        <ModalBody>
+          Are you sure you want to remove the NFS export for <code>{deletingPath}</code>?
+          The directory contents on the server will not be deleted.
+        </ModalBody>
+        <ModalFooter>
           <Button key="delete" variant="danger" onClick={handleDelete} isLoading={loading}>
             Delete export
-          </Button>,
+          </Button>
           <Button key="cancel" variant="secondary" onClick={() => setIsDeleteModalOpen(false)}>
             Cancel
-          </Button>,
-        ]}
-      >
-        Are you sure you want to remove the NFS export for <code>{deletingPath}</code>?
-        The directory contents on the server will not be deleted.
+          </Button>
+        </ModalFooter>
       </Modal>
     </>
   );
