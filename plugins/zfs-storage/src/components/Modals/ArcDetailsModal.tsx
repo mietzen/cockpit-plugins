@@ -91,8 +91,8 @@ export const ArcDetailsModal: React.FC<ArcDetailsModalProps> = ({
         <DescriptionListGroup>
           <DescriptionListTerm>Total Hit Rate</DescriptionListTerm>
           <DescriptionListDescription>
-            <strong style={{ color: "rgb(146, 197, 249)" }}>{formatPercentage(hitRatioPct)}</strong>
-            <span style={{ color: "#a0a0a0", marginLeft: "0.5rem" }}>
+            <strong style={{ color: "var(--pf-v5-global--primary-color--100)" }}>{formatPercentage(hitRatioPct)}</strong>
+            <span style={{ color: "var(--pf-v5-global--Color--200)", marginLeft: "0.5rem" }}>
               ({totalHits.toLocaleString()} hits / {totalRequests.toLocaleString()} requests)
             </span>
           </DescriptionListDescription>

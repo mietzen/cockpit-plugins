@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useMemo } from "react";
 import {
   PageSection,
   Card,
@@ -16,7 +16,7 @@ import {
   Label,
   Divider,
 } from "@patternfly/react-core";
-import { Table, Thead, Tr, Th, Tbody, Td } from "@patternfly/react-table";
+import { Table, Thead, Tr, Th, Tbody, Td, ThProps } from "@patternfly/react-table";
 import {
   CheckCircleIcon,
   ExclamationTriangleIcon,
@@ -51,6 +51,55 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onViewArcDetails,
   onViewSmartDetails,
 }) => {
+  const [diskSortIndex, setDiskSortIndex] = useState<number | null>(0);
+  const [diskSortDirection, setDiskSortDirection] = useState<'asc' | 'desc'>('asc');
+
+  const getDiskSortParams = (columnIndex: number): ThProps['sort'] => ({
+    sortBy: {
+      index: diskSortIndex ?? undefined,
+      direction: diskSortDirection,
+      defaultDirection: 'asc',
+    },
+    onSort: (_event, index, direction) => {
+      setDiskSortIndex(index);
+      setDiskSortDirection(direction);
+    },
+    columnIndex,
+  });
+
+  const sortedDisks = useMemo(() => {
+    if (diskSortIndex === null) {
+      return disks;
+    }
+    return [...disks].sort((a, b) => {
+      let aVal: any = '';
+      let bVal: any = '';
+      if (diskSortIndex === 0) {
+        aVal = a.name;
+        bVal = b.name;
+      } else if (diskSortIndex === 1) {
+        aVal = `${a.model || ''} ${a.serial || ''}`;
+        bVal = `${b.model || ''} ${b.serial || ''}`;
+      } else if (diskSortIndex === 2) {
+        return diskSortDirection === 'asc' ? a.size - b.size : b.size - a.size;
+      } else if (diskSortIndex === 3) {
+        aVal = a.rotational ? 'HDD' : 'SSD';
+        bVal = b.rotational ? 'HDD' : 'SSD';
+      } else if (diskSortIndex === 4) {
+        aVal = a.smart_health || '';
+        bVal = b.smart_health || '';
+      } else if (diskSortIndex === 5) {
+        const aTemp = a.temperature ?? -999;
+        const bTemp = b.temperature ?? -999;
+        return diskSortDirection === 'asc' ? aTemp - bTemp : bTemp - aTemp;
+      } else if (diskSortIndex === 6) {
+        aVal = a.pool || '';
+        bVal = b.pool || '';
+      }
+      return diskSortDirection === 'asc' ? String(aVal).localeCompare(String(bVal)) : String(bVal).localeCompare(String(aVal));
+    });
+  }, [disks, diskSortIndex, diskSortDirection]);
+
   const totalSize = pools.reduce((acc, p) => acc + p.size, 0);
   const totalAlloc = pools.reduce((acc, p) => acc + p.alloc, 0);
   const totalFree = pools.reduce((acc, p) => acc + p.free, 0);
@@ -111,7 +160,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <Grid hasGutter style={{ marginBottom: "2rem" }}>
           {/* Card 1: Health */}
           <GridItem span={6} md={3}>
-            <Card isFullHeight isPlain style={{ border: "1px solid #333333" }}>
+            <Card isFullHeight isPlain style={{ border: "1px solid var(--zfs-card-border)" }}>
               <CardTitle>Health</CardTitle>
               <CardBody>
                 <Flex alignItems={{ default: "alignItemsCenter" }} style={{ marginBottom: "0.75rem" }}>
@@ -139,7 +188,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
           {/* Card 2: Storage Usage */}
           <GridItem span={6} md={3}>
-            <Card isFullHeight isPlain style={{ border: "1px solid #333333" }}>
+            <Card isFullHeight isPlain style={{ border: "1px solid var(--zfs-card-border)" }}>
               <CardTitle>Storage usage</CardTitle>
               <CardBody>
                 <Title headingLevel="h3" size="xl" style={{ marginBottom: "0.5rem" }}>
@@ -165,13 +214,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               isPlain
               isClickable
               onClick={onViewArcDetails}
-              style={{ border: "1px solid #333333", cursor: "pointer" }}
+              style={{ border: "1px solid var(--zfs-card-border)", cursor: "pointer" }}
             >
               <CardTitle>
                 <Flex justifyContent={{ default: "justifyContentSpaceBetween" }}>
                   <FlexItem>ARC Cache</FlexItem>
                   <FlexItem>
-                    <InfoCircleIcon style={{ color: "rgb(146, 197, 249)" }} />
+                    <InfoCircleIcon style={{ color: "var(--pf-v5-global--primary-color--100)" }} />
                   </FlexItem>
                 </Flex>
               </CardTitle>
@@ -205,7 +254,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
           {/* Card 4: System Information */}
           <GridItem span={6} md={3}>
-            <Card isFullHeight isPlain style={{ border: "1px solid #333333" }}>
+            <Card isFullHeight isPlain style={{ border: "1px solid var(--zfs-card-border)" }}>
               <CardTitle>ZFS Subsystem</CardTitle>
               <CardBody>
                 <div style={{ marginBottom: "0.5rem" }}>
@@ -238,7 +287,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   isPlain
                   onClick={() => onSelectPool(pool.name)}
                   style={{
-                    border: "1px solid #333333",
+                    border: "1px solid var(--zfs-card-border)",
                     cursor: "pointer",
                   }}
                 >
@@ -310,22 +359,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           Host Disks Overview
         </Title>
 
-        <Card isPlain style={{ border: "1px solid #333333" }}>
+        <Card isPlain style={{ border: "1px solid var(--zfs-card-border)" }}>
           <CardBody style={{ padding: 0 }}>
             <Table aria-label="Dashboard Disks Table" variant="compact">
               <Thead>
                 <Tr>
-                  <Th>Device</Th>
-                  <Th>Model / Serial</Th>
-                  <Th>Capacity</Th>
-                  <Th>Type</Th>
-                  <Th>SMART Health</Th>
-                  <Th>Temp</Th>
-                  <Th>Pool Assignment</Th>
+                  <Th sort={getDiskSortParams(0)}>Device</Th>
+                  <Th sort={getDiskSortParams(1)}>Model / Serial</Th>
+                  <Th sort={getDiskSortParams(2)}>Capacity</Th>
+                  <Th sort={getDiskSortParams(3)}>Type</Th>
+                  <Th sort={getDiskSortParams(4)}>SMART Health</Th>
+                  <Th sort={getDiskSortParams(5)}>Temp</Th>
+                  <Th sort={getDiskSortParams(6)}>Pool Assignment</Th>
                 </Tr>
               </Thead>
               <Tbody>
-                {disks.map((disk) => {
+                {sortedDisks.map((disk) => {
                   const isSmartPassed = disk.smart_health === "PASSED";
                   const isSmartFailed = disk.smart_health === "FAILED";
 
