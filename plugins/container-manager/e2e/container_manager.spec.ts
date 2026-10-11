@@ -229,7 +229,8 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
       const cancelModalBtn = frame.locator('[role="dialog"] button:has-text("Cancel"), .pf-v6-c-modal-box button:has-text("Cancel")').first();
       if (await cancelModalBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
         await cancelModalBtn.click();
-        await frame.waitForSelector('[role="dialog"], .pf-v6-c-modal-box, .pf-v6-c-modal-box', { state: 'detached', timeout: 5000 }).catch(() => {});
+        await frame.waitForSelector('[role="dialog"], .pf-v6-c-modal-box', { state: 'detached', timeout: 5000 }).catch(() => {});
+        await frame.locator('.pf-v6-c-backdrop').waitFor({ state: 'detached', timeout: 5000 }).catch(() => {});
       }
     }
 
@@ -330,7 +331,8 @@ test.describe.serial('Cockpit Container Manager E2E Test Suite', () => {
       // Close modal
       const cancelBtn = frame.locator('[role="dialog"] button:has-text("Cancel"), .pf-v6-c-modal-box button:has-text("Cancel")');
       await cancelBtn.click();
-      await frame.waitForSelector('[role="dialog"], .pf-v6-c-modal-box, .pf-v6-c-modal-box', { state: 'detached', timeout: 5000 });
+      await frame.waitForSelector('[role="dialog"], .pf-v6-c-modal-box', { state: 'detached', timeout: 5000 });
+      await frame.locator('.pf-v6-c-backdrop').waitFor({ state: 'detached', timeout: 5000 }).catch(() => {});
     }
   });
 

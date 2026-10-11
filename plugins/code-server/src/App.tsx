@@ -39,7 +39,9 @@ export const App: React.FC = () => {
   };
 
   const loadStatus = useCallback(async (isSilent = false, autoStart = false) => {
-    if (!isSilent) setIsLoading(true);
+    if (!isSilent) {
+      setIsLoading(true);
+    }
     try {
       let data = await codeServerApi.getStatus();
       if (autoStart && data.binary.installed && !data.service.active) {

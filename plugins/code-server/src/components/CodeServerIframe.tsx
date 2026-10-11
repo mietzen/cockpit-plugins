@@ -1,8 +1,6 @@
 import React, { useState } from "react";
 import {
   EmptyState,
-  EmptyStateHeader,
-  EmptyStateIcon,
   EmptyStateBody,
   EmptyStateFooter,
   Button,
@@ -29,12 +27,11 @@ export const CodeServerIframe: React.FC<CodeServerIframeProps> = ({
   if (!isRunning) {
     return (
       <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "80vh" }}>
-        <EmptyState>
-          <EmptyStateHeader
-            titleText="Code-Server is Stopped"
-            headingLevel="h2"
-            icon={<EmptyStateIcon icon={PlayIcon} />}
-          />
+        <EmptyState
+          titleText="Code-Server is Stopped"
+          headingLevel="h2"
+          icon={PlayIcon}
+        >
           <EmptyStateBody>
             The systemd service <code>{status.service.unit}</code> is currently inactive.
             <br />
@@ -98,12 +95,11 @@ export const CodeServerIframe: React.FC<CodeServerIframeProps> = ({
 
       {iframeError ? (
         <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%" }}>
-          <EmptyState>
-            <EmptyStateHeader
-              titleText="Unable to Embed Code-Server in Frame"
-              headingLevel="h2"
-              icon={<EmptyStateIcon icon={ExclamationTriangleIcon} />}
-            />
+          <EmptyState
+            titleText="Unable to Embed Code-Server in Frame"
+            headingLevel="h2"
+            icon={ExclamationTriangleIcon}
+          >
             <EmptyStateBody>
               Your browser may have restricted embedding <code>{targetUrl}</code> due to mixed content or security headers.
             </EmptyStateBody>
@@ -126,7 +122,7 @@ export const CodeServerIframe: React.FC<CodeServerIframeProps> = ({
             height: "100%",
             border: "none",
             flexGrow: 1,
-            backgroundColor: "var(--pf-v5-global--BackgroundColor--100, #0d1117)",
+            backgroundColor: "var(--pf-t--global--background-color--primary--default, var(--pf-v5-global--BackgroundColor--100, #0d1117))",
           }}
           onError={() => setIframeError(true)}
         />

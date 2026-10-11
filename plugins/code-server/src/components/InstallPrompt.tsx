@@ -1,8 +1,6 @@
 import React from "react";
 import {
   EmptyState,
-  EmptyStateHeader,
-  EmptyStateIcon,
   EmptyStateBody,
   EmptyStateFooter,
   Button,
@@ -17,12 +15,11 @@ export interface InstallPromptProps {
 export const InstallPrompt: React.FC<InstallPromptProps> = ({ isLoading, onInstall }) => {
   return (
     <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "65vh" }}>
-      <EmptyState>
-        <EmptyStateHeader
-          titleText="VS Code Server Not Found"
-          headingLevel="h2"
-          icon={<EmptyStateIcon icon={CodeBranchIcon} />}
-        />
+      <EmptyState
+        titleText="VS Code Server Not Found"
+        headingLevel="h2"
+        icon={CodeBranchIcon}
+      >
         <EmptyStateBody>
           <code>code-server</code> is not installed or not found in the system <code>PATH</code>.
           <br />
@@ -31,7 +28,7 @@ export const InstallPrompt: React.FC<InstallPromptProps> = ({ isLoading, onInsta
             style={{
               marginTop: "1rem",
               padding: "0.75rem 1rem",
-              backgroundColor: "var(--pf-v5-global--BackgroundColor--200, #161b22)",
+              backgroundColor: "var(--pf-t--global--background-color--secondary--default, var(--pf-v5-global--BackgroundColor--200, #161b22))",
               borderRadius: "4px",
               fontFamily: "monospace",
               fontSize: "0.85rem",
