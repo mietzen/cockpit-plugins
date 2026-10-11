@@ -1,0 +1,4 @@
+Topic: pf6-migration-container-manager
+Decision: Migrate container-manager to PatternFly 6 composable modals and tokens
+Rationale: Modernizes plugin to PF6, eliminates EoL PF5 dependency, and maintains zero-flicker routing
+Context: Issue #121
