@@ -78,6 +78,11 @@ exec code-server "$@"
 CODE_WRAPPER_EOF
         chmod 755 /usr/local/bin/code
     fi
+
+    # Register PAM session cleanup configuration on Debian/Ubuntu systems
+    if [ -f /usr/share/pam-configs/cockpit-code-server ] && command -v pam-auth-update >/dev/null 2>&1; then
+        pam-auth-update --package 2>/dev/null || true
+    fi
 fi
 
 exit 0

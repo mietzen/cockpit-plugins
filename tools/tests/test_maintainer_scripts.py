@@ -43,6 +43,8 @@ def test_maintainer_templates():
     assert "ProtocolHeader = X-Forwarded-Proto" in postinst
     assert "cockpit-caddy.service" in postinst
     assert "/usr/local/bin/code" in postinst
+    assert "pam-auth-update" in postinst
+    assert "/usr/share/pam-configs/cockpit-code-server" in postinst
 
     assert PLUGIN_NAME_PLACEHOLDER in prerm
     assert "code-server" in prerm
@@ -50,6 +52,9 @@ def test_maintainer_templates():
     assert "systemctl stop 'code-server@*.service'" in prerm
     assert "cockpit-caddy.service" in prerm
     assert "cockpit.socket.d/10-code-server.conf" in prerm
+    assert "/usr/share/pam-configs/cockpit-code-server" in prerm
+    assert "pam-auth-update" in prerm
+
 
     for builder in SCRIPT_PATHS:
         content = builder.read_text(encoding="utf-8")

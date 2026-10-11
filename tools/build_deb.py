@@ -342,6 +342,9 @@ Description: {description}
                     tmpf_conf = os.path.join(packaging_dir, "tmpfiles", "cockpit-code-server.conf")
                     if os.path.isfile(tmpf_conf):
                         add_file_to_tar(tmpf_conf, "usr/lib/tmpfiles.d/cockpit-code-server.conf")
+                    pam_conf = os.path.join(packaging_dir, "pam", "cockpit-code-server")
+                    if os.path.isfile(pam_conf):
+                        add_file_to_tar(pam_conf, "usr/share/pam-configs/cockpit-code-server")
     
                 if plugin_name == "code-server":
                     caddy_bytes = get_caddy_binary(plugin_dir, target_arch)

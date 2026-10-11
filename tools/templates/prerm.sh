@@ -17,6 +17,12 @@ if [ "@@PLUGIN_NAME@@" = "code-server" ]; then
         rm -rf /etc/cockpit-code-server
         rm -f /usr/lib/tmpfiles.d/cockpit-code-server.conf
         rm -rf /run/code-server
+        if [ -f /usr/share/pam-configs/cockpit-code-server ]; then
+            rm -f /usr/share/pam-configs/cockpit-code-server
+            if command -v pam-auth-update >/dev/null 2>&1; then
+                pam-auth-update --package 2>/dev/null || true
+            fi
+        fi
         if command -v systemctl >/dev/null 2>&1; then
             systemctl daemon-reload 2>/dev/null || true
             systemctl restart cockpit.socket 2>/dev/null || true

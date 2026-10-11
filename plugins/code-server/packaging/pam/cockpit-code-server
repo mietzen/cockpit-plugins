@@ -1,0 +1,6 @@
+Name: Code-Server session cleanup for Cockpit
+Default: yes
+Priority: 0
+Session-Type: Additional
+Session:
+	optional	pam_exec.so type=close_session /usr/libexec/cockpit-code-server/session_cleanup.sh

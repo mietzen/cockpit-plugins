@@ -14,6 +14,10 @@ RUN_CODE_SERVER_BASE_DIR = "/run/code-server"
 TOKEN_DIR_MODE = 0o700
 TOKEN_FILE_MODE = 0o600
 TOKEN_BYTES = 32
+LOGINCTL_TIMEOUT_SEC = 5
+SERVICE_COCKPIT = "cockpit"
+SESSION_ACTIVE_STATES = ("active", "online")
+REASON_ACTIVE_SESSIONS = "active_sessions_exist"
 
 
 def get_binary_info() -> Dict[str, Any]:
@@ -143,6 +147,102 @@ def get_or_create_user_token(username: Optional[str] = None) -> str:
         pass
 
     return token
+
+
+def invalidate_user_token(username: Optional[str] = None) -> bool:
+    # Resolve target user and UID
+    uid = get_user_uid(username)
+    user_run_dir = os.path.join(RUN_CODE_SERVER_BASE_DIR, str(uid))
+    tokens_dir = os.path.join(user_run_dir, "tokens")
+    token_file = os.path.join(user_run_dir, "token")
+
+    # Remove single token file if present
+    if os.path.isfile(token_file) or os.path.islink(token_file):
+        try:
+            os.unlink(token_file)
+        except Exception:
+            pass
+
+    # Remove all entries in tokens directory
+    if os.path.isdir(tokens_dir):
+        try:
+            for entry in os.listdir(tokens_dir):
+                epath = os.path.join(tokens_dir, entry)
+                if os.path.isfile(epath) or os.path.islink(epath):
+                    os.unlink(epath)
+        except Exception:
+            pass
+
+    return True
+
+
+def has_active_cockpit_sessions(username: str) -> bool:
+    # List active logind sessions using loginctl
+    try:
+        proc = subprocess.run(
+            ["loginctl", "list-sessions", "--no-legend"],
+            capture_output=True,
+            text=True,
+            timeout=LOGINCTL_TIMEOUT_SEC,
+        )
+        if proc.returncode != 0 or not proc.stdout.strip():
+            return False
+    except Exception:
+        return False
+
+    resolved_user = resolve_username(username)
+    for line in proc.stdout.strip().splitlines():
+        parts = line.split()
+        if len(parts) < 3:
+            continue
+
+        session_id = parts[0]
+        session_user = parts[2]
+        if session_user != resolved_user and session_user != username:
+            continue
+
+        # Inspect session properties for Cockpit service and active state
+        try:
+            show_proc = subprocess.run(
+                ["loginctl", "show-session", session_id, "-p", "Service", "-p", "State"],
+                capture_output=True,
+                text=True,
+                timeout=LOGINCTL_TIMEOUT_SEC,
+            )
+            if show_proc.returncode != 0:
+                continue
+
+            props = {}
+            for prop_line in show_proc.stdout.strip().splitlines():
+                if "=" in prop_line:
+                    k, v = prop_line.split("=", 1)
+                    props[k.strip()] = v.strip()
+
+            is_cockpit = props.get("Service") == SERVICE_COCKPIT
+            is_active = props.get("State") in SESSION_ACTIVE_STATES
+            if is_cockpit and is_active:
+                return True
+        except Exception:
+            continue
+
+    return False
+
+
+def cleanup_user_session(username: str) -> Dict[str, Any]:
+    # Check if user has active Cockpit sessions remaining
+    if not has_active_cockpit_sessions(username):
+        invalidate_user_token(username)
+        manage_service("stop", username)
+        return {
+            "cleaned": True,
+            "token_invalidated": True,
+            "service_stopped": True,
+        }
+
+    return {
+        "cleaned": False,
+        "reason": REASON_ACTIVE_SESSIONS,
+    }
 
 
 def get_service_unit_name(username: Optional[str] = None) -> str:
