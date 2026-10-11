@@ -32,7 +32,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ systemInfo }) => {
 
   return (
     <>
-      <PageSection variant="light" style={{ paddingBottom: "1rem" }}>
+      <PageSection style={{ paddingBottom: "1rem" }}>
         <Title headingLevel="h1" size="2xl" style={{ fontWeight: 600 }}>
           Plugin Settings
         </Title>
@@ -69,7 +69,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ systemInfo }) => {
           <CardTitle>About Cockpit ZFS</CardTitle>
           <CardBody>
             <p style={{ marginBottom: "0.5rem" }}>
-              <strong>Version:</strong> {typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "0.5.2"}
+              <strong>Version:</strong> 0.5.0
             </p>
             <p style={{ marginBottom: "0.5rem" }}>
               <strong>License:</strong> MIT

@@ -11,9 +11,10 @@ import {
   SearchInput,
   Modal,
   ModalVariant,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
   EmptyState,
-  EmptyStateHeader,
-  EmptyStateIcon,
   EmptyStateBody,
   EmptyStateFooter,
   EmptyStateActions,
@@ -197,24 +198,21 @@ export const AutomationsView: React.FC<AutomationsViewProps> = ({
         {isLoading && !sanoidInfo ? (
           <Card isPlain style={{ border: "1px solid var(--zfs-card-border)", background: "var(--zfs-card-bg)" }}>
             <CardBody>
-              <EmptyState variant="lg">
-                <EmptyStateHeader
-                  titleText="Loading automations..."
-                  headingLevel="h2"
-                  icon={<EmptyStateIcon icon={Spinner} />}
-                />
-              </EmptyState>
+              <EmptyState
+                titleText="Loading automations..."
+                headingLevel="h2"
+                icon={Spinner}
+              />
             </CardBody>
           </Card>
         ) : !isInstalled ? (
           <Card isPlain style={{ border: "1px solid var(--zfs-card-border)", background: "var(--zfs-card-bg)" }}>
             <CardBody>
-              <EmptyState variant="lg">
-                <EmptyStateHeader
-                  titleText="Sanoid is not installed"
-                  headingLevel="h2"
-                  icon={<EmptyStateIcon icon={InfoCircleIcon} style={{ color: "var(--pf-v5-global--info-color--100)" }} />}
-                />
+              <EmptyState
+                titleText="Sanoid is not installed"
+                headingLevel="h2"
+                icon={InfoCircleIcon}
+              >
                 <EmptyStateBody>
                   Sanoid is a policy-driven snapshot management tool for OpenZFS.
                   Install the <code>sanoid</code> package on this host to configure automated snapshot creation, retention schedules, and automatic pruning.
@@ -235,24 +233,22 @@ export const AutomationsView: React.FC<AutomationsViewProps> = ({
               </div>
 
               {policies.length === 0 ? (
-                <EmptyState variant="sm">
-                  <EmptyStateHeader
-                    titleText="No snapshot schedules configured"
-                    headingLevel="h3"
-                    icon={<EmptyStateIcon icon={ClockIcon} />}
-                  />
+                <EmptyState
+                  titleText="No snapshot schedules configured"
+                  headingLevel="h3"
+                  icon={ClockIcon}
+                >
                   <EmptyStateBody>
                     No dataset snapshot schedules were found in <code>/etc/sanoid/sanoid.conf</code>.
                     Click "Add Schedule" to configure automated snapshot retention policies.
                   </EmptyStateBody>
                 </EmptyState>
               ) : filteredPolicies.length === 0 ? (
-                <EmptyState variant="sm">
-                  <EmptyStateHeader
-                    titleText="No matching snapshot schedules"
-                    headingLevel="h3"
-                    icon={<EmptyStateIcon icon={SearchIcon} />}
-                  />
+                <EmptyState
+                  titleText="No matching snapshot schedules"
+                  headingLevel="h3"
+                  icon={SearchIcon}
+                >
                   <EmptyStateBody>
                     No configured policies matched your search <strong>"{searchValue}"</strong>.
                   </EmptyStateBody>
@@ -358,7 +354,6 @@ export const AutomationsView: React.FC<AutomationsViewProps> = ({
         {deleteDatasetTarget && onDeleteSchedule && (
           <Modal
             variant={ModalVariant.small}
-            title="Delete Snapshot Schedule"
             isOpen={Boolean(deleteDatasetTarget)}
             onClose={() => {
               if (!isDeleting) {
@@ -366,7 +361,12 @@ export const AutomationsView: React.FC<AutomationsViewProps> = ({
               }
             }}
             appendTo={() => document.body}
-            actions={[
+          >
+            <ModalHeader title="Delete Snapshot Schedule" />
+            <ModalBody>
+              Are you sure you want to remove the snapshot schedule for <strong>{deleteDatasetTarget}</strong>?
+            </ModalBody>
+            <ModalFooter>
               <Button
                 key="confirm"
                 variant="danger"
@@ -384,7 +384,7 @@ export const AutomationsView: React.FC<AutomationsViewProps> = ({
                 }}
               >
                 Delete Schedule
-              </Button>,
+              </Button>
               <Button
                 key="cancel"
                 variant="link"
@@ -396,10 +396,8 @@ export const AutomationsView: React.FC<AutomationsViewProps> = ({
                 }}
               >
                 Cancel
-              </Button>,
-            ]}
-          >
-            Are you sure you want to remove the snapshot schedule for <strong>{deleteDatasetTarget}</strong>?
+              </Button>
+            </ModalFooter>
           </Modal>
         )}
       </PageSection>

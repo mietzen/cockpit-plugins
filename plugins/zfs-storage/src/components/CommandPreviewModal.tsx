@@ -2,6 +2,9 @@ import React, { useState } from "react";
 import {
   Modal,
   ModalVariant,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
   Button,
   Alert,
 } from "@patternfly/react-core";
@@ -50,46 +53,48 @@ export const CommandPreviewModal: React.FC<CommandPreviewModalProps> = ({
   return (
     <Modal
       variant={ModalVariant.medium}
-      title={title}
       isOpen={isOpen}
       onClose={onCancel}
-      actions={[
+      appendTo={() => document.body}
+    >
+      <ModalHeader title={title} />
+      <ModalBody>
+        {description && (
+          <p style={{ marginBottom: "1rem", color: "var(--zfs-text-primary)" }}>{description}</p>
+        )}
+
+        {isDestructive && (
+          <Alert
+            variant="warning"
+            isInline
+            title="Destructive Operation"
+            style={{ marginBottom: "1rem" }}
+          >
+            This action will permanently alter or erase data. Review the command carefully.
+          </Alert>
+        )}
+
+        <CommandBox command={cmdString} label="Command line:" />
+
+        {error && (
+          <Alert variant="danger" isInline title="Command execution failed" style={{ marginTop: "1rem" }}>
+            {error}
+          </Alert>
+        )}
+      </ModalBody>
+      <ModalFooter>
         <Button
-          key="confirm"
           variant={isDestructive ? "danger" : "primary"}
           onClick={handleExecute}
           isLoading={loading}
           isDisabled={loading}
         >
           {isDestructive ? "Execute Destructive Action" : "Run Command"}
-        </Button>,
-        <Button key="cancel" variant="secondary" onClick={onCancel} isDisabled={loading}>
+        </Button>
+        <Button variant="secondary" onClick={onCancel} isDisabled={loading}>
           Cancel
-        </Button>,
-      ]}
-    >
-      {description && (
-        <p style={{ marginBottom: "1rem", color: "var(--zfs-text-primary)" }}>{description}</p>
-      )}
-
-      {isDestructive && (
-        <Alert
-          variant="warning"
-          isInline
-          title="Destructive Operation"
-          style={{ marginBottom: "1rem" }}
-        >
-          This action will permanently alter or erase data. Review the command carefully.
-        </Alert>
-      )}
-
-      <CommandBox command={cmdString} label="Command line:" />
-
-      {error && (
-        <Alert variant="danger" isInline title="Command execution failed" style={{ marginTop: "1rem" }}>
-          {error}
-        </Alert>
-      )}
+        </Button>
+      </ModalFooter>
     </Modal>
   );
 };

@@ -88,15 +88,15 @@ export const PoolSettingsTab: React.FC<PoolSettingsTabProps> = ({
         <CardBody>
           <Form onSubmit={handleSubmit}>
             <FormGroup label="Pool name" fieldId="pool-name">
-              <TextInput id="pool-name" value={pool.name} isReadOnly />
+              <TextInput id="pool-name" value={pool.name} readOnlyVariant="default" />
             </FormGroup>
 
             <FormGroup label="Pool GUID" fieldId="pool-guid">
-              <TextInput id="pool-guid" value={pool.guid || "-"} isReadOnly />
+              <TextInput id="pool-guid" value={pool.guid || "-"} readOnlyVariant="default" />
             </FormGroup>
 
             <FormGroup label="Sector size (ashift)" fieldId="pool-ashift">
-              <TextInput id="pool-ashift" value={properties["ashift"] || "Auto"} isReadOnly />
+              <TextInput id="pool-ashift" value={properties["ashift"] || "Auto"} readOnlyVariant="default" />
             </FormGroup>
 
             <FormGroup fieldId="pool-autoexpand">
