@@ -1,0 +1,4 @@
+Topic: code-server-session-cleanup
+Decision: Use /usr/share/pam-configs drop-in with pam-auth-update to trigger cleanup on session closure
+Rationale: Avoids modifying conffile /etc/pam.d/cockpit directly while enabling clean multi-session logout cleanup
+Context: Issue #113
