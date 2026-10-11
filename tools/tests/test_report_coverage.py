@@ -122,3 +122,35 @@ class TestReportCoverage(unittest.TestCase):
         self.assertEqual(res.returncode, 1)
         self.assertIn("minimum", res.stdout.lower())
 
+    def test_empty_frontend_fails(self):
+        # Create directory with only python backend coverage (0 frontend lines)
+        cov_dir = os.path.join(self.temp_dir, "coverage-python-zfs-storage")
+        os.makedirs(cov_dir, exist_ok=True)
+        lcov_path = os.path.join(cov_dir, "lcov.info")
+
+        record = (
+            "TN:\n"
+            "SF:plugins/zfs-storage/backend/zfs_helper.py\n"
+            "LF:20\n"
+            "LH:20\n"
+            "BRF:0\n"
+            "BRH:0\n"
+            "end_of_record\n"
+        )
+        with open(lcov_path, "w", encoding="utf-8") as f:
+            f.write(record)
+
+        tools_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+        script = os.path.join(tools_dir, "report_coverage.py")
+
+        res = subprocess.run(
+            [sys.executable, script, self.temp_dir],
+            capture_output=True,
+            text=True,
+            cwd=self.temp_dir,
+        )
+
+        self.assertEqual(res.returncode, 1)
+        self.assertIn("No coverage data found (0 lines recorded)", res.stdout)
+
+
