@@ -136,7 +136,10 @@ async function run() {
   async function navigateToPoolDetail(subTab) {
     await clickTabByText("Pools");
     await page.waitForTimeout(300);
-    await frame.locator("button:has-text('Test-Pool')").first().click();
+    const poolBtn = frame.locator("button:has-text('tank'), button:has-text('Test-Pool')").first();
+    if (await poolBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await poolBtn.click();
+    }
     await page.waitForTimeout(400);
     if (subTab) {
       await clickTabByText(subTab);

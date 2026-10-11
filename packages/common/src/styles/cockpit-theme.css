@@ -81,6 +81,17 @@ body,
   color: var(--zfs-text-primary) !important;
   font-family: "Red Hat Text", RedHatText, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
 }
+
+.pf-v6-c-page {
+  grid-template-columns: 1fr !important;
+  grid-template-areas: "main" !important;
+}
+
+.pf-v6-c-page__main-container {
+  margin: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+}
 .pf-v5-c-page-section,
 .pf-v6-c-page-section,
 .pf-v5-c-page__main-section,
