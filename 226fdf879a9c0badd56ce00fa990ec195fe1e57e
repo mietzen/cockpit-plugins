@@ -1,0 +1,4 @@
+Topic: release-v1.3.0
+Decision: Bump all 4 plugins and root package to version 1.3.0 following PatternFly 6 migration
+Rationale: Coordinates unified major feature release of PatternFly 6 design system across monorepo
+Context: Parent Issue #56, PR #128
