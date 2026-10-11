@@ -1,0 +1,4 @@
+Topic: pf6-visual-fidelity
+Decision: Include PF5 page section padding variables alongside PF6 variables
+Rationale: Maintain framework token symmetry across PF5 and PF6 component trees
+Context: PR #133 review
