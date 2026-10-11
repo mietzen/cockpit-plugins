@@ -1,0 +1,4 @@
+Topic: pf6-migration-zfs-storage
+Decision: Migrate zfs-storage to PatternFly 6 composable modals and wizards with restored column sorting
+Rationale: Modernizes plugin to PF6, eliminates EoL PF5 dependency, and preserves full UX and accessibility
+Context: Issue #119, PR #124
