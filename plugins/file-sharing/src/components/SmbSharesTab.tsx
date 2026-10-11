@@ -10,8 +10,6 @@ import {
   Label,
   SearchInput,
   EmptyState,
-  EmptyStateHeader,
-  EmptyStateIcon,
   EmptyStateBody,
   EmptyStateFooter,
   EmptyStateActions,
@@ -22,6 +20,9 @@ import {
   MenuToggleElement,
   Modal,
   ModalVariant,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
   Form,
   FormGroup,
   TextInput,
@@ -37,7 +38,6 @@ import {
   FolderOpenIcon,
   LockIcon,
   EllipsisVIcon,
-  CheckCircleIcon,
   AppleIcon,
   PencilAltIcon,
   TrashIcon,
@@ -208,7 +208,7 @@ export const SmbSharesTab: React.FC<SmbSharesTabProps> = ({
 
   return (
     <>
-      <PageSection variant="light" style={{ paddingBottom: "1rem" }}>
+      <PageSection style={{ paddingBottom: "1rem" }}>
         <Flex justifyContent={{ default: "justifyContentSpaceBetween" }} alignItems={{ default: "alignItemsCenter" }}>
           <FlexItem>
             <Title headingLevel="h1" size="2xl" style={{ fontWeight: 600, margin: 0, lineHeight: 1.2 }}>
@@ -238,12 +238,11 @@ export const SmbSharesTab: React.FC<SmbSharesTabProps> = ({
 
       <PageSection style={{ paddingTop: "1.5rem" }}>
         {shares.length === 0 ? (
-          <EmptyState>
-            <EmptyStateHeader
-              titleText="No SMB shares configured"
-              icon={<EmptyStateIcon icon={FolderOpenIcon} />}
-              headingLevel="h4"
-            />
+          <EmptyState
+            titleText="No SMB shares configured"
+            icon={FolderOpenIcon}
+            headingLevel="h4"
+          >
             <EmptyStateBody>
               Share directories with Windows, macOS, and Linux clients using Samba.
             </EmptyStateBody>
@@ -311,7 +310,7 @@ export const SmbSharesTab: React.FC<SmbSharesTabProps> = ({
                           </FlexItem>
                           {s.browseable && (
                             <FlexItem>
-                              <Label color="cyan">Browseable</Label>
+                              <Label color="teal">Browseable</Label>
                             </FlexItem>
                           )}
                         </Flex>
@@ -369,7 +368,7 @@ export const SmbSharesTab: React.FC<SmbSharesTabProps> = ({
                                   setDeletingShareName(s.name);
                                   setIsDeleteModalOpen(true);
                                 }}
-                                style={{ color: "var(--pf-v5-global--danger-color--100)" }}
+                                style={{ color: "var(--pf-t--global--color--status--danger--default, var(--pf-v5-global--danger-color--100))" }}
                               >
                                 Delete share
                               </DropdownItem>
@@ -391,25 +390,13 @@ export const SmbSharesTab: React.FC<SmbSharesTabProps> = ({
       {/* Create / Edit Modal */}
       <Modal
         variant={ModalVariant.medium}
-        title={editingShare ? `Edit SMB Share [${editingShare.name}]` : "Create SMB Share"}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        actions={[
-          <Button
-            key="save"
-            variant="primary"
-            onClick={handleSave}
-            isDisabled={loading || !name.trim() || !path.trim()}
-            isLoading={loading}
-          >
-            {editingShare ? "Save changes" : "Create share"}
-          </Button>,
-          <Button key="cancel" variant="secondary" onClick={() => setIsModalOpen(false)} isDisabled={loading}>
-            Cancel
-          </Button>,
-        ]}
+        appendTo={() => document.body}
       >
-        <Form>
+        <ModalHeader title={editingShare ? `Edit SMB Share [${editingShare.name}]` : "Create SMB Share"} />
+        <ModalBody>
+          <Form>
           <FormGroup label="Share Name" isRequired fieldId="smb-name">
             <TextInput
               id="smb-name"
@@ -518,25 +505,43 @@ export const SmbSharesTab: React.FC<SmbSharesTabProps> = ({
             </Alert>
           )}
         </Form>
-      </Modal>
+      </ModalBody>
+      <ModalFooter>
+        <Button
+          key="save"
+          variant="primary"
+          onClick={handleSave}
+          isDisabled={loading || !name.trim() || !path.trim()}
+          isLoading={loading}
+        >
+          {editingShare ? "Save changes" : "Create share"}
+        </Button>
+        <Button key="cancel" variant="secondary" onClick={() => setIsModalOpen(false)} isDisabled={loading}>
+          Cancel
+        </Button>
+      </ModalFooter>
+    </Modal>
 
       {/* Delete Confirmation Modal */}
       <Modal
         variant={ModalVariant.small}
-        title="Delete SMB Share"
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
-        actions={[
+        appendTo={() => document.body}
+      >
+        <ModalHeader title="Delete SMB Share" />
+        <ModalBody>
+          Are you sure you want to delete share <strong>[{deletingShareName}]</strong> from <code>/etc/samba/smb.conf</code>?
+          The underlying filesystem directory will not be deleted.
+        </ModalBody>
+        <ModalFooter>
           <Button key="delete" variant="danger" onClick={handleDelete} isLoading={loading}>
             Delete share
-          </Button>,
+          </Button>
           <Button key="cancel" variant="secondary" onClick={() => setIsDeleteModalOpen(false)}>
             Cancel
-          </Button>,
-        ]}
-      >
-        Are you sure you want to delete share <strong>[{deletingShareName}]</strong> from <code>/etc/samba/smb.conf</code>?
-        The underlying filesystem directory will not be deleted.
+          </Button>
+        </ModalFooter>
       </Modal>
     </>
   );

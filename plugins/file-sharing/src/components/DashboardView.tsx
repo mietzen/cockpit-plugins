@@ -11,21 +11,18 @@ import {
   FlexItem,
   Title,
   Label,
-  Divider,
 } from "@patternfly/react-core";
 import { Table, Thead, Tr, Th, Tbody, Td, ThProps } from "@patternfly/react-table";
 import {
   CheckCircleIcon,
   ExclamationTriangleIcon,
   PlusCircleIcon,
-  FolderOpenIcon,
   UsersIcon,
-  ServerIcon,
   ArrowRightIcon,
   LockIcon,
   AppleIcon,
 } from "@patternfly/react-icons";
-import { FileSharingOverview, SmbShare, NfsExport, SmbSession } from "../types";
+import { FileSharingOverview } from "../types";
 
 interface DashboardViewProps {
   overview: FileSharingOverview;
@@ -52,7 +49,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const sessions = overview.sessions;
 
   const managedSmbCount = smbShares.filter((s) => s.is_managed).length;
-  const managedNfsCount = nfsExports.filter((e) => e.is_managed).length;
 
   const [sessSortIndex, setSessSortIndex] = useState<number | null>(0);
   const [sessSortDirection, setSessSortDirection] = useState<'asc' | 'desc'>('asc');
@@ -141,7 +137,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   return (
     <>
       {/* Top Header */}
-      <PageSection variant="light" style={{ paddingBottom: "1rem" }}>
+      <PageSection style={{ paddingBottom: "1rem" }}>
         <Flex justifyContent={{ default: "justifyContentSpaceBetween" }} alignItems={{ default: "alignItemsCenter" }}>
           <FlexItem>
             <Title headingLevel="h1" size="2xl" style={{ fontWeight: 600, margin: 0, lineHeight: 1.2 }}>
@@ -181,9 +177,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <Flex alignItems={{ default: "alignItemsCenter" }} style={{ marginBottom: "0.75rem" }}>
                   <FlexItem>
                     {allServicesActive ? (
-                      <CheckCircleIcon style={{ color: "var(--pf-v5-global--success-color--100)", fontSize: "1.5rem" }} />
+                      <CheckCircleIcon style={{ color: "var(--pf-t--global--icon--color--status--success--default, var(--pf-v5-global--success-color--100))", fontSize: "1.5rem" }} />
                     ) : (
-                      <ExclamationTriangleIcon style={{ color: "var(--pf-v5-global--warning-color--100)", fontSize: "1.5rem" }} />
+                      <ExclamationTriangleIcon style={{ color: "var(--pf-t--global--icon--color--status--warning--default, var(--pf-v5-global--warning-color--100))", fontSize: "1.5rem" }} />
                     )}
                   </FlexItem>
                   <FlexItem>

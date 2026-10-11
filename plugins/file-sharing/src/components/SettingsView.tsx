@@ -180,7 +180,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   return (
     <>
-      <PageSection variant="light" style={{ paddingBottom: "1rem" }}>
+      <PageSection style={{ paddingBottom: "1rem" }}>
         <Flex justifyContent={{ default: "justifyContentSpaceBetween" }} alignItems={{ default: "alignItemsCenter" }}>
           <FlexItem>
             <Title headingLevel="h1" size="2xl" style={{ fontWeight: 600, margin: 0, lineHeight: 1.2 }}>
@@ -426,7 +426,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </CardTitle>
               <CardBody>
                 <p style={{ marginBottom: "0.5rem" }}>
-                  <strong>Version:</strong> {typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "0.2.1"}
+                  <strong>Version:</strong> {typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "1.2.0"}
                 </p>
                 <p style={{ marginBottom: "0.5rem" }}>
                   <strong>License:</strong> MIT

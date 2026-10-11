@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import "@patternfly/react-core/dist/styles/base.css";
 import "@cockpit-plugins/common/src/styles/cockpit-theme.css";
-import { useCockpitTheme, useCockpitRoute, NavMode, CockpitLocationState } from "@cockpit-plugins/common";
+import { useCockpitTheme, useCockpitRoute, NavMode } from "@cockpit-plugins/common";
 import {
   Alert,
   AlertActionCloseButton,
@@ -218,7 +218,7 @@ export const App: React.FC = () => {
     );
   }
 
-  const overview = data || {
+  const overview: FileSharingOverview = data || {
     services: {
       smbd: { unit: "smbd", active: false, state: "inactive", enabled: false, installed: false },
       nmbd: { unit: "nmbd", active: false, state: "inactive", enabled: false, installed: false },
@@ -227,12 +227,12 @@ export const App: React.FC = () => {
     smb: {
       global: { workgroup: "WORKGROUP", server_string: "Samba Server" },
       shares: [],
-      ansible_markers: { begin: ansibleBegin, end: ansibleEnd },
     },
-    nfs: { exports: [], client_map: [], global: {} },
+    nfs: { exports: [], client_map: [] },
     users: { smb_users: [], smb_groups: [], unix_users: [], access_matrix: [] },
     sessions: [],
     zfs_mounts: [],
+    versions: { smb: "", nfs: "" },
   };
 
   return (

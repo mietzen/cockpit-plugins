@@ -31,14 +31,14 @@ export interface SmbGlobal {
 }
 
 export interface NfsGlobal {
-  threads: number;
+  threads?: number;
   vers3: boolean;
   vers4: boolean;
   vers4_1: boolean;
   vers4_2: boolean;
-  grace_time: number;
-  lease_time: number;
-  port: number;
+  grace_time?: number;
+  lease_time?: number;
+  port?: number;
 }
 
 export interface NfsClient {
@@ -125,6 +125,8 @@ export interface SmbSession {
   group: string;
   machine: string;
   protocol: string;
+  service?: string;
+  ip?: string;
 }
 
 export interface ZfsMount {

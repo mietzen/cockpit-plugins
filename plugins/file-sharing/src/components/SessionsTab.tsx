@@ -13,8 +13,6 @@ import {
   Label,
   Badge,
   EmptyState,
-  EmptyStateHeader,
-  EmptyStateIcon,
   EmptyStateBody,
 } from "@patternfly/react-core";
 import { Table, Thead, Tbody, Tr, Th, Td, ThProps } from "@patternfly/react-table";
@@ -93,7 +91,7 @@ export const SessionsTab: React.FC<SessionsTabProps> = ({
 
   return (
     <>
-      <PageSection variant="light" style={{ paddingBottom: "1rem" }}>
+      <PageSection style={{ paddingBottom: "1rem" }}>
         <Flex justifyContent={{ default: "justifyContentSpaceBetween" }} alignItems={{ default: "alignItemsCenter" }}>
           <FlexItem>
             <Title headingLevel="h1" size="2xl" style={{ fontWeight: 600, margin: 0, lineHeight: 1.2 }}>
@@ -117,7 +115,7 @@ export const SessionsTab: React.FC<SessionsTabProps> = ({
                 <CardTitle>
                   <Flex justifyContent={{ default: "justifyContentSpaceBetween" }} alignItems={{ default: "alignItemsCenter" }}>
                     <FlexItem>
-                      <ServerIcon style={{ marginRight: 8, color: "var(--pf-v5-global--primary-color--100)" }} />
+                      <ServerIcon style={{ marginRight: 8, color: "var(--pf-t--global--icon--color--brand--default, var(--pf-v5-global--primary-color--100))" }} />
                       {svc.name}
                     </FlexItem>
                     <FlexItem>
@@ -130,7 +128,7 @@ export const SessionsTab: React.FC<SessionsTabProps> = ({
                   </Flex>
                 </CardTitle>
                 <CardBody>
-                  <div style={{ fontSize: "0.85rem", color: "var(--pf-v5-global--Color--200)", marginBottom: "1rem" }}>
+                  <div style={{ fontSize: "0.85rem", color: "var(--pf-t--global--text--color--subtle, var(--pf-v5-global--Color--200))", marginBottom: "1rem" }}>
                     Unit: <code>{svc.status.unit}</code> ({svc.status.enabled ? "enabled" : "disabled"})
                   </div>
                   <Flex gap={{ default: "gapSm" }}>
@@ -166,12 +164,12 @@ export const SessionsTab: React.FC<SessionsTabProps> = ({
           </CardTitle>
           <CardBody style={{ padding: 0 }}>
             {sessions.length === 0 ? (
-              <EmptyState style={{ padding: "3rem 1.5rem" }}>
-                <EmptyStateHeader
-                  titleText="No active client connections"
-                  icon={<EmptyStateIcon icon={DesktopIcon} />}
-                  headingLevel="h4"
-                />
+              <EmptyState
+                style={{ padding: "3rem 1.5rem" }}
+                titleText="No active client connections"
+                icon={DesktopIcon}
+                headingLevel="h4"
+              >
                 <EmptyStateBody>
                   Connected client computers accessing Samba shares will automatically appear here.
                 </EmptyStateBody>
