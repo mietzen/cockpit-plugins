@@ -2,6 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   Modal,
   ModalVariant,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
   Button,
   TextInput,
   Select,
@@ -209,7 +212,6 @@ export const ContainerTerminalModal: React.FC<ContainerTerminalModalProps> = ({
   return (
     <Modal
       variant={ModalVariant.large}
-      title={`Terminal: ${container.name}`}
       isOpen={isOpen}
       disableFocusTrap
       onClose={() => {
@@ -224,111 +226,114 @@ export const ContainerTerminalModal: React.FC<ContainerTerminalModalProps> = ({
         onClose();
       }}
       appendTo={() => document.body}
-      actions={[
-        <Button key="close" variant="secondary" onClick={onClose}>
-          Close Terminal
-        </Button>,
-      ]}
     >
-      <div style={{ marginBottom: '1rem' }}>
-        <Flex justifyContent={{ default: 'justifyContentSpaceBetween' }} alignItems={{ default: 'alignItemsCenter' }}>
-          <FlexItem>
-            <Flex spaceItems={{ default: 'spaceItemsSm' }} alignItems={{ default: 'alignItemsCenter' }}>
-              <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>Command:</span>
-              <Select
-                isOpen={shellDropdownOpen}
-                selected={selectedShell}
-                popperProps={{ appendTo: () => document.body }}
-                onSelect={(_event, val) => {
-                  const chosen = String(val);
-                  setSelectedShell(chosen);
-                  setShellDropdownOpen(false);
-                  if (chosen !== 'custom') {
-                    startSession(chosen);
-                  }
-                }}
-                onOpenChange={(open) => setShellDropdownOpen(open)}
-                toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
-                  <MenuToggle
-                    ref={toggleRef}
-                    onClick={() => setShellDropdownOpen(!shellDropdownOpen)}
-                    style={{ borderRadius: '999px' }}
-                  >
-                    {selectedShell}
-                  </MenuToggle>
-                )}
-              >
-                {availableShells.map((p) => (
-                  <SelectOption key={p} value={p}>
-                    {p}
-                  </SelectOption>
-                ))}
-              </Select>
-
-              {selectedShell === 'custom' && (
-                <TextInput
-                  placeholder="/bin/bash -l"
-                  value={customCommand}
-                  onChange={(_e, val) => setCustomCommand(val)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      startSession(customCommand || '/bin/sh');
+      <ModalHeader title={`Terminal: ${container.name}`} />
+      <ModalBody>
+        <div style={{ marginBottom: '1rem' }}>
+          <Flex justifyContent={{ default: 'justifyContentSpaceBetween' }} alignItems={{ default: 'alignItemsCenter' }}>
+            <FlexItem>
+              <Flex spaceItems={{ default: 'spaceItemsSm' }} alignItems={{ default: 'alignItemsCenter' }}>
+                <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>Command:</span>
+                <Select
+                  isOpen={shellDropdownOpen}
+                  selected={selectedShell}
+                  popperProps={{ appendTo: () => document.body }}
+                  onSelect={(_event, val) => {
+                    const chosen = String(val);
+                    setSelectedShell(chosen);
+                    setShellDropdownOpen(false);
+                    if (chosen !== 'custom') {
+                      startSession(chosen);
                     }
                   }}
-                  style={{ width: '200px' }}
-                />
-              )}
+                  onOpenChange={(open) => setShellDropdownOpen(open)}
+                  toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
+                    <MenuToggle
+                      ref={toggleRef}
+                      onClick={() => setShellDropdownOpen(!shellDropdownOpen)}
+                      style={{ borderRadius: '999px' }}
+                    >
+                      {selectedShell}
+                    </MenuToggle>
+                  )}
+                >
+                  {availableShells.map((p) => (
+                    <SelectOption key={p} value={p}>
+                      {p}
+                    </SelectOption>
+                  ))}
+                </Select>
 
-              <Button
-                variant="secondary"
-                icon={<SyncAltIcon />}
-                onClick={() => startSession()}
-                size="sm"
-              >
-                {isConnected ? 'Restart Session' : 'Connect'}
-              </Button>
-            </Flex>
-          </FlexItem>
+                {selectedShell === 'custom' && (
+                  <TextInput
+                    placeholder="/bin/bash -l"
+                    value={customCommand}
+                    onChange={(_e, val) => setCustomCommand(val)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        startSession(customCommand || '/bin/sh');
+                      }
+                    }}
+                    style={{ width: '200px' }}
+                  />
+                )}
 
-          <FlexItem>
-            <span
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                fontSize: '0.85rem',
-                color: isConnected ? '#3fb950' : '#8b949e',
-              }}
-            >
+                <Button
+                  variant="secondary"
+                  icon={<SyncAltIcon />}
+                  onClick={() => startSession()}
+                  size="sm"
+                >
+                  {isConnected ? 'Restart Session' : 'Connect'}
+                </Button>
+              </Flex>
+            </FlexItem>
+
+            <FlexItem>
               <span
                 style={{
-                  width: '8px',
-                  height: '8px',
-                  borderRadius: '50%',
-                  backgroundColor: isConnected ? '#3fb950' : '#8b949e',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  fontSize: '0.85rem',
+                  color: isConnected ? '#3fb950' : '#8b949e',
                 }}
-              />
-              {isConnected ? 'Connected' : 'Disconnected'}
-            </span>
-          </FlexItem>
-        </Flex>
-      </div>
+              >
+                <span
+                  style={{
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    backgroundColor: isConnected ? '#3fb950' : '#8b949e',
+                  }}
+                />
+                {isConnected ? 'Connected' : 'Disconnected'}
+              </span>
+            </FlexItem>
+          </Flex>
+        </div>
 
-      {error && (
-        <Alert variant="danger" isInline title="Session Error" style={{ marginBottom: '1rem' }}>
-          {error}
-        </Alert>
-      )}
+        {error && (
+          <Alert variant="danger" isInline title="Session Error" style={{ marginBottom: '1rem' }}>
+            {error}
+          </Alert>
+        )}
 
-      <div style={{ height: '450px', width: '100%', position: 'relative' }}>
-        <XtermTerminal
-          ref={terminalRef}
-          isDark={isDark}
-          onData={handleData}
-          onResize={handleResize}
-          style={{ height: '100%' }}
-        />
-      </div>
+        <div style={{ height: '450px', width: '100%', position: 'relative' }}>
+          <XtermTerminal
+            ref={terminalRef}
+            isDark={isDark}
+            onData={handleData}
+            onResize={handleResize}
+            style={{ height: '100%' }}
+          />
+        </div>
+      </ModalBody>
+      <ModalFooter>
+        <Button key="close" variant="secondary" onClick={onClose}>
+          Close Terminal
+        </Button>
+      </ModalFooter>
     </Modal>
   );
 };

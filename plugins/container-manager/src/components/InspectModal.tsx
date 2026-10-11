@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import {
   Modal,
   ModalVariant,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
   Button,
   Flex,
   FlexItem,
@@ -203,32 +206,17 @@ export const InspectModal: React.FC<InspectModalProps> = ({
   return (
     <Modal
       variant={ModalVariant.large}
-      width="90%"
-      style={{
-        maxWidth: '90vw',
-        height: '90vh',
-        maxHeight: '90vh',
-        display: 'flex',
-        flexDirection: 'column',
-      }}
-      title={`Inspect: ${titleName}`}
       isOpen={isOpen}
       onClose={onClose}
       appendTo={() => document.body}
-      actions={[
-        <Button key="copy-raw" variant="secondary" icon={<CopyIcon />} onClick={handleCopyRaw}>
-          {copiedRaw ? 'Copied Raw JSON' : 'Copy Raw JSON'}
-        </Button>,
-        <Button key="close" variant="primary" onClick={onClose}>
-          Close
-        </Button>,
-      ]}
     >
-      {error && (
-        <Alert variant="danger" isInline title="Inspection Error" style={{ marginBottom: '1rem' }}>
-          {error}
-        </Alert>
-      )}
+      <ModalHeader title={`Inspect: ${titleName}`} />
+      <ModalBody>
+        {error && (
+          <Alert variant="danger" isInline title="Inspection Error" style={{ marginBottom: '1rem' }}>
+            {error}
+          </Alert>
+        )}
 
       {loading ? (
         <div style={{ padding: '3rem', textAlign: 'center', color: '#8b949e' }}>
@@ -642,6 +630,15 @@ export const InspectModal: React.FC<InspectModalProps> = ({
           </Card>
         </div>
       )}
+      </ModalBody>
+      <ModalFooter>
+        <Button key="copy-raw" variant="secondary" icon={<CopyIcon />} onClick={handleCopyRaw}>
+          {copiedRaw ? 'Copied Raw JSON' : 'Copy Raw JSON'}
+        </Button>
+        <Button key="close" variant="primary" onClick={onClose}>
+          Close
+        </Button>
+      </ModalFooter>
     </Modal>
   );
 };
