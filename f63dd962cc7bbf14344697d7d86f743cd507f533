@@ -1,0 +1,4 @@
+Topic: pf6-migration-common
+Decision: Enable dual PF5/PF6 CSS token and peerDependency compatibility in @cockpit-plugins/common
+Rationale: Allows foundation package to support PF6 while enabling incremental plugin-by-plugin migration without styling breaks
+Context: Issue #118, PR #123
