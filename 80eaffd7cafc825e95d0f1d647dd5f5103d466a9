@@ -1,0 +1,4 @@
+Topic: pf6-visual-fidelity
+Decision: Suppress PF6 tabs pseudo-element underline and restore inset box-shadow indicator
+Rationale: PF6 animated indicator bar introduced visual discrepancies against baseline
+Context: Issue #129, PR #130
