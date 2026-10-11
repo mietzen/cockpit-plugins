@@ -1,0 +1,4 @@
+Topic: pf6-migration-file-sharing
+Decision: Migrate file-sharing to PatternFly 6 composable modals and EmptyState syntax while preserving table sorting
+Rationale: Modernizes plugin to PF6, removes deprecated PF5 dependencies, and maintains light/dark theme consistency
+Context: Issue #120
