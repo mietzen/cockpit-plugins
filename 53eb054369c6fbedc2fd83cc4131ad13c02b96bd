@@ -1,0 +1,4 @@
+Topic: pf6-page-grid
+Decision: Enforce single-column 1fr grid and 0 margin on pf-v6-c-page
+Rationale: Eliminate PF6 phantom sidebar allocation and margin indent inside Cockpit iframe
+Context: Issue #134, PR #135
