@@ -25,7 +25,9 @@ test.describe.serial("Cockpit Code Server E2E Test Suite", () => {
     const frame = await frameElement.contentFrame();
     if (!frame) {
       const match = page.frames().find((f) => f.url().includes("code-server"));
-      if (match) return match;
+      if (match) {
+        return match;
+      }
       throw new Error("Cockpit code-server iframe contentFrame is null");
     }
     return frame;
@@ -129,7 +131,7 @@ test.describe.serial("Cockpit Code Server E2E Test Suite", () => {
 
     const frame = await getFrame();
     await frame.locator("#root").waitFor({ state: "attached", timeout: 20000 });
-    const contentLocator = frame.locator("iframe[title*='Code'], h2:has-text('Code-Server is Stopped'), h2:has-text('Install')").first();
+    const contentLocator = frame.locator("iframe[title*='Code'], h2:has-text('Code-Server is Stopped'), h2:has-text('VS Code Server Not Found'), h2:has-text('Install')").first();
     await contentLocator.waitFor({ state: "visible", timeout: 25000 });
     expect(await contentLocator.isVisible()).toBeTruthy();
 
