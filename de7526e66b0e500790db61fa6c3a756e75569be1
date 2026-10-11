@@ -1,0 +1,4 @@
+Topic: pf6-migration-zfs-storage
+Decision: Migrate cockpit-zfs-storage modals, empty states, and wizards to PatternFly 6 composable APIs
+Rationale: Upgrades ZFS plugin to modern PatternFly 6 design tokens and accessibility standards while retaining E2E test IDs and contracts
+Context: Issue #119
