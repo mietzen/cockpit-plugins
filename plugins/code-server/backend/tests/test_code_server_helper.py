@@ -135,7 +135,18 @@ def test_handle_install_command():
         assert res["error"] == "install failed"
 
 
+def test_handle_session_cleanup_command():
+    from backend.code_server_helper import handle_command
+
+    with patch("backend.code_server_helper.cleanup_user_session", return_value={"cleaned": True, "token_invalidated": True, "service_stopped": True}) as mock_cleanup:
+        res = handle_command(["session_cleanup", "--user", "alice"])
+        assert res["status"] == "ok"
+        assert res["result"]["cleaned"] is True
+        mock_cleanup.assert_called_once_with("alice")
+
+
 def test_handle_unknown_and_invalid_command():
+
     res = handle_command(["unknown_cmd"])
     assert res["status"] == "error"
 

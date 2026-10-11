@@ -227,7 +227,7 @@ rm -rf %{buildroot}/usr/libexec/${HELPER_DIR_NAME}/tests
 find %{buildroot} -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
 find %{buildroot} -name "*.pyc" -delete 2>/dev/null || true
 find %{buildroot} -name "*.pyo" -delete 2>/dev/null || true
-find %{buildroot}/usr/libexec/${HELPER_DIR_NAME} -name "*.py" -exec chmod 755 {} + 2>/dev/null || true
+find %{buildroot}/usr/libexec/${HELPER_DIR_NAME} \( -name "*.py" -o -name "*.sh" \) -exec chmod 755 {} + 2>/dev/null || true
 find %{buildroot}/usr/libexec/${HELPER_DIR_NAME} -name "caddy" -exec chmod 755 {} + 2>/dev/null || true
 find %{buildroot} -exec touch -d "@${SOURCE_DATE_EPOCH}" {} + 2>/dev/null || true
 

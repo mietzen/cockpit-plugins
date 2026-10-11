@@ -168,6 +168,10 @@ CONTROL_EOF
             mkdir -p "$STAGE_DIR/usr/lib/tmpfiles.d"
             cp "${PLUGIN_DIR}/packaging/tmpfiles/cockpit-code-server.conf" "$STAGE_DIR/usr/lib/tmpfiles.d/"
         fi
+        if [ -f "${PLUGIN_DIR}/packaging/pam/cockpit-code-server" ]; then
+            mkdir -p "$STAGE_DIR/usr/share/pam-configs"
+            cp "${PLUGIN_DIR}/packaging/pam/cockpit-code-server" "$STAGE_DIR/usr/share/pam-configs/"
+        fi
     fi
 
     # Backend helper
@@ -208,7 +212,7 @@ CONTROL_EOF
         # Fix permissions and timestamps for reproducible builds
         find "$STAGE_DIR" -type d -exec chmod 755 {} +
         find "$STAGE_DIR/usr" -type f -exec chmod 644 {} +
-        find "$STAGE_DIR/usr/libexec/${HELPER_DIR_NAME}" -name "*.py" -exec chmod 755 {} + 2>/dev/null || true
+        find "$STAGE_DIR/usr/libexec/${HELPER_DIR_NAME}" \( -name "*.py" -o -name "*.sh" \) -exec chmod 755 {} + 2>/dev/null || true
         find "$STAGE_DIR/usr/libexec/${HELPER_DIR_NAME}" -name "caddy" -exec chmod 755 {} + 2>/dev/null || true
         find "$STAGE_DIR" -exec touch -d "@$SOURCE_DATE_EPOCH" {} + 2>/dev/null || find "$STAGE_DIR" -exec touch -t "$(date -r "$SOURCE_DATE_EPOCH" +%Y%m%d%H%M.%S 2>/dev/null || date -u -d "@$SOURCE_DATE_EPOCH" +%Y%m%d%H%M.%S)" {} + 2>/dev/null || true
 

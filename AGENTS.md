@@ -6,7 +6,7 @@
   - `plugins/zfs-storage/`: OpenZFS storage manager (`cockpit-zfs-storage`, v1.2.0).
   - `plugins/file-sharing/`: SMB & NFS manager (`cockpit-file-sharing`, v1.2.0).
   - `plugins/container-manager/`: Docker & Podman manager (`cockpit-container-manager`, v1.2.0).
-  - `plugins/code-server/`: VS Code Server manager (`cockpit-code-server`, v1.1.1).
+  - `plugins/code-server/`: VS Code Server manager (`cockpit-code-server`, v1.2.0).
 - `tools/`: Packaging and repository automation (`build_deb.sh`, `build_rpm.sh`, `generate_apt_repo.py`, `generate_rpm_repo.py`).
 - `.agents/skills/`: Discovered agent skill definitions.
 
@@ -27,29 +27,22 @@
 
 ## 4. Review convention
 
-Final reviews of implemented issues use a Gemini 3.8 Flash sub-agent.
+Final reviews of implemented issues use a dedicated Gemini Flash sub-agent (`TypeName: "research"`, `Model: "flash"`).
 
-## 5. Development workflow (branch/PR per issue — mandatory)
+## 5. Development workflow (Ticket -> Subagent -> AI Review -> Check CI -> Merge)
 
-Every issue is developed on its own branch, tested, merged via PR, and only
-then deployed and e2e-tested on the test VM. Never commit directly to `main`;
-never deploy from a local build.
+Every issue must follow this exact sequence:
 
-1. **Branch**: `git switch -c <topic>/<issue-slug>` off `main` (one branch per
-   issue; `main` stays green).
-3. **Test on the test VM**: install the built package on the `debian-test`
-   VM (reachable via `ssh debian-test`)
-   and exercise the change end-to-end before merging.
-4. **PR**: open a PR (gh CLI) from the branch to `main`; CI runs the build
-   check on the PR. Iterate until green.
-5. **AI review**: before merging, run the `/code-review` skill on the branch. 
-   Address blocking findings with follow-up commits on the
-   branch; re-run CI until green. Final review of implemented issues
-6. **Merge**: merge the PR to `main` only after CI is green AND the AI review
-   passed.
-7. **Deploy**: pushing release tags (`*-v*`) triggers the CI release workflow to publish GitHub releases and deploy the APT/RPM repository to GitHub Pages. Direct pushes on `main` ignore plugin/package source paths to protect immutable release artifacts. No local-build deploys.
-8. **E2E on the test VM**: after the deploy job completes, install
-   the updated package, and verify the issue's acceptance criteria on the VM
-   (WebUI via the 9090 tunnel + playwright, service checks via ssh).
-9. **Cleanup**: delete the merged branch; restore the VM repo config if it was
-   pointed elsewhere during testing.
+1. **Ticket**: Create a GitHub issue (`gh issue create`) with complete specifications, architectural decisions, and acceptance criteria.
+2. **Branch**: Create topic branch `git switch -c <topic>/<issue-slug>` off `main`.
+3. **Subagent Implementation**: Dispatch an implementation subagent (`TypeName: "self"`) to implement changes using TDD, open a PR (`gh pr create`), and push the branch. Never write feature code directly in the parent orchestrator agent.
+4. **Subagent AI Review**: Dispatch a review subagent (`TypeName: "research"`, `Model: "flash"`) on the PR. Address any blocking findings with follow-up commits.
+5. **Check CI**: Check CI status yourself using `gh pr checks --watch` (NEVER `-w` or `--web`).
+6. **Merge**: Merge the PR to `main` via `gh pr merge --squash --delete-branch` (NEVER `--admin`) only after CI is green AND the AI review passed.
+7. **Deploy & Release**: Tag release (`<plugin>-v<version>`) and push to trigger CI repository build and deployment to GitHub Pages. Direct pushes on `main` ignore plugin/package source paths to protect immutable release artifacts. No local-build deploys.
+8. **E2E on Test VM**: Install updated package on `debian-test` VM via apt/dnf and verify acceptance criteria end-to-end.
+9. **Cleanup**: Delete merged local branch and verify branch cleanup.
+
+### Checkpoints & Decision Logging
+- **Frequent Checkpoints**: Commit frequently with concise commit messages for incremental checkpoints during development.
+- **Git Notes**: Document significant architectural, security, or user decisions using `git notes` (`git notes add -m "<decision>" <commit>`). Push notes via `git push origin refs/notes/*`.

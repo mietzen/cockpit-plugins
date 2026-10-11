@@ -26,6 +26,7 @@ try:
         install_code_server,
         ensure_user_dir_permissions,
         get_or_create_user_token,
+        cleanup_user_session,
     )
 except ImportError:
     from config_manager import (
@@ -44,6 +45,7 @@ except ImportError:
         install_code_server,
         ensure_user_dir_permissions,
         get_or_create_user_token,
+        cleanup_user_session,
     )
 
 
@@ -68,6 +70,10 @@ def handle_command(args: List[str]) -> Dict[str, Any]:
     # Install
     install_parser = subparsers.add_parser("install")
     install_parser.add_argument("--user", default=None)
+
+    # Session cleanup
+    cleanup_parser = subparsers.add_parser("session_cleanup")
+    cleanup_parser.add_argument("--user", required=True)
 
     try:
         parsed = parser.parse_args(args)
@@ -149,6 +155,10 @@ def handle_command(args: List[str]) -> Dict[str, Any]:
         if res.get("success"):
             return {"status": "ok", "message": "Code server installed successfully", "output": res.get("output")}
         return {"status": "error", "error": res.get("error"), "output": res.get("output")}
+
+    elif parsed.action == "session_cleanup":
+        res = cleanup_user_session(parsed.user)
+        return {"status": "ok", "result": res}
 
     return {"status": "error", "error": f"Unknown action: {parsed.action}"}
 
